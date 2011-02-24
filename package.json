@@ -1,0 +1,16 @@
+{
+  "name": "jsdom-manager",
+  "description": "A data structure for managing multiple jsdom instances.",
+  "version": "0.0.0",
+  "repository": {
+    "url": ""
+  },
+  "author": "Brian McDaniel <brianmcd05@gmail.com> (http://people.cs.vt.edu/~brianmcd)",
+  "main": "./lib/jsdom-manager",
+  "directories": {
+    "lib": "./lib/jsdom-manager"
+  },
+  "engines": {
+    "node": "4.0.1"
+  }
+}
