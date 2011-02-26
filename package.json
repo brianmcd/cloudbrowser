@@ -6,10 +6,7 @@
     "url": ""
   },
   "author": "Brian McDaniel <brianmcd05@gmail.com> (http://people.cs.vt.edu/~brianmcd)",
-  "main": "./lib/jsdom-manager",
-  "directories": {
-    "lib": "./lib/jsdom-manager"
-  },
+  "main": "jsdom-manager",
   "engines": {
     "node": "4.0.1"
   }
