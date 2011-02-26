@@ -1,7 +1,8 @@
 var jsdomLib    = require('jsdom'),
     URL         = require('url'),
     fs          = require('fs'),
-    request     = require('request');
+    request     = require('request'),
+    Class       = require('./lib/inheritance');
 
 jsdomLib.defaultDocumentFeatures = {
     FetchExternalResources: ['script'],

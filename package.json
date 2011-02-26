@@ -9,5 +9,8 @@
   "main": "jsdom-manager",
   "engines": {
     "node": "4.0.1"
+  },
+  "directories" : { 
+    "lib" : "./lib"
   }
 }
