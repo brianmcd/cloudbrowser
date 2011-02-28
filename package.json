@@ -1,12 +1,12 @@
 {
-  "name": "jsdom-manager",
+  "name": "vt",
   "description": "A data structure for managing multiple jsdom instances.",
   "version": "0.0.0",
   "repository": {
     "url": ""
   },
   "author": "Brian McDaniel <brianmcd05@gmail.com> (http://people.cs.vt.edu/~brianmcd)",
-  "main": "jsdom-manager",
+  "main": "vt",
   "engines": {
     "node": "4.0.1"
   },

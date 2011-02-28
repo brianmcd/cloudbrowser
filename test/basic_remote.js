@@ -1,6 +1,8 @@
-var manager = require('jsdom-manager');
+var BrowserManager = require('vt').BrowserManager,
+    browsers = new BrowserManager();
 
-manager.lookup(1, function (inst) {
+
+browsers.lookup(1, function (inst) {
     inst.loadPage('http://news.ycombinator.com/', function () { 
         var script = inst.document.createElement('script');
         script.src = 'http://code.jquery.com/jquery-1.5.min.js';
