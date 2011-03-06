@@ -1,5 +1,4 @@
-var assert = require('assert'),
-    vt     = require('vt');
+var vt = require('vt');
 
 exports.testLookup = function (test) {
     var manager = new vt.BrowserManager();
