@@ -19,6 +19,12 @@ var server = connect.createServer(
 server.listen(3000);
 console.log('Server listening on port 3000');
 
+// I'm sure there's a better way to do this but not focusing development
+// here right now.
+if (process.cwd() != 'examples') {
+    process.chdir('examples');
+}
+
 
 // These will be for initial calls to a new resource
 // TODO: add err as first param to callbacks
