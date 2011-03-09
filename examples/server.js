@@ -1,5 +1,6 @@
 var connect        = require('connect'),
     fs             = require('fs'),
+    assert         = require('assert'),
     BrowserManager = require('vt').BrowserManager;
 
 // I'm sure there's a better way to do this but not a priority now.
@@ -29,6 +30,30 @@ var server = connect.createServer(
 server.listen(3000);
 console.log('Server listening on port 3000');
 
+//NOTE: When client connects to socket.io socket, then it has rendered the DOM and gotten to onLoad();
+var io = require('socket.io');
+var socket = io.listen(server);
+socket.on('connection', function (client) {
+    var browser = undefined;
+    var numMessages = 0;
+    client.on('message', function (msg) {
+        if (browser == undefined) {
+            // msg should be the client's sessionID
+            console.log('Socket.io client connected: ' + msg);
+            assert.equal(numMessages, 0, "browser should only be undefined on first message");
+            browsers.lookup(msg, function (browse) {
+                browser = browse;
+            });
+            client.send(browser.toInstructions());
+        }
+        console.log('Message from client: ' + msg);
+    });
+    client.on('disconnect', function (msg) {
+        console.log('Client disconnected.');
+        browser = undefined;
+    });
+});
+
 // These will be for initial calls to a new resource
 // TODO: add err as first param to callbacks
 function app(app) {
@@ -37,7 +62,7 @@ function app(app) {
             req: req,
             success : function (browser) {
                 res.writeHead(200, {'Content-type': 'text/html'});
-                res.end(basePage);
+                res.end(basePage.replace(/:SESSION_ID:/, req.sessionID));
             },
             failure : function () { send500error(res); }
         });
@@ -57,7 +82,7 @@ function app(app) {
             req : req,
             success : function (browser) {
                 res.writeHead(200, {'Content-type': 'text/html'});
-                res.end(basePage);
+                res.end(basePage.replace(/:SESSION_ID:/, req.sessionID));
             },
             failure : function () { send500error(res); }
         });
@@ -122,28 +147,3 @@ function loadRemote (opts) {
         });
     });
 }
-
-//NOTE: When client connects to socker.io socket, then it has rendered the DOM and gotten to onLoad();
-//NOTE: This uses the same session ID we can get to above, meaning we can pull up their desktop this way.
-var io = require('socket.io');
-var socket = io.listen(server);
-socket.on('connection', function (client) {
-    // Got this idea from socketIO-connect: https://github.com/bnoguchi/Socket.IO-connect
-    // We send client.request down the middleware stack so we can get at the sessionID.
-    // TODO: find a more direct way to get the sessionID (look at the session middleware impl)
-    var dummyRes = {writeHead: null};
-    server.handle(client.request, dummyRes, function () {
-        console.log('Client with session id: ' + client.request.sessionID
-                    + ' connected via socket.io');
-        browsers.lookup(client.request.sessionID, function (browser) {
-            client.send(browser.toInstructions());
-        });
-        client.on('message', function (msg) {
-            console.log('Message from client: ' + msg);
-        });
-        client.on('disconnect', function (msg) {
-            console.log('Client disconnected.');
-        });
-    });
-
-});
