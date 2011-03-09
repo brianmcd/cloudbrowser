@@ -21,7 +21,7 @@ console.log('Server listening on port 3000');
 
 // I'm sure there's a better way to do this but not focusing development
 // here right now.
-if (process.cwd() != 'examples') {
+if (!process.cwd().match(/examples\/?$/)) {
     process.chdir('examples');
 }
 
