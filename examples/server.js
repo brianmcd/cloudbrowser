@@ -53,6 +53,26 @@ function app(app) {
             });
         });
     });
+    app.get('/remote/:remoteURL', function (req, res) {
+        var remoteURL = req.params.remoteURL;
+        if (!remoteURL.match(/^http/)) {
+            remoteURL = 'http://' + remoteURL;
+        }
+        console.log('Remote URL requested: ' + remoteURL);
+        browsers.lookup(req.sessionID, function(browser) {
+            browser.loadFromURL({
+                url: remoteURL,
+                success : function () {
+                    res.writeHead(200, {'Content-type': 'text/html'});
+                    res.end(browser.dumpHTML());
+                },
+                failure : function () {
+                    console.log('ERROR: failed to load remote URL: ' 
+                                + remoteURL);
+                }
+            });
+        });
+    });
 }
 
 //NOTE: When client connects to socker.io socket, then it has rendered the DOM and gotten to onLoad();
