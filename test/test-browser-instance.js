@@ -76,7 +76,7 @@ exports.testDumpHTML = function (test) {
 };
 
 exports.testGenInitInstructions = function (test) {
-    // TODO: implement this once API is worked out.
+    console.log('Not yet implemented.');
     test.done();
 };
 
