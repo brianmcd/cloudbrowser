@@ -1,0 +1,40 @@
+Installing
+
+Prereqs:
+1.) Clone and install node from: https://github.com/joyent/node.git
+    You can configure with --prefix=prefixPath to point 'make install' somewhere in
+    your home directory.  I'd recommend checking out a tag on a branch and
+    building/installing from there.
+
+    After running 'make install', add prefixPath/bin to your $PATH, like by
+    adding export PATH=prefixDir/node/bin:$PATH to your ~/.bashrc.
+
+2.) Set NODE_PATH to point to prefixPath/bin.  This is so that we can 
+    install/use npm without sudo.
+
+3.) Clone and install npm from: https://github.com/isaacs/npm.git
+    Just cd into the npm directory and do 'make install' (or sudo if you
+    installed node into a system directory).
+
+4.) Install the following npm packages: 
+    connect@1.0.6      High performance middleware framework     framework web middleware connect rack
+    html5@0.2.14       HTML5 HTML parser, including support for SVG and MathML foreign content    
+    htmlparser@1.7.3   Forgiving HTML/XML/RSS Parser in JS for *both* Node and Browsers    
+    jsdom@0.2.0        A javascript implementation of the W3C DOM     dom w3c javascript
+    mime@1.2.1         A comprehensive library for mime-type mapping     util mime
+    nodeunit@0.5.1     Easy unit testing for node.js and the browser.    
+    npm@0.3.15         A package manager for node     package manager modules install package.json
+    qs@0.0.6           querystring parser    
+    request@1.9.0      Simplified HTTP request client.    
+    socket.io@0.6.16   The cross-browser WebSocket   
+
+
+vt-node-lib:
+1.) Request access to the repository, clone from: 
+        git clone git@brianmcd.com:vt-node-lib.git
+
+2.) cd into vt-node-lib/ and run 'npm link'.
+
+3.) Run tests with 'node run_tests.sh' to make sure things are OK.
+
+
