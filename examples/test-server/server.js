@@ -38,6 +38,7 @@ var socket = io.listen(server);
 socket.on('connection', function (client) {
     var browser = undefined;
     var numMessages = 0;
+    //TODO: can use client.once
     client.on('message', function (msg) {
         if (browser == undefined) {
             // msg should be the client's sessionID
@@ -45,8 +46,8 @@ socket.on('connection', function (client) {
             assert.equal(numMessages, 0, "browser should only be undefined on first message");
             browsers.lookup(msg, function (browse) {
                 browser = browse;
+                browser.initializeClient(client);
             });
-            browser.initializeClient(client);
         } else {
             // otherwise, this was an event handler firing, but we haven't gotten there yet.
             throw new Error("Client shouldn't be triggering events yet.");
