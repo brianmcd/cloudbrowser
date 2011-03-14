@@ -4,8 +4,10 @@ var connect        = require('connect'),
     BrowserManager = require('vt').BrowserManager;
 
 // I'm sure there's a better way to do this but not a priority now.
-if (!process.cwd().match(/examples\/?$/)) {
-    process.chdir('examples');
+if (process.cwd().match(/examples\/?$/)) {
+    process.chdir('test-server');
+} else if (!process.cwd().match(/test-server\/?$/)) {
+    process.chdir('examples/test-server');
 }
 
 var browsers = new BrowserManager();
@@ -44,9 +46,11 @@ socket.on('connection', function (client) {
             browsers.lookup(msg, function (browse) {
                 browser = browse;
             });
-            client.send(browser.toInstructions());
+            browser.initializeClient(client);
+        } else {
+            // otherwise, this was an event handler firing, but we haven't gotten there yet.
+            throw new Error("Client shouldn't be triggering events yet.");
         }
-        console.log('Message from client: ' + msg);
     });
     client.on('disconnect', function (msg) {
         console.log('Client disconnected.');
