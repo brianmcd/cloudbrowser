@@ -16,17 +16,38 @@ Prereqs:
     Just cd into the npm directory and do 'make install' (or sudo if you
     installed node into a system directory).
 
-4.) Install the following npm packages: 
-    connect@1.0.6      High performance middleware framework     framework web middleware connect rack
-    html5@0.2.14       HTML5 HTML parser, including support for SVG and MathML foreign content    
-    htmlparser@1.7.3   Forgiving HTML/XML/RSS Parser in JS for *both* Node and Browsers    
-    jsdom@0.2.0        A javascript implementation of the W3C DOM     dom w3c javascript
-    mime@1.2.1         A comprehensive library for mime-type mapping     util mime
-    nodeunit@0.5.1     Easy unit testing for node.js and the browser.    
-    npm@0.3.15         A package manager for node     package manager modules install package.json
-    qs@0.0.6           querystring parser    
-    request@1.9.0      Simplified HTTP request client.    
-    socket.io@0.6.16   The cross-browser WebSocket   
+4.) Here are the npm packages I have installed for development on this and 
+    related projects:
+    coffee-script@1.0.1         Unfancy JavaScript
+    connect@1.0.6               High performance middleware framework 
+    docco@0.3.0                 The Quick and Dirty Literate Programming 
+                                Documentation Generator
+    express@1.0.7               Sinatra inspired web development framework
+    eyes@0.1.6                  a customizable value inspector
+    html5@0.2.14                HTML5 HTML parser, including support for SVG
+                                and MathML foreign content
+    htmlparser@1.7.3            Forgiving HTML/XML/RSS Parser in JS for *both*
+                                Node and Browsers
+    jsdom@0.2.0                 A javascript implementation of the W3C DOM
+    mime@1.2.1                  A comprehensive library for mime-type mapping
+    mjsunit.runner@0.1.3        Command line mjsunit runner which provides an 
+                                easy way to hook into mjsunit and start
+                                running tests immediately
+    nodeunit@0.5.1              Easy unit testing for node.js and the browser.
+    npm@0.3.15                  A package manager for node
+    opts@1.2.1                  Command line argument parser written in the
+                                style of commonjs.
+    qs@0.0.6                    querystring parser
+    request@1.9.0               Simplified HTTP request client.
+    ronn@0.3.5                  markdown to roff and html converter
+    socket.io@0.6.16            The cross-browser WebSocket
+    vows@0.5.6                  Asynchronous BDD & continuous integration for 
+                                node.js
+    vt@9999.0.0-LINK-903c3422   A data structure for managing multiple jsdom
+                                instances.
+    websocket-client@1.0.0      An HTML5 Web Sockets client
+    zombie@0.9.4                Insanely fast, full-stack, headless browser
+                                testing using Node.js
 
 
 vt-node-lib:
