@@ -78,7 +78,6 @@ exports.testDumpHTML = function (test) {
     var count = 0;
     Envs.forEach(function (env) {
         var browser = new vt.BrowserInstance(env);
-        var browser = new vt.BrowserInstance();
         var Hello = Fixtures.Hello;
         browser.loadFromFile({
             path : __dirname + '/' + Hello.pathStr,
