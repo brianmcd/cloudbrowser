@@ -19,37 +19,42 @@ function app (app) {
     app.get('/local/:filename', function (req, res) {
         server.loadLocal({
             req: req,
-            success : function (browser) {
-                server.returnBasePage(req.sessionID, res);
-            },
-            failure : function () { server.send500error(res); }
+            res: res,
+            filename: req.params.filename,
+            success : function () {
+                //TODO: this should be something like 'startSession'
+                server.returnBasePage(req, res);
+            }
         });
     });
     app.get('/localHTML/:filename', function (req, res) {
         server.loadLocal({
             req: req,
+            res: res,
+            filename: req.params.filename,
             success : function (browser) {
                 server.returnHTML(browser, res);
-            },
-            failure : function () { server.send500error(res); }
+            }
         });
     });
     app.get('/remote/:remoteURL', function (req, res) {
         server.loadRemote({
-            req : req,
+            req: req,
+            res: res,
+            url: req.params.remoteURL,
             success : function (browser) {
-                server.returnBasePage(req.sessionID, res);
-            },
-            failure : function () { server.send500error(res); }
+                server.returnBasePage(req, res);
+            }
         });
     });
     app.get('/remoteHTML/:remoteURL', function (req, res) {
         server.loadRemote({
-            req : req,
+            req: req,
+            res: res,
+            url: req.params.remoteURL,
             success : function (browser) {
                 server.returnHTML(browser, res);
-            },
-            failure : function () { server.send500error(res); }
+            }
         });
     });
 };
