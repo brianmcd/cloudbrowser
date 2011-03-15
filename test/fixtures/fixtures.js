@@ -3,7 +3,7 @@ exports.Hello = {
     html     : '<html><head><title>Hello</title></head><body>Node</body></html>',
     pathStr  : 'fixtures/hello.html',
     urlStr   : 'http://www.brianmcd.com/hello.html',
-    numNodes : 8 //counted by hand...
+    numNodes : 7 //counted by hand...
 };
 
 /* Metadata for testing against a snapshot of the HackerNews site. */
@@ -12,3 +12,6 @@ exports.HackerNews = {
     //       Host CSS etc on my server.
     urlStr : 'http://www.brianmcd.com/hn.html',
 };
+
+/* Information on the server side DOM environments we support. */
+exports.Environments = ['jsdom', 'zombie'];
