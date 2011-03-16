@@ -47,7 +47,7 @@ exports.testAssignID = function (test) {
     var count = 0;
     Envs.forEach(function (env) {
         var browser = new vt.BrowserInstance(env);
-        browser.loadHTML("<html><head></head><body><div id='5'></div></body></html>", function () {
+        browser.loadFromHTML("<html><head></head><body><div id='5'></div></body></html>", function () {
             var node = browser.document.getElementById('5');
             
             test.equal(node.__envID, undefined, "__envID should start of undefined");

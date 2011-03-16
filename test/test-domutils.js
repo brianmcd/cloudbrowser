@@ -7,7 +7,9 @@ exports.testDepthFirstSearch = function (test) {
     Envs.forEach(function (env) {
         var browser = new vt.BrowserInstance(env);
         var html = '<html><head></head><body>Node!</body></html>';
-        browser.loadHTML(html, function () {
+        browser.loadFromHTML(html, function () {
+            test.notEqual(browser.window, null);
+            test.notEqual(browser.document, null);
             var nodes = [];
             DOMUtils.depthFirstSearch.call(browser.window, function (node) {
                 nodes.push(node);
@@ -31,7 +33,7 @@ exports.testGetNodesInBrowser = function (test) {
     Envs.forEach(function (env) {
         var browser = new vt.BrowserInstance(env);
         var html = '<html><head></head><body>Node!</body></html>';
-        browser.loadHTML(html, function () {
+        browser.loadFromHTML(html, function () {
             var nodes = browser.getNodes();
             test.equal(nodes.length, 5, 'Mis-counted the number of nodes in: ' + html);
             var tags = ['#document', 'html', 'head', 'body'];
@@ -51,7 +53,7 @@ exports.testGetNodesStatic = function (test) {
     Envs.forEach(function (env) {
         var browser = new vt.BrowserInstance(env);
         var html = '<html><head></head><body>Node!</body></html>';
-        browser.loadHTML(html, function () {
+        browser.loadFromHTML(html, function () {
             var nodes = DOMUtils.getNodes.call(browser, 'dfs');
             test.equal(nodes.length, 5, 'Mis-counted the number of nodes in: ' + html);
             var tags = ['#document', 'html', 'head', 'body'];

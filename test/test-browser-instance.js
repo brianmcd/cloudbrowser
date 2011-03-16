@@ -8,21 +8,13 @@ exports.testloadURLLocal = function (test) {
     Envs.forEach(function (env) {
         var browser = new vt.BrowserInstance(env);
         var Hello = Fixtures.Hello;
-        browser.loadFromFile({
-            path : __dirname + '/' + Hello.pathStr,
-            success : function () {
-                var nodes = browser.getNodes();
-                browser.printNodes();
-                test.equals(nodes.length, Hello.numNodes,
-                            "There are " + Hello.numNodes +
-                            " nodes in hello.html's DOM");
-                console.log('Finished with ' + env);
-                if (++count == Envs.length) {
-                    test.done();
-                }
-            },
-            failure : function () {
-                test.ok(false, 'loadFromFile triggered failure()');
+        browser.loadFromFile(__dirname + '/' + Hello.pathStr, function () {
+            var nodes = browser.getNodes();
+            test.equals(nodes.length, Hello.numNodes,
+                        "There are " + Hello.numNodes +
+                        " nodes in hello.html's DOM");
+            console.log('Finished with ' + env);
+            if (++count == Envs.length) {
                 test.done();
             }
         });
@@ -34,20 +26,13 @@ exports.testloadURLRemote = function (test) {
     Envs.forEach(function (env) {
         var browser = new vt.BrowserInstance(env);
         var Hello = Fixtures.Hello;
-        browser.loadFromURL({
-            url : Hello.urlStr,
-            success : function () {
-                var nodes = browser.getNodes();
-                test.ok(nodes.length, Hello.numNodes,
-                        "There are " + Hello.numNodes +
-                        " nodes in hello.html's DOM");
-                console.log('Finished with ' + env);
-                if (++count == Envs.length) {
-                    test.done();
-                }
-            },
-            failure : function () {
-                test.ok(false, 'loadFromURL triggered failure()');
+        browser.loadFromURL(Hello.urlStr, function () {
+            var nodes = browser.getNodes();
+            test.ok(nodes.length, Hello.numNodes,
+                    "There are " + Hello.numNodes +
+                    " nodes in hello.html's DOM");
+            console.log('Finished with ' + env);
+            if (++count == Envs.length) {
                 test.done();
             }
         });
@@ -59,8 +44,8 @@ exports.testLoadHTML = function (test) {
     Envs.forEach(function (env) {
         var browser = new vt.BrowserInstance(env);
         var Hello = Fixtures.Hello;
-        browser.loadHTML(Hello.html, function () {
-            test.equal(browser.dumpHTML().replace(/\s*/g, ''),
+        browser.env.loadHTML(Hello.html, function () {
+            test.equal(browser.env.getHTML().replace(/\s*/g, ''),
                        Hello.html,
                        'loadHTML loaded incorrect HTML.');
             console.log('Finished with ' + env);
@@ -79,23 +64,15 @@ exports.testDumpHTML = function (test) {
     Envs.forEach(function (env) {
         var browser = new vt.BrowserInstance(env);
         var Hello = Fixtures.Hello;
-        browser.loadFromFile({
-            path : __dirname + '/' + Hello.pathStr,
-            success : function () {
-                test.equal(browser.dumpHTML().replace(/\s*/g, ''),
-                           Hello.html,
-                           'browser.dumpHTML() returned incorrect HTML');
-                test.equal(browser.getNodes().length, Hello.numNodes,
-                           "hello.html's DOM should have " + Hello.numNodes + 
-                           " nodes.");
-                console.log('Finished with ' + env);
-                if (++count == Envs.length) {
-                    test.done();
-                }
-            },
-            //TODO: consider rename failure to error (easier to type and conveys the same meaning)
-            failure : function() { 
-                test.ok(false, 'loadFromFile failed in dumpHTML test');
+        browser.loadFromFile(__dirname + '/' + Hello.pathStr, function () {
+            test.equal(browser.env.getHTML().replace(/\s*/g, ''),
+                       Hello.html,
+                       'browser.getHTML() returned incorrect HTML');
+            test.equal(browser.getNodes().length, Hello.numNodes,
+                       "hello.html's DOM should have " + Hello.numNodes + 
+                       " nodes.");
+            console.log('Finished with ' + env);
+            if (++count == Envs.length) {
                 test.done();
             }
         });
