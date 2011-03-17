@@ -1,22 +1,28 @@
 var Server = require('vt').Server;
 
-var server = new Server({
-    staticDir: './public',
-    basePage: './base.html',
-    routes: app
-});
-
-function app (app) {
-    app.get(/.*.html/, function (req, res) {
-        server.loadLocal({
-            req: req, 
-            res: res,
-            success : function () {
-                server.returnBasePage(req, res);
-            }
-        });
-    });
-}
-
 // Note: user must call .listen(port)
-module.exports = server;
+module.exports = function createServer () {
+    var server = this.server =  new Server({
+        staticDir: __dirname + '/public',
+        basePage: __dirname + '/base.html',
+        routes: routes
+    });
+
+    function routes (app) {
+        app.get('/:filename', function (req, res) {
+            var filename = __dirname + '/' + req.params.filename;
+            console.log(filename + ' requested.');
+            server.loadLocal({
+                req: req, 
+                res: res,
+                filename: filename,
+                success : function () {
+                    console.log('Sending base page');
+                    server.returnBasePage(req, res);
+                }
+            });
+        });
+    }
+
+    return server;
+};
