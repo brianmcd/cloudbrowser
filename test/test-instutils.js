@@ -29,7 +29,7 @@ Envs.forEach(function (env) {
     exports[env + '.InstUtils.assignID'] = function () {
         var browser = new BrowserInstance(env);
         var html = "<html><head></head><body><div id='5'></div></body></html>";
-        browser.loadFromHTML(html, function () {
+        browser.load(html, function () {
             var node = browser.document.getElementById('5');
             assert.equal(node.__envID, undefined, "__envID should start of undefined");
             browser.assignID(node);

@@ -8,7 +8,7 @@ Envs.forEach(function (env) {
     exports[env + '.DOMUtils.depthFirstSearch'] = function () {
         var browser = new BrowserInstance(env);
         var html = '<html><head></head><body>Node!</body></html>';
-        browser.loadFromHTML(html, function () {
+        browser.load(html, function () {
             assert.notEqual(browser.window, null);
             assert.notEqual(browser.document, null);
             var nodes = [];
@@ -25,7 +25,7 @@ Envs.forEach(function (env) {
     exports[env + '.DOMUtils.getNodes [mixed in]'] = function () {
         var browser = new BrowserInstance(env);
         var html = '<html><head></head><body>Node!</body></html>';
-        browser.loadFromHTML(html, function () {
+        browser.load(html, function () {
             var nodes = browser.getNodes();
             assert.equal(nodes.length, 5, 'Mis-counted the number of nodes in: ' + html);
             var tags = ['#document', 'html', 'head', 'body'];
@@ -37,7 +37,7 @@ Envs.forEach(function (env) {
     exports[env + '.DOMUtils.testGetNodes [Static]'] = function () {
         var browser = new BrowserInstance(env);
         var html = '<html><head></head><body>Node!</body></html>';
-        browser.loadFromHTML(html, function () {
+        browser.load(html, function () {
             var nodes = DOMUtils.getNodes.call(browser, 'dfs');
             assert.equal(nodes.length, 5, 'Mis-counted the number of nodes in: ' + html);
             var tags = ['#document', 'html', 'head', 'body'];

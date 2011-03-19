@@ -4,22 +4,22 @@ var BrowserInstance = require('browser_instance'),
     assert          = require('assert'),
     fs              = require('fs');
 
-
 Envs.forEach(function (env) {
-    exports[env + '.BrowserInstance#loadFromFile'] = function () {
+    exports[env + '.BrowserInstance#load(path)'] = function () {
         var browser = new BrowserInstance(env);
         var Hello = Fixtures.Hello;
-        browser.loadFromFile(__dirname + '/' + Hello.pathStr, function () {
+        var path = __dirname + '/' + Hello.pathStr;
+        browser.load(path, function () {
             var nodes = browser.getNodes();
             assert.equal(nodes.length, Hello.numNodes,
                         "There are " + Hello.numNodes +
                         " nodes in hello.html's DOM");
         });
     };
-    exports[env + '.BrowserInstance#loadFromURL'] = function () {
+    exports[env + '.BrowserInstance#load(url)'] = function () {
         var browser = new BrowserInstance(env);
         var Hello = Fixtures.Hello;
-        browser.loadFromURL(Hello.urlStr, function () {
+        browser.load(Hello.urlStr, function () {
             var nodes = browser.getNodes();
             assert.ok(nodes.length, Hello.numNodes,
                     "There are " + Hello.numNodes +
@@ -40,7 +40,8 @@ Envs.forEach(function (env) {
         //Make sure the HTML is the same, ignoring whitespace.
         var browser = new BrowserInstance(env);
         var Hello = Fixtures.Hello;
-        browser.loadFromFile(__dirname + '/' + Hello.pathStr, function () {
+        var filename = __dirname + '/' + Hello.pathStr;
+        browser.load(filename, function () {
             assert.equal(browser.env.getHTML().replace(/\s/g, ''),
                        Hello.html,
                        'browser.getHTML() returned incorrect HTML');
