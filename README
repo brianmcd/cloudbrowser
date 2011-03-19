@@ -26,6 +26,7 @@ Prereqs:
     docco@0.3.0                 The Quick and Dirty Literate Programming 
                                 Documentation Generator
     express@1.0.7               Sinatra inspired web development framework
+    expresso@0.7.3 
     eyes@0.1.6                  a customizable value inspector
     html5@0.2.14                HTML5 HTML parser, including support for SVG
                                 and MathML foreign content
@@ -59,6 +60,6 @@ vt-node-lib:
 
 2.) cd into vt-node-lib/ and run 'npm link'.
 
-3.) Run tests with 'node run_tests.sh' to make sure things are OK.
+3.) Run tests with './run_tests' to make sure things are OK.
 
 

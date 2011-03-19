@@ -1,65 +1,42 @@
-var vt      = require('vt'),
-    Envs    = require('./fixtures/fixtures').Environments;
+var BrowserInstance = require('browser_instance'),
+    assert          = require('assert'),
+    Envs            = require('./fixtures/fixtures').Environments;
 
-
-exports.testMutationListeners = function (test) {
-    console.log('Test not implemented');
-    test.done();
-}
-
-exports.testToInstructions = function (test) {
-    console.log('Test not implemented');
-    test.done();
-}
-
-exports.testGetNodeAttrs = function (test) {
-    console.log('Test not implemented');
-    test.done();
-}
-
-exports.testInstForElement = function (test) {
-    console.log('Test not implemented');
-    test.done();
-}
-
-exports.testInstForText = function (test) {
-    console.log('Test not implemented');
-    test.done();
-}
-
-exports.testGetNextElementID = function (test) {
-    var count = 0;
-    Envs.forEach(function (env) {
-        var browser = new vt.BrowserInstance(env);
-        test.equal(browser.getNextElementID(), env + '1');
-        test.equal(browser.getNextElementID(), env + '2');
-        test.equal(browser.getNextElementID(), env + '3');
-        test.equal(browser.getNextElementID(), env + '4');
-        test.equal(browser.getNextElementID(), env + '5');
-        console.log('Finished with ' + env);
-        if (++count == Envs.length) {
-            test.done();
-        }
-    });
-}
-
-exports.testAssignID = function (test) {
-    var count = 0;
-    Envs.forEach(function (env) {
-        var browser = new vt.BrowserInstance(env);
-        browser.loadFromHTML("<html><head></head><body><div id='5'></div></body></html>", function () {
+Envs.forEach(function (env) {
+    exports[env + '.InstUtils.genInitInstructions'] = function () {
+        console.log('genInitInstructions test not implemented.');
+    };
+    exports[env + '.InstUtils.addMutationListeners'] = function () {
+        console.log('addMutationListeners test not implemented');
+    };
+    exports[env + '.InstUtils.toInstructions'] = function () {
+        console.log('toInstructions test not implemented');
+    };
+    exports[env + '.InstUtils.testsGetNodeAttrs'] = function () {
+        console.log('getNodeAddtrs test not implemented');
+    };
+    exports[env + '.InstUtils.instForElement'] = function () {
+        console.log('instForElement test not implemented');
+    };
+    exports[env + '.InstUtils.getNextElementID'] = function () {
+        var browser = new BrowserInstance(env);
+        assert.equal(browser.getNextElementID(), env + '1');
+        assert.equal(browser.getNextElementID(), env + '2');
+        assert.equal(browser.getNextElementID(), env + '3');
+        assert.equal(browser.getNextElementID(), env + '4');
+        assert.equal(browser.getNextElementID(), env + '5');
+    };
+    exports[env + '.InstUtils.assignID'] = function () {
+        var browser = new BrowserInstance(env);
+        var html = "<html><head></head><body><div id='5'></div></body></html>";
+        browser.loadFromHTML(html, function () {
             var node = browser.document.getElementById('5');
-            
-            test.equal(node.__envID, undefined, "__envID should start of undefined");
+            assert.equal(node.__envID, undefined, "__envID should start of undefined");
             browser.assignID(node);
-            test.equal(node.__envID, env + '1');
+            assert.equal(node.__envID, env + '1');
             browser.assignID(node);
-            test.equal(node.__envID, env + '1', 
+            assert.equal(node.__envID, env + '1', 
                        "Subsequent calls to assignID shouldn't overwrite ID.");
-            console.log('Finished with ' + env);
-            if (++count == Envs.length) {
-                test.done();
-            }
         });
-    });
-}
+    };
+});

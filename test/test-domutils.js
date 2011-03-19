@@ -1,69 +1,49 @@
-var vt       = require('vt'),
-    Envs     = require('./fixtures/fixtures').Environments;
-    DOMUtils = require('../lib/domutils');
+var BrowserInstance = require('browser_instance'),
+    Envs            = require('./fixtures/fixtures').Environments;
+    assert          = require('assert'),
+    DOMUtils        = require('domutils');
 
-exports.testDepthFirstSearch = function (test) {
-    var count = 0;
-    Envs.forEach(function (env) {
-        var browser = new vt.BrowserInstance(env);
+
+Envs.forEach(function (env) {
+    exports[env + '.DOMUtils.depthFirstSearch'] = function () {
+        var browser = new BrowserInstance(env);
         var html = '<html><head></head><body>Node!</body></html>';
         browser.loadFromHTML(html, function () {
-            test.notEqual(browser.window, null);
-            test.notEqual(browser.document, null);
+            assert.notEqual(browser.window, null);
+            assert.notEqual(browser.document, null);
             var nodes = [];
             DOMUtils.depthFirstSearch.call(browser.window, function (node) {
                 nodes.push(node);
             });
-            test.equal(nodes.length, 5, 'Mis-counted the number of nodes in: ' + html);
+            assert.equal(nodes.length, 5, 'Mis-counted the number of nodes in: ' + html);
             var tags = ['#document', 'html', 'head', 'body'];
             for (var i = 0; i < tags.length; i++) {
-                test.equal(nodes[i].nodeName.toLowerCase(), tags[i]);
-            }
-            console.log('Finished with ' + env);
-            if (++count == Envs.length) {
-                test.done();
+                assert.equal(nodes[i].nodeName.toLowerCase(), tags[i]);
             }
         });
-    });
-};
-
-
-exports.testGetNodesInBrowser = function (test) {
-    var count = 0;
-    Envs.forEach(function (env) {
-        var browser = new vt.BrowserInstance(env);
+    };
+    exports[env + '.DOMUtils.getNodes [mixed in]'] = function () {
+        var browser = new BrowserInstance(env);
         var html = '<html><head></head><body>Node!</body></html>';
         browser.loadFromHTML(html, function () {
             var nodes = browser.getNodes();
-            test.equal(nodes.length, 5, 'Mis-counted the number of nodes in: ' + html);
+            assert.equal(nodes.length, 5, 'Mis-counted the number of nodes in: ' + html);
             var tags = ['#document', 'html', 'head', 'body'];
             for (var i = 0; i < tags.length; i++) {
-                test.equal(nodes[i].nodeName.toLowerCase(), tags[i]);
-            }
-            console.log('Finished with ' + env);
-            if (++count == Envs.length) {
-                test.done();
+                assert.equal(nodes[i].nodeName.toLowerCase(), tags[i]);
             }
         });
-    });
-};
-
-exports.testGetNodesStatic = function (test) {
-    var count = 0;
-    Envs.forEach(function (env) {
-        var browser = new vt.BrowserInstance(env);
+    };
+    exports[env + '.DOMUtils.testGetNodes [Static]'] = function () {
+        var browser = new BrowserInstance(env);
         var html = '<html><head></head><body>Node!</body></html>';
         browser.loadFromHTML(html, function () {
             var nodes = DOMUtils.getNodes.call(browser, 'dfs');
-            test.equal(nodes.length, 5, 'Mis-counted the number of nodes in: ' + html);
+            assert.equal(nodes.length, 5, 'Mis-counted the number of nodes in: ' + html);
             var tags = ['#document', 'html', 'head', 'body'];
             for (var i = 0; i < tags.length; i++) {
-                test.equal(nodes[i].nodeName.toLowerCase(), tags[i]);
-            }
-            console.log('Finished with ' + env);
-            if (++count == Envs.length) {
-                test.done();
+                assert.equal(nodes[i].nodeName.toLowerCase(), tags[i]);
             }
         });
-    });
-};
+    };
+});

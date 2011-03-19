@@ -1,12 +1,12 @@
 var assert = require('assert'),
-    vt     = require('vt');
+    vt     = require('../vt');
 
-exports.testAPITypes = function (test) {
-    test.equal(typeof vt, 'object');
-    test.equal(typeof vt.BrowserManager, 'function');
-    test.equal(typeof vt.BrowserInstance, 'function');
-    test.equal(typeof new vt.BrowserManager(), 'object');
-    test.equal(typeof new vt.BrowserInstance(), 'object');
-    test.done();
+
+exports['testAPITypes'] = function () {
+    assert.equal(typeof vt, 'object');
+    assert.equal(typeof vt.BrowserManager, 'function');
+    assert.equal(typeof vt.BrowserInstance, 'function');
+    assert.equal(typeof new vt.BrowserManager(), 'object');
+    assert.equal(typeof new vt.BrowserInstance(), 'object');
 };
 
