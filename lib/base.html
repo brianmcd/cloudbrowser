@@ -8,7 +8,10 @@
         <script src="http://localhost:3000/socket.io/socket.io.js"></script> 
         <script src="http://localhost:3000/client.js"></script>
         <script>
-            $(vt.start());
+            $(function () {
+                client = new Client();
+                client.start();
+            });
         </script>
     </body>
 <html>

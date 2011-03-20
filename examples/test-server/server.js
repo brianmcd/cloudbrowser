@@ -24,7 +24,7 @@ function app (app) {
     app.get('/local/:filename', function (req, res) {
         console.log('Client connected: ' +  req.sessionID);
         var sessionID = req.sessionID;
-        var filename = req.params.filename;
+        var filename = __dirname + '/' + req.params.filename;
         browsers.lookup(sessionID, function (browser) {
             browser.load(filename, function () {
                 // In the future, we'd do some sort of signalling to indicate that
@@ -36,6 +36,7 @@ function app (app) {
     });
     app.get('/localHTML/:filename', function (req, res) {
         console.log('Client connected: ' +  req.sessionID);
+        var filename = __dirname + '/' + req.params.filename;
         browsers.lookup(req.sessionID, function (browser) {
             browser.load(req.params.filename, function () {
                 server.returnHTML(browser, res)
@@ -54,6 +55,7 @@ function app (app) {
         });
     });
     app.get('/remoteHTML/:url', function (req, res) {
+        var url = 'http://' + req.params.url;
         console.log('Client connected: ' +  req.sessionID);
         browsers.lookup(req.sessionID, function (browser) {
             browser.load(req.params.url, function (browser) {
