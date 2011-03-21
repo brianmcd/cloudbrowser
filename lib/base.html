@@ -9,8 +9,8 @@
         <script src="http://localhost:3000/client.js"></script>
         <script>
             $(function () {
-                client = new Client();
-                client.start();
+                client = new Client(window, true);
+                client.startSocketIO();
             });
         </script>
     </body>
