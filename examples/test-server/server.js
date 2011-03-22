@@ -1,4 +1,5 @@
-var VT = require('vt'),
+var path = require('path'),
+    VT = require('vt'),
     BrowserManager = VT.BrowserManager,
     Server = VT.Server;
 
@@ -9,6 +10,8 @@ if (process.cwd().match(/examples\/?$/)) {
 } else if (!process.cwd().match(/test-server\/?$/)) {
     process.chdir('examples/test-server');
 }
+
+console.log('process.cwd(): ' + process.cwd());
 
 var browsers = new BrowserManager();
 var server = new Server({
@@ -21,10 +24,25 @@ var server = new Server({
 server.listen(3000);
 
 function app (app) {
+    app.get('/localsite', function (req, res) {
+        console.log('Client connected: ' +  req.sessionID);
+        var sessionID = req.sessionID;
+        var filename = path.join(__dirname, '/localsite/index.html');
+        console.log('loading file: ' + filename);
+        browsers.lookup(sessionID, function (browser) {
+            browser.load(filename, function () {
+                // In the future, we'd do some sort of signalling to indicate that
+                // the BI is loaded and socket.io requests can be processed.
+                server.returnBasePage(req, res);
+                console.log('BrowserInstance loaded.');
+            });
+        });
+    });
+
     app.get('/local/:filename', function (req, res) {
         console.log('Client connected: ' +  req.sessionID);
         var sessionID = req.sessionID;
-        var filename = __dirname + '/' + req.params.filename;
+        var filename = path.join(__dirname, '/', req.params.filename)
         browsers.lookup(sessionID, function (browser) {
             browser.load(filename, function () {
                 // In the future, we'd do some sort of signalling to indicate that
@@ -36,7 +54,7 @@ function app (app) {
     });
     app.get('/localHTML/:filename', function (req, res) {
         console.log('Client connected: ' +  req.sessionID);
-        var filename = __dirname + '/' + req.params.filename;
+        var filename = path.join(__dirname, '/', req.params.filename)
         browsers.lookup(req.sessionID, function (browser) {
             browser.load(req.params.filename, function () {
                 server.returnHTML(browser, res)
