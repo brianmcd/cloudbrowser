@@ -44,6 +44,8 @@ Envs.forEach(function (env) {
 
             var clientBrowser = new BrowserInstance(env);
             clientBrowser.load("", function () {
+                assert.notEqual(clientBrowser.window, undefined);
+                assert.notEqual(clientBrowser.document, undefined);
                 var client = new Client(clientBrowser.window);
                 client.engine.process(JSON.stringify(cmds));
                 assert.equal(clientBrowser.env.getHTML(), browser.env.getHTML(),
