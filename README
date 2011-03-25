@@ -9,8 +9,10 @@ Prereqs:
     After running 'make install', add prefixPath/bin to your $PATH, like by
     adding export PATH=prefixDir/node/bin:$PATH to your ~/.bashrc.
 
-2.) Set NODE_PATH to point to prefixPath/bin.  This is so that we can 
-    install/use npm without sudo.
+2.) Set NODE_PATH to point to prefixPath/.  This is so that we can 
+    install/use npm without sudo.  npm will check the NODE_PATH when 
+    installing, so you can use this to install npm into your home folder,
+    so you don't need root access.
 
 3.) Clone and install npm from: https://github.com/isaacs/npm.git
     Just cd into the npm directory and do 'make install' (or sudo if you
@@ -21,38 +23,16 @@ Prereqs:
 
     npm info using npm@0.3.15
     npm info using node@v0.4.2
-    coffee-script@1.0.1         Unfancy JavaScript
-    connect@1.0.6               High performance middleware framework 
-    docco@0.3.0                 The Quick and Dirty Literate Programming 
-                                Documentation Generator
-    express@1.0.7               Sinatra inspired web development framework
-    expresso@0.7.3 
-    eyes@0.1.6                  a customizable value inspector
+    connect@1.1.4               High performance middleware framework
+    expresso@0.7.3              TDD framework, light-weight, fast, CI-friendly
     html5@0.2.14                HTML5 HTML parser, including support for SVG
                                 and MathML foreign content
-    htmlparser@1.7.3            Forgiving HTML/XML/RSS Parser in JS for *both*
-                                Node and Browsers
     jsdom@0.2.0                 A javascript implementation of the W3C DOM
-    mime@1.2.1                  A comprehensive library for mime-type mapping
-    mjsunit.runner@0.1.3        Command line mjsunit runner which provides an 
-                                easy way to hook into mjsunit and start
-                                running tests immediately
-    nodeunit@0.5.1              Easy unit testing for node.js and the browser.
     npm@0.3.15                  A package manager for node
-    opts@1.2.1                  Command line argument parser written in the
-                                style of commonjs.
-    qs@0.0.6                    querystring parser
     request@1.9.0               Simplified HTTP request client.
-    ronn@0.3.5                  markdown to roff and html converter
     socket.io@0.6.16            The cross-browser WebSocket
-    vows@0.5.6                  Asynchronous BDD & continuous integration for 
-                                node.js
-    vt@9999.0.0-LINK-903c3422   A data structure for managing multiple jsdom
-                                instances.
-    websocket-client@1.0.0      An HTML5 Web Sockets client
     zombie@0.9.4                Insanely fast, full-stack, headless browser
                                 testing using Node.js
-
 
 vt-node-lib:
 1.) Request access to the repository, clone from: 
@@ -61,5 +41,4 @@ vt-node-lib:
 2.) cd into vt-node-lib/ and run 'npm link'.
 
 3.) Run tests with './run_tests' to make sure things are OK.
-
 
