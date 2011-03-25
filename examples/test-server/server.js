@@ -25,16 +25,17 @@ var server = new Server({
 server.listen(3000);
 
 function app (app) {
-    app.get('/localsite', function (req, res) {
+    app.get('/localsite/:browserID', function (req, res) {
         console.log('Client connected: ' +  req.sessionID);
         var sessionID = req.sessionID;
+        var browserID = req.params.browserID || 1;
         var filename = path.join(__dirname, '/localsite/index.html');
         console.log('loading file: ' + filename);
-        browsers.lookup(sessionID, function (browser) {
+        browsers.lookup(browserID, function (browser) {
             browser.load(filename, function () {
                 // In the future, we'd do some sort of signalling to indicate that
                 // the BI is loaded and socket.io requests can be processed.
-                server.returnBasePage(req, res);
+                server.returnBasePage(req, res, browserID);
                 console.log('BrowserInstance loaded.');
             });
         });
@@ -49,11 +50,23 @@ function app (app) {
             browser.load(filename, function () {
                 // In the future, we'd do some sort of signalling to indicate that
                 // the BI is loaded and socket.io requests can be processed.
-                server.returnBasePage(req, res);
+                server.returnBasePage(req, res, sessionID);
                 console.log('BrowserInstance loaded.');
             });
         });
     });
+
+    app.get('/sharedbrowsing/:browserID/:filename', function (req, res) {
+        var browserID = req.params.browserID;
+        var filename = path.join(__dirname, '/', req.params.filename)
+        console.log('New client requesting ' + filename + ' on ' + browserID);
+        browsers.lookup(browserID, function (browser) {
+            browser.load(filename, function () {
+                server.returnBasePage(req, res, browserID);
+                console.log('BrowserInstance loaded.');
+            });
+        });
+    }),
 
     app.get('/local/:filename', function (req, res) {
         console.log('Client connected: ' +  req.sessionID);
@@ -63,7 +76,7 @@ function app (app) {
             browser.load(filename, function () {
                 // In the future, we'd do some sort of signalling to indicate that
                 // the BI is loaded and socket.io requests can be processed.
-                server.returnBasePage(req, res);
+                server.returnBasePage(req, res, sesionID);
                 console.log('BrowserInstance loaded.');
             });
         });
@@ -84,7 +97,7 @@ function app (app) {
         browsers.lookup(sessionID, function (browser) {
             browser.load(url, function () {
                 console.log('BrowserInstance loaded.');
-                server.returnBasePage(req, res);
+                server.returnBasePage(req, res, sessionID);
             });
         });
     });
