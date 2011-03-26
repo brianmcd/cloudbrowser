@@ -12,6 +12,3 @@ exports.HackerNews = {
     //       Host CSS etc on my server.
     urlStr : 'http://www.brianmcd.com/hn.html',
 };
-
-/* Information on the server side DOM environments we support. */
-exports.Environments = ['jsdom', 'zombie'];
