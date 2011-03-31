@@ -11,10 +11,10 @@ exports['testLocalPage'] = function () {
     var Hello = Fixtures.Hello;
     manager.lookup(1, function (browser) {
         browser.load(__dirname + '/' + Hello.pathStr, function () {
-            assert.notEqual(browser.env.getHTML(), "", "Page should not be empty.");
+            assert.notEqual(browser.dom.getHTML(), "", "Page should not be empty.");
             var copy = new BrowserInstance()
-            copy.load(browser.env.getHTML(), function () {
-                assert.equal(copy.env.getHTML().replace(/\s*/g, ''), Hello.html,
+            copy.load(browser.dom.getHTML(), function () {
+                assert.equal(copy.dom.getHTML().replace(/\s*/g, ''), Hello.html,
                            "Creating a BrowserInstance with the getHTML() of " +
                            "another BrowserInstance should create an identical " +
                            "BrowserInstance");

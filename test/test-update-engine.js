@@ -4,7 +4,7 @@ var UpdateEngine    = require('update_engine'),
 
 
 function createEmptyBrowser (callback) {
-    var browser = new BrowserInstance();
+    var browser = new BrowserInstance(false);
     browser.load('<html></html>', function () {
         var engine = new UpdateEngine(browser.document);
         engine.insertElementNode({
