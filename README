@@ -23,6 +23,7 @@ Prereqs:
 
     npm info using npm@0.3.15
     npm info using node@v0.4.2
+    browserify@0.3.1            Browser-side require()
     connect@1.1.4               High performance middleware framework
     expresso@0.7.3              TDD framework, light-weight, fast, CI-friendly
     html5@0.2.14                HTML5 HTML parser, including support for SVG

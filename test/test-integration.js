@@ -2,7 +2,7 @@ var BrowserManager  = require('browser_manager'),
     BrowserInstance = require('browser_instance'),
     assert          = require('assert'),
     Fixtures        = require('./fixtures/fixtures'),
-    Client          = require('client');
+    Client          = require('client/client');
 
 
 /* BrowserManager/BrowserInstance integration test. */
