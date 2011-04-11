@@ -2,7 +2,7 @@
 exports.Hello = {
     html     : '<html><head><title>Hello</title></head><body>Node</body></html>',
     pathStr  : 'fixtures/hello.html',
-    urlStr   : 'http://www.brianmcd.com/hello.html',
+    urlStr   : 'http://people.cs.vt.edu/~brianmcd/hello.html',
     numNodes : 7 //counted by hand...
 };
 
@@ -10,5 +10,5 @@ exports.Hello = {
 exports.HackerNews = {
     // TODO: Edit hn.html so that we don't make requests to HN's servers.
     //       Host CSS etc on my server.
-    urlStr : 'http://www.brianmcd.com/hn.html',
+    urlStr : 'http://people.cs.vt.edu/~brianmcd/hn.html',
 };
