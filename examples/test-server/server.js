@@ -1,5 +1,5 @@
 var path = require('path'),
-    VT = require('vt'),
+    VT = require('../../vt'),
     BrowserManager = VT.BrowserManager,
     Server = VT.Server;
 

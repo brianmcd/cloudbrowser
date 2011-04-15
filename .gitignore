@@ -3,3 +3,4 @@ TODO
 *.swp
 *.swo
 lib-cov/
+node_modules/

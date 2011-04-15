@@ -1,45 +1,12 @@
 Installing
 
-Prereqs:
-1.) Clone and install node from: https://github.com/joyent/node.git
-    You can configure with --prefix=prefixPath to point 'make install' somewhere in
-    your home directory.  I'd recommend checking out a tag on a branch and
-    building/installing from there.
-
-    After running 'make install', add prefixPath/bin to your $PATH, like by
-    adding export PATH=prefixDir/node/bin:$PATH to your ~/.bashrc.
-
-2.) Set NODE_PATH to point to prefixPath/.  This is so that we can 
-    install/use npm without sudo.  npm will check the NODE_PATH when 
-    installing, so you can use this to install npm into your home folder,
-    so you don't need root access.
-
-3.) Clone and install npm from: https://github.com/isaacs/npm.git
-    Just cd into the npm directory and do 'make install' (or sudo if you
-    installed node into a system directory).
-
-4.) Here are the npm packages I have installed for development on this and 
-    related projects:
-
-    npm info using npm@0.3.15
-    npm info using node@v0.4.2
-    browserify@0.3.1            Browser-side require()
-    connect@1.1.4               High performance middleware framework
-    expresso@0.7.3              TDD framework, light-weight, fast, CI-friendly
-    html5@0.2.14                HTML5 HTML parser, including support for SVG
-                                and MathML foreign content
-    jsdom@0.2.0                 A javascript implementation of the W3C DOM
-    npm@0.3.15                  A package manager for node
-    request@1.9.0               Simplified HTTP request client.
-    socket.io@0.6.16            The cross-browser WebSocket
-    zombie@0.9.4                Insanely fast, full-stack, headless browser
-                                testing using Node.js
-
-vt-node-lib:
-1.) Request access to the repository, clone from: 
-        git clone git@brianmcd.com:vt-node-lib.git
-
-2.) cd into vt-node-lib/ and run 'npm link'.
-
-3.) Run tests with './run_tests' to make sure things are OK.
+1.) Install nave: https://github.com/isaacs/nave
+2.) Use nave to install node 0.4.x.
+3.) Install npm 1.x: https://github.com/isaacs/npm
+4.) git clone git@brianmcd.com:vt-node-lib.git
+4.) cd vt-node-lib/ && npm install --dev
+    - This installs all of the packages specified by vt-node-lib/package.json
+      into vt-node-lib/node_modules.  The node_modules folder should never be
+      committed.
+5.) Run vt-node-lib/run_tests to make sure everything worked.
 

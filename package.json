@@ -1,16 +1,26 @@
 {
-  "name": "vt",
-  "description": "A data structure for managing multiple jsdom instances.",
-  "version": "0.0.0",
-  "repository": {
-    "url": ""
-  },
-  "author": "Brian McDaniel <brianmcd05@gmail.com> (http://people.cs.vt.edu/~brianmcd)",
-  "main": "vt",
-  "engines": {
-    "node": "4.0.1"
-  },
-  "directories" : { 
-    "lib" : "./lib"
-  }
+    "name": "vt",
+    "description": "A data structure for managing multiple jsdom instances.",
+    "version": "0.0.0",
+    "repository": {
+        "url": ""
+    },
+    "author": "Brian McDaniel <brianmcd05@gmail.com> (http://people.cs.vt.edu/~brianmcd)",
+    "main": "vt",
+    "engines": {
+        "node": "4.0.1"
+    },
+    "directories" : { 
+        "lib" : "./lib"
+    },
+    "dependencies" : {
+        "jsdom" : "0.2.0",
+        "browserify" : "0.3.1",
+        "connect" : "1.1.4",
+        "socket.io" : "0.6.16",
+        "request" : "1.9.0"
+    },
+    "devDependencies" : {
+        "expresso" : "0.7.3"
+    }
 }
