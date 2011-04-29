@@ -4,3 +4,4 @@ TODO
 *.swo
 lib-cov/
 node_modules/
+plans/
