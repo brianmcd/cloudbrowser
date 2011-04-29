@@ -1,0 +1,16 @@
+<html>
+    <head>
+        <script>
+            var count = 0;
+            setInterval(function () {
+                ++count;
+                var target = document.getElementById('target');
+                var node = document.createTextNode('Node #' + count + ' ');
+                target.appendChild(node);
+            }, 1000);
+        </script>
+    </head>
+    <body>
+        <div id='target'></div>
+    </body>
+</html>
