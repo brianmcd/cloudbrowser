@@ -13,10 +13,9 @@ if (process.cwd().match(/examples\/?$/)) {
 
 console.log('process.cwd(): ' + process.cwd());
 
-//var browsers = new BrowserManager('zombie');
-var browsers = new BrowserManager('jsdom');
+var browsers = new BrowserManager();
 var server = new Server({
-    routes: app,
+    routes: routes,
     staticDir: __dirname + '/public',
     basePage: './base.html',
     browsers: browsers
@@ -24,10 +23,9 @@ var server = new Server({
 
 server.listen(3000);
 
-function app (app) {
+function routes (app) {
     app.get('/localsite/:browserID', function (req, res) {
         console.log('Client connected: ' +  req.sessionID);
-        var sessionID = req.sessionID;
         var browserID = req.params.browserID || 1;
         var filename = path.join(__dirname, '/localsite/index.html');
         console.log('loading file: ' + filename);
