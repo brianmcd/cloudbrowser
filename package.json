@@ -1,6 +1,6 @@
 {
     "name": "vt",
-    "description": "A data structure for managing multiple jsdom instances.",
+    "description": "A server-centric web framework.",
     "version": "0.0.0",
     "repository": {
         "url": ""
@@ -14,7 +14,7 @@
         "lib" : "./lib"
     },
     "dependencies" : {
-        "jsdom" : "0.2.0",
+        "zombie" : "0.9.5",
         "browserify" : "0.3.1",
         "connect" : "1.1.4",
         "socket.io" : "0.6.16",
