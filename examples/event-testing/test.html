@@ -1,0 +1,178 @@
+<!--
+    Findings:
+        On Chrome, but not FF, dispatching a synthetic click to an anchor navigates the browser.
+        On Chrome and FF, dispatching a synthetic click to a radio button changes the selected option.
+
+        On Chrome and FF, dispatching clicks to the options for a select doesn't change the selected option.
+        On Chrome and FF, you can change the selected option by manually setting "value" on the select dropdown.
+
+        Results when turning on sniffEvents() and doing a double click
+            We see the event at the target twice because we've registered both capturing and non-capturing
+            event handlers.  I've removed one of the duplicates for each click, but that's why you'll see
+            different results if you run this yourself.
+
+            This is a good thing, and means we can rely on the browser to send us the events, and as long as we
+            process them in the order we receive them, we should be doing the right thing.
+
+            This shows that events are fully processed before the next event is dispatched; the events are not
+            synthesized and dispatched at the target.
+
+            capturing: mousedown
+            at target: mousedown
+            bubbling:  mousedown
+
+            capturing: mouseup
+            at target: mouseup
+            bubbling:  mouseup
+
+            capturing: click
+            at target: click
+            bubbling:  click
+
+            capturing: mousedown
+            at target: mousedown
+            bubbling:  mousedown
+
+            capturing: mouseup
+            at target: mouseup
+            bubbling:  mouseup
+
+            capturing: click
+            at target: click
+            bubbling:  click
+
+            capturing: dblclick
+            at target: dblclick
+            bubbling:  dblclick
+
+-->
+<html>
+    <head>
+        <title>Test</title>
+        <script>
+            var events = ['abort', 'canplay', 'canplaythrough', 'change',
+                          'click', 'contextmenu', 'cuechange', 'dblclick',
+                          'drag', 'dragend', 'dragenter', 'dragleave',
+                          'dragover', 'dragstart', 'drop', 'durationchange',
+                          'emptied', 'ended', 'input', 'invalid', 'keydown',
+                          'keypress', 'keyup', 'loadeddata', 'loadedmetadata',
+                          'loadstart', 'mousedown', 'mouseout',
+                          'mouseover', 'mouseup', 'mousewheel', 'pause', 'play',
+                          'playing', 'progress', 'ratechange', 'readystatechange',
+                          'reset', 'seeked', 'seeking', 'select', 'show',
+                          'stalled', 'submit', 'suspend', 'timeupdate',
+                          'volumechange', 'waiting', 'scroll', 'afterprint',
+                          'beforeprint', 'beforeunload', 'blur', 'error', 'focus',
+                          'hashchange', 'load', 'message', 'offline', 'online',
+                          'pagehide', 'pageshow', 'popstate', 'redo',  'resize',
+                          'scroll', 'storage', 'undo', 'unload'];
+            function addEvents (target, doMouseMove) {
+                var evs = [];
+                if (doMouseMove) {
+                    evs.push('mousemove');
+                }
+                evs = evs.concat(events);
+                evs.forEach(function (eventType) {
+                    // Need to register 2 event listeners because capturing listeners 
+                    // don't can't the bubbling phase.
+                    [true, false].forEach(function (capturing) {
+                        target.addEventListener(eventType, function (event) {
+                            var phase;
+                            switch (event.eventPhase) {
+                                case 1:
+                                    phase = 'capturing: ';
+                                    break;
+                                case 2:
+                                    phase = 'at target: ';
+                                    break;
+                                case 3:
+                                    phase = 'bubbling:  ';
+                                    break;
+                            };
+                            console.log(phase + event.type);
+                            //event.stopPropagation();
+                            //event.preventDefault();
+                            //return false;
+                        }, capturing);
+                    });
+                });
+            }
+            function createClick () {
+                var ev = document.createEvent("MouseEvent");
+                ev.initMouseEvent("click", true, true, window, 0, 0, 0, 0, 0, false, false, false , false, 0, null);
+                return ev;
+            }
+            // Dispatch a synthetic click event to an anchor.
+            // On Chrome 11, this redirects the browser.
+            // On FireFox 3.6 & 4.0.1, this doesn't do anything.
+            function testClickAnchor () {
+                var a = document.getElementById('_link');
+                var ev = createClick();
+                a.dispatchEvent(ev);
+            }
+            // Dispatch a synthetic click event to the "yes" radio button.
+            // On Chrome 11 and FireFox 3.6/4.0.1, this checks the radio button.
+            function testClickRadio () {
+                var b = document.getElementById('awesome_yes');
+                var ev = createClick();
+                b.dispatchEvent(ev);
+            }
+            // Dispatch a synthetic click event to option2 in the select dropdown.
+            // This has no effect on any browser.
+            function testClickOpt2 () {
+                var o2 = document.getElementById('opt2');
+                var ev = createClick();
+                o2.dispatchEvent(ev);
+            }
+            // Dispatch a synthetic click event to the select box itself.
+            // This has no effect on any browser.
+            function testClickSelect () {
+                var s = document.getElementById('_select');
+                var ev = createClick();
+                s.dispatchEvent(ev);
+            }
+            function addChangeListener () {
+                var s = document.getElementById('_select');
+                s.addEventListener('change', function (event) {
+                    if (console) {
+                        console.log(event);
+                    }
+                    event.target.value="option3";
+                }, false);
+            }
+            function sniffEvents (doMouseMove) {
+                var a = document.getElementById('_link');
+                var yes = document.getElementById('awesome_yes');
+                var no = document.getElementById('awesome_no');
+                var txt = document.getElementById('textDiv');
+                addEvents(window, doMouseMove);
+                addEvents(a, doMouseMove);
+                addEvents(yes, doMouseMove);
+                addEvents(no, doMouseMove);
+                addEvents(txt, doMouseMove);
+            }
+        </script>
+    </head>
+    <body>
+        <a id="_link" href="http://www.google.com">google</a><br />
+        <div id='textDiv'>Some text.</div>
+        <form>
+            <input id="awesome_yes" type="radio" name="awesome" value="yes" />Yes<br />
+            <input id="awesome_no"  type="radio" name="awesome" value="no" />no<br />
+            <select id="_select">
+                <option id="opt1" value="option1">Option 1</option>
+                <option id="opt2" value="option2">Option 2</option>
+                <option id="opt3" value="option3">Option 3</option>
+            </select>
+        </form>
+
+        <a href=# onclick="testClickAnchor()">Dispatch a synthetic click to the google link</a><br />
+        <a href=# onclick="testClickRadio()">Dispatch a synthetic click to the yes radio button</a><br />
+        <a href=# onclick="testClickOpt2()">Dispatch a synthetic click to option 2 in select</a><br />
+        <a href=# onclick="testClickSelect()">Dispatch a synthetic click to the select box</a><br />
+        <a href=# onclick="sniffEvents(true)">Log all events to console</a><br />
+        <a href=# onclick="sniffEvents(false)">Log all events to console except mousemove</a><br />
+        <a href=# onclick="addChangeListener()">Add change listener for select box (sets value to option 3 whenever "change" event fires)</a><br />
+        <!-- TODO: text box -->
+    </body>
+</html>
