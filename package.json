@@ -14,7 +14,6 @@
         "lib" : "./lib"
     },
     "dependencies" : {
-        "zombie" : "0.9.5",
         "browserify" : "0.3.1",
         "connect" : "1.1.4",
         "socket.io" : "0.6.16",
