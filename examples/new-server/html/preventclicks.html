@@ -1,0 +1,28 @@
+<html>
+    <head>
+        <title>Home Page</title>
+        <script>
+            document.addEventListener('load', function () {
+                ['page1', 'page2', 'page3'].forEach(function (link) {
+                    document.getElementById(link).addEventListener('click', function (event) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        return false;
+                    }); //TODO: bug, if we make this a capturing listener, it doesn't prevent.
+                });
+            }, true);
+        </script>
+    </head>
+    <body>
+        <p>
+            This is the home page for our testing.<br />
+            <ul>
+                <li><a href="/localpage1.html" id="page1">page 1</a></li>
+                <li><a href="/localpage2.html" id="page2">page 2</a></li>
+                <li><a href="/localpage3.html" id="page3">page 3</a></li>
+            </ul>
+        </p>
+        <script>
+        </script>
+    </body>
+</html>
