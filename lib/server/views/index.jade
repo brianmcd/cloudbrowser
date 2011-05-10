@@ -3,10 +3,19 @@ html
     title VirtualBrowser Index
   body
     h3 Active VirtualBrowsers
-      ul
-        - each browser, browserid in browsers
-          li
-            a(href='/join/' + browserid) #{browserid}
+    ul
+      - each browser, browserid in browsers
+        li
+          a(href='/join/' + browserid) #{browserid}
     h3 Start a new VirtualBrowser
+    form(method='post', action='/create')
+      label Browser ID:
+        input(name='browser[id]')
+      br
+      label URL:
+        input(name='browser[url]')
+      br
+      input(type='submit', value='Go')
+    
 
 
