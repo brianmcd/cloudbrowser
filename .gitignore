@@ -5,6 +5,7 @@ TODO
 lib-cov/
 node_modules/browserify
 node_modules/express
+node_modules/jade
 node_modules/expresso
 node_modules/request
 node_modules/socket.io

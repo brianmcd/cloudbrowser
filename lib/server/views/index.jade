@@ -1,0 +1,12 @@
+html
+  head
+    title VirtualBrowser Index
+  body
+    h3 Active VirtualBrowsers
+      ul
+        - each browser, browserid in browsers
+          li
+            a(href='/join/' + browserid) #{browserid}
+    h3 Start a new VirtualBrowser
+
+

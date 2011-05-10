@@ -16,7 +16,9 @@
     "dependencies" : {
         "browserify" : "0.3.1",
         "express" : "2.3.4",
+        "jade" : "0.10.7",
         "socket.io" : "0.6.16",
+        "zombie" : "*",
         "request" : "1.9.0"
     },
     "devDependencies" : {
