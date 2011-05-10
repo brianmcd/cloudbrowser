@@ -3,12 +3,13 @@
         <title>Home Page</title>
         <script>
             document.addEventListener('load', function () {
-                ['page1', 'page2', 'page3'].forEach(function (link) {
-                    //TODO: bug, if we make this a capturing listener, it doesn't prevent.
-                    //      more than that, I think it might actually not get called.
-                    document.getElementById(link).addEventListener('click', function (event) {
-                        event.preventDefault();
+                document.addEventListener('click', function (event) {
+                    event.stopPropagation();
+                }, true);
+                ['page1', 'page2', 'page3'].forEach(function (page) {
+                    document.getElementById(page).addEventListener('click', function (event) {
                         event.stopPropagation();
+                        event.preventDefault();
                         return false;
                     });
                 });
