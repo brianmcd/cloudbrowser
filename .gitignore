@@ -10,5 +10,6 @@ node_modules/jade
 node_modules/expresso
 node_modules/request
 node_modules/socket.io
+node_modules/jsdom
 node_modules/.bin
 plans/
