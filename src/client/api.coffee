@@ -9,8 +9,7 @@ class API
     #   'rvID'
     #   'targetID'
     #   'args'
-    DOMUpdate : (cmd) ->
-        params = cmd.params
+    DOMUpdate : (params) ->
         target = @nodes.get(params.targetID)
         method = params.method
         rvID = params.rvID
@@ -31,8 +30,7 @@ class API
 
     #TODO: do i still need this or is this cruft?
     #TODO: at least rename to remove "Env"
-    assignDocumentEnvID : (cmd) ->
-        id = cmd.params
+    assignDocumentEnvID : (id) ->
         if document == undefined
             throw new Error('Tried to assign an id to an undefined doc')
         @nodes.add(document, id)

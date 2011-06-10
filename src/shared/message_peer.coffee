@@ -37,7 +37,7 @@ class MessagePeer
             return
         method = @API[methodname]
         if method != undefined
-            method.call @API, cmd
+            method.call @API, cmd.params
             return true
         return false
     

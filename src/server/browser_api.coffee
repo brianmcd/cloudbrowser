@@ -3,13 +3,19 @@ class API
         @browser = browser
         @_buildTables()
 
-    processEvent : (ev) =>
-        clientEv = @browser.wrapper.nodes.unscrub(ev)
-        console.log clientEv
+    processEvent : (clientEv) =>
+        nodes = @browser.wrapper.nodes
+        console.log "target: #{clientEv.target}"
+        clientEv.target = nodes.get(clientEv.target)
+        if clientEv.relatedTarget?
+            clientEv.relatedTarget = nodes.get(clientEv.relatedTarget)
+
         group = @_eventTypeToGroup[clientEv.type]
         event = @browser.document.createEvent(group)
+        for key, val of event
+            console.log "k: #{key} v: #{val}"
         switch group
-            when 'UIEvent'
+            when 'UIEvents' # TODO: JSDOM only has level 2 events, so we have to have the s.
                 # Currently setting view to null
                 event.initUIEvent(clientEv.type, clientEv.bubbles,
                                   clientEv.cancelable, null, clientEv.detail)
@@ -17,7 +23,7 @@ class API
                 event.initFocusEvent(clientEv.type, clientEv.bubbles,
                                      clientEv.cancelable, null,
                                      clientEv.detail, clientEv.relatedTarget)
-            when 'MouseEvent'
+            when 'MouseEvents'
                 event.initMouseEvent(clientEv.type, clientEv.bubbles,
                                      clientEv.cancelable, null,
                                      clientEv.detail, clientEv.screenX,
@@ -40,6 +46,7 @@ class API
                 event.initTextEvent(clientEv.type, clientEv.bubbles,
                                     clientEv.cancelable, null, clientEv.data,
                                     clientEv.inputMethod, clientEv.locale)
+            #TODO: figure out how to make this work with JSDOM.
             when 'KeyboardEvent'
                 event.initKeyboardEvent(clientEv.type, clientEv.bubbles,
                                         clientEv.cancelable, null,
@@ -56,11 +63,11 @@ class API
 
     _buildTables : ->
         groups =
-            'UIEvent' : ['DOMActivate', 'select', 'resize', 'scroll']
+            'UIEvents' : ['DOMActivate', 'select', 'resize', 'scroll']
                         #'load', 'unload', 'abort', 'error'
             'FocusEvent' : ['blur', 'focus', 'focusin', 'focusout']
                     #'DOMFocusIn', 'DOMFocusOut'
-            'MouseEvent' : ['click', 'dblclick', 'mousedown', 'mouseenter',
+            'MouseEvents' : ['click', 'dblclick', 'mousedown', 'mouseenter',
                             'mouseleave', 'mousemove', 'mouseout', 'mouseover',
                             'mouseup']
             'WheelEvent' : ['wheel']
