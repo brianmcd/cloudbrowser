@@ -7,7 +7,19 @@ class JSDOMWrapper extends EventEmitter
     constructor : (browser) ->
         @browser = browser
         @nodes = new TaggedNodeCollection()
-        @clearRequireCache()
+        # Clear JSDOM out of the require cache.  We have to do this because
+        # we modify JSDOM's internal data structures with per-BrowserInstance
+        # specifiy information, so we need to get a whole new JSDOM instance
+        # for each BrowserInstance.  require() caches the objects it returns,
+        # so we need to remove those objects from the cache to force require
+        # to give us a new object each time.
+        reqCache = require.cache
+        for entry of reqCache
+            # Note: when we were using zombie, we had to clear out a lot more.
+            # As we re-add some zombie features, they might need to be cleared.
+            if /jsdom/.test(entry) && !/jsdom_wrapper/.test(entry)
+                console.log "Deleting #{entry}"
+                delete reqCache[entry]
         @jsdom = require('jsdom')
         @jsdom.defaultDocumentFeatures =
             FetchExternalResources : ['script']#, 'img', 'css', 'frame', 'link'] #TODO: activate the rest
@@ -16,57 +28,39 @@ class JSDOMWrapper extends EventEmitter
             QuerySelector : false
         @wrapDOMMethods(@jsdom.dom.level3.html)
 
-    # Clear JSDOM out of the require cache.  We have to do this because
-    # we modify JSDOM's internal data structures with per-BrowserInstance
-    # specifiy information, so we need to get a whole new JSDOM instance
-    # for each BrowserInstance.  require() caches the objects it returns,
-    # so we need to remove those objects from the cache to force require
-    # to give us a new object each time.
-    clearRequireCache : ->
-        reqCache = require.cache
-        for entry of reqCache
-            if entry.match(/jsdom/) || entry.match(/forms/) ||
-               entry.match(/xpath/) || entry.match(/history/) ||
-               entry.match(/eventloop/) || entry.match(/window_context/)
-                console.log "Deleting #{entry}"
-                delete reqCache[entry]
-
-    wrapMethod : (parent, method) ->
-        console.log "Wrapping #{method}"
-        oldStr = method + '__original'
-        originalMethod = if parent[oldStr] then parent[oldStr] else parent[oldStr] = parent[method]
-        nodes = @nodes
-        self = this
-        parent[method] = ->
-            console.log "#{method} called"
-            #TODO: I don't think I need to convert to array anymore
-            args = Array.prototype.slice.call(arguments)
-            rv = originalMethod.apply(this, args)
-
-            if self.isDOMNode(rv) && rv[nodes.propName] == undefined
-                nodes.add(rv)
-            
-            params =
-                targetID : this[nodes.propName]
-                rvID : rv[nodes.propName]
-                method : method
-                args : nodes.scrub(args)
-            self.emit 'DOMUpdate', params
-            #printMethodCall(this, method, args)
-            return rv
-
-    isDOMNode : (node) ->
-        (typeof node.ELEMENT_NODE == 'number') &&
-                      (node.ELEMENT_NODE == 1) &&
-                      (node.ATTRIBUTE_NODE == 2)
 
     # BIG TODO FIXME XXX : Add wrappers for mutators like nodeValue() etc
     wrapDOMMethods : (dom) ->
-        wrapper = (info) =>
-            obj = info[0]
+        isDOMNode = (node) ->
+            (typeof node.ELEMENT_NODE == 'number') &&
+            (node.ELEMENT_NODE == 1)               &&
+            (node.ATTRIBUTE_NODE == 2)
+
+        nodes = @nodes
+        propName = @nodes.propName
+        self = this
+
+        wrapper = (info) ->
+            parent = info[0]
             methods = info[1]
             for method in methods
-                @wrapMethod(obj, method)
+                do (parent, method) ->
+                    console.log "Wrapping #{method}"
+                    oldStr = method + '__original'
+                    originalMethod = if parent[oldStr] then parent[oldStr] else parent[oldStr] = parent[method]
+                    parent[method] = ->
+                        rv = originalMethod.apply(this, arguments)
+                        if isDOMNode(rv) && rv[propName] == undefined
+                            nodes.add(rv)
+                        params =
+                            targetID : this[propName]
+                            rvID : rv[propName]
+                            method : method
+                            args : nodes.scrub(arguments)
+                        self.emit 'DOMUpdate', params
+                        #printMethodCall(this, method, argumentss)
+                        return rv
+
         [[dom.Node.prototype, ['insertBefore', 'replaceChild',
                                'appendChild', 'removeChild']],
         [dom.Element.prototype, ['setAttribute', 'removeAttribute',
