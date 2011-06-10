@@ -1,12 +1,10 @@
 Installing
 
-1.) Install nave: https://github.com/isaacs/nave
-2.) Use nave to install node 0.4.x.
-3.) Install npm 1.x: https://github.com/isaacs/npm
-4.) git clone git@brianmcd.com:vt-node-lib.git
+1.) Install node (probably the latest stable version): https://github.com/joyent/node.git or http://nodejs.org
+2.) Install npm 1.x: https://github.com/isaacs/npm
+3.) git clone git@brianmcd.com:vt-node-lib.git
 4.) cd vt-node-lib/ && npm install --dev
     - This installs all of the packages specified by vt-node-lib/package.json
       into vt-node-lib/node_modules.  The node_modules folder should never be
       committed.
 5.) Run vt-node-lib/run_tests to make sure everything worked.
-
