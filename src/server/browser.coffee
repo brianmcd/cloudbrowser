@@ -1,9 +1,10 @@
-assert       = require('assert')
-path         = require('path')
-request      = require('request')
-API          = require('./browser_api')
-MessagePeer  = require('../shared/message_peer')
-JSDOMWrapper = require('./jsdom_wrapper')
+assert        = require('assert')
+path          = require('path')
+request       = require('request')
+API           = require('./browser_api')
+MessagePeer   = require('../shared/message_peer')
+JSDOMWrapper  = require('./jsdom_wrapper')
+WindowContext = require('../../build/default/window_context').WindowContext
 
 # TODO: reintroduce these
 #@syncCmds = []
@@ -40,9 +41,24 @@ class Browser
             # Don't send updates to clients while we build the initial DOM
             # Not doing this causes issues on subsequent page loads
             @wrapper.removeAllListeners 'DOMUpdate'
-            @document = @jsdom.jsdom(body)
+            @document = @jsdom.jsdom(false)
             @document[@idProp] = '#document'
             @window = @document.createWindow()
+            # Thanks to Zombie.js for the window context and this set up code
+            context = new WindowContext(@window)
+            @window._evaluate = (code, filename) ->
+                # TODO: why not just set _evaluate directly to evaluate
+                context.evaluate(code, filename)
+            @window.JSON = JSON
+            @window.Image = (width, height) ->
+                img = new core.HTMLImageElement(newWindow.document)
+                img.width = width
+                img.height = height
+                img
+            @window.document = @document
+            @document.open()
+            @document.write body
+            @document.close()
             @syncAllClients()
             # Each advice function emits the DOMUpdate event, which we want to echo
             # to all connected clients.

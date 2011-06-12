@@ -28,6 +28,7 @@ class JSDOMWrapper extends EventEmitter
             QuerySelector : false
         @wrapDOMMethods(@jsdom.dom.level3.html)
         @addDefaultHandlers(@jsdom.dom.level3.core)
+        @setLanguageProcessor(@jsdom.dom.level3.core)
 
     addDefaultHandlers : (core) ->
         browser = @browser
@@ -39,6 +40,15 @@ class JSDOMWrapper extends EventEmitter
                         url = "http://localhost:3001" + url
                     browser.load url
 
+    setLanguageProcessor : (core) ->
+        core.languageProcessors =
+            javascript : (element, code, filename) ->
+                window = element.ownerDocument.parentWindow
+                try
+                    window._evaluate code, filename
+                    console.log "Script succeeded"
+                catch e
+                    console.log "Script failed: #{e}"
 
     # BIG TODO FIXME XXX : Add wrappers for mutators like nodeValue() etc
     wrapDOMMethods : (dom) ->

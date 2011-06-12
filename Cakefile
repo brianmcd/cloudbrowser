@@ -68,11 +68,13 @@ copyJS = ->
 
 build = (callback)->
     log "Compiling CoffeeScript to JavaScript ...", green
-    exec "rm -rf lib && coffee -c -l -b -o lib src", (err, stdout)->
+    exec "rm -rf lib/ build/ && coffee -c -l -b -o lib src", (err, stdout)->
         onerror err
         if stdout != ""
             log stdout, green
         copyJS()
+        log "Compiling native extension ...", green
+        exec "node-waf configure build", callback
 task "build", "Compile CoffeeScript to JavaScript", -> build onerror
 
 task "watch", "Continously compile CoffeeScript to JavaScript", ->
@@ -83,7 +85,7 @@ task "watch", "Continously compile CoffeeScript to JavaScript", ->
         cmd.on "error", onerror
 
 clean = (callback)->
-    exec "rm -rf lib", callback
+    exec "rm -rf lib/ build/", callback
 task "clean", "Remove temporary files and such", -> clean onerror
 
 ## Testing ##
