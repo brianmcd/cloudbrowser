@@ -27,6 +27,17 @@ class JSDOMWrapper extends EventEmitter
             MutationEvents : '2.0'
             QuerySelector : false
         @wrapDOMMethods(@jsdom.dom.level3.html)
+        @addDefaultHandlers(@jsdom.dom.level3.core)
+
+    addDefaultHandlers : (core) ->
+        browser = @browser
+        core.HTMLAnchorElement.prototype._eventDefaults =
+            click : (event) ->
+                url = event.target.href
+                if url
+                    if /jsdom_wrapper/.test(browser.window.location)
+                        url = "http://localhost:3001" + url
+                    browser.load url
 
 
     # BIG TODO FIXME XXX : Add wrappers for mutators like nodeValue() etc

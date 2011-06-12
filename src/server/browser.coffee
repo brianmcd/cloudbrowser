@@ -18,9 +18,6 @@ class Browser
         @wrapper = new JSDOMWrapper(this)
         # The name of the property that holds a DOM node's ID.
         @idProp = @wrapper.nodes.propName
-        # Each advice function emits the DOMUpdate event, which we want to echo
-        # to all connected clients.
-        @wrapper.on 'DOMUpdate', @broadcastUpdate
         # This is the wrapped JSDOM instance
         @jsdom = @wrapper.jsdom
         # Array of clients waiting for page to load.
@@ -40,10 +37,23 @@ class Browser
                 console.log "Error with request"
                 throw new Error(err)
             console.log "Request succeeded"
+            # Don't send updates to clients while we build the initial DOM
+            # Not doing this causes issues on subsequent page loads
+            @wrapper.removeAllListeners 'DOMUpdate'
             @document = @jsdom.jsdom(body)
             @document[@idProp] = '#document'
             @window = @document.createWindow()
-            @clearConnQ()
+            @syncAllClients()
+            # Each advice function emits the DOMUpdate event, which we want to echo
+            # to all connected clients.
+            @wrapper.on 'DOMUpdate', @broadcastUpdate
+
+    syncAllClients : ->
+        clients = @clients.concat(@connQ)
+        @connQ = []
+        syncCmds = @docToInstructions()
+        for client in clients
+            client.send(syncCmds)
 
     # TODO: should we defer creating MessagePeers til here? If we make them
     # earlier, we'll hook up .on('message') before the client is really
@@ -139,6 +149,12 @@ class Browser
         return cmds
 
     _cmdsForText : (node) ->
+        # TODO: find a better fix.  The issue is that JSDOM gives Document 2
+        # child nodes: the HTML element and a Text element.  We get a
+        # HIERARCHY_REQUEST_ERR in the client browser if we try to insert a
+        # Text node as the child of the Document
+        if node.parentNode == @document
+            return []
         cmds = []
         cmds.push MessagePeer.createMessage 'DOMUpdate',
             targetID : '#document'
