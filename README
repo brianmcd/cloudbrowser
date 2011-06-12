@@ -2,7 +2,7 @@ Installing
 
 1.) Install node (probably the latest stable version): https://github.com/joyent/node.git or http://nodejs.org
 2.) Install npm 1.x: https://github.com/isaacs/npm
-3.) git clone git@brianmcd.com:vt-node-lib.git
+3.) git clone https://github.com/brianmcd/vt-node-lib.git
 4.) cd vt-node-lib/ && npm install --dev
     - This installs all of the packages specified by vt-node-lib/package.json
       into vt-node-lib/node_modules.  The node_modules folder should never be
