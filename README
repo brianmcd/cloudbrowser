@@ -3,10 +3,33 @@ NOTE: This project is not meant for public consumption yet.  This is just a rese
 Installing
 
 1.) Install node (probably the latest stable version): https://github.com/joyent/node.git or http://nodejs.org
+    Currently using 0.4.8: http://nodejs.org/dist/node-v0.4.8.tar.gz
+
 2.) Install npm 1.x: https://github.com/isaacs/npm
-3.) git clone https://github.com/brianmcd/vt-node-lib.git
-4.) cd vt-node-lib/ && npm install --dev
+    Use git clone https://github.com/isaacs/npm
+    Then make sure 'node' is in path and use sudo make install, which will install
+    npm relative to node prefix
+
+3.) In vt-node-lib/ 
+
+    npm install --dev
+
     - This installs all of the packages specified by vt-node-lib/package.json
       into vt-node-lib/node_modules.  The node_modules folder should never be
       committed.
-5.) Run vt-node-lib/run_tests to make sure everything worked.
+
+4.) Install coffeescript
+
+    sudo sh -c "env PATH=/opt/nodejs/bin:$PATH npm install coffee-script -g"
+
+    would install it globally.
+
+5.) Build
+
+    cake build
+
+[  currently not working....
+
+    5.) Run vt-node-lib/run_tests to make sure everything worked.
+
+]
