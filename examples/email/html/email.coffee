@@ -22,15 +22,19 @@ imap.connect (err) ->
                 msg.on 'end', ->
                     info.from = msg.headers.from
                     info.subject = msg.headers.subject
-                    body = imap.fetch msg.id,
-                        request :
-                            headers : false
-                            body : "1"
-                    body.on 'message', (bdy) ->
-                        bdy.on 'data', (chunk) ->
-                            info.body += chunk
-                        bdy.on 'end', ->
-                            div.innerHTML += "<b>From</b>: #{info.from}<br />"
-                            div.innerHTML += "<b>Subject</b>: #{info.subject}<br />"
-                            div.innerHTML += info.body
-                            div.innerHTML += "<br /><br /><br />"
+                    ndiv = document.createElement("div")
+                    ndiv.appendChild(document.createTextNode("From: #{info.from} Subject: #{info.subject}"))
+                    div.appendChild(ndiv)
+                    ndiv.addEventListener "click", (event) ->
+                        console.log("you clicked on #{info.subject}")
+                        body = imap.fetch msg.id,
+                            request :
+                                headers : false
+                                body : "1"
+                        body.on 'message', (bdy) ->
+                            bdy.on 'data', (chunk) ->
+                                info.body += chunk
+                            bdy.on 'end', ->
+                                box = document.createElement("div")
+                                box.appendChild(document.createTextNode(info.body))
+                                ndiv.appendChild(box)
