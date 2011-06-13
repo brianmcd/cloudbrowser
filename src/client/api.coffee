@@ -17,6 +17,9 @@ class API
         if target[method] == undefined
             throw new Error "Tried to process an invalid method: #{method}"
 
+        # TODO: this is just for testing!
+        if method == 'innerHTML'
+            return target.innerHTML = args[0]
         rv = target[method].apply(target, args)
         if rv == undefined
             return

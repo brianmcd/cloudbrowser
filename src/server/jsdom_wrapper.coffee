@@ -45,10 +45,28 @@ class JSDOMWrapper extends EventEmitter
             javascript : (element, code, filename) ->
                 window = element.ownerDocument.parentWindow
                 try
+                    console.log "Evaluating: #{code}"
                     window._evaluate code, filename
                     console.log "Script succeeded"
                 catch e
                     console.log "Script failed: #{e}"
+
+    # Manually testing this with innerHTML for now.
+    # There is also some special case code in the client side
+    wrapDOMGettersSetters : (dom) ->
+        nodes = @nodes
+        propName = @nodes.propName
+        self = this
+        old = dom.Element.prototype.__lookupSetter__ 'innerHTML'
+        dom.Element.prototype.__defineSetter__ 'innerHTML', (html) ->
+            rv = old.call this, html
+            params =
+                targetID : this[propName]
+                rvID : null
+                method : 'innerHTML'
+                args : [html]
+            self.emit 'DOMUpdate', params
+            return rv
 
     # BIG TODO FIXME XXX : Add wrappers for mutators like nodeValue() etc
     wrapDOMMethods : (dom) ->

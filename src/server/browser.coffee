@@ -63,6 +63,17 @@ class Browser
             # Each advice function emits the DOMUpdate event, which we want to echo
             # to all connected clients.
             @wrapper.on 'DOMUpdate', @broadcastUpdate
+            # TODO: We need to give the window its own require.  If it uses
+            # ours, that means the require cache will be shared, which means
+            # the browser script could affect our server code (e.g. require
+            # jsdom for some reason).
+            @window.require = require
+
+            # Fire the onload event, it seems like JSDOM isn't doing this on
+            # document.close()...should it?
+            ev = @document.createEvent "HTMLEvents"
+            ev.initEvent "load", false, false
+            @window.dispatchEvent ev
 
     syncAllClients : ->
         clients = @clients.concat(@connQ)

@@ -8,6 +8,9 @@ BrowserManager  = require('./browser_manager')
 Browserify      = require('browserify')
 IO              = require('socket.io')
 
+# So that developer code can require modules in its own node_modules folder.
+require.paths.unshift path.join process.cwd(), "node_modules"
+
 # Shared server variables.
 browsers = new BrowserManager()
 
@@ -92,15 +95,20 @@ http = do ->
 
 internal = do ->
     server = express.createServer()
-    server.get '/:source.html', (req, res) ->
-        pagePath = path.join(process.cwd(), 'html', req.params.source + '.html')
+    load = (ext, req, res) ->
+        pagePath = path.join(process.cwd(), 'html', "#{req.params.source}.#{ext}")
         fs.readFile pagePath, 'utf8', (err, html) ->
+            contenttype = 'text/html' # common case
             if err
                 throw new Error(err)
+            if ext == 'js'
+                contenttype = 'text/javascript'
             res.writeHead 200,
-                'Content-type': 'text/html',
+                'Content-type': contenttype
                 'Content-length': html.length
             res.end(html)
+    server.get '/:source.js', (req, res) -> load 'js', req, res
+    server.get '/:source.html', (req, res) -> load 'html', req, res
     server.listen 3001, ->
         console.log 'Internal HTTP server listening on port 3001 [TODO: remove this].'
     server
