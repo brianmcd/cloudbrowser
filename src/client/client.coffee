@@ -29,9 +29,12 @@ class Client
         document = @document
         propName = @API.nodes.propName
         server = @server
-        MouseEvents = ['click']
-        HTMLEvents = ['submit']
-        [MouseEvents, HTMLEvents].forEach (group) ->
+        MouseEvents = ['click', 'mousedown', 'mouseup', 'mouseover',
+                       'mousemove', 'mouseout']
+        HTMLEvents = ['submit', 'select', 'change', 'reset', 'focus', 'blur',
+                      'resize', 'scroll']
+        UIEvents = ['DOMFocusIn', 'DOMFocusOut', 'DOMActivate']
+        [MouseEvents, HTMLEvents, UIEvents].forEach (group) ->
             group.forEach (eventType) ->
                 document.addEventListener eventType, (event) ->
                     console.log "#{event.type} #{event.target[propName]}"
