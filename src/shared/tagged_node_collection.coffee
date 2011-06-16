@@ -27,10 +27,12 @@ class TaggedNodeCollection
         scrubbed = []
         # TODO: scrub recursively into objects
         for param in params
-            if param[@propName]?
-                scrubbed.push(param[@propName])
+            if !param?
+                scrubbed.push null
+            else if param[@propName]?
+                scrubbed.push param[@propName]
             else
-                scrubbed.push(param)
+                scrubbed.push param
         scrubbed
 
     # Need to add support for scrubbing properties of an object (recursively)
