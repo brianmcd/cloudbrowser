@@ -80,7 +80,7 @@ task "build", "Compile CoffeeScript to JavaScript", -> build onerror
 task "watch", "Continously compile CoffeeScript to JavaScript", ->
     exec "rm -rf lib", (err, stdout) ->
         copyJS()
-        cmd = spawn("coffee", ["-cw", "-o", "lib", "src"])
+        cmd = spawn("coffee", ["-cwb", "-o", "lib", "src"])
         cmd.stdout.on "data", (data)-> process.stdout.write green + data + reset
         cmd.on "error", onerror
 
