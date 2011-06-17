@@ -11,7 +11,23 @@ Installing
     Then make sure 'node' is in path and use sudo make install, which will install
     npm relative to node prefix
 
-3.) In vt-node-lib/ 
+3.) Install coffeescript
+
+    sudo sh -c "env PATH=/opt/nodejs/bin:$PATH npm install coffee-script -g"
+
+    would install it globally.
+
+------- Automatic Setup -------
+4.) In vt-node-lib/
+    
+    cake setup
+        - installs npm dependencies 
+        - initializes git submodules
+        - installs submodule npm dependencies
+        - links git submodules in deps/ into node_modules
+
+------- Manual Setup -------
+4.) In vt-node-lib/ 
 
     npm install --dev
 
@@ -19,12 +35,16 @@ Installing
       into vt-node-lib/node_modules.  The node_modules folder should never be
       committed.
 
-4.) Install coffeescript
+    git submodule update --init
 
-    sudo sh -c "env PATH=/opt/nodejs/bin:$PATH npm install coffee-script -g"
+    - This pulls in the submodules specified in .gitmodules.
 
-    would install it globally.
+    cd deps/ and inside each dependency folder, run npm install to pull in
+    required npm modules
 
+    Symlink the folders in deps/ into node_modules.
+
+------- Building and Testing -------
 5.) Build
 
     cake build
