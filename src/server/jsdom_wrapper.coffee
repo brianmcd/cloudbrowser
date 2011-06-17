@@ -1,5 +1,5 @@
 TaggedNodeCollection = require('../shared/tagged_node_collection')
-EventEmitter = require('events').EventEmitter
+EventEmitter         = require('events').EventEmitter
 
 # JSDOMWrapper.jsdom returns the wrapped JSDOM object.
 # Adds advice and utility methods.
@@ -30,10 +30,12 @@ class JSDOMWrapper extends EventEmitter
         @wrapDOM(toWrap)
         @addDefaultHandlers(@jsdom.dom.level3.core)
         @setLanguageProcessor(@jsdom.dom.level3.core)
+        ###
         @on 'DOMPropertyUpdate', (update) ->
             console.log "DOMPropertyUpdate"
         @on 'DOMUpdate', (update) ->
             console.log "DOMUpdate"
+        ###
 
     addDefaultHandlers : (core) ->
         browser = @browser
@@ -50,7 +52,7 @@ class JSDOMWrapper extends EventEmitter
             javascript : (element, code, filename) ->
                 window = element.ownerDocument.parentWindow
                 try
-                    console.log "Evaluating: #{code}"
+                    console.log "Evaluating: #{filename}"
                     window._evaluate code, filename
                     console.log "Script succeeded"
                 catch e
@@ -60,6 +62,7 @@ class JSDOMWrapper extends EventEmitter
 
     wrapDOM : (toWrap) ->
         isDOMNode = (node) ->
+            node? &&
             (typeof node.ELEMENT_NODE == 'number') &&
             (node.ELEMENT_NODE == 1)               &&
             (node.ATTRIBUTE_NODE == 2)
@@ -69,12 +72,11 @@ class JSDOMWrapper extends EventEmitter
         self = this
 
         wrapProperty = (parent, prop) ->
-            console.log "Wrapping #{prop}"
             originalMethod = parent.__lookupSetter__(prop)
             if !originalMethod?
                 throw new Error "Missing a setter for #{prop}"
             parent.__defineSetter__ prop, (value) ->
-                console.log "Setter for #{prop} called."
+                #console.log "Setter for #{prop} called."
                 rv = originalMethod.call this, value
                 rvID = if rv? then rv[propName] else null
                 params =
@@ -86,17 +88,16 @@ class JSDOMWrapper extends EventEmitter
                 return rv
 
         wrapMethod = (parent, method) ->
-            console.log "Wrapping #{method}"
             originalMethod = parent[method]
             parent[method] = ->
-                console.log "#{method} called"
+                #console.log "#{method} called"
                 rv = originalMethod.apply(this, arguments)
                 if isDOMNode(rv) && rv[propName] == undefined
                     nodes.add(rv)
-                rvUd = if rv? then rv[propName] else null
+                rvID = if rv? then rv[propName] else null
                 params =
                     targetID : this[propName]
-                    rvID : rv[propName]
+                    rvID : rvID
                     method : method
                     args : nodes.scrub(arguments)
                 # TODO: Change event name to show that this is a method, not prop

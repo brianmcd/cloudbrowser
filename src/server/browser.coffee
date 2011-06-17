@@ -1,10 +1,12 @@
-assert        = require('assert')
-path          = require('path')
-request       = require('request')
-API           = require('./browser_api')
-MessagePeer   = require('../shared/message_peer')
-JSDOMWrapper  = require('./jsdom_wrapper')
-WindowContext = require('../../build/default/window_context').WindowContext
+assert         = require('assert')
+path           = require('path')
+URL            = require('url')
+request        = require('request')
+API            = require('./browser_api')
+MessagePeer    = require('../shared/message_peer')
+JSDOMWrapper   = require('./jsdom_wrapper')
+WindowContext  = require('../../build/default/window_context').WindowContext
+XMLHttpRequest = require('./XMLHttpRequest').XMLHttpRequest
 
 # TODO: reintroduce these
 #@syncCmds = []
@@ -50,15 +52,19 @@ class Browser
                 # TODO: why not just set _evaluate directly to evaluate
                 context.evaluate(code, filename)
             @window.JSON = JSON
+            # Thanks Zombie for Image code 
             @window.Image = (width, height) ->
                 img = new core.HTMLImageElement(newWindow.document)
                 img.width = width
                 img.height = height
                 img
+            @window.XMLHttpRequest = XMLHttpRequest
+            @window.console = console
             @window.document = @document
             @document.open()
             @document.write body
             @document.close()
+            @window.location = URL.parse(source)
             @syncAllClients()
             # Each advice function emits the DOMUpdate event, which we want to echo
             # to all connected clients.

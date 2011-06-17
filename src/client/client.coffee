@@ -29,8 +29,8 @@ class Client
         document = @document
         propName = @API.nodes.propName
         server = @server
-        MouseEvents = ['click', 'mousedown', 'mouseup', 'mouseover',
-                       'mousemove', 'mouseout']
+        MouseEvents = ['click']#, 'mousedown', 'mouseup', 'mouseover',
+                       #'mouseout', 'mousemove']
         HTMLEvents = ['submit', 'select', 'change', 'reset', 'focus', 'blur',
                       'resize', 'scroll']
         UIEvents = ['DOMFocusIn', 'DOMFocusOut', 'DOMActivate']
