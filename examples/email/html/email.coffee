@@ -1,4 +1,3 @@
-console.log "EMAIL.JS IS GETTING LOADED"
 ImapConnection = require("imap").ImapConnection
 
 imap = new ImapConnection
