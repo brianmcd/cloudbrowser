@@ -46,6 +46,7 @@ class Browser
             @document = @jsdom.jsdom(false)
             @document[@idProp] = '#document'
             @window = @document.createWindow()
+            # TODO: factor this out to initWindow(window) method
             # Thanks to Zombie.js for the window context and this set up code
             context = new WindowContext(@window)
             @window._evaluate = (code, filename) ->
@@ -59,8 +60,17 @@ class Browser
                 img.height = height
                 img
             @window.XMLHttpRequest = XMLHttpRequest
+            @window.browser = this
             @window.console = console
             @window.document = @document
+            # TODO: We need to give the window its own require.  If it uses
+            # ours, that means the require cache will be shared, which means
+            # the browser script could affect our server code (e.g. require
+            # jsdom for some reason).
+            @window.require = require
+            # State is used by code running in the DOM to persist info between
+            # page loads.
+            @state = @state || {}
             @document.open()
             @document.write body
             @document.close()
@@ -69,11 +79,6 @@ class Browser
             # Each advice function emits the DOMUpdate event, which we want to echo
             # to all connected clients.
             @wrapper.on 'DOMUpdate', @broadcastUpdate
-            # TODO: We need to give the window its own require.  If it uses
-            # ours, that means the require cache will be shared, which means
-            # the browser script could affect our server code (e.g. require
-            # jsdom for some reason).
-            @window.require = require
 
             # Fire the onload event, it seems like JSDOM isn't doing this on
             # document.close()...should it?

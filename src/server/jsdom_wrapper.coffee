@@ -42,7 +42,8 @@ class JSDOMWrapper extends EventEmitter
         core.HTMLAnchorElement.prototype._eventDefaults =
             click : (event) ->
                 url = event.target.href
-                if url
+                # TODO: how should we handle hash urls? 
+                if url)
                     if /jsdom_wrapper/.test(browser.window.location)
                         url = "http://localhost:3001" + url
                     browser.load url

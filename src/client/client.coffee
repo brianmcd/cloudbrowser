@@ -31,17 +31,25 @@ class Client
         server = @server
         MouseEvents = ['click']#, 'mousedown', 'mouseup', 'mouseover',
                        #'mouseout', 'mousemove']
-        HTMLEvents = ['submit', 'select', 'change', 'reset', 'focus', 'blur',
-                      'resize', 'scroll']
-        UIEvents = ['DOMFocusIn', 'DOMFocusOut', 'DOMActivate']
+        HTMLEvents = []
+        # Note: change is not a standard DOM event, but is supported by all
+        # the browseres.  Eventually, we should use jQuery for this client
+        # side code to normalize event handlers.
+        UIEvents = ['change']
+        #HTMLEvents = ['submit', 'select', 'change', 'reset', 'focus', 'blur',
+        #              'resize', 'scroll']
+        #UIEvents = ['DOMFocusIn', 'DOMFocusOut', 'DOMActivate']
         [MouseEvents, HTMLEvents, UIEvents].forEach (group) ->
             group.forEach (eventType) ->
                 document.addEventListener eventType, (event) ->
                     console.log "#{event.type} #{event.target[propName]}"
                     event.stopPropagation()
                     event.preventDefault()
-
                     ev = {}
+                    if eventType == 'change'
+                        # The change event doesn't normally say have the new
+                        # data attached, so we snag it.
+                        ev.data = event.target.value
                     ev.target = event.target[propName]
                     ev.type = event.type
                     ev.bubbles = event.bubbles
