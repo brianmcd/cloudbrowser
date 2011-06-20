@@ -25,10 +25,13 @@ onerror = (err)->
 
 build = (callback)->
     log "Compiling CoffeeScript to JavaScript ...", green
-    exec "coffee -c -l -b -o html html", (err, stdout)->
+    exec "coffee -c -l -o html html", (err, stdout)->
         onerror err
         if stdout != ""
             log stdout, green
-
 task "build", "Compile CoffeeScript to JavaScript", -> build onerror
 
+task "watch", "Continously compile CoffeeScript to JavaScript", ->
+    cmd = spawn("coffee", ["-clw", "-o", "html", "html"])
+    cmd.stdout.on "data", (data)-> process.stdout.write green + data + reset
+    cmd.on "error", onerror
