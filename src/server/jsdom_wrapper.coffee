@@ -43,7 +43,7 @@ class JSDOMWrapper extends EventEmitter
             click : (event) ->
                 url = event.target.href
                 # TODO: how should we handle hash urls? 
-                if url)
+                if url
                     if /jsdom_wrapper/.test(browser.window.location)
                         url = "http://localhost:3001" + url
                     browser.load url
