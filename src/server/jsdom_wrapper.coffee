@@ -1,3 +1,4 @@
+URL                  = require('url')
 TaggedNodeCollection = require('../shared/tagged_node_collection')
 EventEmitter         = require('events').EventEmitter
 
@@ -22,31 +23,42 @@ class JSDOMWrapper extends EventEmitter
                 delete reqCache[entry]
         @jsdom = require('jsdom')
         @jsdom.defaultDocumentFeatures =
-            FetchExternalResources : ['script']#, 'img', 'css', 'frame', 'link'] #TODO: activate the rest
-            ProcessExternalResources : ['script']#, 'frame', 'iframe'] # TODO:
+            FetchExternalResources : ['script', 'img', 'css', 'frame', 'link'] #TODO: activate the rest
+            ProcessExternalResources : ['script', 'frame', 'iframe'] # TODO:
             MutationEvents : '2.0'
             QuerySelector : false
         toWrap = @createWrappedObjectList(@jsdom.dom.level3.html)
-        @wrapDOM(toWrap)
+        @wrapDOM(toWrap, @jsdom.dom.level3.html)
         @addDefaultHandlers(@jsdom.dom.level3.core)
         @setLanguageProcessor(@jsdom.dom.level3.core)
-        ###
-        @on 'DOMPropertyUpdate', (update) ->
-            console.log "DOMPropertyUpdate"
-        @on 'DOMUpdate', (update) ->
-            console.log "DOMUpdate"
-        ###
 
     addDefaultHandlers : (core) ->
         browser = @browser
         core.HTMLAnchorElement.prototype._eventDefaults =
             click : (event) ->
-                url = event.target.href
-                # TODO: how should we handle hash urls? 
-                if url
-                    if /jsdom_wrapper/.test(browser.window.location)
-                        url = "http://localhost:3001" + url
-                    browser.load url
+                browser.window.location = event.target.href if event.target.href
+                ###
+                newurl = event.target.href
+                oldurl = browser.document.URL
+                # Check to see if this is just a hashchange
+                # TODO: add native support to JSDOM for this
+                if newurl.match("^#{oldurl}#")
+                    console.log "hash change: #{oldurl} #{newurl}"
+                    loc = URL.parse(newurl)
+                    browser.window.location = loc
+                # If not a hash event, load the new page
+                else
+                    console.log "URL: #{url}"
+                    if url
+                        if /jsdom_wrapper/.test(browser.window.location)
+                            url = "http://localhost:3001" + url
+                        browser.load url
+                ###
+        core.HTMLInputElement.prototype._eventDefaults =
+            click : (event) ->
+                console.log "Inside overridden click handler"
+                event.target.click()
+        
 
     setLanguageProcessor : (core) ->
         core.languageProcessors =
@@ -61,7 +73,7 @@ class JSDOMWrapper extends EventEmitter
                     console.log e
                     console.log e.stack
 
-    wrapDOM : (toWrap) ->
+    wrapDOM : (toWrap, dom) ->
         isDOMNode = (node) ->
             node? &&
             (typeof node.ELEMENT_NODE == 'number') &&
@@ -73,18 +85,18 @@ class JSDOMWrapper extends EventEmitter
         self = this
 
         wrapProperty = (parent, prop) ->
-            originalMethod = parent.__lookupSetter__(prop)
-            if !originalMethod?
+            originalSetter = parent.__lookupSetter__(prop)
+            if !originalSetter?
                 throw new Error "Missing a setter for #{prop}"
             parent.__defineSetter__ prop, (value) ->
                 #console.log "Setter for #{prop} called."
-                rv = originalMethod.call this, value
-                rvID = if rv? then rv[propName] else null
+                rv = originalSetter.call this, value
+                if value[propName]?
+                    value = nodes.get(value[propName])
                 params =
                     targetID : this[propName]
-                    rvID : rv
                     prop : prop
-                    args : nodes.scrub([value])
+                    value : value
                 self.emit 'DOMPropertyUpdate', params
                 return rv
 
@@ -103,6 +115,7 @@ class JSDOMWrapper extends EventEmitter
                     args : nodes.scrub(arguments)
                 # TODO: Change event name to show that this is a method, not prop
                 self.emit 'DOMUpdate', params
+                #self.printMethodCall(this, method, arguments, rvID)
                 return rv
 
         toWrap.forEach (info) ->
@@ -112,32 +125,26 @@ class JSDOMWrapper extends EventEmitter
             info.properties?.forEach (prop) ->
                 wrapProperty(obj, prop)
 
-    printMethodCall : (node, method, args) ->
-        parentName = node.name || node.tagName
-        if node.nodeType == 9  # DOCUMENT_NODE
-            parentName = '#document'
+    printMethodCall : (node, method, args, rvID) ->
+        args = @nodes.scrub(args)
+        nodeName = node.name || node.nodeName
         argStr = ""
         for arg in args
-            if args.replace # ?
-                # If we're working with a string, escape newlines
-                arg = "'" + arg.replace(/\r\n/, "\\r\\n") + "'"
-            else if args.data
-                # If we're dealing with comments or text, escape newline and
-                # add ''s
-                arg = "'" + args.data.replace(/\r\n/, "\\r\\n") + "'"
-            else if typeof arg == 'object'
-                arg = arg[@nodes.propName] || arg.name || arg.tagName
-            argStr += arg + ' '
-        argStr = argStr.replace(/\s$/, '')
-        console.log(parentName + '.' + method + '(' + argStr + ')')
+            argStr += "#{arg}, "
+        argStr = argStr.replace(/,\s$/, '')
+        console.log "#{rvID} = #{nodeName}.#{method}(#{argStr})"
 
+    # TODO: don't build this at runtime.
     createWrappedObjectList : (dom) ->
         list = []
         # Level 2 Core:
         list.push
             object     : dom.Node.prototype
-            methods    : ['insertBefore', 'replaceChild', 'appendChild',
-                          'removeChild', 'cloneNode']
+            # NOTE: we don't wrap appendChild because JSDOM implements it using
+            # insertBefore, so wrapping it would cause duplicate instructions.
+            # We don't wrap cloneNode because it calls already wrapped DOM
+            # methods behind the scenes
+            methods    : ['insertBefore', 'replaceChild', 'removeChild']
             properties : ['nodeValue']
         list.push
             object     : dom.Element.prototype
@@ -215,12 +222,11 @@ class JSDOMWrapper extends EventEmitter
             properties : ['disabled', 'label']
         list.push
             object     : dom.HTMLOptionElement.prototype
-            properties : ['disabled', 'label', 'selected',
-                          'value']
+            properties : ['disabled', 'label', 'selected', 'value']
             #TODO: Why doesn't defaultSelected property work?
         list.push
             object     : dom.HTMLInputElement.prototype
-            methods    : ['blur', 'focus', 'select', 'click']
+            #methods    : ['blur', 'focus', 'select', 'click']
             properties : ['accept',
                           'accessKey', 'align', 'alt', 'checked', 'disabled',
                           'maxLength', 'name', 'readOnly', 'size', 'src',

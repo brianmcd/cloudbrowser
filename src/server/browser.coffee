@@ -8,11 +8,7 @@ JSDOMWrapper   = require('./jsdom_wrapper')
 WindowContext  = require('../../build/default/window_context').WindowContext
 XMLHttpRequest = require('./XMLHttpRequest').XMLHttpRequest
 
-# TODO: reintroduce these
-#@syncCmds = []
-#@cmdBuffer = []
 class Browser
-    # TODO: default url parameter
     constructor : (browserID, url) ->
         @id = browserID
         # The API we expose to all connected clients.
@@ -29,62 +25,94 @@ class Browser
         @clients = []
         @load url if url?
 
-    # For now, source is always a URL. TODO: accept file path
+    # TODO: remove source param and create document later
+    createWindow : (source) ->
+        document = @jsdom.jsdom(false, null, {url: source})
+        document[@idProp] = '#document'
+        window = document.createWindow()
+        window.document = document
+
+        # Thanks to Zombie.js for the window context and this set up code
+        context = new WindowContext(window)
+        window._evaluate = (code, filename) -> context.evaluate(code, filename)
+        window.JSON = JSON
+        # Thanks Zombie for Image code 
+        window.Image = (width, height) ->
+            img = new core.HTMLImageElement(window.document)
+            img.width = width
+            img.height = height
+            img
+        window.XMLHttpRequest = XMLHttpRequest
+        window.browser = this
+        window.console = console
+        window.require = require
+        window.__defineGetter__ 'location', -> @__location
+        window.__defineSetter__ 'location', (loc) ->
+            parsed = URL.parse(loc)
+            oldbase = @__location.href
+            if /#/.test(@__location.href)
+                oldbase = @__location.href.match("(.*)#")[1]
+            if /^#/.test(loc)  || loc.match("^#{oldbase}#")
+                @__location = URL.parse(oldbase + parsed.hash)
+                event = this.document.createEvent('HTMLEvents')
+                event.initEvent("hashchange", true, false)
+                # Ideally, we'd set oldurl and newurl, but Sammy doesn't
+                # rely on it so skipping that for now.
+                this.dispatchEvent(event)
+                return loc
+            # else, populate the parsed URL object with values from current
+            # location in case of relative URLs, then load the new page.
+            host = parsed.host || @__location.host
+            protocol = parsed.protocol || @__location.protocol
+            pathname = parsed.pathname
+            search = parsed.search || ''
+            hash = parsed.hash || ''
+            toload = "#{protocol}//#{host}/#{pathname}#{search}#{hash}"
+            @browser.load(toload)
+        return window
+
     load : (source) ->
         console.log "About to make request to: #{source}"
-        #TODO: should I be using window.location and let JSDOM's resourcemanager do the work?
-        #      I think this will work on files or URLs
         request {uri: source}, (err, response, body) =>
-            console.log "Got result from request"
-            if err
-                console.log "Error with request"
-                throw new Error(err)
+            throw new Error(err) if err
             console.log "Request succeeded"
             # Don't send updates to clients while we build the initial DOM
             # Not doing this causes issues on subsequent page loads
             @wrapper.removeAllListeners 'DOMUpdate'
-            @document = @jsdom.jsdom(false)
-            @document[@idProp] = '#document'
-            @window = @document.createWindow()
-            # TODO: factor this out to initWindow(window) method
-            # Thanks to Zombie.js for the window context and this set up code
-            context = new WindowContext(@window)
-            @window._evaluate = (code, filename) ->
-                # TODO: why not just set _evaluate directly to evaluate
-                context.evaluate(code, filename)
-            @window.JSON = JSON
-            # Thanks Zombie for Image code 
-            @window.Image = (width, height) ->
-                img = new core.HTMLImageElement(newWindow.document)
-                img.width = width
-                img.height = height
-                img
-            @window.XMLHttpRequest = XMLHttpRequest
-            @window.browser = this
-            @window.console = console
-            @window.document = @document
-            # TODO: We need to give the window its own require.  If it uses
-            # ours, that means the require cache will be shared, which means
-            # the browser script could affect our server code (e.g. require
-            # jsdom for some reason).
-            @window.require = require
-            # State is used by code running in the DOM to persist info between
-            # page loads.
-            @state = @state || {}
-            @document.open()
-            @document.write body
-            @document.close()
-            @window.location = URL.parse(source)
+            @wrapper.removeAllListeners 'DOMPropertyUpdate'
+
+            @window = @createWindow(source)
+            document = @window.document
+            loc = URL.parse(source)
+            # Make sure all expected properties exist.  Node doesn't populate
+            # properties that aren't in the original URL string.  jQuery tests
+            # and presumably other scripts expect these to be defined.
+            loc.hash = "" unless loc.hash?
+            loc.port = 80 unless loc.port?
+            loc.protocol = 'http:' unless loc.protocol?
+            loc.search = "" unless loc.search?
+
+            @window.__location = loc
+            # TODO: handle document.location setter
+            document.location = loc
+            document.open()
+            document.write body
+            document.close()
             @syncAllClients()
-            # Each advice function emits the DOMUpdate event, which we want to echo
-            # to all connected clients.
-            @wrapper.on 'DOMUpdate', @broadcastUpdate
+            # Each advice function emits the DOMUpdate or DOMPropertyUpdate 
+            # event, which we want to echo to all connected clients.
+            @wrapper.on 'DOMUpdate', (params) =>
+                @broadcastUpdate 'DOMUpdate', params
+            @wrapper.on 'DOMPropertyUpdate', (params) =>
+                @broadcastUpdate 'DOMPropertyUpdate', params
 
             # Fire the onload event, it seems like JSDOM isn't doing this on
             # document.close()...should it?
-            ev = @document.createEvent "HTMLEvents"
+            ###
+            ev = @window.document.createEvent "HTMLEvents"
             ev.initEvent "load", false, false
             @window.dispatchEvent ev
+            ###
 
     syncAllClients : ->
         clients = @clients.concat(@connQ)
@@ -105,8 +133,8 @@ class Browser
             @clients.push(client)
         @connQ = []
 
-    broadcastUpdate : (params) =>
-        msg = MessagePeer.createMessage('DOMUpdate', params)
+    broadcastUpdate : (method, params) =>
+        msg = MessagePeer.createMessage(method, params)
         cmd = JSON.stringify(msg)
         for client in @clients
             client.sendJSON(cmd)
@@ -114,7 +142,7 @@ class Browser
     addClient : (sock) ->
         console.log "Browser#addClient"
         client = new MessagePeer(sock, @API)
-        if !@document?
+        if !@window.document?
             console.log "Queuing client"
             @connQ.push(client)
             return false
@@ -129,7 +157,7 @@ class Browser
         @clients = (c for c in @clients when c != client)
 
     docToInstructions : ->
-        if !@document?
+        if !@window.document?
             throw new Error "Called docToInstructions with empty document"
         syncCmds = [MessagePeer.createMessage('clear')]
 
@@ -146,11 +174,10 @@ class Browser
             # Programmer could use DOM methods to manipulate these nodes,
             # which don't exist on the client.
             if name? && (name == 'SCRIPT')
-                console.log('skipping script tag.')
                 return false
             return true
         self = this
-        dfs @document, filter, (node) ->
+        dfs @window.document, filter, (node) ->
             typeStr = self.nodeTypeToString[node.nodeType]
             method = '_cmdsFor' + typeStr
             if (typeof self[method] != 'function')
@@ -191,7 +218,7 @@ class Browser
         # child nodes: the HTML element and a Text element.  We get a
         # HIERARCHY_REQUEST_ERR in the client browser if we try to insert a
         # Text node as the child of the Document
-        if node.parentNode == @document
+        if node.parentNode == @window.document
             return []
         cmds = []
         cmds.push MessagePeer.createMessage 'DOMUpdate',

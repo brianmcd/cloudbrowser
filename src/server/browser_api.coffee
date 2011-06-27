@@ -11,7 +11,7 @@ class API
             clientEv.relatedTarget = nodes.get(clientEv.relatedTarget)
 
         group = @_eventTypeToGroup[clientEv.type]
-        event = @browser.document.createEvent(group) unless group == 'Special'
+        event = @browser.window.document.createEvent(group) unless group == 'Special'
         switch group
             when 'UIEvents' # TODO: JSDOM only has level 2 events, so we have to have the s.
                 # Currently setting view to null
