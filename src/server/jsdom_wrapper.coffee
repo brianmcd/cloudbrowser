@@ -31,34 +31,32 @@ class JSDOMWrapper extends EventEmitter
         @wrapDOM(toWrap, @jsdom.dom.level3.html)
         @addDefaultHandlers(@jsdom.dom.level3.core)
         @setLanguageProcessor(@jsdom.dom.level3.core)
+        @fixDocumentClose(@jsdom.dom.level3.core)
 
     addDefaultHandlers : (core) ->
         browser = @browser
         core.HTMLAnchorElement.prototype._eventDefaults =
             click : (event) ->
                 browser.window.location = event.target.href if event.target.href
-                ###
-                newurl = event.target.href
-                oldurl = browser.document.URL
-                # Check to see if this is just a hashchange
-                # TODO: add native support to JSDOM for this
-                if newurl.match("^#{oldurl}#")
-                    console.log "hash change: #{oldurl} #{newurl}"
-                    loc = URL.parse(newurl)
-                    browser.window.location = loc
-                # If not a hash event, load the new page
-                else
-                    console.log "URL: #{url}"
-                    if url
-                        if /jsdom_wrapper/.test(browser.window.location)
-                            url = "http://localhost:3001" + url
-                        browser.load url
-                ###
         core.HTMLInputElement.prototype._eventDefaults =
             click : (event) ->
                 console.log "Inside overridden click handler"
                 event.target.click()
         
+    fixDocumentClose : (core) ->
+        core.HTMLDocument.prototype.close = ->
+            console.log "INSIDE NEW CLOSE"
+            @_queue.resume()
+            f = core.resourceLoader.enqueue this, ->
+                console.log "INSIDE RESOURCELOADER CALLBACK"
+                @readyState = 'complete'
+                ev = @createEvent('HTMLEvents')
+                ev.initEvent('DOMContentLoaded', false, false)
+                @dispatchEvent(ev)
+                ev = @createEvent('HTMLEvents')
+                ev.initEvent('load', false, false)
+                @defaultView.dispatchEvent(ev)
+            f(null, true)
 
     setLanguageProcessor : (core) ->
         core.languageProcessors =
