@@ -1,16 +1,6 @@
 <html>
     <head>
-        <script>
-            window.addEventListener('load', function () {
-                var count = 0;
-                setInterval(function () {
-                    ++count;
-                    var target = document.getElementById('target');
-                    var node = document.createTextNode('Node #' + count + ' ');
-                    target.appendChild(node);
-                }, 1000);
-            });
-        </script>
+        <script src='nodeinsert.js'></script>
     </head>
     <body>
         <div id='target'></div>
