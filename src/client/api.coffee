@@ -10,6 +10,7 @@ class API
     #   'targetID'
     #   'args'
     DOMUpdate : (params) ->
+        console.log "Processing DOMUpdate"
         target = @nodes.get(params.targetID)
         method = params.method
         rvID = params.rvID
@@ -17,9 +18,6 @@ class API
         if target[method] == undefined
             throw new Error "Tried to process an invalid method: #{method}"
 
-        # TODO: this is just for testing!
-        if method == 'innerHTML'
-            return target.innerHTML = args[0]
         rv = target[method].apply(target, args)
         if rv == undefined
             return
@@ -29,7 +27,26 @@ class API
         if rvID? && /^node\d+$/.test(rvID)
             if rv[@nodes.propName] == undefined
                 @nodes.add(rv, rvID)
+        #@_printMethodCall(target, method, args, rvID)
         rv
+
+    DOMPropertyUpdate : (params) ->
+        console.log "Processing DOMPropertyUpdate"
+        target = @nodes.get(params.targetID)
+        prop = params.prop
+        value = params.value
+        if /^node\d+$/.test(value)
+            value = @nodes.unscrub(value)
+        return target[prop] = value
+
+    _printMethodCall : (node, method, args, rvID) ->
+        args = @nodes.scrub(args)
+        nodeName = node.name || node.nodeName
+        argStr = ""
+        for arg in args
+            argStr += "#{arg}, "
+        argStr = argStr.replace(/,\s$/, '')
+        console.log "#{rvID} = #{nodeName}.#{method}(#{argStr})"
 
     #TODO: do i still need this or is this cruft?
     #TODO: at least rename to remove "Env"
