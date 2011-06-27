@@ -45,10 +45,8 @@ class JSDOMWrapper extends EventEmitter
         
     fixDocumentClose : (core) ->
         core.HTMLDocument.prototype.close = ->
-            console.log "INSIDE NEW CLOSE"
             @_queue.resume()
             f = core.resourceLoader.enqueue this, ->
-                console.log "INSIDE RESOURCELOADER CALLBACK"
                 @readyState = 'complete'
                 ev = @createEvent('HTMLEvents')
                 ev.initEvent('DOMContentLoaded', false, false)

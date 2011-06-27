@@ -226,8 +226,7 @@
    // Bypass the `window.location.hash` attribute.  If a question mark
     // appears in the hash IE6 will strip it and all of the following
     // characters from `window.location.hash`.
-    console.log('in fullPath');
-    console.log(window.location);
+    // McD - commented out below code to use location.hash directly.
     //var matches = location_obj.toString().match(/^[^#]*(#.+)$/);
     //var hash = matches ? matches[1] : '';
     //return [location_obj.pathname, location_obj.search, hash].join('');
@@ -313,14 +312,9 @@
         if (!every) { every = 10; }
         var hashCheck = function() {
           var current_location = proxy.getLocation();
-          console.log("Current location:");
-          console.log(current_location);
-          console.log("Last location:");
-          console.log(Sammy.DefaultLocationProxy._last_location);
           if (typeof Sammy.DefaultLocationProxy._last_location == 'undefined' ||
             current_location != Sammy.DefaultLocationProxy._last_location) {
             window.setTimeout(function() {
-              console.log("SAMMY TRIGGERING HASHCHANGE");
               $(window).trigger('hashchange', [true]);
             }, 0);
           }
@@ -1206,10 +1200,6 @@
       var location, returned;
       // get current location
       location = this.getLocation();
-      console.log("getLocation returned: ");
-      console.log(location);
-      console.log("last_location");
-      console.log(this.last_location);
       // compare to see if hash has changed
       if (!this.last_location || this.last_location[0] != 'get' || this.last_location[1] != location) {
         // reset last location
