@@ -95,20 +95,26 @@ http = do ->
 
 internal = do ->
     server = express.createServer()
-    load = (ext, req, res) ->
-        pagePath = path.join(process.cwd(), 'html', "#{req.params.source}.#{ext}")
-        fs.readFile pagePath, 'utf8', (err, html) ->
-            contenttype = 'text/html' # common case
-            if err
-                throw new Error(err)
-            if ext == 'js'
-                contenttype = 'text/javascript'
-            res.writeHead 200,
-                'Content-type': contenttype
-                'Content-length': html.length
-            res.end(html)
-    server.get '/:source.js', (req, res) -> load 'js', req, res
-    server.get '/:source.html', (req, res) -> load 'html', req, res
+    server.get '*', (req, res, next) ->
+        reqPath = req.params[0]
+        contentType = null
+        if /\.js$/.test(reqPath)
+            contentType = 'text/javascript'
+        else if /\.html$/.test(reqPath)
+            contentType = 'text/html'
+        else if /\.css$/.test(reqPath)
+            contentType = 'text/css'
+        else
+            next()
+        if contentType != null
+            pagePath = path.join(process.cwd(), 'html', reqPath)
+            fs.readFile pagePath, 'utf8', (err, data) ->
+                if err
+                    throw new Error(err)
+                res.writeHead 200,
+                    'Content-type': contentType
+                    'Content-length': Buffer.byteLength(data)
+                res.end(data)
     server.listen 3001, ->
         console.log 'Internal HTTP server listening on port 3001 [TODO: remove this].'
     server
