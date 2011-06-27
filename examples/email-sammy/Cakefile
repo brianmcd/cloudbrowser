@@ -1,0 +1,37 @@
+# Note: the baseline for this was Zombie.js's Cakefile
+fs            = require("fs")
+path          = require("path")
+{spawn, exec} = require("child_process")
+stdout        = process.stdout
+
+# Use executables installed with npm bundle.
+process.env["PATH"] = "node_modules/.bin:#{process.env["PATH"]}"
+
+# ANSI Terminal Colors.
+bold  = "\033[0;1m"
+red   = "\033[0;31m"
+green = "\033[0;32m"
+reset = "\033[0m"
+
+# Log a message with a color.
+log = (message, color, explanation) ->
+  console.log color + message + reset + ' ' + (explanation or '')
+
+# Handle error and kill the process.
+onerror = (err)->
+  if err
+    process.stdout.write "#{red}#{err.stack}#{reset}\n"
+    process.exit -1
+
+build = (callback)->
+    log "Compiling CoffeeScript to JavaScript ...", green
+    exec "coffee -c -l -o html html", (err, stdout)->
+        onerror err
+        if stdout != ""
+            log stdout, green
+task "build", "Compile CoffeeScript to JavaScript", -> build onerror
+
+task "watch", "Continously compile CoffeeScript to JavaScript", ->
+    cmd = spawn("coffee", ["-clw", "-o", "html", "html"])
+    cmd.stdout.on "data", (data)-> process.stdout.write green + data + reset
+    cmd.on "error", onerror
