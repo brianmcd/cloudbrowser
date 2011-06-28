@@ -23,8 +23,8 @@ class JSDOMWrapper extends EventEmitter
                 delete reqCache[entry]
         @jsdom = require('jsdom')
         @jsdom.defaultDocumentFeatures =
-            FetchExternalResources : ['script', 'img', 'css', 'frame', 'link'] #TODO: activate the rest
-            ProcessExternalResources : ['script', 'frame', 'iframe'] # TODO:
+            FetchExternalResources : ['script', 'img', 'css', 'frame', 'link']
+            ProcessExternalResources : ['script', 'frame', 'iframe']
             MutationEvents : '2.0'
             QuerySelector : false
         toWrap = @createWrappedObjectList(@jsdom.dom.level3.html)

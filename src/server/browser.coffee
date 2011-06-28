@@ -37,8 +37,12 @@ class Browser
         window._evaluate = (code, filename) -> context.evaluate(code, filename)
         window.JSON = JSON
         # Thanks Zombie for Image code 
+        self = this
         window.Image = (width, height) ->
-            img = new core.HTMLImageElement(window.document)
+            img = new self.wrapper.jsdom
+                                  .dom
+                                  .level3
+                                  .core.HTMLImageElement(window.document)
             img.width = width
             img.height = height
             img
@@ -65,9 +69,11 @@ class Browser
             host = parsed.host || @__location.host
             protocol = parsed.protocol || @__location.protocol
             pathname = parsed.pathname
+            if pathname.charAt(0) != '/'
+                pathname = '/' + pathname
             search = parsed.search || ''
             hash = parsed.hash || ''
-            toload = "#{protocol}//#{host}/#{pathname}#{search}#{hash}"
+            toload = "#{protocol}//#{host}#{pathname}#{search}#{hash}"
             @browser.load(toload)
         return window
 
@@ -106,19 +112,11 @@ class Browser
             @wrapper.on 'DOMPropertyUpdate', (params) =>
                 @broadcastUpdate 'DOMPropertyUpdate', params
 
-            # Fire the onload event, it seems like JSDOM isn't doing this on
-            # document.close()...should it?
-            ###
-            ev = @window.document.createEvent "HTMLEvents"
-            ev.initEvent "load", false, false
-            @window.dispatchEvent ev
-            ###
-
     syncAllClients : ->
-        clients = @clients.concat(@connQ)
+        @clients = @clients.concat(@connQ)
         @connQ = []
         syncCmds = @docToInstructions()
-        for client in clients
+        for client in @clients
             client.send(syncCmds)
 
     # TODO: should we defer creating MessagePeers til here? If we make them
@@ -142,7 +140,7 @@ class Browser
     addClient : (sock) ->
         console.log "Browser#addClient"
         client = new MessagePeer(sock, @API)
-        if !@window.document?
+        if !@window?.document?
             console.log "Queuing client"
             @connQ.push(client)
             return false
