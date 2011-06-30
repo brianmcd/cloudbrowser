@@ -10,7 +10,6 @@ class API
     #   'targetID'
     #   'args'
     DOMUpdate : (params) ->
-        console.log "Processing DOMUpdate"
         target = @nodes.get(params.targetID)
         method = params.method
         rvID = params.rvID
@@ -31,7 +30,6 @@ class API
         rv
 
     DOMPropertyUpdate : (params) ->
-        console.log "Processing DOMPropertyUpdate"
         target = @nodes.get(params.targetID)
         prop = params.prop
         value = params.value

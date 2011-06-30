@@ -9,7 +9,7 @@ Browserify      = require('browserify')
 IO              = require('socket.io')
 
 # So that developer code can require modules in its own node_modules folder.
-require.paths.unshift path.join process.cwd(), "node_modules"
+require.paths.unshift path.join(process.cwd(), "node_modules")
 
 # Shared server variables.
 browsers = new BrowserManager()
@@ -17,7 +17,7 @@ browsers = new BrowserManager()
 # The front-end HTTP server.
 http = do ->
     server = express.createServer()
-    server.configure ->
+    server.configure () ->
         server.use express.logger()
         server.use Browserify
             base : [
@@ -35,15 +35,13 @@ http = do ->
 
     # Routes
     server.get '/', (req, res) ->
-        #TODO: display a radio list of local files to choose from in addition
-        #      to the text box
         fs.readdir path.join(process.cwd(), 'html'), (err, files) ->
-            #TODO: handle err
+            throw err if err
             res.render 'index.jade',
                 browsers : browsers.browsers,
                 files : files
 
-    server.get '/join/:browserid', (req, res) ->
+    server.get '/browsers/:browserid', (req, res) ->
         # TODO: permissions checking and making sure browserid exists would
         # go here.
         id = decodeURIComponent(req.params.browserid)
@@ -51,27 +49,23 @@ http = do ->
         res.render 'base.jade', browserid : id
 
     server.post '/create', (req, res) ->
-        console.log req.body
         browserInfo = req.body.browser
         id = browserInfo.id
-        resource = browserInfo.url
-        if resource == '' || typeof resource != 'string'
-            resource = browserInfo.localfile
-        runscripts = (browserInfo.runscripts && (browserInfo.runscripts == 'yes'))
+        runscripts = (browserInfo.runscripts? && (browserInfo.runscripts == 'yes'))
+        resource = null
+        if typeof browserInfo.url != 'string' || browserInfo.url == ''
+            resource = "http://localhost:3001/#{browserInfo.localfile}"
+        else
+            resource = browserInfo.url
         console.log "Creating id=#{id} Loading url= #{resource}"
-        url = URL.parse resource
-        if url.host == undefined
-            url = URL.parse "http://localhost:3001/#{resource}"
-        console.log "Loading #{url.href}"
         try
-            browsers.create(id, url.href)
-            res.render 'base.jade', browserid : id
+            browsers.create(id, resource)
             console.log 'BrowserInstance loaded.'
+            res.writeHead(301, {'Location' : "/browsers/#{id}"})
+            res.end()
         catch e
             console.log "browsers.create failed"
             console.log e
-            console.log e.stack
-            console.log e.message
             send500Error(res)
 
     server.get '/:source.html', (req, res) ->

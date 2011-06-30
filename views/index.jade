@@ -7,7 +7,7 @@ html
       - each browser, browserid in browsers
         - var bid = encodeURIComponent(browserid)
         li
-          a(href='/join/' + bid) #{bid}
+          a(href='/browser/' + bid) #{bid}
     h3 Start a new VirtualBrowser
     form(method='post', action='/create')
       label Browser ID:
