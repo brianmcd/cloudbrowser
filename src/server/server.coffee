@@ -39,7 +39,7 @@ http = do ->
             throw err if err
             res.render 'index.jade',
                 browsers : browsers.browsers,
-                files : files
+                files : files.filter((file) -> /\.html$/.test(file)).sort()
 
     server.get '/browsers/:browserid', (req, res) ->
         # TODO: permissions checking and making sure browserid exists would
@@ -67,15 +67,6 @@ http = do ->
             console.log "browsers.create failed"
             console.log e
             send500Error(res)
-
-    server.get '/:source.html', (req, res) ->
-        sessionID = req.sessionID
-        target = URL.parse req.params.source
-        if target.host == undefined
-            target = URL.parse "http://localhost:3001/#{req.params.source}.html"
-        console.log "VirtualBrowser will load: #{target.href}"
-        browsers.create sessionID, target
-        res.render 'base.jade', browserid: sessionID
 
     send500Error = (res) ->
         res.writeHead 500, {'Content-type': 'text/html'}
