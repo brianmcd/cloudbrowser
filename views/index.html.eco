@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <style type='text/css'>
+            #toolbar {
+                clear: both;
+            }
+            #current-browser {
+                float: left;
+                border: 1px solid;
+                margin: 0px 20px 5px 0px;
+                padding: 0px 5px 0px 5px;
+            }
+            #join-menu-container {
+                float: left;
+                border: 1px solid;
+                margin: 0px 20px 5px 0px;
+                padding: 0px 5px 0px 5px;
+            }
+            #create-browser {
+                float: left;
+                border: 1px solid;
+                margin: 0px 20px 5px 0px;
+            }
+            #dump-dom {
+                float: left;
+                margin: 0px 20px 5px 0px;
+            }
+            #browser-frame {
+                clear: both;
+            }
+            #browser {
+                width: 100%;
+                height: 100%;
+            }
+        </style>
+        <script src='http://ajax.googleapis.com/ajax/libs/jquery/1.6.2/jquery.min.js'></script>
+        <script>
+            $(function () {
+                $('#create-browser-form').submit(function () {
+                    var name = $("input[name='browser[id]']").val(); 
+                    $('#active').text(name);
+                    name = encodeURIComponent(name);
+                    $('#dump-dom-html').empty()
+                                       .html("<a href='/getHTML/" + name + "' target='_blank'>" +
+                                             "<button>Dump Server DOM as HTML</button>" +
+                                             "</a>");
+                    $('#dump-dom-text').empty()
+                                       .html("<a href='/getText/" + name + "' target='_blank'>" +
+                                             "<button>Dump Server DOM as Text</button>" +
+                                             "</a>");
+                    //TODO: update list of currently active browser instances.
+                });
+            });
+        </script>
+    </head>
+    <body>
+        <div id='toolbar'>
+            <div id='current-browser'>
+                Current Browser Instance: <span id='active'>None</span>
+            </div>
+            <div id='join-menu-container'>
+                Join:
+                <select id='join-menu'>
+                    <% for bId of @browsers: %>
+                        <option value='<%= encodeURIComponent(bId) %>'>
+                            <%= bId %>
+                        </option>
+                    <% end %>
+                </select>
+                <button id='join-button'>Join</button>
+            </div>
+            <div id='create-browser'>
+                <form action='/create' method='post' target='browser' id='create-browser-form'>
+                    <label id='create-browser-id'>
+                        Browser ID:
+                        <input name='browser[id]' value='New Browser'/>
+                    </label>
+                    <label id='create-browser-url'>
+                        URL:
+                        <input name='browser[url]' />
+                    </label>
+                    or 
+                    <label id='create-browser-file'>
+                        <select name='browser[localfile]' id='file-menu'>
+                            <% for file in @files: %>
+                                <option value='<%= file %>'>
+                                    <%= file %>
+                                </option>
+                            <% end %>
+                        </select>
+                    </label>
+                    <input type='submit' value='Create' />
+                </form>
+            </div>
+            <div id='dump-dom-html'>
+            </div>
+            <div id='dump-dom-text'>
+            </div>
+        </div>
+        <div id='browser-frame'>
+            <iframe name='browser' id='browser'>
+                <p>iFrames must be enabled</p>
+            </iframe>
+        </div>
+    </body>
+</html>

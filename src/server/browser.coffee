@@ -29,7 +29,7 @@ class Browser
     createWindow : (source) ->
         document = @jsdom.jsdom(false, null, {url: source})
         document[@idProp] = '#document'
-        window = document.createWindow()
+        window = document.parentWindow
         window.document = document
 
         # Thanks to Zombie.js for the window context and this set up code

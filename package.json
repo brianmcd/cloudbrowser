@@ -19,6 +19,7 @@
         "jade" : "0.10.7",
         "socket.io" : "0.6.16",
         "request" : "1.9.0"
+        "eco" : "*"
     },
     "devDependencies" : {
         "expresso" : "0.7.3",

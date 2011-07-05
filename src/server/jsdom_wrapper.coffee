@@ -16,10 +16,7 @@ class JSDOMWrapper extends EventEmitter
         # to give us a new object each time.
         reqCache = require.cache
         for entry of reqCache
-            # Note: when we were using zombie, we had to clear out a lot more.
-            # As we re-add some zombie features, they might need to be cleared.
-            if /jsdom/.test(entry) && !/jsdom_wrapper/.test(entry)
-                console.log "Deleting #{entry}"
+            if /jsdom/.test(entry) # && !(/jsdom_wrapper/.test(entry))
                 delete reqCache[entry]
         @jsdom = require('jsdom')
         @jsdom.defaultDocumentFeatures =
@@ -87,13 +84,14 @@ class JSDOMWrapper extends EventEmitter
             parent.__defineSetter__ prop, (value) ->
                 #console.log "Setter for #{prop} called."
                 rv = originalSetter.call this, value
-                if value[propName]?
-                    value = nodes.get(value[propName])
-                params =
-                    targetID : this[propName]
-                    prop : prop
-                    value : value
-                self.emit 'DOMPropertyUpdate', params
+                if !this.tagName? || (this.tagName != 'SCRIPT')
+                    if value[propName]?
+                        value = nodes.get(value[propName])
+                    params =
+                        targetID : this[propName]
+                        prop : prop
+                        value : value
+                    self.emit 'DOMPropertyUpdate', params
                 return rv
 
         wrapMethod = (parent, method) ->
@@ -104,14 +102,15 @@ class JSDOMWrapper extends EventEmitter
                 if isDOMNode(rv) && rv[propName] == undefined
                     nodes.add(rv)
                 rvID = if rv? then rv[propName] else null
-                params =
-                    targetID : this[propName]
-                    rvID : rvID
-                    method : method
-                    args : nodes.scrub(arguments)
-                # TODO: Change event name to show that this is a method, not prop
-                self.emit 'DOMUpdate', params
                 #self.printMethodCall(this, method, arguments, rvID)
+                if !this.tagName? || (this.tagName != 'SCRIPT')
+                    params =
+                        targetID : this[propName]
+                        rvID : rvID
+                        method : method
+                        args : nodes.scrub(arguments)
+                    # TODO: Change event name to show that this is a method, not prop
+                    self.emit 'DOMUpdate', params
                 return rv
 
         toWrap.forEach (info) ->
@@ -151,8 +150,8 @@ class JSDOMWrapper extends EventEmitter
         list.push
             object     : dom.Document.prototype
             methods    : ['createElement', 'createTextNode',
-                          'createDocumentFragment', 'createComment',
-                          'createAttribute', 'createCDATASection', 'importNode',
+                          'createAttribute', 'createDocumentFragment',
+                          'createComment', 'createCDATASection', 'importNode',
                           'createElementNS', 'createAttributeNS']
         list.push
             object     : dom.CharacterData.prototype

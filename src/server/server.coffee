@@ -8,6 +8,7 @@ path            = require('path')
 BrowserManager  = require('./browser_manager')
 Browserify      = require('browserify')
 IO              = require('socket.io')
+eco             = require('eco')
 
 # So that developer code can require modules in its own node_modules folder.
 require.paths.unshift path.join(process.cwd(), "node_modules")
@@ -38,15 +39,14 @@ http = do ->
     server.get '/', (req, res) ->
         fs.readdir path.join(process.cwd(), 'html'), (err, files) ->
             throw err if err
-            res.render 'index.jade',
-                browsers : browsers.browsers,
-                files : files.filter((file) -> /\.html$/.test(file)).sort()
+            indexPath = path.join(__dirname, '..', '..', 'views', 'index.html.eco')
+            fs.readFile indexPath, 'utf8', (err, str) ->
+                throw err if err
+                tmpl = eco.render str,
+                    browsers : browsers.browsers
+                    files : files.filter((file) -> /\.html$/.test(file)).sort()
+                res.send(tmpl)
 
-    # TODO: should this forward to the currently loaded resource?
-    #       e.g. /browsers/:browserid/index.html
-    #       if we do that, it will be hard to differentiate between navigation
-    #       and loading an external resource.
-    #       But we need the client browser to resolve relative URLs properly
     server.get '/browsers/:browserid/index.html', (req, res) ->
         # TODO: permissions checking and making sure browserid exists would
         # go here.
@@ -66,9 +66,19 @@ http = do ->
             console.log "contentType: #{contentType}"
             request {uri: resurl}, (err, response, body) ->
                 throw err if err
-                console.log response
                 res.writeHead(200, {'Content-type' : contentType})
                 res.end(body)
+
+    server.get '/getHTML/:browserid', (req, res) ->
+        console.log "browserID: #{req.params.browserid}"
+        browsers.find decodeURIComponent(req.params.browserid), (browser) ->
+            res.send(browser.window.document.outerHTML)
+
+    server.get '/getText/:browserid', (req, res) ->
+        console.log "browserID: #{req.params.browserid}"
+        browsers.find decodeURIComponent(req.params.browserid), (browser) ->
+            res.contentType('text/plain')
+            res.send(browser.window.document.outerHTML)
 
     server.post '/create', (req, res) ->
         browserInfo = req.body.browser
@@ -102,24 +112,17 @@ http = do ->
 
 internal = do ->
     server = express.createServer()
-    server.get '*', (req, res, next) ->
-        reqPath = req.params[0]
-        contentType = getContentType(reqPath)
-        if contentType == null
-            next()
-        if contentType != null
-            pagePath = path.join(process.cwd(), 'html', reqPath)
-            fs.readFile pagePath, 'utf8', (err, data) ->
-                if err
-                    throw new Error(err)
-                res.writeHead 200,
-                    'Content-type': contentType
-                    'Content-length': Buffer.byteLength(data)
-                res.end(data)
+
+    server.configure () ->
+        server.use(express.static(path.join(process.cwd(), 'html')))
+
     server.listen 3001, ->
         console.log 'Internal HTTP server listening on port 3001 [TODO: remove this].'
-    server
 
+    return server
+
+# TODO: Need to use an exhaustive list here, missing tons of valid
+# contentTypes.
 getContentType = (str) ->
     contentType = null
     if /\.js$/.test(str)
@@ -128,8 +131,9 @@ getContentType = (str) ->
         contentType = 'text/html'
     else if /\.css$/.test(str)
         contentType = 'text/css'
+    else if /\.png$/.test(str)
+        contentType = 'image/png'
     return contentType
-
 
 socketio = do ->
     numCurrentUsers = 0
