@@ -113,6 +113,8 @@ class Browser
                 @broadcastUpdate 'DOMPropertyUpdate', params
 
     syncAllClients : ->
+        if @clients.length == 0 && @connQ.length == 0
+            return
         @clients = @clients.concat(@connQ)
         @connQ = []
         syncCmds = @docToInstructions()
@@ -124,6 +126,8 @@ class Browser
     # connected.
     clearConnQ : ->
         console.log "Clearing connQ"
+        if @connQ.length == 0
+            return
         syncCmds = @docToInstructions()
         for client in @connQ
             console.log "Syncing a client"
@@ -203,6 +207,7 @@ class Browser
             args : [node[@idProp]]
         return cmds
 
+    # TODO: re-write absolute URLs to go through our resource proxy as well.
     _cmdsForElement : (node) ->
         cmds = []
         cmds.push MessagePeer.createMessage 'DOMUpdate',
@@ -212,11 +217,15 @@ class Browser
             args : [node.tagName]
         if node.attributes && (node.attributes.length > 0)
             for attr in node.attributes
+                name = attr.name
+                value = attr.value
+                if name.toLowerCase() == 'src'
+                    console.log "SRC: #{value}"
                 cmds.push MessagePeer.createMessage 'DOMUpdate',
                     targetID : node[@idProp]
                     rvID : null
                     method : 'setAttribute',
-                    args : [attr.name, attr.value]
+                    args : [name, value]
 
         cmds.push MessagePeer.createMessage 'DOMUpdate',
             targetID : node.parentNode[@idProp]
