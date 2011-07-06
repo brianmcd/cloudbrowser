@@ -189,6 +189,20 @@ class Browser
     _cmdsForDocument : (node) ->
         [MessagePeer.createMessage 'assignDocumentEnvID', '#document']
 
+    _cmdsForComment : (node) ->
+        cmds = []
+        cmds.push MessagePeer.createMessage 'DOMUpdate',
+            targetID : '#document'
+            rvID : node[@idProp]
+            method : 'createComment'
+            args : [node.data]
+        cmds.push MessagePeer.createMessage 'DOMUpdate',
+            targetID : node.parentNode[@idProp]
+            rvID : null
+            method : 'appendChild'
+            args : [node[@idProp]]
+        return cmds
+
     _cmdsForElement : (node) ->
         cmds = []
         cmds.push MessagePeer.createMessage 'DOMUpdate',
