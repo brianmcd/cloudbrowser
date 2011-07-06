@@ -57,7 +57,8 @@ httpServer = do ->
 
     server.get '/browsers/:browserid/*.*', (req, res) ->
         resource = "#{req.params[0]}.#{req.params[1]}"
-        console.log "Proxying request for: #{resource}"
+        resource = resource.replace(/dotdot/g, '..')
+        console.log "[bid=#{req.params.browserid}] Proxying request for: #{resource}"
         browsers.find decodeURIComponent(req.params.browserid), (browser) ->
             baseurl = path.dirname(browser.window.document.URL)
             resurl = baseurl + '/' + resource

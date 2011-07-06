@@ -219,8 +219,15 @@ class Browser
             for attr in node.attributes
                 name = attr.name
                 value = attr.value
-                if name.toLowerCase() == 'src'
-                    console.log "SRC: #{value}"
+                # For now, we aren't re-writing absolute URLs.  These will
+                # still hit the original server.  TODO: fix this.
+                if (name.toLowerCase() == 'src') && !(/^http/.test(value))
+                    console.log "Before: src=#{value}"
+                    #TODO: need to store the URL we're accessed by somewhere
+                    #      and use that instead of localhost.
+                    value = value.replace(/\.\./g, 'dotdot')
+                    #value = "http://localhost:3000/browsers/#{@id}/#{value}"
+                    console.log "After: src=#{value}"
                 cmds.push MessagePeer.createMessage 'DOMUpdate',
                     targetID : node[@idProp]
                     rvID : null
