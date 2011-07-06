@@ -2,7 +2,8 @@
 fs              = require('fs')
 express         = require('express')
 assert          = require('assert')
-request         = require('request')
+mime            = require('mime')
+http            = require('http')
 URL             = require('url')
 path            = require('path')
 BrowserManager  = require('./browser_manager')
@@ -17,7 +18,7 @@ require.paths.unshift path.join(process.cwd(), "node_modules")
 browsers = new BrowserManager()
 
 # The front-end HTTP server.
-http = do ->
+httpServer = do ->
     server = express.createServer()
     server.configure () ->
         server.use express.logger()
@@ -59,15 +60,30 @@ http = do ->
         console.log "Proxying request for: #{resource}"
         browsers.find decodeURIComponent(req.params.browserid), (browser) ->
             baseurl = path.dirname(browser.window.document.URL)
-            console.log "baseurl: #{baseurl}"
             resurl = baseurl + '/' + resource
+            type = mime.lookup(resurl)
+            console.log "baseurl: #{baseurl}"
+            console.log "MIME type: #{type}"
             console.log "resurl: #{resurl}"
-            contentType = getContentType(resource)
-            console.log "contentType: #{contentType}"
-            request {uri: resurl}, (err, response, body) ->
-                throw err if err
-                res.writeHead(200, {'Content-type' : contentType})
-                res.end(body)
+            theurl = URL.parse(resurl)
+            theurl.search = theurl.search || ""
+            theurl.port = theurl.port || 80
+            opts =
+                host : theurl.hostname
+                port : theurl.port
+                path : theurl.pathname + theurl.search
+            console.log opts
+            resreq = http.get opts, (stream) ->
+                # Things like HTML, CSS, JS should be sent as text.
+                if /^text/.test(type)
+                    stream.setEncoding('utf8')
+                res.writeHead(200, {'Content-Type' : type})
+                stream.on 'data', (data) ->
+                    res.write(data)
+                stream.on 'end', ->
+                    res.end()
+            # TODO: After testing, we don't want to throw, we want to log.
+            resreq.on 'error', (e) -> throw e
 
     server.get '/getHTML/:browserid', (req, res) ->
         console.log "browserID: #{req.params.browserid}"
@@ -110,7 +126,8 @@ http = do ->
 
     server
 
-internal = do ->
+# The internal HTTP server used to serve pages to Browser Instances
+do ->
     server = express.createServer()
 
     server.configure () ->
@@ -119,26 +136,11 @@ internal = do ->
     server.listen 3001, ->
         console.log 'Internal HTTP server listening on port 3001 [TODO: remove this].'
 
-    return server
-
-# TODO: Need to use an exhaustive list here, missing tons of valid
-# contentTypes.
-getContentType = (str) ->
-    contentType = null
-    if /\.js$/.test(str)
-        contentType = 'text/javascript'
-    else if /\.html$/.test(str)
-        contentType = 'text/html'
-    else if /\.css$/.test(str)
-        contentType = 'text/css'
-    else if /\.png$/.test(str)
-        contentType = 'image/png'
-    return contentType
-
-socketio = do ->
+# The Socket.IO server (which piggybacks off of the express front end server)
+do ->
     numCurrentUsers = 0
     numConnections = 0
-    server = IO.listen(http) # Attach to our express server.
+    server = IO.listen(httpServer) # Attach to our express server.
     server.on 'connection', (client) =>
         ++numCurrentUsers
         ++numConnections
@@ -158,4 +160,3 @@ socketio = do ->
         client.on 'disconnect', (msg) =>
             --numCurrentUsers
             console.log 'Client disconnected.'
-     server
