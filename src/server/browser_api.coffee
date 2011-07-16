@@ -16,14 +16,14 @@ class API
             when 'UIEvents' # TODO: JSDOM only has level 2 events, so we have to have the s.
                 # Currently setting view to null
                 event.initUIEvent(clientEv.type, clientEv.bubbles,
-                                  clientEv.cancelable, null, clientEv.detail)
+                                  clientEv.cancelable, @browser.window, clientEv.detail)
             when 'FocusEvent'
                 event.initFocusEvent(clientEv.type, clientEv.bubbles,
-                                     clientEv.cancelable, null,
+                                     clientEv.cancelable, @browser.window,
                                      clientEv.detail, clientEv.relatedTarget)
             when 'MouseEvents'
                 event.initMouseEvent(clientEv.type, clientEv.bubbles,
-                                     clientEv.cancelable, null,
+                                     clientEv.cancelable, @browser.window,
                                      clientEv.detail, clientEv.screenX,
                                      clientEv.screenY, clientEv.clientX,
                                      clientEv.clientY, clientEv.ctrlKey,
@@ -32,12 +32,12 @@ class API
                                      clientEv.relatedTarget)
             when 'TextEvent'
                 event.initTextEvent(clientEv.type, clientEv.bubbles,
-                                    clientEv.cancelable, null, clientEv.data,
+                                    clientEv.cancelable, @browser.window, clientEv.data,
                                     clientEv.inputMethod, clientEv.locale)
 
             when 'WheelEvent'
                 event.initWheelEvent(clientEv.type, clientEv.bubbles,
-                                     clientEv.cancelable, null,
+                                     clientEv.cancelable, @browser.window,
                                      clientEv.detail, clientEv.screenX,
                                      clientEv.screenY, clientEv.clientX,
                                      clientEv.clientY, clientEv.button,
@@ -48,14 +48,14 @@ class API
             #TODO: figure out how to make this work with JSDOM.
             when 'KeyboardEvent'
                 event.initKeyboardEvent(clientEv.type, clientEv.bubbles,
-                                        clientEv.cancelable, null,
+                                        clientEv.cancelable, @browser.window,
                                         clientEv.char, clientEv.key,
                                         clientEv.location,
                                         clientEv.modifiersList,
                                         clientEv.repeat, clientEv.locale)
             when 'CompositionEvent'
                 event.initCompositionEvent(clientEv.type, clientEv.bubbles,
-                                           clientEv.cancelable, null,
+                                           clientEv.cancelable, @browser.window,
                                            clientEv.data, clientEv.locale)
 
 
@@ -66,7 +66,8 @@ class API
             else
                 throw new Error "target doesn't have 'value' attribute"
         else
-            console.log "Dispatching #{event.type} [#{group}] on #{clientEv.target[@browser.idProp]}"
+            if event.type == 'click'
+                console.log "Dispatching #{event.type} [#{group}] on #{clientEv.target[@browser.idProp]}"
             clientEv.target.dispatchEvent(event)
 
     _buildTables : ->

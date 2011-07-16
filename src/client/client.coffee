@@ -29,20 +29,18 @@ class Client
         document = @document
         propName = @API.nodes.propName
         server = @server
-        MouseEvents = ['click']#, 'mousedown', 'mouseup', 'mouseover',
-                       #'mouseout', 'mousemove']
-        HTMLEvents = []
+        MouseEvents = ['click', 'mousedown', 'mouseup', 'mouseover',
+                       'mouseout', 'mousemove']
         # Note: change is not a standard DOM event, but is supported by all
-        # the browseres.  Eventually, we should use jQuery for this client
-        # side code to normalize event handlers.
-        UIEvents = ['change']
-        #HTMLEvents = ['submit', 'select', 'change', 'reset', 'focus', 'blur',
+        # the browsers.
+        UIEvents = ['change', 'DOMFocusIn', 'DOMFocusOut', 'DOMActivate']
+        HTMLEvents = [] #'submit', 'select', 'change', 'reset', 'focus', 'blur',
         #              'resize', 'scroll']
-        #UIEvents = ['DOMFocusIn', 'DOMFocusOut', 'DOMActivate']
         [MouseEvents, HTMLEvents, UIEvents].forEach (group) ->
             group.forEach (eventType) ->
                 document.addEventListener eventType, (event) ->
-                    console.log "#{event.type} #{event.target[propName]}"
+                    if eventType == 'click'
+                        console.log "#{event.type} #{event.target[propName]}"
                     event.stopPropagation()
                     event.preventDefault()
                     ev = {}

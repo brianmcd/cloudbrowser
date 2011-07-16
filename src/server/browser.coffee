@@ -29,7 +29,7 @@ class Browser
     createWindow : (source) ->
         document = @jsdom.jsdom(false, null, {url: source})
         document[@idProp] = '#document'
-        window = document.createWindow()
+        window = document.parentWindow
         window.document = document
 
         # Thanks to Zombie.js for the window context and this set up code
@@ -113,6 +113,8 @@ class Browser
                 @broadcastUpdate 'DOMPropertyUpdate', params
 
     syncAllClients : ->
+        if @clients.length == 0 && @connQ.length == 0
+            return
         @clients = @clients.concat(@connQ)
         @connQ = []
         syncCmds = @docToInstructions()
@@ -124,6 +126,8 @@ class Browser
     # connected.
     clearConnQ : ->
         console.log "Clearing connQ"
+        if @connQ.length == 0
+            return
         syncCmds = @docToInstructions()
         for client in @connQ
             console.log "Syncing a client"
@@ -189,6 +193,21 @@ class Browser
     _cmdsForDocument : (node) ->
         [MessagePeer.createMessage 'assignDocumentEnvID', '#document']
 
+    _cmdsForComment : (node) ->
+        cmds = []
+        cmds.push MessagePeer.createMessage 'DOMUpdate',
+            targetID : '#document'
+            rvID : node[@idProp]
+            method : 'createComment'
+            args : [node.data]
+        cmds.push MessagePeer.createMessage 'DOMUpdate',
+            targetID : node.parentNode[@idProp]
+            rvID : null
+            method : 'appendChild'
+            args : [node[@idProp]]
+        return cmds
+
+    # TODO: re-write absolute URLs to go through our resource proxy as well.
     _cmdsForElement : (node) ->
         cmds = []
         cmds.push MessagePeer.createMessage 'DOMUpdate',
@@ -198,11 +217,22 @@ class Browser
             args : [node.tagName]
         if node.attributes && (node.attributes.length > 0)
             for attr in node.attributes
+                name = attr.name
+                value = attr.value
+                # For now, we aren't re-writing absolute URLs.  These will
+                # still hit the original server.  TODO: fix this.
+                if (name.toLowerCase() == 'src') && !(/^http/.test(value))
+                    console.log "Before: src=#{value}"
+                    #TODO: need to store the URL we're accessed by somewhere
+                    #      and use that instead of localhost.
+                    value = value.replace(/\.\./g, 'dotdot')
+                    #value = "http://localhost:3000/browsers/#{@id}/#{value}"
+                    console.log "After: src=#{value}"
                 cmds.push MessagePeer.createMessage 'DOMUpdate',
                     targetID : node[@idProp]
                     rvID : null
                     method : 'setAttribute',
-                    args : [attr.name, attr.value]
+                    args : [name, value]
 
         cmds.push MessagePeer.createMessage 'DOMUpdate',
             targetID : node.parentNode[@idProp]
