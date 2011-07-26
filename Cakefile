@@ -72,7 +72,7 @@ copyJS = (callback) ->
                         log stdout, green
                     onerror err
                     if ++count == JS_FILES.length
-                        callback()
+                        callback() if callback?
                 
 build = ->
     log "Compiling CoffeeScript to JavaScript ...", green
@@ -80,9 +80,7 @@ build = ->
         onerror err
         if stdout != ""
             log stdout, green
-        copyJS ->
-            log "Compiling native extension ...", green
-            exec "node-waf configure build", onerror
+        copyJS()
 
 task "build", "Compile CoffeeScript to JavaScript", -> build()
 
@@ -94,7 +92,7 @@ task "watch", "Continously compile CoffeeScript to JavaScript", ->
             cmd.on "error", onerror
 
 task "clean", "Remove temporary files and such", ->
-    exec "rm -rf lib/ build/", onerror
+    exec "rm -rf lib/", onerror
 
 ## Testing ##
 runTests = (callback)->
