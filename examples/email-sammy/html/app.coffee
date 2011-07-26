@@ -86,8 +86,8 @@ app = Sammy '#main', ->
             $('#box-list').append(html)
 
             if info.children?
-                for name, info of children
-                    renderEntry(name, info, level + 1)
+                for cname, cinfo of info.children
+                    renderEntry(cname, cinfo, level + 1)
 
         imap.getBoxes (err, boxes) ->
             if err then throw err
