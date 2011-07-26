@@ -4,7 +4,7 @@ class API
         @_buildTables()
 
     processEvent : (clientEv) =>
-        nodes = @browser.wrapper.nodes
+        nodes = @browser.dom.nodes
         console.log "target: #{clientEv.target}"
         clientEv.target = nodes.get(clientEv.target)
         if clientEv.relatedTarget?

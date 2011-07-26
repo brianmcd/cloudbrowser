@@ -5,8 +5,6 @@ request        = require('request')
 API            = require('./browser_api')
 MessagePeer    = require('../shared/message_peer')
 JSDOMWrapper   = require('./jsdom_wrapper')
-WindowContext  = require('../../build/default/window_context').WindowContext
-XMLHttpRequest = require('./XMLHttpRequest').XMLHttpRequest
 
 class Browser
     constructor : (browserID, url) ->
@@ -14,69 +12,16 @@ class Browser
         # The API we expose to all connected clients.
         @API = new API(this)
         # JSDOMWrapper adds advice to JSDOM.
-        @wrapper = new JSDOMWrapper(this)
+        @dom = new JSDOMWrapper(this)
         # The name of the property that holds a DOM node's ID.
-        @idProp = @wrapper.nodes.propName
-        # This is the wrapped JSDOM instance
-        @jsdom = @wrapper.jsdom
+        @idProp = @dom.nodes.propName
         # Array of clients waiting for page to load.
         @connQ = []
         # Array of currently connected Socket.io clients.
         @clients = []
         @load url if url?
 
-    # TODO: remove source param and create document later
-    createWindow : (source) ->
-        document = @jsdom.jsdom(false, null, {url: source})
-        document[@idProp] = '#document'
-        window = document.parentWindow
-        window.document = document
-
-        # Thanks to Zombie.js for the window context and this set up code
-        context = new WindowContext(window)
-        window._evaluate = (code, filename) -> context.evaluate(code, filename)
-        window.JSON = JSON
-        # Thanks Zombie for Image code 
-        self = this
-        window.Image = (width, height) ->
-            img = new self.wrapper.jsdom
-                                  .dom
-                                  .level3
-                                  .core.HTMLImageElement(window.document)
-            img.width = width
-            img.height = height
-            img
-        window.XMLHttpRequest = XMLHttpRequest
-        window.browser = this
-        window.console = console
-        window.require = require
-        window.__defineGetter__ 'location', -> @__location
-        window.__defineSetter__ 'location', (loc) ->
-            parsed = URL.parse(loc)
-            oldbase = @__location.href
-            if /#/.test(@__location.href)
-                oldbase = @__location.href.match("(.*)#")[1]
-            if /^#/.test(loc)  || loc.match("^#{oldbase}#")
-                @__location = URL.parse(oldbase + parsed.hash)
-                event = this.document.createEvent('HTMLEvents')
-                event.initEvent("hashchange", true, false)
-                # Ideally, we'd set oldurl and newurl, but Sammy doesn't
-                # rely on it so skipping that for now.
-                this.dispatchEvent(event)
-                return loc
-            # else, populate the parsed URL object with values from current
-            # location in case of relative URLs, then load the new page.
-            host = parsed.host || @__location.host
-            protocol = parsed.protocol || @__location.protocol
-            pathname = parsed.pathname
-            if pathname.charAt(0) != '/'
-                pathname = '/' + pathname
-            search = parsed.search || ''
-            hash = parsed.hash || ''
-            toload = "#{protocol}//#{host}#{pathname}#{search}#{hash}"
-            @browser.load(toload)
-        return window
-
+    # TODO: remove this in favor of window.location.
     load : (source) ->
         console.log "About to make request to: #{source}"
         request {uri: source}, (err, response, body) =>
@@ -84,10 +29,10 @@ class Browser
             console.log "Request succeeded"
             # Don't send updates to clients while we build the initial DOM
             # Not doing this causes issues on subsequent page loads
-            @wrapper.removeAllListeners 'DOMUpdate'
-            @wrapper.removeAllListeners 'DOMPropertyUpdate'
+            @dom.removeAllListeners 'DOMUpdate'
+            @dom.removeAllListeners 'DOMPropertyUpdate'
 
-            @window = @createWindow(source)
+            @window = @dom.createWindow(source)
             document = @window.document
             loc = URL.parse(source)
             # Make sure all expected properties exist.  Node doesn't populate
@@ -107,12 +52,12 @@ class Browser
             @syncAllClients()
             # Each advice function emits the DOMUpdate or DOMPropertyUpdate 
             # event, which we want to echo to all connected clients.
-            @wrapper.on 'DOMUpdate', (params) =>
+            @dom.on 'DOMUpdate', (params) =>
                 @broadcastUpdate 'DOMUpdate', params
-            @wrapper.on 'DOMPropertyUpdate', (params) =>
+            @dom.on 'DOMPropertyUpdate', (params) =>
                 @broadcastUpdate 'DOMPropertyUpdate', params
 
-    syncAllClients : ->
+    syncAllClients : () ->
         if @clients.length == 0 && @connQ.length == 0
             return
         @clients = @clients.concat(@connQ)

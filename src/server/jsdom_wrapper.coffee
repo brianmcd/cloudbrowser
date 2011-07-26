@@ -1,4 +1,5 @@
 URL                  = require('url')
+XMLHttpRequest       = require('./XMLHttpRequest').XMLHttpRequest
 TaggedNodeCollection = require('../shared/tagged_node_collection')
 EventEmitter         = require('events').EventEmitter
 
@@ -24,17 +25,73 @@ class JSDOMWrapper extends EventEmitter
             ProcessExternalResources : ['script', 'frame', 'iframe']
             MutationEvents : '2.0'
             QuerySelector : false
-        toWrap = @createWrappedObjectList(@jsdom.dom.level3.html)
-        @wrapDOM(toWrap, @jsdom.dom.level3.html)
-        @addDefaultHandlers(@jsdom.dom.level3.core)
-        @setLanguageProcessor(@jsdom.dom.level3.core)
-        @fixDocumentClose(@jsdom.dom.level3.core)
+        @augmentJSDOM(@jsdom)
+
+    # Creates a window with an empty document.
+    createWindow : (source) ->
+        # Create an empty document
+        document = @jsdom.jsdom(false, null, {url: source})
+        document[@nodes.propName] = '#document'
+
+        # Grab JSDOM's window, so we can augment it.
+        window = document.parentWindow
+        window.JSON = JSON
+        # Thanks Zombie for Image code 
+        self = this
+        window.Image = (width, height) ->
+            img = new self.dom.jsdom
+                              .dom
+                              .level3
+                              .core.HTMLImageElement(window.document)
+            img.width = width
+            img.height = height
+            img
+        window.XMLHttpRequest = XMLHttpRequest
+        window.browser = @browser
+        window.console = console
+        window.require = require
+        window.__proto__.__defineGetter__ 'location',  () -> @__location
+        window.__proto__.__defineSetter__ 'location', (loc) ->
+            console.log "Inside location Setter"
+            parsed = URL.parse(loc)
+            oldbase = window.__location.href
+            if /#/.test(window.__location.href)
+                oldbase = window.__location.href.match("(.*)#")[1]
+            if /^#/.test(loc)  || loc.match("^#{oldbase}#")
+                window.__location = URL.parse(oldbase + parsed.hash)
+                event = this.document.createEvent('HTMLEvents')
+                event.initEvent("hashchange", true, false)
+                # Ideally, we'd set oldurl and newurl, but Sammy doesn't
+                # rely on it so skipping that for now.
+                window.dispatchEvent(event)
+                return loc
+            # else, populate the parsed URL object with values from current
+            # location in case of relative URLs, then load the new page.
+            host = parsed.host || window.__location.host
+            protocol = parsed.protocol || window.__location.protocol
+            pathname = parsed.pathname
+            if pathname.charAt(0) != '/'
+                pathname = '/' + pathname
+            search = parsed.search || ''
+            hash = parsed.hash || ''
+            toload = "#{protocol}//#{host}#{pathname}#{search}#{hash}"
+            window.browser.load(toload)
+        return window
+
+    augmentJSDOM : (jsdom) ->
+        toWrap = @createWrappedObjectList(jsdom.dom.level3.html)
+        @wrapDOM(toWrap, jsdom.dom.level3.html)
+        @addDefaultHandlers(jsdom.dom.level3.core)
+        @fixDocumentClose(jsdom.dom.level3.core)
+
+    # NOTE: all of the methods below augment or fix issues in JSDOM.
 
     addDefaultHandlers : (core) ->
-        browser = @browser
         core.HTMLAnchorElement.prototype._eventDefaults =
             click : (event) ->
-                browser.window.location = event.target.href if event.target.href
+                console.log "Inside default click handler"
+                window = event.target.ownerDocument.parentWindow
+                window.location = event.target.href if event.target.href?
         core.HTMLInputElement.prototype._eventDefaults =
             click : (event) ->
                 console.log "Inside overridden click handler"
@@ -52,19 +109,6 @@ class JSDOMWrapper extends EventEmitter
                 ev.initEvent('load', false, false)
                 @defaultView.dispatchEvent(ev)
             f(null, true)
-
-    setLanguageProcessor : (core) ->
-        core.languageProcessors =
-            javascript : (element, code, filename) ->
-                window = element.ownerDocument.parentWindow
-                try
-                    console.log "Evaluating: #{filename}"
-                    window._evaluate code, filename
-                    console.log "Script succeeded"
-                catch e
-                    console.log "Script failed: #{e}"
-                    console.log e
-                    console.log e.stack
 
     wrapDOM : (toWrap, dom) ->
         isDOMNode = (node) ->
