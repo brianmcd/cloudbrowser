@@ -226,11 +226,9 @@
    // Bypass the `window.location.hash` attribute.  If a question mark
     // appears in the hash IE6 will strip it and all of the following
     // characters from `window.location.hash`.
-    // McD - commented out below code to use location.hash directly.
-    //var matches = location_obj.toString().match(/^[^#]*(#.+)$/);
-    //var hash = matches ? matches[1] : '';
-    //return [location_obj.pathname, location_obj.search, hash].join('');
-    return [location_obj.pathname, location_obj.hash].join('');
+    var matches = location_obj.toString().match(/^[^#]*(#.+)$/);
+    var hash = matches ? matches[1] : '';
+    return [location_obj.pathname, location_obj.search, hash].join('');
   };
   Sammy.DefaultLocationProxy.prototype = {
 
