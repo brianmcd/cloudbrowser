@@ -19,43 +19,35 @@ class Browser
         @connQ = []
         # Array of currently connected Socket.io clients.
         @clients = []
-        @load url if url?
+        @load(url) if url?
 
-    # TODO: remove this in favor of window.location.
-    load : (source) ->
-        console.log "About to make request to: #{source}"
-        request {uri: source}, (err, response, body) =>
-            throw new Error(err) if err
+    load : (url) ->
+        console.log "Loading: #{url}"
+        request {uri: url}, (err, response, body) =>
+            throw err if err
             console.log "Request succeeded"
-            # Don't send updates to clients while we build the initial DOM
-            # Not doing this causes issues on subsequent page loads
-            @dom.removeAllListeners 'DOMUpdate'
-            @dom.removeAllListeners 'DOMPropertyUpdate'
-
-            @window = @dom.createWindow(source)
+            @pauseClientUpdates()
+            @window = @dom.createWindow(url)
+            @window.location = url
+            # TODO TODO add document.location to jsdom patches
             document = @window.document
-            loc = URL.parse(source)
-            # Make sure all expected properties exist.  Node doesn't populate
-            # properties that aren't in the original URL string.  jQuery tests
-            # and presumably other scripts expect these to be defined.
-            loc.hash = "" unless loc.hash?
-            loc.port = 80 unless loc.port?
-            loc.protocol = 'http:' unless loc.protocol?
-            loc.search = "" unless loc.search?
-
-            @window.__location = loc
-            # TODO: handle document.location setter
-            document.location = loc
             document.open()
             document.write body
             document.close()
-            @syncAllClients()
-            # Each advice function emits the DOMUpdate or DOMPropertyUpdate 
-            # event, which we want to echo to all connected clients.
-            @dom.on 'DOMUpdate', (params) =>
-                @broadcastUpdate 'DOMUpdate', params
-            @dom.on 'DOMPropertyUpdate', (params) =>
-                @broadcastUpdate 'DOMPropertyUpdate', params
+            @resumeClientUpdates()
+
+    pauseClientUpdates : () ->
+        @dom.removeAllListeners 'DOMUpdate'
+        @dom.removeAllListeners 'DOMPropertyUpdate'
+
+    resumeClientUpdates : () ->
+        @syncAllClients()
+        # Each advice function emits the DOMUpdate or DOMPropertyUpdate 
+        # event, which we want to echo to all connected clients.
+        @dom.on 'DOMUpdate', (params) =>
+            @broadcastUpdate 'DOMUpdate', params
+        @dom.on 'DOMPropertyUpdate', (params) =>
+            @broadcastUpdate 'DOMPropertyUpdate', params
 
     syncAllClients : () ->
         if @clients.length == 0 && @connQ.length == 0

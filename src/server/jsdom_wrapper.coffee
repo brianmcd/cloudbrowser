@@ -2,6 +2,7 @@ URL                  = require('url')
 XMLHttpRequest       = require('./XMLHttpRequest').XMLHttpRequest
 TaggedNodeCollection = require('../shared/tagged_node_collection')
 EventEmitter         = require('events').EventEmitter
+Location             = require('./location')
 
 # JSDOMWrapper.jsdom returns the wrapped JSDOM object.
 # Adds advice and utility methods.
@@ -50,32 +51,11 @@ class JSDOMWrapper extends EventEmitter
         window.browser = @browser
         window.console = console
         window.require = require
-        window.__proto__.__defineGetter__ 'location',  () -> @__location
-        window.__proto__.__defineSetter__ 'location', (loc) ->
-            console.log "Inside location Setter"
-            parsed = URL.parse(loc)
-            oldbase = window.__location.href
-            if /#/.test(window.__location.href)
-                oldbase = window.__location.href.match("(.*)#")[1]
-            if /^#/.test(loc)  || loc.match("^#{oldbase}#")
-                window.__location = URL.parse(oldbase + parsed.hash)
-                event = this.document.createEvent('HTMLEvents')
-                event.initEvent("hashchange", true, false)
-                # Ideally, we'd set oldurl and newurl, but Sammy doesn't
-                # rely on it so skipping that for now.
-                window.dispatchEvent(event)
-                return loc
-            # else, populate the parsed URL object with values from current
-            # location in case of relative URLs, then load the new page.
-            host = parsed.host || window.__location.host
-            protocol = parsed.protocol || window.__location.protocol
-            pathname = parsed.pathname
-            if pathname.charAt(0) != '/'
-                pathname = '/' + pathname
-            search = parsed.search || ''
-            hash = parsed.hash || ''
-            toload = "#{protocol}//#{host}#{pathname}#{search}#{hash}"
-            window.browser.load(toload)
+        window.__proto__.__defineGetter__ 'location', () -> @__location
+        browser = @browser
+        window.__proto__.__defineSetter__ 'location', (url) ->
+            @__location = new Location(url, window, browser)
+            return url
         return window
 
     augmentJSDOM : (jsdom) ->
