@@ -115,6 +115,7 @@ httpServer = do ->
         catch e
             console.log "browsers.create failed"
             console.log e
+            console.log e.stack
             send500Error(res)
 
     send500Error = (res) ->

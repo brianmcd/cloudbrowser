@@ -29,7 +29,6 @@ class Browser
             @pauseClientUpdates()
             @window = @dom.createWindow(url)
             @window.location = url
-            # TODO TODO add document.location to jsdom patches
             document = @window.document
             document.open()
             document.write body
