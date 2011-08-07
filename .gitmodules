@@ -1,3 +1,0 @@
-[submodule "deps/jsdom"]
-	path = deps/jsdom
-	url = git@theta.cs.vt.edu:jsdom.git
