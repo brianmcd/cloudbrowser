@@ -15,7 +15,7 @@
     },
     "dependencies" : {
         "browserify" : "0.3.1",
-        "express" : "2.3.4",
+        "express" : "2.4.4",
         "jade" : "0.10.7",
         "socket.io" : "0.6.16",
         "request" : "1.9.0",
@@ -23,7 +23,7 @@
         "mime" : "*"
     },
     "devDependencies" : {
-        "expresso" : "0.7.3",
+        "nodeunit" : ">=0.5.x",
         "coffee-script" : "*"
     }
 }
