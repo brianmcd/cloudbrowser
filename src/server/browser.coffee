@@ -3,7 +3,6 @@ path           = require('path')
 URL            = require('url')
 request        = require('request')
 API            = require('./browser_api')
-MessagePeer    = require('../shared/message_peer')
 JSDOMWrapper   = require('./jsdom_wrapper')
 
 class Browser
@@ -17,23 +16,22 @@ class Browser
         @idProp = @dom.nodes.propName
         # Array of clients waiting for page to load.
         @connQ = []
-        # Array of currently connected Socket.io clients.
+        # Array of currently connected DNode clients.
         @clients = []
         @load(url) if url?
 
     load : (url) ->
         console.log "Loading: #{url}"
-        request {uri: url}, (err, response, body) =>
+        request {uri: url}, (err, response, html) =>
             throw err if err
             console.log "Request succeeded"
             @pauseClientUpdates()
-            @window = @dom.createWindow(url)
-            @window.location = url
-            document = @window.document
-            document.open()
-            document.write body
-            document.close()
+            @window = @dom.createWindow(url, html)
+            console.log("document propname: #{@window.document[@dom.nodes.propName]}")
+            @window.document.innerHTML = html
+            @window.document.close()
             @resumeClientUpdates()
+            console.log "Leaving load"
 
     pauseClientUpdates : () ->
         @dom.removeAllListeners 'DOMUpdate'
@@ -55,11 +53,9 @@ class Browser
         @connQ = []
         syncCmds = @docToInstructions()
         for client in @clients
-            client.send(syncCmds)
+            client.clear()
+            client.DOMUpdate(syncCmds)
 
-    # TODO: should we defer creating MessagePeers til here? If we make them
-    # earlier, we'll hook up .on('message') before the client is really
-    # connected.
     clearConnQ : ->
         console.log "Clearing connQ"
         if @connQ.length == 0
@@ -67,27 +63,26 @@ class Browser
         syncCmds = @docToInstructions()
         for client in @connQ
             console.log "Syncing a client"
-            client.send(syncCmds)
+            client.clear()
+            client.DOMUpdate(syncCmds)
             @clients.push(client)
         @connQ = []
 
+    # method - either 'DOMUpdate' or 'DOMPropertyUpdate'.
+    # params - the scrubbed params object.
     broadcastUpdate : (method, params) =>
-        msg = MessagePeer.createMessage(method, params)
-        cmd = JSON.stringify(msg)
         for client in @clients
-            client.sendJSON(cmd)
+            client[method](params)
 
-    addClient : (sock) ->
+    addClient : (client) ->
         console.log "Browser#addClient"
-        client = new MessagePeer(sock, @API)
         if !@window?.document?
             console.log "Queuing client"
             @connQ.push(client)
             return false
         syncCmds = @docToInstructions()
-        client.send(syncCmds)
-        client.sock.on 'disconnect', =>
-            @removeClient(client)
+        client.clear()
+        client.DOMUpdate(syncCmds)
         @clients.push(client)
         return true
 
@@ -97,7 +92,7 @@ class Browser
     docToInstructions : ->
         if !@window.document?
             throw new Error "Called docToInstructions with empty document"
-        syncCmds = [MessagePeer.createMessage('clear')]
+        syncCmds = []
 
         dfs = (node, filter, visit) ->
             if filter(node)
@@ -127,16 +122,15 @@ class Browser
         return syncCmds
 
     _cmdsForDocument : (node) ->
-        [MessagePeer.createMessage 'assignDocumentEnvID', '#document']
 
     _cmdsForComment : (node) ->
         cmds = []
-        cmds.push MessagePeer.createMessage 'DOMUpdate',
+        cmds.push
             targetID : '#document'
             rvID : node[@idProp]
             method : 'createComment'
             args : [node.data]
-        cmds.push MessagePeer.createMessage 'DOMUpdate',
+        cmds.push
             targetID : node.parentNode[@idProp]
             rvID : null
             method : 'appendChild'
@@ -146,7 +140,7 @@ class Browser
     # TODO: re-write absolute URLs to go through our resource proxy as well.
     _cmdsForElement : (node) ->
         cmds = []
-        cmds.push MessagePeer.createMessage 'DOMUpdate',
+        cmds.push
             targetID : '#document'
             rvID : node[@idProp],
             method : 'createElement'
@@ -164,13 +158,13 @@ class Browser
                     value = value.replace(/\.\./g, 'dotdot')
                     #value = "http://localhost:3000/browsers/#{@id}/#{value}"
                     console.log "After: src=#{value}"
-                cmds.push MessagePeer.createMessage 'DOMUpdate',
+                cmds.push
                     targetID : node[@idProp]
                     rvID : null
                     method : 'setAttribute',
                     args : [name, value]
 
-        cmds.push MessagePeer.createMessage 'DOMUpdate',
+        cmds.push
             targetID : node.parentNode[@idProp]
             rvID : null
             method : 'appendChild'
@@ -185,19 +179,19 @@ class Browser
         if node.parentNode == @window.document
             return []
         cmds = []
-        cmds.push MessagePeer.createMessage 'DOMUpdate',
+        cmds.push
             targetID : '#document'
             rvID : node[@idProp]
             method :'createTextNode'
             args : [node.data]
         if node.attributes && node.attributes.length > 0
             for attr in node.attributes
-                cmds.push MessagePeer.createMessage 'DOMUpdate'
+                cmds.push
                     targetID : node[@idProp]
                     rvID : null
                     method : 'setAttribute'
                     args : [attr.name, attr.value]
-        cmds.push MessagePeer.createMessage 'DOMUpdate',
+        cmds.push
             targetID : node.parentNode[@idProp]
             rvID : null
             method : 'appendChild'

@@ -24,17 +24,26 @@ class JSDOMWrapper extends EventEmitter
                 delete reqCache[entry]
         @jsdom = require('jsdom')
         @jsdom.defaultDocumentFeatures =
-            FetchExternalResources : ['script', 'img', 'css', 'frame', 'link']
-            ProcessExternalResources : ['script', 'frame', 'iframe']
-            MutationEvents : '2.0'
-            QuerySelector : false
+                FetchExternalResources : ['script', 'img', 'css', 'frame', 'link']
+                ProcessExternalResources : ['script', 'frame', 'iframe']
+                MutationEvents : '2.0'
+                QuerySelector : false
         addAdvice(@jsdom.dom.level3.html, this)
         applyPatches(@jsdom.dom.level3.core)
 
-    # Creates a window with an empty document.
-    createWindow : (source) ->
+    # Creates a window.
+    createWindow : (url, html) ->
         # Grab JSDOM's window, so we can augment it.
-        window = @jsdom.windowAugmentation(@jsdom.dom.level3.html, {url: source})
+        console.log("url: #{url}")
+        console.log "Before jsdom.jsdom"
+        document = @jsdom.jsdom(false, null, {url:url, deferClose: true})
+        console.log "Before windowAugmentation"
+        window = @jsdom.windowAugmentation(@jsdom.dom.level3.html, {document: document})
+        console.log "After windowAugmentation"
+        window.addEventListener "load", ->
+            console.log "JSDOMWrapper: LOAD FIRED"
+        document.parentWindow = window
+
         window.JSON = JSON
         # Thanks Zombie for Image code 
         self = this
@@ -51,12 +60,11 @@ class JSDOMWrapper extends EventEmitter
         window.console = console
         window.require = require
         window.__defineGetter__ 'location', () -> @__location
-        browser = @browser
         window.__defineSetter__ 'location', (url) ->
-            @__location = new Location(url, window, browser)
+            @__location = new Location(url, window, window.browser)
             return url
 
-        window.document.parentWindow = window.getGlobal()
+        window.location = url
         window.document[@nodes.propName] = '#document'
         return window
 

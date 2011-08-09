@@ -22,7 +22,6 @@ class TaggedNodeCollection
         @ids[node[@propName]] = node
 
     # Substitutes DOM elements in a parameter list with their id.
-    # TODO: rename to scrub
     scrub : (params) ->
         scrubbed = []
         # TODO: scrub recursively into objects

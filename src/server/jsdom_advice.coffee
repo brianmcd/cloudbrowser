@@ -33,8 +33,8 @@ exports.addAdvice = (dom, wrapper) ->
             if isDOMNode(rv) && rv[propName] == undefined
                 nodes.add(rv)
             rvID = if rv? then rv[propName] else null
-            #printMethodCall(this, method, arguments, rvID)
             if !this.tagName? || (this.tagName != 'SCRIPT')
+                #printMethodCall(this, method, arguments, rvID)
                 params =
                     targetID : this[propName]
                     rvID : rvID
@@ -52,12 +52,12 @@ exports.addAdvice = (dom, wrapper) ->
             wrapProperty(obj, prop)
 
 printMethodCall = (node, method, args, rvID) ->
-    args = @nodes.scrub(args)
+    #args = @nodes.scrub(args)
     nodeName = node.name || node.nodeName
     argStr = ""
-    for arg in args
-        argStr += "#{arg}, "
-    argStr = argStr.replace(/,\s$/, '')
+    #for arg in args
+    #    argStr += "#{arg}, "
+    #argStr = argStr.replace(/,\s$/, '')
     console.log "#{rvID} = #{nodeName}.#{method}(#{argStr})"
 
 # TODO: don't build this at runtime.

@@ -5,7 +5,6 @@ path          = require("path")
 stdout        = process.stdout
 
 JS_FILES = [
-    'client/socket.io.js'
     'server/XMLHttpRequest.js'
 ]
 
@@ -74,19 +73,27 @@ copyJS = (callback) ->
                     if ++count == JS_FILES.length
                         callback() if callback?
                 
-build = ->
+build = (callback) ->
     log "Compiling CoffeeScript to JavaScript ...", green
     exec "rm -rf lib/ build/ && coffee -c -l -b -o lib src", (err, stdout)->
         onerror err
         if stdout != ""
             log stdout, green
-        copyJS()
+        copyJS () ->
+            log "Linking tagged_node_collection.js", green
+            src = path.join(__dirname, 'lib', 'shared', 'tagged_node_collection.js')
+            dest = path.join(__dirname, 'lib', 'client', 'tagged_node_collection.js')
+            exec "ln -s #{src} #{dest}", (err, stdout) ->
+                onerror err
+                if stdout != ""
+                    log stdout, green
+                callback() if callback
 
 task "build", "Compile CoffeeScript to JavaScript", -> build()
 
 task "watch", "Continously compile CoffeeScript to JavaScript", ->
     exec "rm -rf lib", (err, stdout) ->
-        copyJS ->
+        build ->
             cmd = spawn("coffee", ["-cwb", "-o", "lib", "src"])
             cmd.stdout.on "data", (data)-> process.stdout.write green + data + reset
             cmd.on "error", onerror

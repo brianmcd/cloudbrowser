@@ -7,9 +7,9 @@ http            = require('http')
 URL             = require('url')
 path            = require('path')
 BrowserManager  = require('./browser_manager')
-Browserify      = require('browserify')
-IO              = require('socket.io')
 eco             = require('eco')
+Browserify      = require('browserify')
+DNodeServer     = require('./dnode_server')
 
 # So that developer code can require modules in its own node_modules folder.
 require.paths.unshift path.join(process.cwd(), "node_modules")
@@ -23,11 +23,11 @@ httpServer = do ->
     server.configure () ->
         server.use express.logger()
         server.use Browserify
-            base : [
-                path.join(__dirname, '..', 'client')
-                path.join(__dirname, '..', 'shared')
+            mount : '/bootstrap.js',
+            require : [
+                'dnode'
+                path.join(__dirname, '..', 'client', 'dnode_client')
             ]
-            mount : '/browserify.js'
         server.use express.bodyParser()
         server.use express.cookieParser()
         server.use express.session
@@ -60,13 +60,11 @@ httpServer = do ->
         resource = resource.replace(/dotdot/g, '..')
         console.log "[bid=#{req.params.browserid}] Proxying request for: #{resource}"
         browsers.find decodeURIComponent(req.params.browserid), (browser) ->
-            baseurl = path.dirname(browser.window.document.URL)
-            resurl = baseurl + '/' + resource
-            type = mime.lookup(resurl)
-            console.log "baseurl: #{baseurl}"
+            url = URL.resolve(browser.window.document.URL, resource)
+            console.log "Fetching from: #{url}"
+            type = mime.lookup(url)
             console.log "MIME type: #{type}"
-            console.log "resurl: #{resurl}"
-            theurl = URL.parse(resurl)
+            theurl = URL.parse(url)
             theurl.search = theurl.search || ""
             theurl.port = theurl.port || 80
             opts =
@@ -128,6 +126,9 @@ httpServer = do ->
 
     server
 
+# Create the DNode server
+DNodeServer(httpServer, browsers)
+
 # The internal HTTP server used to serve pages to Browser Instances
 do ->
     server = express.createServer()
@@ -138,27 +139,3 @@ do ->
     server.listen 3001, ->
         console.log 'Internal HTTP server listening on port 3001 [TODO: remove this].'
 
-# The Socket.IO server (which piggybacks off of the express front end server)
-do ->
-    numCurrentUsers = 0
-    numConnections = 0
-    server = IO.listen(httpServer) # Attach to our express server.
-    server.on 'connection', (client) =>
-        ++numCurrentUsers
-        ++numConnections
-
-        console.log "A new client connected.  [#{numCurrentUsers}" +
-                    " connected users, #{numConnections}" +
-                    ' total connections]'
-
-        client.once 'message', (browserID) =>
-            # First msg should be the client's browserID
-            console.log("Socket.io client handshake: #{browserID}")
-            # Look up the client's BrowserInstance
-            browsers.find decodeURIComponent(browserID), (browser) ->
-                # clientConnected processes client's messages.
-                browser.addClient(client)
-
-        client.on 'disconnect', (msg) =>
-            --numCurrentUsers
-            console.log 'Client disconnected.'
