@@ -40,10 +40,18 @@ class Location
     
     # Main navigation function, loads the page for the current location.
     reload : () ->
+        oldURL = @window.document.URL
+        if /\/$/.test(oldURL)
+            oldURL = oldURL.slice(0, oldURL.length - 1)
+        newURL = @parsed.href
+        if /\/$/.test(newURL)
+            newURL = newURL.slice(0, newURL.length - 1)
+        console.log "In reload: old url = #{oldURL} new url=#{newURL}"
         # Only load if the requested page is different.
         # This way, we can set window.location on the initial page without
         # entering an infinite loop.
-        if @parsed.href != @window.document.URL
+        if oldURL != newURL
+            console.log "old != new, loading page"
             #TODO: this breaks with pages that are loaded with a # from the start.
 
             # Check for hashchange
