@@ -2,14 +2,11 @@ assert         = require('assert')
 path           = require('path')
 URL            = require('url')
 request        = require('request')
-API            = require('./browser_api')
 JSDOMWrapper   = require('./jsdom_wrapper')
 
 class Browser
     constructor : (browserID, url) ->
         @id = browserID
-        # The API we expose to all connected clients.
-        @API = new API(this)
         # JSDOMWrapper adds advice to JSDOM.
         @dom = new JSDOMWrapper(this)
         # The name of the property that holds a DOM node's ID.
@@ -20,6 +17,7 @@ class Browser
         @clients = []
         @load(url) if url?
 
+    # TODO: need to clear out old TaggedNodeCollection
     load : (url) ->
         console.log "Loading: #{url}"
         request {uri: url}, (err, response, html) =>
@@ -93,19 +91,25 @@ class Browser
         if !@window.document?
             throw new Error "Called docToInstructions with empty document"
         syncCmds = []
+        syncCmds.push
+            targetID : null
+            rvID : null
+            method : 'tagDocument'
+            args : [@window.document[@idProp]]
 
+        self = this
         dfs = (node, filter, visit) ->
             if filter(node)
                 visit(node)
-                if node.hasChildNodes()
+                tagName = node.tagName?.toUpperCase()
+                # TODO need to handle dynamically generated frames and iframes
+                if (tagName == 'IFRAME') || (tagName == 'FRAME')
+                    dfs(node.contentDocument, filter, visit)
+                else if node.hasChildNodes()
                     for childNode in node.childNodes
                         dfs(childNode, filter, visit)
         filter = (node) ->
             name = node.tagName
-            # TODO FIXME
-            # Actually, do I need to create these, but just without src?
-            # Programmer could use DOM methods to manipulate these nodes,
-            # which don't exist on the client.
             if name? && (name == 'SCRIPT')
                 return false
             return true
@@ -119,14 +123,21 @@ class Browser
             cmds = self[method](node); # returns an array of cmds
             if (cmds != undefined)
                 syncCmds = syncCmds.concat(cmds)
+
         return syncCmds
 
-    _cmdsForDocument : (node) ->
+    _cmdsForDocument : (node) -> []
+    ###
+        if node[@idProp] == undefined
+            console.log "Tagging a document"
+            @dom.nodes.add(node)
+        return []
+    ###
 
     _cmdsForComment : (node) ->
         cmds = []
         cmds.push
-            targetID : '#document'
+            targetID : node.ownerDocument[@idProp]
             rvID : node[@idProp]
             method : 'createComment'
             args : [node.data]
@@ -141,7 +152,7 @@ class Browser
     _cmdsForElement : (node) ->
         cmds = []
         cmds.push
-            targetID : '#document'
+            targetID : node.ownerDocument[@idProp]
             rvID : node[@idProp],
             method : 'createElement'
             args : [node.tagName]
@@ -149,14 +160,13 @@ class Browser
             for attr in node.attributes
                 name = attr.name
                 value = attr.value
+                if ((node.tagName?.toLowerCase() == 'iframe') && (name.toLowerCase() == 'src'))
+                   continue
                 # For now, we aren't re-writing absolute URLs.  These will
                 # still hit the original server.  TODO: fix this.
                 if (name.toLowerCase() == 'src') && !(/^http/.test(value))
                     console.log "Before: src=#{value}"
-                    #TODO: need to store the URL we're accessed by somewhere
-                    #      and use that instead of localhost.
                     value = value.replace(/\.\./g, 'dotdot')
-                    #value = "http://localhost:3000/browsers/#{@id}/#{value}"
                     console.log "After: src=#{value}"
                 cmds.push
                     targetID : node[@idProp]
@@ -169,6 +179,13 @@ class Browser
             rvID : null
             method : 'appendChild'
             args : [node[@idProp]]
+        if node.tagName?.toLowerCase() == 'iframe'
+            @dom.nodes.add(node.contentDocument)
+            cmds.push
+                targetID : node[@idProp]
+                rvID : null
+                method : 'tagDocument'
+                args : [node.contentDocument[@idProp]]
         return cmds
 
     _cmdsForText : (node) ->
@@ -176,11 +193,11 @@ class Browser
         # child nodes: the HTML element and a Text element.  We get a
         # HIERARCHY_REQUEST_ERR in the client browser if we try to insert a
         # Text node as the child of the Document
-        if node.parentNode == @window.document
+        if node.parentNode.nodeType == 9 # Document
             return []
         cmds = []
         cmds.push
-            targetID : '#document'
+            targetID : node.ownerDocument[@idProp]
             rvID : node[@idProp]
             method :'createTextNode'
             args : [node.data]

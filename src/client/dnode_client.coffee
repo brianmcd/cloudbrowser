@@ -1,9 +1,7 @@
-module.exports = () ->
-    DNode = require('dnode')
-    TaggedNodeCollection = require('./tagged_node_collection')
-    console.log DNode
-    console.log TaggedNodeCollection
+DNode = require('dnode')
+TaggedNodeCollection = require('./tagged_node_collection')
 
+module.exports = () ->
     nodes = new TaggedNodeCollection()
     propName = nodes.propName
 
@@ -19,16 +17,39 @@ module.exports = () ->
         #   'rvID'
         #   'targetID'
         #   'args'
+        #TODO: Need to have a "batch proces function".  Need to add "TagDocument"
+        # TODO: clear needs to be able to be called on a certain document.
         @DOMUpdate = (params) ->
             processInstruction = (inst) ->
+                # SPECIAL CASE
+                # TODO: this is a quick hack.
+                # TODO: need to add a DNode endpoint that takes batch instructions and calls DOMUpdate/DOMPropertyUpdate/clear correctly.
+                if inst.method == 'tagDocument'
+                    if inst.targetID == null
+                        nodes.add(window.document, inst.args[0])
+                    else
+                        target = nodes.get(inst.targetID)
+                        nodes.add(target.contentDocument, inst.args[0])
+                        # TODO THIS IS A HACK
+                        doc = target.contentDocument
+                        while doc.hasChildNodes()
+                            doc.removeChild(doc.firstChild)
+                    return
+
                 target = nodes.get(inst.targetID)
                 method = inst.method
                 rvID = inst.rvID
                 args = nodes.unscrub(inst.args)
+
                 if target[method] == undefined
                     throw new Error "Tried to process an invalid method: #{method}"
 
-                rv = target[method].apply(target, args)
+                try
+                    rv = target[method].apply(target, args)
+                catch e
+                    console.log e
+                    throw e
+
                 if rv == undefined
                     return
 
@@ -58,7 +79,7 @@ module.exports = () ->
             while document.hasChildNodes()
                 document.removeChild(document.firstChild)
             nodes = new TaggedNodeCollection()
-            nodes.add(document, '#document')
+            #nodes.add(document, '#document')
 
         # startEvents 
         do ->

@@ -107,4 +107,11 @@ module.exports = (httpServer, browsers) ->
 
         # Have to return this here because of coffee script.
         undefined
-    server.listen httpServer
+
+    if process.env.TESTS_RUNNING
+        console.log("DNode server running in test mode")
+        # For testing, we just listen on a TCP port so we don't have to worry
+        # about running socket.io client in node.
+        server.listen(3002)
+    else
+        server.listen(httpServer)

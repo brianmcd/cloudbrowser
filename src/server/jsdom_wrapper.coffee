@@ -24,7 +24,7 @@ class JSDOMWrapper extends EventEmitter
                 delete reqCache[entry]
         @jsdom = require('jsdom')
         @jsdom.defaultDocumentFeatures =
-                FetchExternalResources : ['script', 'img', 'css', 'frame', 'link']
+                FetchExternalResources : ['script', 'img', 'css', 'frame', 'link', 'iframe']
                 ProcessExternalResources : ['script', 'frame', 'iframe']
                 MutationEvents : '2.0'
                 QuerySelector : false
@@ -32,21 +32,17 @@ class JSDOMWrapper extends EventEmitter
         applyPatches(@jsdom.dom.level3.core)
 
     # Creates a window.
-    createWindow : (url, html) ->
+    createWindow : (url) ->
         # Grab JSDOM's window, so we can augment it.
         console.log("url: #{url}")
-        console.log "Before jsdom.jsdom"
         document = @jsdom.jsdom(false, null, {url:url, deferClose: true})
-        console.log "Before windowAugmentation"
         window = @jsdom.windowAugmentation(@jsdom.dom.level3.html, {document: document})
-        console.log "After windowAugmentation"
-        window.addEventListener "load", ->
-            console.log "JSDOMWrapper: LOAD FIRED"
         document.parentWindow = window
 
         window.JSON = JSON
         # Thanks Zombie for Image code 
         self = this
+        # TODO: move this into JSDOM, or, why are we not using JSDOM's?
         window.Image = (width, height) ->
             img = new self.dom.jsdom
                               .dom
@@ -61,11 +57,14 @@ class JSDOMWrapper extends EventEmitter
         window.require = require
         window.__defineGetter__ 'location', () -> @__location
         window.__defineSetter__ 'location', (url) ->
+            # TODO: should Location object emit an event to communicate with Location
+            #       then location can take oldurl and newurl from here, so those are the only
+            #       depedencies (easier to test)
             @__location = new Location(url, window, window.browser)
             return url
 
         window.location = url
-        window.document[@nodes.propName] = '#document'
+        @browser.dom.nodes.add(window.document)
         return window
 
 module.exports = JSDOMWrapper

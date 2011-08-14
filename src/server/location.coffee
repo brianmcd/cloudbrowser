@@ -1,5 +1,4 @@
 URL = require('url')
-request = require('request') # TODO: eliminate this dependency
 
 # Partial implementation of w3c Location class:
 # See: http://dev.w3.org/html5/spec/Overview.html#the-location-interface

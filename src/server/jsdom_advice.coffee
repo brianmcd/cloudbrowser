@@ -1,3 +1,4 @@
+#TODO: this can't be so generic.  for example, we can't allow setting src on iframes or scripts, or dynamically creating scripts in client.
 exports.addAdvice = (dom, wrapper) ->
     isDOMNode = (node) ->
         node? &&
@@ -22,6 +23,7 @@ exports.addAdvice = (dom, wrapper) ->
                     targetID : this[propName]
                     prop : prop
                     value : value
+                console.log(params)
                 wrapper.emit 'DOMPropertyUpdate', params
             return rv
 
@@ -33,7 +35,17 @@ exports.addAdvice = (dom, wrapper) ->
             if isDOMNode(rv) && rv[propName] == undefined
                 nodes.add(rv)
             rvID = if rv? then rv[propName] else null
-            if !this.tagName? || (this.tagName != 'SCRIPT')
+            if (method == 'createElement' && arguments[0].toLowerCase() == 'iframe')
+                return rv
+            # TODO: this is terrible
+            if ((method == 'setAttribute' || method == 'createAttribute') && (arguments[0].toLowerCase() == 'src'))
+                # TODO: this will mess up images.  need to only disallow for frames/iframes
+                # TODO: these special cases are awful here.
+                console.log "SKIPPING SETATTRIBUTE SRC"
+                return rv
+            if (rv && rv.tagName? && (rv.tagName.toUpperCase() == 'SCRIPT'))
+                return rv
+            if !this.tagName? || (this.tagName.toUpperCase() != 'SCRIPT')
                 #printMethodCall(this, method, arguments, rvID)
                 params =
                     targetID : this[propName]
@@ -41,6 +53,7 @@ exports.addAdvice = (dom, wrapper) ->
                     method : method
                     args : nodes.scrub(arguments)
                 # TODO: Change event name to show that this is a method, not prop
+                console.log params
                 wrapper.emit 'DOMUpdate', params
             return rv
 
@@ -99,7 +112,7 @@ createWrappedObjectList = (dom) ->
     # Level 2 HTML
     list.push
         object     : dom.HTMLDocument.prototype
-        properties : ['title', 'cookie']
+        properties : ['title', 'cookie'] # TODO: how to handle cookie?
         # TODO: JSDOM is missing 'body' setter for HTMLDocument
     list.push
         object     : dom.HTMLElement.prototype
