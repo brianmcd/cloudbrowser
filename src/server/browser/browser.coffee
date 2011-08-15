@@ -2,15 +2,14 @@ assert         = require('assert')
 path           = require('path')
 URL            = require('url')
 request        = require('request')
-JSDOMWrapper   = require('./jsdom_wrapper')
+DOM            = require('../dom')
+# TODO: attach "serialize" method to DOM
+domToCommands  = require('../dom/serializer').domToCommands
 
 class Browser
     constructor : (browserID, url) ->
         @id = browserID
-        # JSDOMWrapper adds advice to JSDOM.
-        @dom = new JSDOMWrapper(this)
-        # The name of the property that holds a DOM node's ID.
-        @idProp = @dom.nodes.propName
+        @dom = new DOM(this)
         # Array of clients waiting for page to load.
         @connQ = []
         # Array of currently connected DNode clients.
@@ -25,7 +24,7 @@ class Browser
             console.log "Request succeeded"
             @pauseClientUpdates()
             @window = @dom.createWindow(url, html)
-            console.log("document propname: #{@window.document[@dom.nodes.propName]}")
+            console.log("document propname: #{@window.document.__nodeID}")
             @window.document.innerHTML = html
             @window.document.close()
             @resumeClientUpdates()
@@ -49,7 +48,7 @@ class Browser
             return
         @clients = @clients.concat(@connQ)
         @connQ = []
-        syncCmds = @docToInstructions()
+        syncCmds = domToCommands(@window.document)
         for client in @clients
             client.clear()
             client.DOMUpdate(syncCmds)
@@ -58,7 +57,7 @@ class Browser
         console.log "Clearing connQ"
         if @connQ.length == 0
             return
-        syncCmds = @docToInstructions()
+        syncCmds = domToCommands(@window.document)
         for client in @connQ
             console.log "Syncing a client"
             client.clear()
@@ -78,7 +77,7 @@ class Browser
             console.log "Queuing client"
             @connQ.push(client)
             return false
-        syncCmds = @docToInstructions()
+        syncCmds = domToCommands(@window.document)
         client.clear()
         client.DOMUpdate(syncCmds)
         @clients.push(client)
@@ -86,148 +85,5 @@ class Browser
 
     removeClient : (client) ->
         @clients = (c for c in @clients when c != client)
-
-    docToInstructions : ->
-        if !@window.document?
-            throw new Error "Called docToInstructions with empty document"
-        syncCmds = []
-        syncCmds.push
-            targetID : null
-            rvID : null
-            method : 'tagDocument'
-            args : [@window.document[@idProp]]
-
-        self = this
-        dfs = (node, filter, visit) ->
-            if filter(node)
-                visit(node)
-                tagName = node.tagName?.toUpperCase()
-                # TODO need to handle dynamically generated frames and iframes
-                if (tagName == 'IFRAME') || (tagName == 'FRAME')
-                    dfs(node.contentDocument, filter, visit)
-                else if node.hasChildNodes()
-                    for childNode in node.childNodes
-                        dfs(childNode, filter, visit)
-        filter = (node) ->
-            name = node.tagName
-            if name? && (name == 'SCRIPT')
-                return false
-            return true
-        self = this
-        dfs @window.document, filter, (node) ->
-            typeStr = self.nodeTypeToString[node.nodeType]
-            method = '_cmdsFor' + typeStr
-            if (typeof self[method] != 'function')
-                console.log "Can't create instructions for #{typeStr}"
-                return
-            cmds = self[method](node); # returns an array of cmds
-            if (cmds != undefined)
-                syncCmds = syncCmds.concat(cmds)
-
-        return syncCmds
-
-    _cmdsForDocument : (node) -> []
-    ###
-        if node[@idProp] == undefined
-            console.log "Tagging a document"
-            @dom.nodes.add(node)
-        return []
-    ###
-
-    _cmdsForComment : (node) ->
-        cmds = []
-        cmds.push
-            targetID : node.ownerDocument[@idProp]
-            rvID : node[@idProp]
-            method : 'createComment'
-            args : [node.data]
-        cmds.push
-            targetID : node.parentNode[@idProp]
-            rvID : null
-            method : 'appendChild'
-            args : [node[@idProp]]
-        return cmds
-
-    # TODO: re-write absolute URLs to go through our resource proxy as well.
-    _cmdsForElement : (node) ->
-        cmds = []
-        cmds.push
-            targetID : node.ownerDocument[@idProp]
-            rvID : node[@idProp],
-            method : 'createElement'
-            args : [node.tagName]
-        if node.attributes && (node.attributes.length > 0)
-            for attr in node.attributes
-                name = attr.name
-                value = attr.value
-                if ((node.tagName?.toLowerCase() == 'iframe') && (name.toLowerCase() == 'src'))
-                   continue
-                # For now, we aren't re-writing absolute URLs.  These will
-                # still hit the original server.  TODO: fix this.
-                if (name.toLowerCase() == 'src') && !(/^http/.test(value))
-                    console.log "Before: src=#{value}"
-                    value = value.replace(/\.\./g, 'dotdot')
-                    console.log "After: src=#{value}"
-                cmds.push
-                    targetID : node[@idProp]
-                    rvID : null
-                    method : 'setAttribute',
-                    args : [name, value]
-
-        cmds.push
-            targetID : node.parentNode[@idProp]
-            rvID : null
-            method : 'appendChild'
-            args : [node[@idProp]]
-        if node.tagName?.toLowerCase() == 'iframe'
-            @dom.nodes.add(node.contentDocument)
-            cmds.push
-                targetID : node[@idProp]
-                rvID : null
-                method : 'tagDocument'
-                args : [node.contentDocument[@idProp]]
-        return cmds
-
-    _cmdsForText : (node) ->
-        # TODO: find a better fix.  The issue is that JSDOM gives Document 2
-        # child nodes: the HTML element and a Text element.  We get a
-        # HIERARCHY_REQUEST_ERR in the client browser if we try to insert a
-        # Text node as the child of the Document
-        if node.parentNode.nodeType == 9 # Document
-            return []
-        cmds = []
-        cmds.push
-            targetID : node.ownerDocument[@idProp]
-            rvID : node[@idProp]
-            method :'createTextNode'
-            args : [node.data]
-        if node.attributes && node.attributes.length > 0
-            for attr in node.attributes
-                cmds.push
-                    targetID : node[@idProp]
-                    rvID : null
-                    method : 'setAttribute'
-                    args : [attr.name, attr.value]
-        cmds.push
-            targetID : node.parentNode[@idProp]
-            rvID : null
-            method : 'appendChild'
-            args : [node[@idProp]]
-        return cmds
-
-    nodeTypeToString : [0,
-        'Element',                 #1
-        'Attribute',               #2
-        'Text',                    #3
-        'CData_Section',           #4
-        'Entity_Reference',        #5
-        'Entity',                  #6
-        'Processing_Instruction',  #7
-        'Comment',                 #8
-        'Document',                #9
-        'Docment_Type',            #10
-        'Document_Fragment',       #11
-        'Notation'                 #12
-    ]
 
 module.exports = Browser

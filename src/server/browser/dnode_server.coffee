@@ -23,26 +23,28 @@ eventTypeToGroup = do ->
 # Creates the DNode server
 module.exports = (httpServer, browsers) ->
     # maybe use a closure here and return the constructor function, clodse in browser and nodes?
-    server = DNode (remote, conn) ->
-        console.log "Incoming connection"
+    server = DNode((remote, conn) ->
+        console.log("Incoming connection")
         browser = null
         nodes = null
 
-        conn.on 'end', ->
+        conn.on('end', ->
             if browser?
                 browser.removeClient(remote)
+        )
 
-        conn.on 'ready', ->
-            console.log "Client is ready"
+        conn.on('ready', ->
+            console.log("Client is ready")
+        )
 
         @auth = (browserID) ->
-            browsers.find decodeURIComponent(browserID), (theBrowser) =>
+            browsers.find(decodeURIComponent(browserID), (theBrowser) =>
                 browser = theBrowser
                 nodes = browser.dom.nodes
                 browser.addClient(remote)
-                
+            )
         @processEvent = (clientEv) ->
-            console.log "target: #{clientEv.target}"
+            console.log("target: #{clientEv.target}")
             clientEv.target = nodes.get(clientEv.target)
             if clientEv.relatedTarget?
                 clientEv.relatedTarget = nodes.get(clientEv.relatedTarget)
@@ -99,14 +101,15 @@ module.exports = (httpServer, browsers) ->
                 if clientEv.target.value != undefined
                     clientEv.target.value = clientEv.data
                 else
-                    throw new Error "target doesn't have 'value' attribute"
+                    throw new Error("target doesn't have 'value' attribute")
             else
                 if event.type == 'click'
-                    console.log "Dispatching #{event.type} [#{group}] on #{clientEv.target[browser.idProp]}"
+                    console.log("Dispatching #{event.type} [#{group}] on #{clientEv.target[browser.idProp]}")
                 clientEv.target.dispatchEvent(event)
 
         # Have to return this here because of coffee script.
         undefined
+    )
 
     if process.env.TESTS_RUNNING
         console.log("DNode server running in test mode")

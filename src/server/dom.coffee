@@ -1,14 +1,14 @@
 URL                  = require('url')
-XMLHttpRequest       = require('./XMLHttpRequest').XMLHttpRequest
-TaggedNodeCollection = require('../shared/tagged_node_collection')
 EventEmitter         = require('events').EventEmitter
-addAdvice            = require('./jsdom_advice').addAdvice
-applyPatches         = require('./jsdom_patches').applyPatches
-Location             = require('./location')
+TaggedNodeCollection = require('../shared/tagged_node_collection')
+XMLHttpRequest       = require('./dom/XMLHttpRequest').XMLHttpRequest
+Location             = require('./dom/location')
+addAdvice            = require('./dom/advice').addAdvice
+applyPatches         = require('./dom/patches').applyPatches
 
 # JSDOMWrapper.jsdom returns the wrapped JSDOM object.
 # Adds advice and utility methods.
-class JSDOMWrapper extends EventEmitter
+class DOM extends EventEmitter
     constructor : (browser) ->
         @browser = browser
         @nodes = new TaggedNodeCollection()
@@ -67,4 +67,4 @@ class JSDOMWrapper extends EventEmitter
         @browser.dom.nodes.add(window.document)
         return window
 
-module.exports = JSDOMWrapper
+module.exports = DOM

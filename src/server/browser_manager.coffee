@@ -1,4 +1,4 @@
-Browser = require('./browser')
+Browser = require('./browser/browser')
 
 # It is anticipated that this class will expand to have a persistant store and
 # high performance implementation.

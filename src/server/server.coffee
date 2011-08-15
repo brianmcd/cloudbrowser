@@ -9,7 +9,7 @@ path            = require('path')
 BrowserManager  = require('./browser_manager')
 eco             = require('eco')
 Browserify      = require('browserify')
-DNodeServer     = require('./dnode_server')
+DNodeServer     = require('./browser/dnode_server')
 
 # So that developer code can require modules in its own node_modules folder.
 require.paths.unshift path.join(process.cwd(), "node_modules")

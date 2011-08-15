@@ -5,7 +5,7 @@ module.exports = () ->
     nodes = new TaggedNodeCollection()
     propName = nodes.propName
 
-    dnodeConnection = DNode (remote, conn) ->
+    dnodeConnection = DNode( (remote, conn) ->
         console.log "Connecting to server..."
         conn.on 'ready', () ->
             console.log "Connection is ready"
@@ -141,6 +141,7 @@ module.exports = () ->
 
                         remote.processEvent(ev)
                         return false
+        )
 
     #TODO: this is where we'd add reconnect param.
     dnodeConnection.connect()
