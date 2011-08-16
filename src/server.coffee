@@ -26,13 +26,13 @@ httpServer = do ->
             mount : '/bootstrap.js',
             require : [
                 'dnode'
-                path.join(__dirname, '..', 'client', 'dnode_client')
+                path.join(__dirname, 'client', 'dnode_client')
             ]
         server.use express.bodyParser()
         server.use express.cookieParser()
         server.use express.session
             secret: 'change me please'
-        server.set 'views', path.join(__dirname, '..', '..', 'views')
+        server.set 'views', path.join(__dirname, '..', 'views')
         server.set 'view options',
             layout: false
 
@@ -40,7 +40,7 @@ httpServer = do ->
     server.get '/', (req, res) ->
         fs.readdir path.join(process.cwd(), 'html'), (err, files) ->
             throw err if err
-            indexPath = path.join(__dirname, '..', '..', 'views', 'index.html.eco')
+            indexPath = path.join(__dirname, '..', 'views', 'index.html.eco')
             fs.readFile indexPath, 'utf8', (err, str) ->
                 throw err if err
                 tmpl = eco.render str,
