@@ -6,9 +6,9 @@ mime            = require('mime')
 http            = require('http')
 URL             = require('url')
 path            = require('path')
-BrowserManager  = require('./browser_manager')
 eco             = require('eco')
 Browserify      = require('browserify')
+BrowserManager  = require('./browser_manager')
 DNodeServer     = require('./browser/dnode_server')
 
 # So that developer code can require modules in its own node_modules folder.

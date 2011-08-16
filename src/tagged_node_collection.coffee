@@ -1,4 +1,3 @@
-
 class TaggedNodeCollection
     # TODO: take idPrefix and propName as defaulted params
     constructor : ->

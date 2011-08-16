@@ -1,6 +1,6 @@
 URL                  = require('url')
 EventEmitter         = require('events').EventEmitter
-TaggedNodeCollection = require('../shared/tagged_node_collection')
+TaggedNodeCollection = require('./tagged_node_collection')
 XMLHttpRequest       = require('./dom/XMLHttpRequest').XMLHttpRequest
 Location             = require('./dom/location')
 Request              = require('request')
