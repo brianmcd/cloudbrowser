@@ -3,6 +3,7 @@ EventEmitter         = require('events').EventEmitter
 TaggedNodeCollection = require('../shared/tagged_node_collection')
 XMLHttpRequest       = require('./dom/XMLHttpRequest').XMLHttpRequest
 Location             = require('./dom/location')
+Request              = require('request')
 addAdvice            = require('./dom/advice').addAdvice
 applyPatches         = require('./dom/patches').applyPatches
 
@@ -32,12 +33,10 @@ class DOM extends EventEmitter
         applyPatches(@jsdom.dom.level3.core)
 
     # Creates a window.
-    createWindow : (url) ->
+    # TODO: defer creating document until actually fetching the page.
+    createWindow : () ->
         # Grab JSDOM's window, so we can augment it.
-        console.log("url: #{url}")
-        document = @jsdom.jsdom(false, null, {url:url, deferClose: true})
-        window = @jsdom.windowAugmentation(@jsdom.dom.level3.html, {document: document})
-        document.parentWindow = window
+        window = @jsdom.createWindow(@jsdom.dom.level3.html)
 
         window.JSON = JSON
         # Thanks Zombie for Image code 
@@ -57,14 +56,52 @@ class DOM extends EventEmitter
         window.require = require
         window.__defineGetter__ 'location', () -> @__location
         window.__defineSetter__ 'location', (url) ->
-            # TODO: should Location object emit an event to communicate with Location
-            #       then location can take oldurl and newurl from here, so those are the only
-            #       depedencies (easier to test)
-            @__location = new Location(url, window, window.browser)
+            if @__location
+                @__location.removeAllListeners('navigate')
+                @__location.removeAllListeners('hashchange')
+            @__location = new Location(url, window.location?.href, () ->
+                # Navigate event gets thrown to the Browser, which will destroy
+                # this window and get another.
+                #TODO: should this be on process.nextTick?
+                #TODO: if not, we need to return from the setter immediate after.
+                self.emit('navigate', url)
+            )
+            @__location.on('hashchange', () ->
+                event = window.document.createEvent('HTMLEvents')
+                event.initEvent("hashchange", true, false)
+                # TODO
+                # Ideally, we'd set oldurl and newurl, but Sammy doesn't
+                # rely on it so skipping that for now.
+                window.dispatchEvent(event)
+            )
+            # window.empty is set before the first page load.
+            if window.empty
+                delete window.empty
+                self._loadPage(window, url)
+            # TODO: Should this not return @__location?
             return url
 
-        window.location = url
-        @browser.dom.nodes.add(window.document)
+        # This signifies that no page is loaded in the window.
+        window.empty = true
         return window
 
+    _loadPage : (window, url) ->
+        Request({uri: url}, (err, response, html) =>
+            throw err if err
+            console.log "Request succeeded"
+            @nodes = new TaggedNodeCollection()
+            document = @jsdom.jsdom(false, null, {url:url, deferClose: true})
+            document.parentWindow = window
+            window.document = document
+            # Fire window load event once document is loaded.
+            document.addEventListener('load', (ev) =>
+                ev = document.createEvent('HTMLEvents')
+                ev.initEvent('load', false, false)
+                window.dispatchEvent(ev)
+            )
+            # Should we defer this until the first serialization?
+            @nodes.add(document)
+            document.innerHTML = html
+            document.close()
+        )
 module.exports = DOM

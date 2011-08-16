@@ -26,7 +26,7 @@ module.exports = (httpServer, browsers) ->
     server = DNode((remote, conn) ->
         console.log("Incoming connection")
         browser = null
-        nodes = null
+        dom = null
 
         conn.on('end', ->
             if browser?
@@ -40,14 +40,14 @@ module.exports = (httpServer, browsers) ->
         @auth = (browserID) ->
             browsers.find(decodeURIComponent(browserID), (theBrowser) =>
                 browser = theBrowser
-                nodes = browser.dom.nodes
+                dom = browser.dom
                 browser.addClient(remote)
             )
         @processEvent = (clientEv) ->
             console.log("target: #{clientEv.target}")
-            clientEv.target = nodes.get(clientEv.target)
+            clientEv.target = dom.nodes.get(clientEv.target)
             if clientEv.relatedTarget?
-                clientEv.relatedTarget = nodes.get(clientEv.relatedTarget)
+                clientEv.relatedTarget = dom.nodes.get(clientEv.relatedTarget)
 
             group = eventTypeToGroup[clientEv.type]
             event = browser.window.document.createEvent(group) unless group == 'Special'

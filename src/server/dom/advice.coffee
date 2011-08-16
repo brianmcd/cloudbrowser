@@ -12,7 +12,6 @@ isDOMNode = (node) -> (node?.ELEMENT_NODE == 1)
 # dom - the jsdom dom implementation
 # wrapper - must have emit and nodes
 exports.addAdvice = (dom, wrapper) ->
-    nodes = wrapper.nodes
     # TODO: change event names to DOMMethod and DOMProperty
 
     # func gets passed the original return value and the 'this' value.
@@ -27,7 +26,7 @@ exports.addAdvice = (dom, wrapper) ->
             rv = originalSetter.call(this, value)
             if !func? || func(this, arguments, rv)
                 if value.__nodeID?
-                    value = nodes.get(value.__nodeID)
+                    value = wrapper.nodes.get(value.__nodeID)
                 params =
                     targetID : this.__nodeID
                     prop : prop
@@ -46,14 +45,14 @@ exports.addAdvice = (dom, wrapper) ->
                (this?.tagName?.toLowerCase() == 'script')
                 return rv
             if isDOMNode(rv) && (rv.__nodeID == undefined)
-                nodes.add(rv)
+                wrapper.nodes.add(rv)
             if !func? || func(this, arguments, rv)
                 rvID = if rv? then rv.__nodeID else null
                 params =
                     targetID : this.__nodeID
                     rvID : rvID
                     method : name
-                    args : nodes.scrub(arguments)
+                    args : wrapper.nodes.scrub(arguments)
                 wrapper.emit('DOMUpdate', params)
             return rv
 

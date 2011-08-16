@@ -1,7 +1,6 @@
 assert         = require('assert')
 path           = require('path')
 URL            = require('url')
-request        = require('request')
 DOM            = require('../dom')
 # TODO: attach "serialize" method to DOM
 domToCommands  = require('../dom/serializer').domToCommands
@@ -9,7 +8,11 @@ domToCommands  = require('../dom/serializer').domToCommands
 class Browser
     constructor : (browserID, url) ->
         @id = browserID
+        @window = null
         @dom = new DOM(this)
+        # The DOM can emit 'navigate' when Location is set and we need to
+        # load a new page.
+        @dom.on('navigate', (url) => @load(url))
         # Array of clients waiting for page to load.
         @connQ = []
         # Array of currently connected DNode clients.
@@ -17,31 +20,34 @@ class Browser
         @load(url) if url?
 
     # TODO: need to clear out old TaggedNodeCollection
+    # TODO: Should we get a whole new jsdom?
+    # TODO: this should probably take a callback, since the page won't be
+    #       loaded when this function returns.
     load : (url) ->
         console.log "Loading: #{url}"
-        request {uri: url}, (err, response, html) =>
-            throw err if err
-            console.log "Request succeeded"
-            @pauseClientUpdates()
-            @window = @dom.createWindow(url, html)
-            console.log("document propname: #{@window.document.__nodeID}")
-            @window.document.innerHTML = html
-            @window.document.close()
+        @pauseClientUpdates()
+        @window.close if @window?
+        @window = @dom.createWindow()
+        # TODO TODO: also need to not process client events.
+        @window.location = url
+        @window.addEventListener('load', () =>
             @resumeClientUpdates()
-            console.log "Leaving load"
+        )
 
     pauseClientUpdates : () ->
-        @dom.removeAllListeners 'DOMUpdate'
-        @dom.removeAllListeners 'DOMPropertyUpdate'
+        @dom.removeAllListeners('DOMUpdate')
+        @dom.removeAllListeners('DOMPropertyUpdate')
 
     resumeClientUpdates : () ->
         @syncAllClients()
         # Each advice function emits the DOMUpdate or DOMPropertyUpdate 
         # event, which we want to echo to all connected clients.
-        @dom.on 'DOMUpdate', (params) =>
-            @broadcastUpdate 'DOMUpdate', params
-        @dom.on 'DOMPropertyUpdate', (params) =>
-            @broadcastUpdate 'DOMPropertyUpdate', params
+        @dom.on('DOMUpdate', (params) =>
+            @broadcastUpdate('DOMUpdate', params)
+        )
+        @dom.on('DOMPropertyUpdate', (params) =>
+            @broadcastUpdate('DOMPropertyUpdate', params)
+        )
 
     syncAllClients : () ->
         if @clients.length == 0 && @connQ.length == 0
