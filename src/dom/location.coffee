@@ -44,11 +44,11 @@ class Location extends EventEmitter
         if !oldurl then return
         # Pull off trailing slashes to make comparisons easier.
         if /\/$/.test(oldurl)
-            oldurl = oldurl.slice(0, oldURL.length - 1)
+            oldurl = oldurl.slice(0, oldurl.length - 1)
 
         newurl = @parsed.href
         if /\/$/.test(newurl)
-            newurl = newurl.slice(0, newURL.length - 1)
+            newurl = newurl.slice(0, newurl.length - 1)
 
         console.log("In reload: old url = #{oldurl} new url=#{newurl}")
         if oldurl != newurl
