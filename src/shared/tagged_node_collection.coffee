@@ -1,7 +1,9 @@
+
 class TaggedNodeCollection
     # TODO: take idPrefix and propName as defaulted params
     constructor : ->
         @ids = {}
+        @count = 0
         @nextID = 0
         # When we add multiplexing, we can use different prefixes.
         @idPrefix = 'node'
@@ -15,16 +17,29 @@ class TaggedNodeCollection
 
     # If ID is not supplied, it will be generated (the common case)
     add : (node, id) ->
-        if id == undefined
-            node[@propName] = "#{@idPrefix}#{++@nextID}"
+        if node.__nodeID?
+            if (node != @ids[node.__nodeID])
+                throw new Error("Added a node with existing __nodeID, but it 
+                                 doesn't match")
+            return
+        if !id?
+            found = false
+            while (!found)
+                id = "#{@idPrefix}#{++@nextID}"
+                if @ids[id] == undefined
+                    found = true
         else if typeof id == 'string'
-            node[@propName] = id
-        @ids[node[@propName]] = node
+            if @ids[id] != undefined
+                throw new Error('User supplied existing ID')
+        else
+            throw new Error("Invalid ID: #{id}")
+        @count++
+        node[@propName] = id
+        @ids[id] = node
 
     # Substitutes DOM elements in a parameter list with their id.
     scrub : (params) ->
         scrubbed = []
-        # TODO: scrub recursively into objects
         for param in params
             if !param?
                 scrubbed.push null
