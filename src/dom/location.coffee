@@ -9,7 +9,7 @@ class Location extends EventEmitter
         ['protocol', 'host', 'hostname', 'port',
          'pathname', 'search', 'hash'].forEach (attr) =>
             do (attr) =>
-                @__defineGetter__ attr, () -> @parsed[attr]
+                @__defineGetter__ attr, () -> @parsed[attr] || ''
                 @__defineSetter__ attr, (value) ->
                     # TODO: This doesn't work.  It won't change href, for example.
                     @parsed[attr] = value
@@ -56,7 +56,7 @@ class Location extends EventEmitter
 
             # Check for hashchange
             # TODO: will this work with multiple hash changes?  TEST
-            if newurl.match("^#{oldurl}#")
+            if newurl.match("^#{oldurl}/#")
                 # Do this on the next tick so the location can change.
                 # Otherwise, we dispatch the event while the old location is
                 # still set.
