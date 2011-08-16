@@ -3,7 +3,6 @@ TaggedNodeCollection = require('./tagged_node_collection')
 
 module.exports = () ->
     nodes = new TaggedNodeCollection()
-    propName = nodes.propName
 
     dnodeConnection = DNode( (remote, conn) ->
         console.log "Connecting to server..."
@@ -20,6 +19,7 @@ module.exports = () ->
         #TODO: Need to have a "batch proces function".  Need to add "TagDocument"
         # TODO: clear needs to be able to be called on a certain document.
         @DOMUpdate = (params) ->
+            console.log(params)
             processInstruction = (inst) ->
                 # SPECIAL CASE
                 # TODO: this is a quick hack.
@@ -53,10 +53,10 @@ module.exports = () ->
                 if rv == undefined
                     return
 
-                if rv[propName] && rvID && (rv[propName] != rvID)
+                if rv.__nodeID && rvID && (rv.__nodeID != rvID)
                     throw new Error "id issue"
                 if rvID? && /^node\d+$/.test(rvID)
-                    if rv[nodes.propName] == undefined
+                    if rv.__nodeID == undefined
                         nodes.add(rv, rvID)
             #printMethodCall(target, method, args, rvID)
             if params instanceof Array
@@ -79,7 +79,7 @@ module.exports = () ->
             while document.hasChildNodes()
                 document.removeChild(document.firstChild)
             nodes = new TaggedNodeCollection()
-            #nodes.add(document, '#document')
+            delete document.__nodeID
 
         # startEvents 
         do ->
@@ -98,7 +98,7 @@ module.exports = () ->
                 group.forEach (eventType) ->
                     document.addEventListener eventType, (event) ->
                         if eventType == 'click'
-                            console.log "#{event.type} #{event.target[propName]}"
+                            console.log "#{event.type} #{event.target.__nodeID}"
                         event.stopPropagation()
                         event.preventDefault()
                         ev = {}
@@ -106,7 +106,7 @@ module.exports = () ->
                             # The change event doesn't normally say have the new
                             # data attached, so we snag it.
                             ev.data = event.target.value
-                        ev.target = event.target[propName]
+                        ev.target = event.target.__nodeID
                         ev.type = event.type
                         ev.bubbles = event.bubbles
                         ev.cancelable = event.cancelable # TODO: if this is no...what's that mean happened on client?
@@ -121,7 +121,7 @@ module.exports = () ->
                         if event.shiftKey?      then ev.shiftKey        = event.shiftKey
                         if event.metaKey?       then ev.metaKey         = event.metaKey
                         if event.button?        then ev.button          = event.button
-                        if event.relatedTarget? then ev.relatedTarget   = event.relatedTarget[propName]
+                        if event.relatedTarget? then ev.relatedTarget   = event.relatedTarget.__nodeID
                         if event.modifiersList? then ev.modifiersList   = event.modifiersList
                         if event.deltaX?        then ev.deltaX          = event.deltaX
                         if event.deltaY?        then ev.deltaY          = event.deltaY
