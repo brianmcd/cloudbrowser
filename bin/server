@@ -1,4 +1,4 @@
-var Path      = require('path')
+var Path   = require('path'),
     Server = require('../lib/server')
 
 var s = new Server(Path.join(process.cwd(), 'html'));
