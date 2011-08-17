@@ -104,6 +104,10 @@ class DNodeServer extends EventEmitter
             # Do it on nextTick so server has a chance to register on it.
             process.nextTick( () => @emit('ready'))
 
+    close : () ->
+        @server.once('close', () => @emit('close'))
+        @server.close()
+
 
 module.exports = DNodeServer
 

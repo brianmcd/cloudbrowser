@@ -16,13 +16,27 @@ DNodeServer     = require('./browser/dnode_server')
 require.paths.unshift path.join(process.cwd(), "node_modules")
 
 class Server extends EventEmitter
-    constructor : () ->
+    constructor : (staticDir) ->
+        @staticDir = staticDir
+        if !@staticDir? then @staticDir = process.cwd()
         @browsers = new BrowserManager()
         @httpServer = @createHTTPServer()
         @dnodeServer = @createDNodeServer(@httpServer, @browsers)
         @internalServer = @createInternalServer()
 
         @listeningCount = 0
+
+    close : () ->
+        closed = 0
+        closeServer = () =>
+            if ++closed == 3
+                @emit('close')
+        @httpServer.once('close', closeServer)
+        @internalServer.once('close', closeServer)
+        @dnodeServer.once('close', closeServer)
+        @httpServer.close()
+        @internalServer.close()
+        @dnodeServer.close()
 
     registerServer : () =>
         if ++@listeningCount == 3
@@ -49,8 +63,8 @@ class Server extends EventEmitter
                 layout: false
 
         # Routes
-        server.get '/', (req, res) ->
-            fs.readdir path.join(process.cwd(), 'html'), (err, files) ->
+        server.get '/', (req, res) =>
+            fs.readdir path.join(@staticDir, 'html'), (err, files) ->
                 throw err if err
                 indexPath = path.join(__dirname, '..', 'views', 'index.html.eco')
                 fs.readFile indexPath, 'utf8', (err, str) ->
@@ -150,13 +164,15 @@ class Server extends EventEmitter
     createInternalServer : () ->
         server = express.createServer()
 
-        server.configure( () ->
-            server.use(express.static(path.join(process.cwd(), 'html')))
+        server.configure( () =>
+            console.log(path.join(@staticDir, 'html'))
+            server.use(express.static(path.join(@staticDir, 'html')))
         )
 
         server.listen(3001, =>
             console.log 'Internal HTTP server listening on port 3001 [TODO: remove this].'
             @registerServer()
         )
+        return server
 
 module.exports = Server
