@@ -1,0 +1,26 @@
+<HTML>
+    <HEAD>
+        <SCRIPT>
+            console.log("In script");
+            var count = 0;
+            window.addEventListener('load', function () {
+                setTimeout(function insert () {
+                    count++
+                    var div = document.getElementById('div1');
+                    var child = document.createElement('div');
+                    child.innerHTML = '' + count
+                    div.appendChild(child)
+                    if (count != 21) {
+                        setTimeout(insert, 0);
+                    } else {
+                        document.getElementById('finished').innerHTML = 'true';
+                    }
+                }, 0);
+            });
+        </SCRIPT>
+    </HEAD>
+    <BODY>
+        <DIV id='div1'></DIV>
+        <DIV id='finished'></DIV>
+    </BODY>
+</HTML>
