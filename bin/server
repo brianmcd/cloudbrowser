@@ -1,1 +1,7 @@
-../lib/server.js
+var LibServer = require('../lib/server')
+
+var server = new LibServer();
+
+server.once('ready', function () {
+    console.log('All services running, ready for clients.')
+});

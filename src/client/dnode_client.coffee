@@ -1,15 +1,16 @@
 DNode = require('dnode')
 TaggedNodeCollection = require('./tagged_node_collection')
 
-module.exports = () ->
+module.exports = (window, document) ->
     nodes = new TaggedNodeCollection()
 
     dnodeConnection = DNode( (remote, conn) ->
         console.log "Connecting to server..."
-        conn.on 'ready', () ->
+        conn.on('ready', () ->
             console.log "Connection is ready"
             console.log(remote)
             remote.auth(window.__envSessionID)
+        )
 
         # Params:
         #   'method'
@@ -143,8 +144,13 @@ module.exports = () ->
                         return false
         )
 
-    #TODO: this is where we'd add reconnect param.
-    dnodeConnection.connect()
+    if process?.env?.TESTS_RUNNING
+        console.log("Running DNode over TCP")
+        dnodeConnection.connect(3002)
+    else
+        #TODO: this is where we'd add reconnect param.
+        console.log("Running DNode over socket.io")
+        dnodeConnection.connect()
 
     printMethodCall = (node, method, args, rvID) ->
         args = nodes.scrub(args)

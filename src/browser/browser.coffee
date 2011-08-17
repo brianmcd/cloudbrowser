@@ -19,10 +19,8 @@ class Browser
         @clients = []
         @load(url) if url?
 
-    # TODO: need to clear out old TaggedNodeCollection
-    # TODO: Should we get a whole new jsdom?
-    # TODO: this should probably take a callback, since the page won't be
-    #       loaded when this function returns.
+    # Note: this function returns before the page is loaded.  Listen on the
+    # window's load event if you need to.
     load : (url) ->
         console.log "Loading: #{url}"
         @pauseClientUpdates()
