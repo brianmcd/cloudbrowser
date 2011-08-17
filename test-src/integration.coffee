@@ -1,8 +1,14 @@
 Path      = require('path')
 TestCase  = require('nodeunit').testCase
-JSDOM     = require('jsdom')
 Server    = require('../lib/server')
 Bootstrap = require('../lib/client/dnode_client')
+
+reqCache = require.cache
+for entry of reqCache
+    if /jsdom/.test(entry)
+        delete reqCache[entry]
+
+JSDOM     = require('jsdom')
 
 server = null
 
@@ -47,5 +53,11 @@ exports['tests'] =
         checkReady(window, tests)
 
     'teardown' : (test) ->
-        server.once('close', () -> test.done())
+        server.once('close', () ->
+            reqCache = require.cache
+            for entry of reqCache
+                if /jsdom/.test(entry)
+                    delete reqCache[entry]
+            test.done()
+        )
         server.close()

@@ -30,6 +30,7 @@ onerror = (err)->
 
 ## Setup ##
 ## TODO: run "cake build" in each example directory
+## TODO: run unit tests
 task "setup", "Install development dependencies", ->
     log "Installing required npm packages (this could take some time)...", green
     npm = spawn "npm", ["install", "--dev"]
@@ -110,12 +111,10 @@ task "clean", "Remove temporary files and such", ->
     exec "rm -rf lib/", onerror
 
 ## Testing ##
-runTests = (callback)->
+runTests = () ->
   log "Running test suite ...", green
-  exec "expresso -I lib/ test/test-base.coffee", (err, stdout, stderr)->
-    process.stdout.write stdout
-    process.binding("stdio").writeError stderr
-    callback err if callback
+  nodeunit = spawn("node", ["run_tests.js"])
+  nodeunit.stdout.on "data", (data) -> process.stdout.write data
+  nodeunit.on 'error', onerror
 task "test", "Run all tests", ->
-  runTests (err)->
-    process.stdout.on "drain", -> process.exit -1 if err
+  runTests()
