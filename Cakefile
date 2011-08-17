@@ -5,7 +5,7 @@ path          = require("path")
 stdout        = process.stdout
 
 JS_FILES = [
-    'server/XMLHttpRequest.js'
+    'dom/XMLHttpRequest.js'
 ]
 
 # Use executables installed with npm bundle.
@@ -75,19 +75,23 @@ copyJS = (callback) ->
                 
 build = (callback) ->
     log "Compiling CoffeeScript to JavaScript ...", green
-    exec "rm -rf lib/ build/ && coffee -c -l -b -o lib src", (err, stdout)->
+    exec "rm -rf lib/ && coffee -c -l -b -o lib src", (err, stdout) ->
         onerror err
         if stdout != ""
             log stdout, green
-        copyJS () ->
-            log "Linking tagged_node_collection.js", green
-            src = path.join(__dirname, 'lib', 'shared', 'tagged_node_collection.js')
-            dest = path.join(__dirname, 'lib', 'client', 'tagged_node_collection.js')
-            exec "ln -s #{src} #{dest}", (err, stdout) ->
-                onerror err
-                if stdout != ""
-                    log stdout, green
-                callback() if callback
+        exec "rm -rf test/ && coffee -c -l -b -o test/ test-src/", (err, stdout) ->
+            onerror err
+            if stdout != ""
+                log stdout, green
+            copyJS () ->
+                log "Linking tagged_node_collection.js", green
+                src = path.join(__dirname, 'lib', 'tagged_node_collection.js')
+                dest = path.join(__dirname, 'lib', 'client', 'tagged_node_collection.js')
+                exec "ln -s #{src} #{dest}", (err, stdout) ->
+                    onerror err
+                    if stdout != ""
+                        log stdout, green
+                    callback() if callback
 
 task "build", "Compile CoffeeScript to JavaScript", -> build()
 
@@ -97,6 +101,10 @@ task "watch", "Continously compile CoffeeScript to JavaScript", ->
             cmd = spawn("coffee", ["-cwb", "-o", "lib", "src"])
             cmd.stdout.on "data", (data)-> process.stdout.write green + data + reset
             cmd.on "error", onerror
+
+            testcmd = spawn("coffee", ["-cwb", "-o", "test", "test-src"])
+            testcmd.stdout.on "data", (data)-> process.stdout.write green + data + reset
+            testcmd.on "error", onerror
 
 task "clean", "Remove temporary files and such", ->
     exec "rm -rf lib/", onerror
