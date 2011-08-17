@@ -64,7 +64,7 @@ class Server extends EventEmitter
 
         # Routes
         server.get '/', (req, res) =>
-            fs.readdir path.join(@staticDir, 'html'), (err, files) ->
+            fs.readdir @staticDir, (err, files) ->
                 throw err if err
                 indexPath = path.join(__dirname, '..', 'views', 'index.html.eco')
                 fs.readFile indexPath, 'utf8', (err, str) ->
@@ -165,8 +165,7 @@ class Server extends EventEmitter
         server = express.createServer()
 
         server.configure( () =>
-            console.log(path.join(@staticDir, 'html'))
-            server.use(express.static(path.join(@staticDir, 'html')))
+            server.use(express.static(@staticDir))
         )
 
         server.listen(3001, =>
