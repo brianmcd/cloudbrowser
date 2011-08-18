@@ -1,0 +1,28 @@
+<html>
+    <head>
+        <script>
+            // Broken in JSDOM;
+            //      - named frame lookup
+            //      - iframeWindow.document.getElementById('id'); returns null
+            //      - iframeWindow.document.getElementsByClassName('name'); returns null
+            window.addEventListener('load', function () {
+                var iframe = document.getElementById('testFrameID');
+                var iframeDoc = iframe.contentDocument;
+                var iframeDiv = iframeDoc.getElementById('iframediv');
+                document.getElementById('finished').innerHTML = 'true';
+                (function phase () {
+                    if (window.NEXT) {
+                        iframeDiv.innerHTML = "Set from outside";
+                        document.getElementById('finished').innerHTML = 'true';
+                    } else {
+                        setTimeout(phase, 0);
+                    }
+                })();
+            });
+        </script>
+    </head>
+    <body>
+        <iframe name='testFrame' id='testFrameID' src='iframe.html'></iframe>
+        <div id='finished'></div>
+    </body>
+</html>

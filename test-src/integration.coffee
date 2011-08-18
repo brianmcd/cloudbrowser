@@ -52,6 +52,30 @@ exports['tests'] =
             test.done()
         checkReady(window, tests)
 
+    'iframe test1' : (test) ->
+        window = initTest('browser3', 'http://localhost:3001/iframe-parent.html')
+        document = window.document
+        browser = server.browsers.find('browser3')
+        test.notEqual(browser, null)
+        tests = () ->
+            iframeElem = document.getElementById('testFrameID')
+            test.notEqual(iframeElem, undefined)
+            test.equal(iframeElem.getAttribute('src'), '')
+            test.equal(iframeElem.getAttribute('name'), 'testFrame')
+            iframeDoc = iframeElem.contentDocument
+            test.notEqual(iframeDoc, undefined)
+            iframeDiv = iframeDoc.getElementById('iframediv')
+            test.notEqual(iframeDiv, undefined)
+            test.equal(iframeDiv.className, 'testClass')
+            test.equal(iframeDiv.innerHTML, 'Some text')
+            document.getElementById('finished').childNodes[0].value = 'false'
+            browser.window.NEXT = true
+            moreTests = () ->
+               test.equal(iframeDiv.innerHTML, 'Set from outside')
+               test.done()
+            checkReady(window, moreTests)
+        checkReady(window, tests)
+
     'teardown' : (test) ->
         server.once('close', () ->
             reqCache = require.cache
