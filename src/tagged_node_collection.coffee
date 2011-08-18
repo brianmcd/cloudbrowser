@@ -20,7 +20,13 @@ class TaggedNodeCollection
             if (node != @ids[node.__nodeID])
                 throw new Error("Added a node with existing __nodeID, but it 
                                  doesn't match")
-            return
+            # We need to allow assigning a new ID to an existing node so that
+            # we can re-tag an iframe's contentDocument.
+            # It starts as a blank iframe with a blank document, then src gets
+            # set, and the blank iframe's document gets deleted and a new on
+            # is created.
+            #return
+            @count-- # hacky, but this is since we'll increment it below.
         if !id?
             found = false
             while (!found)

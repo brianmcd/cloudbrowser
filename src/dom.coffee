@@ -88,7 +88,6 @@ class DOM extends EventEmitter
     _loadPage : (window, url) ->
         Request({uri: url}, (err, response, html) =>
             throw err if err
-            console.log "Request succeeded"
             @nodes = new TaggedNodeCollection()
             document = @jsdom.jsdom(false, null, {url:url, deferClose: true})
             document.parentWindow = window
@@ -99,7 +98,6 @@ class DOM extends EventEmitter
                 ev.initEvent('load', false, false)
                 window.dispatchEvent(ev)
             )
-            # Should we defer this until the first serialization?
             @nodes.add(document)
             document.innerHTML = html
             document.close()

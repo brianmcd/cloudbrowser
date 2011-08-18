@@ -28,9 +28,9 @@ class Browser
         @window = @dom.createWindow()
         # TODO TODO: also need to not process client events.
         @window.location = url
-        @window.addEventListener('load', () =>
-            @resumeClientUpdates()
-        )
+        # We know the event won't fire until a later tick since it has to make
+        # an http request.
+        @window.addEventListener('load', () => @resumeClientUpdates())
 
     pauseClientUpdates : () ->
         @dom.removeAllListeners('DOMUpdate')
@@ -76,7 +76,6 @@ class Browser
             client[method](params)
 
     addClient : (client) ->
-        console.log "Browser#addClient"
         if !@window?.document?
             console.log "Queuing client"
             @connQ.push(client)

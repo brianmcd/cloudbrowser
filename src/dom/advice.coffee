@@ -79,6 +79,9 @@ exports.addAdvice = (dom, wrapper) ->
                     args[0].toLowerCase()
                 if tagName == 'iframe' || tagName == 'frame'
                     if attr == 'src'
+                        # There is still special handling to be done in this
+                        # case, but we need to do it after the
+                        # HTMLFrameElement's function has been called.
                         return false
                 return true
             )
@@ -96,6 +99,27 @@ exports.addAdvice = (dom, wrapper) ->
                 return true
             )
 
+    for method in ['setAttribute', 'setAttributeNS']
+        do (method) ->
+            wrapMethod(dom.HTMLFrameElement.prototype, method, (elem, args, rv) ->
+                tagName = elem.tagName.toLowerCase()
+                attr = if /NS$/.test(method)
+                    args[1].toLowerCase()
+                else
+                    args[0].toLowerCase()
+                # At this point, JSDOM has deleted the old document
+                # and created the new one, so we can (and should) go
+                # ahead and tag it.
+                wrapper.nodes.add(elem.contentDocument)
+                wrapper.emit('DOMUpdate',
+                    targetID : null
+                    rvID : null
+                    method : 'tagDocument'
+                    args : [elem.contentDocument.__nodeID]
+                )
+                return false
+            )
+
     methods = ['createTextNode', 'createAttribute', 'createDocumentFragment',
                'createComment', 'createCDATASection', 'importNode',
                'createAttributeNS']
@@ -111,7 +135,16 @@ exports.addAdvice = (dom, wrapper) ->
                     else
                         args[0].toLowerCase()
                 if tagName == 'iframe' || tagName == 'frame'
-                    undefined # TODO tag document and emit client instruction
+                    # Note: this Document will be discarded if src is set, but
+                    # we still need to support iframes that are created
+                    # programatically.
+                    wrapper.nodes.add(rv.contentDocument)
+                    wrapper.emit('DOMUpdate',
+                        targetID : null
+                        rvID : null
+                        method : 'tagDocument'
+                        args : [rv.contentDocument.__nodeID]
+                    )
                 return true
             )
 
