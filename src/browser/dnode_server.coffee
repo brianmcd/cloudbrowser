@@ -18,11 +18,9 @@ class DNodeServer extends EventEmitter
             )
 
             @auth = (browserID) ->
-                browsers.find(decodeURIComponent(browserID), (theBrowser) =>
-                    browser = theBrowser
-                    dom = browser.dom
-                    browser.addClient(remote)
-                )
+                browser = browsers.find(decodeURIComponent(browserID))
+                dom = browser.dom
+                browser.addClient(remote)
 
             @processEvent = (clientEv) ->
                 console.log("target: #{clientEv.target}")

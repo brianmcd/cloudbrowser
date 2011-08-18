@@ -2,17 +2,14 @@ Browser = require('./browser/browser')
 
 # It is anticipated that this class will expand to have a persistant store and
 # high performance implementation.
-# TODO: Need an efficient way to store pid->browser and browserid->browser mappings.
-#       Could use getters/setters so that when it's set, we add it to that index.
 class BrowserManager
     constructor : () ->
         @browsers = {}
 
-    find : (id, callback) ->
+    find : (id) ->
         if typeof id != 'string'
             id = id.toString()
-        if callback and typeof callback == 'function'
-            callback(@browsers[id])
+        return @browsers[id]
 
     create : (id, url) ->
         if typeof id != 'string'

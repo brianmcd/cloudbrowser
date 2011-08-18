@@ -85,41 +85,42 @@ class Server extends EventEmitter
             resource = "#{req.params[0]}.#{req.params[1]}"
             resource = resource.replace(/dotdot/g, '..')
             console.log "[bid=#{req.params.browserid}] Proxying request for: #{resource}"
-            @browsers.find decodeURIComponent(req.params.browserid), (browser) ->
-                url = URL.resolve(browser.window.document.URL, resource)
-                console.log "Fetching from: #{url}"
-                type = mime.lookup(url)
-                console.log "MIME type: #{type}"
-                theurl = URL.parse(url)
-                theurl.search = theurl.search || ""
-                theurl.port = theurl.port || 80
-                opts =
-                    host : theurl.hostname
-                    port : theurl.port
-                    path : theurl.pathname + theurl.search
-                console.log opts
-                resreq = http.get opts, (stream) ->
-                    # Things like HTML, CSS, JS should be sent as text.
-                    if /^text/.test(type)
-                        stream.setEncoding('utf8')
-                    res.writeHead(200, {'Content-Type' : type})
-                    stream.on 'data', (data) ->
-                        res.write(data)
-                    stream.on 'end', ->
-                        res.end()
-                # TODO: After testing, we don't want to throw, we want to log.
-                resreq.on 'error', (e) -> throw e
+            browser = @browsers.find(decodeURIComponent(req.params.browserid))
+
+            url = URL.resolve(browser.window.document.URL, resource)
+            console.log "Fetching from: #{url}"
+            type = mime.lookup(url)
+            console.log "MIME type: #{type}"
+            theurl = URL.parse(url)
+            theurl.search = theurl.search || ""
+            theurl.port = theurl.port || 80
+            opts =
+                host : theurl.hostname
+                port : theurl.port
+                path : theurl.pathname + theurl.search
+            console.log opts
+            resreq = http.get opts, (stream) ->
+                # Things like HTML, CSS, JS should be sent as text.
+                if /^text/.test(type)
+                    stream.setEncoding('utf8')
+                res.writeHead(200, {'Content-Type' : type})
+                stream.on 'data', (data) ->
+                    res.write(data)
+                stream.on 'end', ->
+                    res.end()
+            # TODO: After testing, we don't want to throw, we want to log.
+            resreq.on 'error', (e) -> throw e
 
         server.get '/getHTML/:browserid', (req, res) =>
             console.log "browserID: #{req.params.browserid}"
-            @browsers.find decodeURIComponent(req.params.browserid), (browser) ->
-                res.send(browser.window.document.outerHTML)
+            browser = @browsers.find(decodeURIComponent(req.params.browserid))
+            res.send(browser.window.document.outerHTML)
 
         server.get '/getText/:browserid', (req, res) =>
             console.log "browserID: #{req.params.browserid}"
-            @browsers.find decodeURIComponent(req.params.browserid), (browser) ->
-                res.contentType('text/plain')
-                res.send(browser.window.document.outerHTML)
+            browser = @browsers.find(decodeURIComponent(req.params.browserid))
+            res.contentType('text/plain')
+            res.send(browser.window.document.outerHTML)
 
         server.post '/create', (req, res) =>
             browserInfo = req.body.browser
