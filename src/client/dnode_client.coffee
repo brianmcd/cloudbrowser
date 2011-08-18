@@ -1,14 +1,19 @@
 DNode = require('dnode')
 TaggedNodeCollection = require('./tagged_node_collection')
 
+test_env = false
+if process?.env?.TESTS_RUNNING
+    test_env = true
+
 module.exports = (window, document) ->
     nodes = new TaggedNodeCollection()
+    if test_env
+        window.__nodes = nodes
 
     dnodeConnection = DNode( (remote, conn) ->
         console.log "Connecting to server..."
         conn.on('ready', () ->
             console.log "Connection is ready"
-            console.log(remote)
             remote.auth(window.__envSessionID)
         )
 
@@ -20,7 +25,6 @@ module.exports = (window, document) ->
         #TODO: Need to have a "batch proces function".  Need to add "TagDocument"
         # TODO: clear needs to be able to be called on a certain document.
         @DOMUpdate = (params) ->
-            console.log(params)
             processInstruction = (inst) ->
                 # SPECIAL CASE
                 # TODO: this is a quick hack.
@@ -59,7 +63,7 @@ module.exports = (window, document) ->
                 if rvID? && /^node\d+$/.test(rvID)
                     if rv.__nodeID == undefined
                         nodes.add(rv, rvID)
-            #printMethodCall(target, method, args, rvID)
+                #printMethodCall(target, method, args, rvID)
             if params instanceof Array
                 for inst in params
                     processInstruction(inst)
@@ -80,6 +84,8 @@ module.exports = (window, document) ->
             while document.hasChildNodes()
                 document.removeChild(document.firstChild)
             nodes = new TaggedNodeCollection()
+            if test_env
+                window.__nodes = nodes
             delete document.__nodeID
 
         # startEvents 
@@ -144,7 +150,7 @@ module.exports = (window, document) ->
                         return false
         )
 
-    if process?.env?.TESTS_RUNNING
+    if test_env == true
         console.log("Running DNode over TCP")
         dnodeConnection.connect(3002)
     else
