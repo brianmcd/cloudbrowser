@@ -55,24 +55,37 @@ class DOM extends EventEmitter
         window.console = console
         window.require = require
         window.__defineGetter__ 'location', () -> @__location
+
+        emitHashchange = (oldURL, newURL) =>
+            event = window.document.createEvent('HTMLEvents')
+            event.initEvent("hashchange", true, false)
+            event.oldURL = oldURL
+            event.newURL = newURL
+            window.dispatchEvent(event)
         window.__defineSetter__ 'location', (url) ->
             if @__location
-                @__location.removeAllListeners('navigate')
                 @__location.removeAllListeners('hashchange')
-            @__location = new Location(url, window.location?.href, () ->
-                # Navigate event gets thrown to the Browser, which will destroy
-                # this window and get another.
-                #TODO: should this be on process.nextTick?
-                #TODO: if not, we need to return from the setter immediate after.
-                self.emit('navigate', url)
+                @__location.removeAllListeners('pagechange')
+            # The Location constructor will attach NAVIGATE or HASHCHANGE to
+            # the created object if one of those events occured.  It can't
+            # trigger the event inside the constructor, because the code
+            # handling the event needs to have a valid location object set.
+            @__location = new Location(url, window.location)
+            # Navigate event gets thrown to the Browser, which will destroy
+            # this window and get another.
+            if typeof @__location.PAGECHANGE == 'string'
+                return self.emit('pagechange', @__location.PAGECHANGE)
+            @__location.on('pagechange', (url) ->
+                console.log("PAGECHANGE EVENT")
+                self.emit('pagechange', url)
             )
-            @__location.on('hashchange', () ->
-                event = window.document.createEvent('HTMLEvents')
-                event.initEvent("hashchange", true, false)
-                # TODO
-                # Ideally, we'd set oldurl and newurl, but Sammy doesn't
-                # rely on it so skipping that for now.
-                window.dispatchEvent(event)
+            if typeof @__location.HASHCHANGE == 'object'
+                oldURL = @__location.HASHCHANGE.oldURL
+                newURL = @__location.HASHCHANGE.newURL
+                delete @__location.HASHCHANGE
+                return emitHashchange(oldURL, newURL)
+            @__location.on('hashchange', (oldURL, newURL) ->
+                emitHashchange(oldURL, newURL)
             )
             # window.empty is set before the first page load.
             if window.empty

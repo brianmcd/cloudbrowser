@@ -2,8 +2,7 @@ Location = require('../../lib/dom/location')
 
 exports['tests'] =
     'basic test' : (test) ->
-        loc = new Location('http://www.google.com/awesome/page.html',
-                           'http://www.google.com/awesome/page.html', () ->)
+        loc = new Location('http://www.google.com/awesome/page.html')
         test.equal(loc.protocol, 'http:')
         test.equal(loc.host, 'www.google.com')
         test.equal(loc.hostname, 'www.google.com')
@@ -16,35 +15,55 @@ exports['tests'] =
     'test navigation' : (test) ->
         called = false
         loc = new Location('http://www.google.com/newpage.html',
-                           'http://www.google.com', () -> called = true)
-        test.ok(called)
+                           new Location('http://www.google.com'))
+        test.equal(loc.PAGECHANGE, 'http://www.google.com/newpage.html')
+        test.equal(loc.HASHCHANGE, undefined)
         
-        loc = new Location('http://www.site.com', 'http://www.site.com', () ->
-            test.ok(false)
-        )
+        loc = new Location('http://www.site.com',
+                           new Location('http://www.site.com'))
+        test.equal(loc.PAGECHANGE, undefined)
+        test.equal(loc.HASHCHANGE, undefined)
+
         loc = new Location('http://www.google.com/#!update',
-                           'http://www.google.com/', () -> test.ok(false)
-        )
+                           new Location('http://www.google.com/'))
+        test.equal(loc.PAGECHANGE, undefined)
+        test.notEqual(loc.HASHCHANGE, undefined)
+        test.equal(loc.HASHCHANGE.oldURL, 'http://www.google.com/')
+        test.equal(loc.HASHCHANGE.newURL, 'http://www.google.com/#!update')
+
         loc = new Location('http://www.google.com',
-                           'http://www.google.com', () -> test.done()
+                           new Location('http://www.google.com'))
+        test.equal(loc.PAGECHANGE, undefined)
+        test.equal(loc.HASHCHANGE, undefined)
+        loc.once('pagechange', (url) ->
+            test.equal(url, 'http://www.google.com/page2.html')
+            test.done()
         )
         loc.href = 'http://www.google.com/page2.html'
 
     'test hashchange' : (test) ->
         called = false
-        loc = new Location('http://www.google.com', 'http://www.google.com', () ->
-            # None of these tests should cause navigation, only hash changes.
-            test.ok(false)
-        )
-        loc.on('hashchange', () ->
-            called = true
-        )
-        loc.href = 'http://www.google.com/#!more/stuff'
-        test.ok(called)
-        called = false
-        loc.href = 'http://www.google.com/#!changedagain'
-        test.ok(called)
-        loc.href = 'http://www.google.com/#!changedagain'
-        test.equal(called, false)
-        test.done()
+        # None of these tests should cause navigation, only hash changes.
+        loc = new Location('http://www.google.com',
+                           new Location('http://www.google.com'))
+        test.equal(loc.PAGECHANGE, undefined)
+        test.equal(loc.HASHCHANGE, undefined)
 
+        urls = [
+            'http://www.google.com/'
+            'http://www.google.com/#!/more/stuff'
+            'http://www.google.com/#!changedagain' ]
+
+        count = 0
+        loc.on('hashchange', (oldURL, newURL) ->
+            test.equal(oldURL, urls[count])
+            count++
+            test.equal(newURL, urls[count])
+            if count == urls.length - 1
+                test.done()
+        )
+        loc.href = 'http://www.google.com/#!/more/stuff'
+        loc.href = 'http://www.google.com/#!/more/stuff'
+        loc.href = 'http://www.google.com/#!changedagain'
+
+    # TODO: test navigating by setting properties like pathname

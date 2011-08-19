@@ -10,9 +10,9 @@ class Browser
         @id = browserID
         @window = null
         @dom = new DOM(this)
-        # The DOM can emit 'navigate' when Location is set and we need to
+        # The DOM can emit 'pagechange' when Location is set and we need to
         # load a new page.
-        @dom.on('navigate', (url) => @load(url))
+        @dom.on('pagechange', (url) => @load(url))
         # Array of clients waiting for page to load.
         @connQ = []
         # Array of currently connected DNode clients.
