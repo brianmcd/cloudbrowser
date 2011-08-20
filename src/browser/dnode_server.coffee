@@ -3,8 +3,10 @@ EventEmitter = require('events').EventEmitter
 
 class DNodeServer extends EventEmitter
     constructor : (httpServer, browsers) ->
+        @conns = conns = []
         @server = DNode((remote, conn) ->
             console.log("Incoming connection")
+            conns.push(conn)
             browser = null
             dom = null
 
@@ -103,6 +105,9 @@ class DNodeServer extends EventEmitter
             process.nextTick( () => @emit('ready'))
 
     close : () ->
+        for conn in @conns
+            if conn?
+                conn.end()
         @server.once('close', () => @emit('close'))
         @server.close()
 
