@@ -10,7 +10,7 @@
 #   [value] - Optional. Given for text and comment nodes.
 #   [attributes] - Optional. An object like:
 #       Property : value
-exports.serialize = (document) ->
+exports.serialize = (document, resources) ->
     cmds = []
 
     # A filter that skips script tags.
@@ -27,7 +27,7 @@ exports.serialize = (document) ->
             console.log("Can't create instructions for #{typeStr}")
             return
         # Each serializer pushes its command(s) onto the command stack.
-        func(node, cmds, document)
+        func(node, cmds, document, resources)
     )
     return cmds
 
@@ -66,32 +66,34 @@ serializers =
             record.ownerDocument = node.ownerDocument.__nodeID
         cmds.push(record)
 
-    # TODO: re-write absolute URLs to go through our resource proxy as well.
-    Element : (node, cmds, topDoc) ->
+    Element : (node, cmds, topDoc, resources) ->
         tagName = node.tagName.toLowerCase()
-        # TODO: don't send attributes if it is empty
-        attributes = {}
+        attributes = null
         if node.attributes && (node.attributes.length > 0)
+            attributes = {}
             for attr in node.attributes
                 name = attr.name
                 value = attr.value
                 # Don't send src attribute for frames or iframs
                 if /^i?frame$/.test(tagName) && (name.toLowerCase() == 'src')
                     continue
-                # For now, we aren't re-writing absolute URLs.  These will
-                # still hit the original server.  TODO: fix this.
-                if (name.toLowerCase() == 'src') && !(/^http/.test(value))
-                    console.log("Rewriting src of #{tagName}")
-                    console.log("Before: src=#{value}")
-                    value = value.replace(/\.\./g, 'dotdot')
-                    console.log("After: src=#{value}")
+                lowercase = name.toLowerCase()
+                if (lowercase == 'src') || ((tagName == 'link') && (lowercase == 'href'))
+                    if resources? && value
+                        console.log("Proxying src for #{tagName} [src = #{value}]")
+                        console.log(value)
+                        value = "#{resources.addURL(value)}"
+                        console.log(value)
+                    else
+                        console.log("No ResourceProxy given to Serialize")
                 attributes[name] = value
         record =
             type : 'element'
             id : node.__nodeID
             parent : node.parentNode.__nodeID
             name : node.tagName
-            attributes : attributes
+        if attributes != null
+            record.attributes = attributes
         if node.ownerDocument != topDoc
             record.ownerDocument = node.ownerDocument.__nodeID
 

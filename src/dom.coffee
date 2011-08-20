@@ -4,6 +4,7 @@ TaggedNodeCollection = require('./tagged_node_collection')
 XMLHttpRequest       = require('./dom/XMLHttpRequest').XMLHttpRequest
 Location             = require('./dom/location')
 Request              = require('request')
+serialize            = require('./dom/serializer').serialize
 addAdvice            = require('./dom/advice').addAdvice
 applyPatches         = require('./dom/patches').applyPatches
 
@@ -13,6 +14,7 @@ class DOM extends EventEmitter
     constructor : (browser) ->
         @browser = browser
         @nodes = new TaggedNodeCollection()
+        @currentWindow = null
         # Clear JSDOM out of the require cache.  We have to do this because
         # we modify JSDOM's internal data structures with per-BrowserInstance
         # specifiy information, so we need to get a whole new JSDOM instance
@@ -32,11 +34,16 @@ class DOM extends EventEmitter
         addAdvice(@jsdom.dom.level3.html, this)
         applyPatches(@jsdom.dom.level3.core)
 
+    getSnapshot : () ->
+        if @currentWindow
+            return serialize(@currentWindow.document, @browser.resources)
+        return null
+
     # Creates a window.
-    # TODO: defer creating document until actually fetching the page.
     createWindow : () ->
         # Grab JSDOM's window, so we can augment it.
         window = @jsdom.createWindow(@jsdom.dom.level3.html)
+        @currentWindow = window
 
         window.JSON = JSON
         # Thanks Zombie for Image code 

@@ -2,13 +2,13 @@ assert         = require('assert')
 path           = require('path')
 URL            = require('url')
 DOM            = require('../dom')
-# TODO: attach "serialize" method to DOM
-serialize  = require('../dom/serializer').serialize
+ResourceProxy  = require('./resource_proxy')
 
 class Browser
     constructor : (browserID, url) ->
         @id = browserID
         @window = null
+        @resources = null
         @dom = new DOM(this)
         # The DOM can emit 'pagechange' when Location is set and we need to
         # load a new page.
@@ -25,6 +25,7 @@ class Browser
         console.log "Loading: #{url}"
         @pauseClientUpdates()
         @window.close if @window?
+        @resources = new ResourceProxy(url)
         @window = @dom.createWindow()
         # TODO TODO: also need to not process client events from now until the
         # new page loads.
@@ -57,7 +58,7 @@ class Browser
             return
         @clients = @clients.concat(@connQ)
         @connQ = []
-        snapshot = serialize(@window.document)
+        snapshot = @dom.getSnapshot()
         for client in @clients
             client.clear()
             client.loadFromSnapshot(snapshot)
@@ -73,7 +74,7 @@ class Browser
         if !@window.document?
             @connQ.push(client)
         else
-            snapshot = serialize(@window.document)
+            snapshot = @dom.getSnapshot()
             client.clear()
             client.loadFromSnapshot(snapshot)
             @clients.push(client)

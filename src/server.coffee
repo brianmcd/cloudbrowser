@@ -13,6 +13,7 @@ BrowserManager  = require('./browser_manager')
 DNodeServer     = require('./browser/dnode_server')
 
 # So that developer code can require modules in its own node_modules folder.
+# TODO: this is deprecated on Node 0.6.  Use NODE_ENV?
 require.paths.unshift path.join(process.cwd(), "node_modules")
 
 class Server extends EventEmitter
@@ -81,35 +82,11 @@ class Server extends EventEmitter
             console.log "Joining: #{id}"
             res.render 'base.jade', browserid : id
 
-        server.get '/browsers/:browserid/*.*', (req, res) =>
-            resource = "#{req.params[0]}.#{req.params[1]}"
-            resource = resource.replace(/dotdot/g, '..')
-            console.log "[bid=#{req.params.browserid}] Proxying request for: #{resource}"
+        server.get '/browsers/:browserid/:resourceid', (req, res) =>
+            resourceid = req.params.resourceid
             browser = @browsers.find(decodeURIComponent(req.params.browserid))
-
-            url = URL.resolve(browser.window.document.URL, resource)
-            console.log "Fetching from: #{url}"
-            type = mime.lookup(url)
-            console.log "MIME type: #{type}"
-            theurl = URL.parse(url)
-            theurl.search = theurl.search || ""
-            theurl.port = theurl.port || 80
-            opts =
-                host : theurl.hostname
-                port : theurl.port
-                path : theurl.pathname + theurl.search
-            console.log opts
-            resreq = http.get opts, (stream) ->
-                # Things like HTML, CSS, JS should be sent as text.
-                if /^text/.test(type)
-                    stream.setEncoding('utf8')
-                res.writeHead(200, {'Content-Type' : type})
-                stream.on 'data', (data) ->
-                    res.write(data)
-                stream.on 'end', ->
-                    res.end()
-            # TODO: After testing, we don't want to throw, we want to log.
-            resreq.on 'error', (e) -> throw e
+            # Note: fetch calles res.end()
+            browser.resources.fetch(resourceid, res)
 
         server.get '/getHTML/:browserid', (req, res) =>
             console.log "browserID: #{req.params.browserid}"

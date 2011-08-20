@@ -5,7 +5,6 @@
 # TODO: entity reference, notationnode?
 # TODO: How should we handle cookie?
 # TODO: JSDOM is missing 'body' setter for HTMLDocument
-# TODO: createElement needs to tag document nodes when creating frames/iframes.
 
 isDOMNode = (node) -> (node?.ELEMENT_NODE == 1)
 
@@ -77,12 +76,13 @@ exports.addAdvice = (dom, wrapper) ->
                     args[1].toLowerCase()
                 else
                     args[0].toLowerCase()
-                if tagName == 'iframe' || tagName == 'frame'
-                    if attr == 'src'
+                if attr == 'src'
+                    if tagName == 'iframe' || tagName == 'frame'
                         # There is still special handling to be done in this
                         # case, but we need to do it after the
                         # HTMLFrameElement's function has been called.
                         return false
+                    console.log("FOUND A URL IN ADVICE TODO: RESOURCEPROXY")
                 return true
             )
 

@@ -10,7 +10,7 @@ Serialize = require('../../lib/dom/serializer').serialize
 exports['tests'] =
     'basic test' : (test) ->
         doc = JSDOM.jsdom("<HTML><HEAD></HEAD><BODY><DIV></DIV></BODY></HTML>")
-        snapshot = Serialize(doc)
+        snapshot = Serialize(doc, null)
         expected = ['html', 'head', 'body', 'div']
         count = 0
         test.equal(snapshot[0].type, 'document')
