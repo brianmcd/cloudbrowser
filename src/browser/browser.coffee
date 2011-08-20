@@ -3,7 +3,7 @@ path           = require('path')
 URL            = require('url')
 DOM            = require('../dom')
 # TODO: attach "serialize" method to DOM
-domToCommands  = require('../dom/serializer').domToCommands
+serialize  = require('../dom/serializer').serialize
 
 class Browser
     constructor : (browserID, url) ->
@@ -26,7 +26,8 @@ class Browser
         @pauseClientUpdates()
         @window.close if @window?
         @window = @dom.createWindow()
-        # TODO TODO: also need to not process client events.
+        # TODO TODO: also need to not process client events from now until the
+        # new page loads.
         @window.location = url
         # We know the event won't fire until a later tick since it has to make
         # an http request.
@@ -35,6 +36,7 @@ class Browser
     pauseClientUpdates : () ->
         @dom.removeAllListeners('DOMUpdate')
         @dom.removeAllListeners('DOMPropertyUpdate')
+        @dom.removeAllListeners('tagDocument')
 
     resumeClientUpdates : () ->
         @syncAllClients()
@@ -46,28 +48,19 @@ class Browser
         @dom.on('DOMPropertyUpdate', (params) =>
             @broadcastUpdate('DOMPropertyUpdate', params)
         )
+        @dom.on('tagDocument', (params) =>
+            @broadcastUpdate('tagDocument', params)
+        )
 
     syncAllClients : () ->
         if @clients.length == 0 && @connQ.length == 0
             return
         @clients = @clients.concat(@connQ)
         @connQ = []
-        syncCmds = domToCommands(@window.document)
+        snapshot = serialize(@window.document)
         for client in @clients
             client.clear()
-            client.DOMUpdate(syncCmds)
-
-    clearConnQ : ->
-        console.log "Clearing connQ"
-        if @connQ.length == 0
-            return
-        syncCmds = domToCommands(@window.document)
-        for client in @connQ
-            console.log "Syncing a client"
-            client.clear()
-            client.DOMUpdate(syncCmds)
-            @clients.push(client)
-        @connQ = []
+            client.loadFromSnapshot(snapshot)
 
     # method - either 'DOMUpdate' or 'DOMPropertyUpdate'.
     # params - the scrubbed params object.
@@ -76,15 +69,14 @@ class Browser
             client[method](params)
 
     addClient : (client) ->
-        if !@window?.document?
-            console.log "Queuing client"
+        # TODO: check readyState instead.
+        if !@window.document?
             @connQ.push(client)
-            return false
-        syncCmds = domToCommands(@window.document)
-        client.clear()
-        client.DOMUpdate(syncCmds)
-        @clients.push(client)
-        return true
+        else
+            snapshot = serialize(@window.document)
+            client.clear()
+            client.loadFromSnapshot(snapshot)
+            @clients.push(client)
 
     removeClient : (client) ->
         @clients = (c for c in @clients when c != client)

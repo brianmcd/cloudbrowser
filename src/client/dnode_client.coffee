@@ -17,52 +17,77 @@ module.exports = (window, document) ->
             remote.auth(window.__envSessionID)
         )
 
+        # Snapshot is an array of node records.  See dom/serializers.coffee.
+        @loadFromSnapshot = (snapshot) ->
+            node = null
+            for record in snapshot
+                switch record.type
+                    when 'document'
+                        if record.parent
+                            target = nodes.get(record.parent)
+                            nodes.add(target.contentDocument, record.id)
+                        else
+                            nodes.add(document, record.id)
+                    when 'comment'
+                        if record.ownerDocument
+                            doc = nodes.get(record.ownerDocument)
+                            node = doc.createComment(record.value)
+                        else
+                            node = document.createComment(record.value)
+                        nodes.add(node, record.id)
+                        parent = nodes.get(record.parent)
+                        parent.appendChild(node)
+                    when 'element'
+                        if record.ownerDocument
+                            doc = nodes.get(record.ownerDocument)
+                            node = doc.createElement(record.name)
+                        else
+                            node = document.createElement(record.name)
+                        for name, value of record.attributes
+                            node.setAttribute(name, value)
+                        nodes.add(node, record.id)
+                        parent = nodes.get(record.parent)
+                        parent.appendChild(node)
+                    when 'text'
+                        if record.ownerDocument
+                            doc = nodes.get(record.ownerDocument)
+                            node = doc.createTextNode(record.value)
+                        else
+                            node = document.createTextNode(record.value)
+                        nodes.add(node, record.id)
+                        parent = nodes.get(record.parent)
+                        parent.appendChild(node)
+
+        @tagDocument = (params) ->
+            parent = nodes.get(params.parent)
+            nodes.add(parent.contentDocument, params.id)
+
         # Params:
         #   'method'
         #   'rvID'
         #   'targetID'
         #   'args'
-        #TODO: Need to have a "batch proces function".  Need to add "TagDocument"
-        # TODO: clear needs to be able to be called on a certain document.
         @DOMUpdate = (params) ->
             processInstruction = (inst) ->
-                # SPECIAL CASE
-                # TODO: this is a quick hack.
-                # TODO: need to add a DNode endpoint that takes batch instructions and calls DOMUpdate/DOMPropertyUpdate/clear correctly.
-                if inst.method == 'tagDocument'
-                    if inst.targetID == null
-                        nodes.add(window.document, inst.args[0])
-                    else
-                        target = nodes.get(inst.targetID)
-                        nodes.add(target.contentDocument, inst.args[0])
-                        # TODO THIS IS A HACK
-                        doc = target.contentDocument
-                        while doc.hasChildNodes()
-                            doc.removeChild(doc.firstChild)
-                    return
-
                 target = nodes.get(inst.targetID)
                 method = inst.method
                 rvID = inst.rvID
                 args = nodes.unscrub(inst.args)
 
                 if target[method] == undefined
-                    throw new Error "Tried to process an invalid method: #{method}"
+                    throw new Error("Tried to process an invalid method: #{method}")
 
-                try
-                    rv = target[method].apply(target, args)
-                catch e
-                    console.log e
-                    throw e
+                rv = target[method].apply(target, args)
 
-                if rv == undefined
-                    return
-
-                if rv.__nodeID && rvID && (rv.__nodeID != rvID)
-                    throw new Error "id issue"
-                if rvID? && /^node\d+$/.test(rvID)
-                    if rv.__nodeID == undefined
+                if rvID?
+                    if !rv?
+                        throw new Error('expected return value')
+                    else if rv.__nodeID?
+                        if rv.__nodeID != rvID
+                            throw new Error "id issue"
+                    else
                         nodes.add(rv, rvID)
+
                 #printMethodCall(target, method, args, rvID)
             if params instanceof Array
                 for inst in params
@@ -151,11 +176,9 @@ module.exports = (window, document) ->
         )
 
     if test_env == true
-        console.log("Running DNode over TCP")
         dnodeConnection.connect(3002)
     else
         #TODO: this is where we'd add reconnect param.
-        console.log("Running DNode over socket.io")
         dnodeConnection.connect()
 
     printMethodCall = (node, method, args, rvID) ->

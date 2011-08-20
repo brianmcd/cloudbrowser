@@ -107,16 +107,16 @@ exports.addAdvice = (dom, wrapper) ->
                     args[1].toLowerCase()
                 else
                     args[0].toLowerCase()
-                # At this point, JSDOM has deleted the old document
-                # and created the new one, so we can (and should) go
-                # ahead and tag it.
-                wrapper.nodes.add(elem.contentDocument)
-                wrapper.emit('DOMUpdate',
-                    targetID : null
-                    rvID : null
-                    method : 'tagDocument'
-                    args : [elem.contentDocument.__nodeID]
-                )
+                # If src attribute is set, jsdom will create/load a new document.
+                if attr == 'src'
+                    # At this point, JSDOM has deleted the old document
+                    # and created the new one, so we can (and should) go
+                    # ahead and tag it.
+                    wrapper.nodes.add(elem.contentDocument)
+                    wrapper.emit('tagDocument',
+                        parent : elem.__nodeID,
+                        id : elem.contentDocument.__nodeID
+                    )
                 return false
             )
 
@@ -139,11 +139,12 @@ exports.addAdvice = (dom, wrapper) ->
                     # we still need to support iframes that are created
                     # programatically.
                     wrapper.nodes.add(rv.contentDocument)
-                    wrapper.emit('DOMUpdate',
-                        targetID : null
-                        rvID : null
-                        method : 'tagDocument'
-                        args : [rv.contentDocument.__nodeID]
+                    # TODO: this doesn't work because this will be emitted
+                    # before the update that creates the frame, so parent won't
+                    # exist on the client.
+                    wrapper.emit('tagDocument',
+                        parent : rv.__nodeID
+                        id : rv.contentDocument.__nodeID
                     )
                 return true
             )
