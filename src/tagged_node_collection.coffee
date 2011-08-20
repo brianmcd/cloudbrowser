@@ -35,7 +35,7 @@ class TaggedNodeCollection
                     found = true
         else if typeof id == 'string'
             if @ids[id] != undefined
-                throw new Error('User supplied existing ID')
+                throw new Error("User supplied existing ID: #{id}")
         else
             throw new Error("Invalid ID: #{id}")
         @count++
