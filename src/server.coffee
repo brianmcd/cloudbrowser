@@ -122,6 +122,15 @@ class Server extends EventEmitter
             res.contentType('text/plain')
             res.send(browser.window.document.outerHTML)
 
+        server.get '/browserList', (req, res) =>
+            res.writeHead(200, {'Content-Type' : 'application/json'})
+            # TODO: this should be cached in BrowserManager instead of scanning
+            # browsers object each time.
+            browsers= []
+            for browserid, browser of @browsers.browsers
+                browsers.push(browserid)
+            res.end(JSON.stringify(browsers))
+
         server.post '/create', (req, res) =>
             browserInfo = req.body.browser
             id = browserInfo.id
