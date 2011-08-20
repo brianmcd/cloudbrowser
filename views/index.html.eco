@@ -51,6 +51,12 @@
                                              "</a>");
                     //TODO: update list of currently active browser instances.
                 });
+                $('#join-button').click(function () {
+                    var browserWindow = window['browser']
+                    var browser = $('#join-menu').val();
+                    console.log("Trying to join: " + browser);
+                    browserWindow.location = '/browsers/' + browser + '/index.html';
+                });
             });
         </script>
     </head>
