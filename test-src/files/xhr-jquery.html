@@ -1,0 +1,19 @@
+<HTML>
+    <HEAD>
+        <SCRIPT src='http://code.jquery.com/jquery-1.6.2.js'></SCRIPT>
+        <SCRIPT>
+            $(function () {
+                var target = document.getElementById('target');
+                var finished = document.getElementById('finished');
+                $.get('http://localhost:3001/xhr-target.html', function (data) {
+                    window.responseText = data;
+                    finished.innerHTML = 'true';
+                });
+            });
+        </SCRIPT>
+    </HEAD>
+    <BODY>
+        <DIV id='finished'></DIV>
+    </BODY>
+</HTML>
+

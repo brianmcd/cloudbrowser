@@ -1,4 +1,5 @@
 Path      = require('path')
+FS        = require('fs')
 TestCase  = require('nodeunit').testCase
 Server    = require('../lib/server')
 Bootstrap = require('../lib/client/dnode_client')
@@ -75,6 +76,32 @@ exports['tests'] =
                test.done()
             checkReady(window, moreTests)
         checkReady(window, tests)
+
+    # Using the XMLHttpRequest object, make an AJAX request.
+    'basic XHR' : (test) ->
+        clientWindow = initTest('browser4', 'http://localhost:3001/xhr-basic.html')
+        browser = server.browsers.find('browser4')
+        window = browser.window
+        document = window.document
+        tests = () ->
+            targetPath = Path.join(__dirname, '..', 'test-src', 'files', 'xhr-target.html')
+            targetSource = FS.readFileSync(targetPath, 'utf8')
+            test.equal(window.responseText, targetSource)
+            test.done()
+        checkReady(clientWindow, tests)
+        
+    # Using $.get, make an AJAX request.
+    'jQuery XHR' : (test) ->
+        clientWindow = initTest('browser5', 'http://localhost:3001/xhr-jquery.html')
+        browser = server.browsers.find('browser5')
+        window = browser.window
+        document = window.document
+        tests = () ->
+            targetPath = Path.join(__dirname, '..', 'test-src', 'files', 'xhr-target.html')
+            targetSource = FS.readFileSync(targetPath, 'utf8')
+            test.equal(window.responseText, targetSource)
+            test.done()
+        checkReady(clientWindow, tests)
 
     'teardown' : (test) ->
         server.once('close', () ->
