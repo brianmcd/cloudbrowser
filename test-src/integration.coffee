@@ -91,9 +91,23 @@ exports['tests'] =
         checkReady(clientWindow, tests)
         
     # Using $.get, make an AJAX request.
-    'jQuery XHR' : (test) ->
+    'jQuery XHR - absolute' : (test) ->
         clientWindow = initTest('browser5', 'http://localhost:3001/xhr-jquery.html')
         browser = server.browsers.find('browser5')
+        window = browser.window
+        document = window.document
+        tests = () ->
+            targetPath = Path.join(__dirname, '..', 'test-src', 'files', 'xhr-target.html')
+            targetSource = FS.readFileSync(targetPath, 'utf8')
+            test.equal(window.responseText, targetSource)
+            test.done()
+        checkReady(clientWindow, tests)
+
+    # Using $.get, make an AJAX request using a relative URL.
+    # This appears to be giving us trouble when running the jQuery test suite.
+    'jQuery XHR - relative' : (test) ->
+        clientWindow = initTest('browser6', 'http://localhost:3001/xhr-jquery-relative.html')
+        browser = server.browsers.find('browser6')
         window = browser.window
         document = window.document
         tests = () ->
