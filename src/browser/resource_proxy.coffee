@@ -29,7 +29,7 @@ class ResourceProxy
             throw new Error("Tried to fetch invalid id: #{id}")
         type = MIME.lookup(url.href) #TODO: how does this deal with hashes?
         opts =
-            host : url.host
+            host : url.hostname
             port : url.port || 80
             path : url.pathname + (url.search || '')
         console.log(opts)
