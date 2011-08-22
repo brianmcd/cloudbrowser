@@ -1,7 +1,7 @@
 URL                  = require('url')
 EventEmitter         = require('events').EventEmitter
 TaggedNodeCollection = require('./tagged_node_collection')
-XMLHttpRequest       = require('./dom/XMLHttpRequest').XMLHttpRequest
+ImportXMLHttpRequest = require('./dom/XMLHttpRequest').ImportXMLHttpRequest
 Location             = require('./dom/location')
 Request              = require('request')
 serialize            = require('./dom/serializer').serialize
@@ -57,7 +57,9 @@ class DOM extends EventEmitter
             img.width = width
             img.height = height
             img
-        window.XMLHttpRequest = XMLHttpRequest
+        # This sets window.XMLHttpRequest, and gives the XHR code access to
+        # the window object.
+        ImportXMLHttpRequest(window)
         window.browser = @browser
         window.console = console
         window.require = require
