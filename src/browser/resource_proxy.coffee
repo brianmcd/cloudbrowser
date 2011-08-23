@@ -2,29 +2,30 @@ HTTP = require('http')
 MIME = require('mime')
 URL = require('url')
 
-# If we want to resolve URLs, we need to be able to access window.location?
-# Or maybe just have baseURL passed, since we get a new ResourceProxy every
-# page load.
-# TODO: detect duplicate URLs, fetch them once and cache them.
 # TODO: scan @import rules for CSS and fetch subresources.
 # TODO: add URLs to ResourceProxy when src attributes are set in advice.
 class ResourceProxy
     constructor : (baseURL) ->
-        @urls = []
+        @urlsByIndex = []
+        @urlsByName = {}
         @baseURL = baseURL
     
     # url - a relative or absolute URL
     addURL : (url) ->
+        parsed = null
         if /^http/.test(url)
-            @urls.push(URL.parse(url))
+            parsed = URL.parse(url)
         else
-            @urls.push(URL.parse(URL.resolve(@baseURL, url)))
-        return (@urls.length - 1)
+            parsed = URL.parse(URL.resolve(@baseURL, url))
+        href = parsed.href
+        return @urlsByName[href] if @urlsByName[href]?
+        @urlsByIndex.push(parsed)
+        return @urlsByName[href] = @urlsByIndex.length - 1
 
     # id - the resource ID to fetch
     # res - the response object to write to.
     fetch : (id, res) ->
-        url = @urls[id]
+        url = @urlsByIndex[id]
         if !url?
             throw new Error("Tried to fetch invalid id: #{id}")
         type = MIME.lookup(url.href) #TODO: how does this deal with hashes?
