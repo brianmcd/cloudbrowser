@@ -47,8 +47,8 @@ exports['tests'] =
         test.done()
 
     'test fetch' : (test) ->
-        server = new Server(Path.join(__dirname, '..', '..',
-                            'test-src', 'files'))
+        filesPath = Path.join(__dirname, '..', '..', 'test-src', 'files')
+        server = new Server(filesPath)
         # mock response obejct
         class Response
             constructor : (expected) ->
