@@ -1,5 +1,4 @@
 class TaggedNodeCollection
-    # TODO: take idPrefix and propName as defaulted params
     constructor : ->
         @ids = {}
         @count = 0
@@ -16,10 +15,12 @@ class TaggedNodeCollection
 
     # If ID is not supplied, it will be generated (the common case)
     add : (node, id) ->
+        if !node?
+            throw new Error("Trying to add null node")
         if node.__nodeID?
             if (node != @ids[node.__nodeID])
                 throw new Error("Added a node with existing __nodeID, but it 
-                                 doesn't match")
+                                 doesn't match: #{node.__nodeID}")
             # We need to allow assigning a new ID to an existing node so that
             # we can re-tag an iframe's contentDocument.
             # It starts as a blank iframe with a blank document, then src gets
@@ -34,8 +35,9 @@ class TaggedNodeCollection
                 if @ids[id] == undefined
                     found = true
         else if typeof id == 'string'
-            if @ids[id] != undefined
-                throw new Error("User supplied existing ID: #{id}")
+            current = @ids[id]
+            if current && (current != node)
+                throw new Error("User supplied existing but mismatched ID: #{id}")
         else
             throw new Error("Invalid ID: #{id}")
         @count++
