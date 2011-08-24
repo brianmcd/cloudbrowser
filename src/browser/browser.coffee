@@ -60,7 +60,6 @@ class Browser
         @connQ = []
         snapshot = @dom.getSnapshot()
         for client in @clients
-            client.clear()
             client.loadFromSnapshot(snapshot)
 
     # method - either 'DOMUpdate' or 'DOMPropertyUpdate'.
@@ -70,12 +69,10 @@ class Browser
             client[method](params)
 
     addClient : (client) ->
-        # TODO: check readyState instead.
-        if !@window.document?
+        if @window.document?.readyState == 'loading'
             @connQ.push(client)
         else
             snapshot = @dom.getSnapshot()
-            client.clear()
             client.loadFromSnapshot(snapshot)
             @clients.push(client)
 

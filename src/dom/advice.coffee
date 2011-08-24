@@ -113,8 +113,12 @@ exports.addAdvice = (dom, wrapper) ->
                     # and created the new one, so we can (and should) go
                     # ahead and tag it.
                     wrapper.nodes.add(elem.contentDocument)
+                    # Next, we need to clean out the client's iframe, since
+                    # setting src creates a new iframe on the server.
+                    wrapper.emit('clear', frame : elem.__nodeID)
+                    # Then tag the document with its new ID.
                     wrapper.emit('tagDocument',
-                        parent : elem.__nodeID,
+                        parent : elem.__nodeID
                         id : elem.contentDocument.__nodeID
                     )
                 return false
@@ -139,13 +143,23 @@ exports.addAdvice = (dom, wrapper) ->
                     # we still need to support iframes that are created
                     # programatically.
                     wrapper.nodes.add(rv.contentDocument)
-                    # TODO: this doesn't work because this will be emitted
-                    # before the update that creates the frame, so parent won't
-                    # exist on the client.
+                    # We need to emit the DOMUpdate before we can tag the
+                    # iframe's document.  We have to do it here since we can't
+                    # tell the caller to tag the document after, and we don't
+                    # want to add the special case check to every single
+                    # method invocation by putting it in the advice.
+                    wrapper.emit('DOMUpdate'
+                        targetID : elem.__nodeID
+                        rvID : rv.__nodeID
+                        method : method
+                        args : wrapper.nodes.scrub(args)
+                    )
                     wrapper.emit('tagDocument',
                         parent : rv.__nodeID
                         id : rv.contentDocument.__nodeID
                     )
+                    # We return false because we already emitted the instruction.
+                    return false
                 return true
             )
 

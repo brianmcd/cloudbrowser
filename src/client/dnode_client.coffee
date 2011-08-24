@@ -16,51 +16,83 @@ module.exports = (window, document) ->
             console.log "Connection is ready"
             remote.auth(window.__envSessionID)
         )
-
+        
         # Snapshot is an array of node records.  See dom/serializers.coffee.
+        # This function is used to bootstrap the client so they're ready for
+        # updates.
         @loadFromSnapshot = (snapshot) ->
-            node = null
+            console.log("Loading from snapshot...")
             for record in snapshot
+                node = null
+                doc = null
+                parent = null
                 switch record.type
                     when 'document'
+                        doc = document
                         if record.parent
-                            target = nodes.get(record.parent)
-                            nodes.add(target.contentDocument, record.id)
-                        else
-                            nodes.add(document, record.id)
+                            doc = nodes.get(record.parent).contentDocument
+                        while doc.hasChildNodes()
+                            doc.removeChild(doc.firstChild)
+                        delete doc.__nodeID
+                        # If we just cleared the main document, start a new
+                        # TaggedNodeCollection
+                        if doc == document
+                            nodes = new TaggedNodeCollection()
+                        nodes.add(doc, record.id)
                     when 'comment'
+                        doc = document
                         if record.ownerDocument
                             doc = nodes.get(record.ownerDocument)
-                            node = doc.createComment(record.value)
-                        else
-                            node = document.createComment(record.value)
+                        node = doc.createComment(record.value)
                         nodes.add(node, record.id)
                         parent = nodes.get(record.parent)
                         parent.appendChild(node)
                     when 'element'
+                        doc = document
                         if record.ownerDocument
                             doc = nodes.get(record.ownerDocument)
-                            node = doc.createElement(record.name)
-                        else
-                            node = document.createElement(record.name)
+                        node = doc.createElement(record.name)
                         for name, value of record.attributes
                             node.setAttribute(name, value)
                         nodes.add(node, record.id)
                         parent = nodes.get(record.parent)
                         parent.appendChild(node)
                     when 'text'
+                        doc = document
                         if record.ownerDocument
                             doc = nodes.get(record.ownerDocument)
-                            node = doc.createTextNode(record.value)
-                        else
-                            node = document.createTextNode(record.value)
+                        node = doc.createTextNode(record.value)
                         nodes.add(node, record.id)
                         parent = nodes.get(record.parent)
                         parent.appendChild(node)
 
         @tagDocument = (params) ->
             parent = nodes.get(params.parent)
-            nodes.add(parent.contentDocument, params.id)
+            if parent.contentDocument?.readyState == 'complete'
+                nodes.add(parent.contentDocument, params.id)
+            else
+                listener = () ->
+                    parent.removeEventListener('load', listener)
+                    nodes.add(parent.contentDocument, params.id)
+                parent.addEventListener('load', listener)
+
+        # If params given, clear the document of the specified frame.
+        # Otherwise, clear the global window's document.
+        @clear = (params) ->
+            doc = document
+            frame = null
+            if params?
+                frame = nodes.get(params.frame)
+                doc = frame.contentDocument
+            while doc.hasChildNodes()
+                doc.removeChild(doc.firstChild)
+            # Only reset the TaggedNodeCollection if we cleared the global
+            # window's document.
+            if doc == document
+                nodes = new TaggedNodeCollection()
+            if test_env
+                window.__nodes = nodes
+            delete doc.__nodeID
 
         # Params:
         #   'method'
@@ -68,35 +100,27 @@ module.exports = (window, document) ->
         #   'targetID'
         #   'args'
         @DOMUpdate = (params) ->
-            processInstruction = (inst) ->
-                target = nodes.get(inst.targetID)
-                method = inst.method
-                rvID = inst.rvID
-                args = nodes.unscrub(inst.args)
+            target = nodes.get(params.targetID)
+            method = params.method
+            rvID = params.rvID
+            args = nodes.unscrub(params.args)
 
-                if target[method] == undefined
-                    throw new Error("Tried to process an invalid method: #{method}")
+            if target[method] == undefined
+                throw new Error("Tried to process an invalid method: #{method}")
 
-                rv = target[method].apply(target, args)
+            rv = target[method].apply(target, args)
 
-                if rvID?
-                    if !rv?
-                        throw new Error('expected return value')
-                    else if rv.__nodeID?
-                        if rv.__nodeID != rvID
-                            throw new Error "id issue"
-                    else
-                        nodes.add(rv, rvID)
+            if rvID?
+                if !rv?
+                    throw new Error('expected return value')
+                else if rv.__nodeID?
+                    if rv.__nodeID != rvID
+                        throw new Error("id issue")
+                else
+                    nodes.add(rv, rvID)
 
-                #printMethodCall(target, method, args, rvID)
-            if params instanceof Array
-                for inst in params
-                    processInstruction(inst)
-            else
-                processInstruction(params)
+            #printMethodCall(target, method, args, rvID)
 
-        # The serializer only uses methods to construct the DOM, so we don't
-        # need to worry about handling an Array here.
         @DOMPropertyUpdate = (params) ->
             target = nodes.get(params.targetID)
             prop = params.prop
@@ -104,14 +128,6 @@ module.exports = (window, document) ->
             if /^node\d+$/.test(value)
                 value = nodes.unscrub(value)
             return target[prop] = value
-
-        @clear = () ->
-            while document.hasChildNodes()
-                document.removeChild(document.firstChild)
-            nodes = new TaggedNodeCollection()
-            if test_env
-                window.__nodes = nodes
-            delete document.__nodeID
 
         # startEvents 
         do ->

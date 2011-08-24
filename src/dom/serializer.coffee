@@ -15,10 +15,11 @@ exports.serialize = (document, resources) ->
 
     # A filter that skips script tags.
     filter = (node) ->
-        name = node.tagName
-        if name && (name.toLowerCase() == 'script')
+        if !node?
             return false
-        return true
+        if node.tagName?.toLowerCase() != 'script'
+            return true
+        return false
 
     dfs(document, filter, (node) ->
         typeStr = nodeTypeToString[node.nodeType]
