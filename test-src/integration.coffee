@@ -9,7 +9,7 @@ for entry of reqCache
     if /jsdom/.test(entry)
         delete reqCache[entry]
 
-JSDOM     = require('jsdom')
+JSDOM = require('jsdom')
 
 server = null
 

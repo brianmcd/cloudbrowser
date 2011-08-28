@@ -156,7 +156,7 @@ class Server extends EventEmitter
         )
 
         server.listen(3001, =>
-            console.log 'Internal HTTP server listening on port 3001 [TODO: remove this].'
+            console.log 'Internal HTTP server listening on port 3001.'
             @registerServer()
         )
         return server
