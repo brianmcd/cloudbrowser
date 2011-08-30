@@ -1,7 +1,7 @@
 assert         = require('assert')
 path           = require('path')
-bootstrap      = require('../client/dnode_client')
 URL            = require('url')
+TestClient     = require('./test_client')
 DOM            = require('../dom')
 ResourceProxy  = require('./resource_proxy')
 
@@ -70,7 +70,7 @@ class Browser
             client[method](params)
 
     addClient : (client) ->
-        if @window.document?.readyState == 'loading'
+        if !@window.document? || @window.document.readyState == 'loading'
             @connQ.push(client)
         else
             snapshot = @dom.getSnapshot()
@@ -84,13 +84,6 @@ class Browser
     createTestClient : () ->
         if !process.env.TESTS_RUNNING
             throw new Error('Called createTestClient but not running tests.')
-        # Make sure we get a fresh JSDOM, not one that has been augmented
-        # with advice.
-        jsdom = @dom.getFreshJSDOM()
-        clientDoc = jsdom.jsdom()
-        clientWindow = clientDoc.parentWindow
-        clientWindow.__envSessionID = @id
-        bootstrap(clientWindow, clientDoc)
-        return clientWindow
+        return new TestClient(@id, @dom)
 
 module.exports = Browser
