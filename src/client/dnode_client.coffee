@@ -1,5 +1,6 @@
-DNode = require('dnode')
+DNode                = require('dnode')
 TaggedNodeCollection = require('./tagged_node_collection')
+EventMonitor         = require('./event_monitor')
 
 test_env = false
 if process?.env?.TESTS_RUNNING
@@ -7,15 +8,21 @@ if process?.env?.TESTS_RUNNING
 
 module.exports = (window, document) ->
     nodes = new TaggedNodeCollection()
-    if test_env
-        window.__nodes = nodes
 
-    dnodeConnection = DNode( (remote, conn) ->
+    dnodeConnection = DNode (remote, conn) ->
         console.log "Connecting to server..."
-        conn.on('ready', () ->
+        conn.on 'ready', () ->
             console.log "Connection is ready"
             remote.auth(window.__envSessionID)
-        )
+
+        if test_env
+            # If we're testing, expose a function to let the server signal when
+            # a test is finished.
+            # We have to emit it from here, instead of the server, so that it
+            # travels through the RPC channel.  Otherwise, the server could
+            # emit it before the test data has made it accross.
+            @testDone = () ->
+                window.testClient.emit('testDone')
         
         # Snapshot is an array of node records.  See dom/serializers.coffee.
         # This function is used to bootstrap the client so they're ready for
@@ -65,6 +72,8 @@ module.exports = (window, document) ->
                         nodes.add(node, record.id)
                         parent = nodes.get(record.parent)
                         parent.appendChild(node)
+            if test_env
+                window.testClient.emit('loadFromSnapshot', snapshot)
 
         @tagDocument = (params) ->
             parent = nodes.get(params.parent)
@@ -90,8 +99,6 @@ module.exports = (window, document) ->
             # window's document.
             if doc == document
                 nodes = new TaggedNodeCollection()
-            if test_env
-                window.__nodes = nodes
             delete doc.__nodeID
 
         # Params:
@@ -129,91 +136,30 @@ module.exports = (window, document) ->
                 value = nodes.unscrub(value)
             return target[prop] = value
 
-        # startEvents 
-        do ->
-            ###
-            MouseEvents = ['click', 'mousedown', 'mouseup', 'mouseover',
-                           'mouseout', 'mousemove']
-            ###
-            MouseEvents = ['click']
-            # Note: change is not a standard DOM event, but is supported by all
-            # the browsers.
-            #UIEvents = ['change', 'DOMFocusIn', 'DOMFocusOut', 'DOMActivate']
-            UIEvents = ['change']
-            HTMLEvents = [] #'submit', 'select', 'change', 'reset', 'focus', 'blur',
-            #              'resize', 'scroll']
-            [MouseEvents, HTMLEvents, UIEvents].forEach (group) ->
-                group.forEach (eventType) ->
-                    document.addEventListener eventType, (event) ->
-                        if eventType == 'click'
-                            console.log "#{event.type} #{event.target.__nodeID}"
-                        event.stopPropagation()
-                        event.preventDefault()
-                        ev = {}
-                        if eventType == 'change'
-                            # The change event doesn't normally say have the new
-                            # data attached, so we snag it.
-                            ev.data = event.target.value
-                        ev.target = event.target.__nodeID
-                        ev.type = event.type
-                        ev.bubbles = event.bubbles
-                        ev.cancelable = event.cancelable # TODO: if this is no...what's that mean happened on client?
-                        ev.view = null # TODO look into this.
-                        if event.detail?        then ev.detail          = event.detail
-                        if event.screenX?       then ev.screenX         = event.screenX
-                        if event.screenY?       then ev.screenY         = event.screenY
-                        if event.clientX?       then ev.clientX         = event.clientX
-                        if event.clientY?       then ev.clientY         = event.clientY
-                        if event.ctrlKey?       then ev.ctrlKey         = event.ctrlKey
-                        if event.altKey?        then ev.altKey          = event.altKey
-                        if event.shiftKey?      then ev.shiftKey        = event.shiftKey
-                        if event.metaKey?       then ev.metaKey         = event.metaKey
-                        if event.button?        then ev.button          = event.button
-                        if event.relatedTarget? then ev.relatedTarget   = event.relatedTarget.__nodeID
-                        if event.modifiersList? then ev.modifiersList   = event.modifiersList
-                        if event.deltaX?        then ev.deltaX          = event.deltaX
-                        if event.deltaY?        then ev.deltaY          = event.deltaY
-                        if event.deltaZ?        then ev.deltaZ          = event.deltaZ
-                        if event.deltaMode?     then ev.deltaMode       = event.deltaMode
-                        if event.data?          then ev.data            = event.data
-                        if event.inputMethod?   then ev.inputmethod     = event.inputMethod
-                        if event.locale?        then ev.locale          = event.locale
-                        if event.char?          then ev.char            = event.char
-                        if event.key?           then ev.key             = event.key
-                        if event.location?      then ev.location        = event.location
-                        if event.modifiersList? then ev.modifiersList   = event.modifiersList
-                        if event.repeat?        then ev.repeat          = event.repeat
+        undefined # Have to do this cause of coffeescript being weird.
 
-                        console.log "Sending event:"
-                        console.log ev
-
-                        remote.processEvent(ev)
-                        return false
-        )
-
-    if test_env == true
+    if test_env
         dnodeConnection.connect(3002)
     else
         #TODO: this is where we'd add reconnect param.
         dnodeConnection.connect()
 
-    printMethodCall = (node, method, args, rvID) ->
-        args = nodes.scrub(args)
-        nodeName = node.name || node.nodeName
-        argStr = ""
-        for arg in args
-            argStr += "#{arg}, "
-        argStr = argStr.replace(/,\s$/, '')
-        console.log "#{rvID} = #{nodeName}.#{method}(#{argStr})"
+printMethodCall = (node, method, args, rvID) ->
+    args = nodes.scrub(args)
+    nodeName = node.name || node.nodeName
+    argStr = ""
+    for arg in args
+        argStr += "#{arg}, "
+    argStr = argStr.replace(/,\s$/, '')
+    console.log "#{rvID} = #{nodeName}.#{method}(#{argStr})"
 
-    printCommand = (cmd) ->
-        method = cmd['method']
-        params = cmd['params']
-        str = 'Exec: ' + method + '('
-        for p in params
-            if (params.hasOwnProperty(p))
-                str += p + ' => ' + params[p] + ","
-        str = str.replace(/,$/, ''); #TODO: not this.
-        str += ')'
-        console.log(str)
-
+printCommand = (cmd) ->
+    method = cmd['method']
+    params = cmd['params']
+    str = 'Exec: ' + method + '('
+    for p in params
+        if (params.hasOwnProperty(p))
+            str += p + ' => ' + params[p] + ","
+    str = str.replace(/,$/, ''); #TODO: not this.
+    str += ')'
+    console.log(str)
