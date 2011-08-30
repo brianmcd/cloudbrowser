@@ -10,14 +10,12 @@ class DNodeServer extends EventEmitter
             browser = null
             dom = null
 
-            conn.on('end', ->
+            conn.on 'end', () ->
                 if browser?
                     browser.removeClient(remote)
-            )
 
-            conn.on('ready', ->
+            conn.on 'ready', () ->
                 console.log("Client is ready")
-            )
 
             @auth = (browserID) ->
                 browser = browsers.find(decodeURIComponent(browserID))
