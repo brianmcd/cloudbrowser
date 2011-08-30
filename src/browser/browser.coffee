@@ -80,10 +80,19 @@ class Browser
     removeClient : (client) ->
         @clients = (c for c in @clients when c != client)
 
-    # For testing purposes, return an emulated client using jsdom.
+    # For testing purposes, return an emulated client for this browser.
     createTestClient : () ->
         if !process.env.TESTS_RUNNING
             throw new Error('Called createTestClient but not running tests.')
         return new TestClient(@id, @dom)
+
+    # When TESTS_RUNNING, clients expose a testDone method via DNode.
+    # testDone triggers the client to emit 'testDone' on its TestClient,
+    # which the unit tests listen to to know that they can begin probing
+    # the client DOM.
+    testDone : () ->
+        for client in @clients
+            if typeof client.testDone == 'function'
+                client.testDone()
 
 module.exports = Browser
