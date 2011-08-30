@@ -74,41 +74,6 @@ exports['tests'] =
             checkReady(client.window, moreTests)
         checkReady(client.window, tests)
 
-    # Using the XMLHttpRequest object, make an AJAX request.
-    'basic XHR' : (test) ->
-        browser = browsers.create('browser4',
-                                  'http://localhost:3001/xhr-basic.html')
-        tests = () ->
-            targetPath = Path.join(__dirname, '..', 'test-src', 'files',
-                                  'xhr-target.html')
-            targetSource = FS.readFileSync(targetPath, 'utf8')
-            test.equal(browser.window.responseText, targetSource)
-            test.done()
-        checkReady(browser.window, tests)
-        
-    # Using $.get, make an AJAX request.
-    'jQuery XHR - absolute' : (test) ->
-        browser = browsers.create('browser5',
-                                  'http://localhost:3001/xhr-jquery.html')
-        tests = () ->
-            targetPath = Path.join(__dirname, '..', 'test-src', 'files', 'xhr-target.html')
-            targetSource = FS.readFileSync(targetPath, 'utf8')
-            test.equal(browser.window.responseText, targetSource)
-            test.done()
-        checkReady(browser.window, tests)
-
-    # Using $.get, make an AJAX request using a relative URL.
-    # This appears to be giving us trouble when running the jQuery test suite.
-    'jQuery XHR - relative' : (test) ->
-        browser = browsers.create('browser6',
-                                  'http://localhost:3001/xhr-jquery-relative.html')
-        tests = () ->
-            targetPath = Path.join(__dirname, '..', 'test-src', 'files', 'xhr-target.html')
-            targetSource = FS.readFileSync(targetPath, 'utf8')
-            test.equal(browser.window.responseText, targetSource)
-            test.done()
-        checkReady(browser.window, tests)
-
     'teardown' : (test) ->
         server.once('close', () ->
             reqCache = require.cache
