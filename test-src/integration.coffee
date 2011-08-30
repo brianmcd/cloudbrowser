@@ -2,7 +2,7 @@ Path      = require('path')
 FS        = require('fs')
 TestCase  = require('nodeunit').testCase
 Server    = require('../lib/server')
-Bootstrap = require('../lib/client/dnode_client')
+bootstrap = require('../lib/client/dnode_client')
 
 reqCache = require.cache
 for entry of reqCache
@@ -14,13 +14,8 @@ JSDOM = require('jsdom')
 server = null
 
 initTest = (browserID, url) ->
-    browsers = server.browsers
-    browsers.create(browserID, url)
-    document = JSDOM.jsdom()
-    window = document.parentWindow
-    window.__envSessionID = browserID
-    Bootstrap(window, document)
-    return window
+    browser = server.browsers.create(browserID, url)
+    return browser.createTestClient()
 
 checkReady = (window, callback) ->
     if window.document.getElementById('finished')?.innerHTML == 'true'

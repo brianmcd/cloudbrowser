@@ -1,5 +1,6 @@
 assert         = require('assert')
 path           = require('path')
+bootstrap      = require('../client/dnode_client')
 URL            = require('url')
 DOM            = require('../dom')
 ResourceProxy  = require('./resource_proxy')
@@ -78,5 +79,18 @@ class Browser
 
     removeClient : (client) ->
         @clients = (c for c in @clients when c != client)
+
+    # For testing purposes, return an emulated client using jsdom.
+    createTestClient : () ->
+        if !process.env.TESTS_RUNNING
+            throw new Error('Called createTestClient but not running tests.')
+        # Make sure we get a fresh JSDOM, not one that has been augmented
+        # with advice.
+        jsdom = @dom.getFreshJSDOM()
+        clientDoc = jsdom.jsdom()
+        clientWindow = clientDoc.parentWindow
+        clientWindow.__envSessionID = @id
+        bootstrap(clientWindow, clientDoc)
+        return clientWindow
 
 module.exports = Browser

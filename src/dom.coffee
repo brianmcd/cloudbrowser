@@ -15,22 +15,12 @@ class DOM extends EventEmitter
         @browser = browser
         @nodes = new TaggedNodeCollection()
         @currentWindow = null
-        # Clear JSDOM out of the require cache.  We have to do this because
-        # we modify JSDOM's internal data structures with per-BrowserInstance
-        # specifiy information, so we need to get a whole new JSDOM instance
-        # for each BrowserInstance.  require() caches the objects it returns,
-        # so we need to remove those objects from the cache to force require
-        # to give us a new object each time.
-        reqCache = require.cache
-        for entry of reqCache
-            if /jsdom/.test(entry) # && !(/jsdom_wrapper/.test(entry))
-                delete reqCache[entry]
-        @jsdom = require('jsdom')
+        @jsdom = @getFreshJSDOM()
         @jsdom.defaultDocumentFeatures =
-                FetchExternalResources : ['script', 'img', 'css', 'frame', 'link', 'iframe']
-                ProcessExternalResources : ['script', 'frame', 'iframe']
-                MutationEvents : '2.0'
-                QuerySelector : false
+            FetchExternalResources : ['script', 'img', 'css', 'frame', 'link', 'iframe']
+            ProcessExternalResources : ['script', 'frame', 'iframe']
+            MutationEvents : '2.0'
+            QuerySelector : false
         addAdvice(@jsdom.dom.level3.html, this)
         applyPatches(@jsdom.dom.level3.core)
 
@@ -38,6 +28,19 @@ class DOM extends EventEmitter
         if @currentWindow
             return serialize(@currentWindow.document, @browser.resources)
         return null
+
+    # Clear JSDOM out of the require cache.  We have to do this because
+    # we modify JSDOM's internal data structures with per-BrowserInstance
+    # specifiy information, so we need to get a whole new JSDOM instance
+    # for each BrowserInstance.  require() caches the objects it returns,
+    # so we need to remove those objects from the cache to force require
+    # to give us a new object each time.
+    getFreshJSDOM : () ->
+        reqCache = require.cache
+        for entry of reqCache
+            if /jsdom/.test(entry) # && !(/jsdom_wrapper/.test(entry))
+                delete reqCache[entry]
+        return require('jsdom')
 
     # Creates a window.
     createWindow : () ->

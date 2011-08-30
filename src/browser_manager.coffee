@@ -16,6 +16,6 @@ class BrowserManager
             id = id.toString()
         if @browsers[id]?
             throw new Error "Tried to create an already existing BrowserInstance"
-        @browsers[id] = new Browser(id, url)
+        return @browsers[id] = new Browser(id, url)
 
 module.exports = BrowserManager
