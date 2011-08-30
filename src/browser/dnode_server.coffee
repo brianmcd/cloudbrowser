@@ -108,8 +108,14 @@ class DNodeServer extends EventEmitter
         for conn in @conns
             if conn?
                 conn.end()
-        @server.once('close', () => @emit('close'))
-        @server.close()
+        # When running over TCP, @server is a TCP server.
+        if process.env.TESTS_RUNNING
+            @server.once('close', () => @emit('close'))
+            @server.close()
+        # When running over HTTP, it's just an event emitter, so nothing to
+        # close.
+        else
+            @emit('close')
 
 
 module.exports = DNodeServer

@@ -1,0 +1,81 @@
+FS      = require('fs')
+Path    = require('path')
+DOM     = require('../../lib/dom')
+Server  = require('../../lib/server')
+Request = require('request')
+
+server = null
+jQuery = null
+
+# Info about the XHR target we'll use for most tests.
+targetPath = Path.join(__dirname, '..', '..', 'test-src', 'files', 'xhr-target.html')
+targetSource = FS.readFileSync(targetPath, 'utf8')
+
+exports['tests'] =
+    'setup' : (test) ->
+        server = new Server(Path.join(__dirname, '..', '..', 'test-src', 'files'))
+        server.once('ready', () ->
+            Request({uri : 'http://code.jquery.com/jquery-1.6.2.js'}, (err, res, js) ->
+                test.equal(res.statusCode, 200)
+                test.equal(err, null)
+                test.notEqual(js, null)
+                jQuery = js
+                test.done()
+            )
+        )
+
+    # Using the XMLHttpRequest object, make an AJAX request.
+    'basic XHR' : (test) ->
+        window = new DOM().createWindow()
+        window.test = test
+        window.targetSource = targetSource
+        window.run("
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', 'http://localhost:3001/xhr-target.html');
+            xhr.onreadystatechange = function () {
+                if (xhr.readyState == 4) {
+                    test.equal(xhr.responseText, targetSource);
+                    test.done();
+                }
+            };
+            xhr.send();
+        ")
+
+    # Using $.get, make an AJAX request.
+    'jQuery XHR - absolute' : (test) ->
+        window = new DOM().createWindow()
+        window.test = test
+        window.targetSource = targetSource
+        window.location = 'http://localhost:3001/index.html'
+        window.addEventListener('load', () ->
+            window.run(jQuery)
+            window.run("
+                $.get('http://localhost:3001/xhr-target.html', function (data) {
+                    test.equal(data, targetSource);
+                    test.done();
+                });
+            ")
+        )
+
+    # Using $.get, make an AJAX request using a relative URL.
+    # This appears to be giving us trouble when running the jQuery test suite.
+    'jQuery XHR - relative' : (test) ->
+        window = new DOM().createWindow()
+        window.test = test
+        window.targetSource = targetSource
+        window.location = 'http://localhost:3001/index.html'
+        window.addEventListener('load', () ->
+            window.run(jQuery)
+            window.run("
+                $.get('/xhr-target.html', function (data) {
+                    test.equal(data, targetSource);
+                    test.done();
+                });
+            ")
+        )
+
+    'teardown' : (test) ->
+        server.once('close', () ->
+            test.done()
+        )
+        server.close()
