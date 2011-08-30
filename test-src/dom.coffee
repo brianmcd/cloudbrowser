@@ -1,6 +1,6 @@
 TestCase             = require('nodeunit').testCase
-DOM                  = require('../../lib/dom')
-TaggedNodeCollection = require('../../lib/tagged_node_collection')
+DOM                  = require('../lib/dom')
+TaggedNodeCollection = require('../lib/tagged_node_collection')
 
 #TODO: test window.location for navigation
 # Test that it emits the event at least
