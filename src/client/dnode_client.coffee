@@ -8,12 +8,16 @@ if process?.env?.TESTS_RUNNING
 
 module.exports = (window, document) ->
     nodes = new TaggedNodeCollection()
+    monitor = null
 
+    # TODO: abstract the object we expose over DNode into its own class, then
+    # just pass teh constructor to DNode().
     dnodeConnection = DNode (remote, conn) ->
         console.log "Connecting to server..."
         conn.on 'ready', () ->
             console.log "Connection is ready"
             remote.auth(window.__envSessionID)
+            monitor = new EventMonitor(document, remote)
 
         if test_env
             # If we're testing, expose a function to let the server signal when
