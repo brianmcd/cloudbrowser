@@ -1,28 +1,9 @@
-<HTML>
-    <HEAD>
-        <SCRIPT>
-            console.log("In script");
-            var count = 0;
-            window.addEventListener('load', function () {
-                // Note: it's important that the test doesn't modify the DOM
-                // until another event loop tick.  See comment in
-                // iframe-parent.html for more info.
-                setTimeout(function insert () {
-                    count++
-                    var div = document.getElementById('div1');
-                    var child = document.createElement('div');
-                    child.innerHTML = '' + count
-                    div.appendChild(child)
-                    if (count != 21) {
-                        setTimeout(insert, 0);
-                    } else {
-                        window.browser.testDone();
-                    }
-                }, 0);
-            });
-        </SCRIPT>
-    </HEAD>
-    <BODY>
-        <DIV id='div1'></DIV>
-    </BODY>
-</HTML>
+<html>
+    <head>
+        <script>
+        </script>
+    </head>
+    <body>
+        <div id='div1'></div>
+    </body>
+</html>

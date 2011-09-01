@@ -1,29 +1,7 @@
 <html>
     <head>
-        <script>
-            window.addEventListener('load', function () {
-                // We do this stuff on a later event loop tick so the client
-                // has a chance to connect and load from snapshot before we
-                // start changing things via advice.
-                // Clients are queued until 'load' fires, and since this
-                // listener is registered first, it fires first, meaning that
-                // all these changes would happen before the client has synced.
-                setTimeout(function () {
-                    var iframe = document.getElementById('testFrameID');
-                    var iframeDoc = iframe.contentDocument;
-                    var iframeDiv = iframeDoc.getElementById('iframediv');
-                    // This is a 2-phase test...signal completion of first half,
-                    // which makes sure the iframe is set up properly.
-                    window.browser.testDone();
-                    // And now we test to make sure it can be changed.
-                    iframeDiv.innerHTML = "Set from outside";
-                    window.browser.testDone();
-                }, 0);
-            });
-        </script>
     </head>
     <body>
         <iframe name='testFrame' id='testFrameID' src='iframe.html'></iframe>
-        <div id='finished'></div>
     </body>
 </html>
