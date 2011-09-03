@@ -53,7 +53,9 @@ class Server extends EventEmitter
                 mount : '/bootstrap.js',
                 require : [
                     'dnode'
-                    path.join(__dirname, 'client', 'dnode_client')
+                    # Browserify will automatically bundle bootstrap's
+                    # dependencies.
+                    path.join(__dirname, 'client', 'bootstrap')
                 ]
             server.use express.bodyParser()
             server.use express.cookieParser()
