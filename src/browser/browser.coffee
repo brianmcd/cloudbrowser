@@ -4,6 +4,7 @@ URL            = require('url')
 TestClient     = require('./test_client')
 DOM            = require('../dom')
 ResourceProxy  = require('./resource_proxy')
+BindingServer  = require('./binding_server')
 
 class Browser
     constructor : (browserID, url) ->
@@ -11,6 +12,8 @@ class Browser
         @window = null
         @resources = null
         @dom = new DOM(this)
+        @bindings = new BindingServer(@dom)
+
         # The DOM can emit 'pagechange' when Location is set and we need to
         # load a new page.
         @dom.on('pagechange', (url) => @load(url))
@@ -39,27 +42,32 @@ class Browser
         @dom.removeAllListeners('DOMUpdate')
         @dom.removeAllListeners('DOMPropertyUpdate')
         @dom.removeAllListeners('tagDocument')
+        @bindings.removeAllListeners('updateBindings')
+        @bindings.removeAllListeners('addBinding')
 
     resumeClientUpdates : () ->
         @syncAllClients()
         # Each advice function emits the DOMUpdate or DOMPropertyUpdate 
         # event, which we want to echo to all connected clients.
-        @dom.on('DOMUpdate', (params) =>
+        @dom.on 'DOMUpdate', (params) =>
             @broadcastUpdate('DOMUpdate', params)
-        )
-        @dom.on('DOMPropertyUpdate', (params) =>
+        @dom.on 'DOMPropertyUpdate', (params) =>
             @broadcastUpdate('DOMPropertyUpdate', params)
-        )
-        @dom.on('tagDocument', (params) =>
+        @dom.on 'tagDocument', (params) =>
             @broadcastUpdate('tagDocument', params)
-        )
+        @bindings.on 'updateBindings', (params) =>
+            @broadcastUpdate('updateBindings', params)
+        @bindings.on 'addBinding', (params) =>
+            @broadcastUpdate('addBinding', params)
 
     syncAllClients : () ->
         if @clients.length == 0 && @connQ.length == 0
             return
         @clients = @clients.concat(@connQ)
         @connQ = []
-        snapshot = @dom.getSnapshot()
+        snapshot =
+            nodes : @dom.getSnapshot()
+            bindings : @bindings.getSnapshot()
         for client in @clients
             client.loadFromSnapshot(snapshot)
 
@@ -73,7 +81,9 @@ class Browser
         if !@window.document? || @window.document.readyState == 'loading'
             @connQ.push(client)
         else
-            snapshot = @dom.getSnapshot()
+            snapshot =
+                nodes : @dom.getSnapshot()
+                bindings : @bindings.getSnapshot()
             client.loadFromSnapshot(snapshot)
             @clients.push(client)
 

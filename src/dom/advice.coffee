@@ -10,6 +10,7 @@ isDOMNode = (node) -> (node?.ELEMENT_NODE == 1)
 
 # dom - the jsdom dom implementation
 # wrapper - must have emit and nodes
+# TODO: rename params, cause dom is the jsdom dom, wrappers is DOM.  that is dumb.
 exports.addAdvice = (dom, wrapper) ->
     # TODO: change event names to DOMMethod and DOMProperty
 
@@ -72,10 +73,30 @@ exports.addAdvice = (dom, wrapper) ->
         do (method) ->
             wrapMethod(dom.Element.prototype, method, (elem, args, rv) ->
                 tagName = elem.tagName.toLowerCase()
-                attr = if /NS$/.test(method)
-                    args[1].toLowerCase()
+                attr = null
+                value = null
+                if /NS$/.test(method)
+                    attr = args[1].toLowerCase()
+                    if args.length > 2
+                        value = args[1]
                 else
-                    args[0].toLowerCase()
+                    attr = args[0].toLowerCase()
+                    if args.length > 1
+                        value = args[1]
+                # Check for a data binding
+                if typeof value == 'string'
+                    matches = value.match(/^\#\{(.+)\}$/)
+                if matches
+                    # Deal with the data binding
+                    # TODO: handle removeAttribute?
+                    binding =
+                        node : elem
+                        attribute : attr
+                        lookupPath : matches[1]
+                    wrapper.browser.bindings.addBinding(binding)
+                    # We handle getting the attribute to the client ourselves,
+                    # so return false an don't emit it from here.
+                    return false
                 if attr == 'src'
                     if tagName == 'iframe' || tagName == 'frame'
                         # There is still special handling to be done in this

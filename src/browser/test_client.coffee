@@ -1,5 +1,5 @@
 EventEmitter = require('events').EventEmitter
-bootstrap    = require('../client/dnode_client')
+bootstrap    = require('../client/bootstrap')
 
 class TestClient extends EventEmitter
     constructor : (id, dom) ->

@@ -1,23 +1,22 @@
-DNode                = require('dnode')
 TaggedNodeCollection = require('./tagged_node_collection')
 EventMonitor         = require('./event_monitor')
+BindingClient        = require('./binding_client')
 
 test_env = false
 if process?.env?.TESTS_RUNNING
     test_env = true
 
-module.exports = (window, document) ->
-    nodes = new TaggedNodeCollection()
-    monitor = null
-
-    # TODO: abstract the object we expose over DNode into its own class, then
-    # just pass teh constructor to DNode().
-    dnodeConnection = DNode (remote, conn) ->
-        console.log "Connecting to server..."
-        conn.on 'ready', () ->
+class DNodeClient
+    constructor : (window, document, remote, conn) ->
+        nodes = null
+        bindings = null
+        console.log("Connecting to server...")
+        conn.on 'ready', () =>
             console.log "Connection is ready"
             remote.auth(window.__envSessionID)
             monitor = new EventMonitor(document, remote)
+            bindings = new BindingClient(nodes, remote)
+            conn.on('end', bindings.stopChecker)
 
         if test_env
             # If we're testing, expose a function to let the server signal when
@@ -27,13 +26,19 @@ module.exports = (window, document) ->
             # emit it before the test data has made it accross.
             @testDone = () ->
                 window.testClient.emit('testDone')
-        
+
+        # Data binding methods that are proxied to our BindingClient
+        @addBinding = () ->
+            bindings.addBinding.apply(bindings, arguments)
+        @updateBindings = () ->
+            bindings.updateBindings.apply(bindings, arguments)
+    
         # Snapshot is an array of node records.  See dom/serializers.coffee.
         # This function is used to bootstrap the client so they're ready for
         # updates.
         @loadFromSnapshot = (snapshot) ->
             console.log("Loading from snapshot...")
-            for record in snapshot
+            for record in snapshot.nodes
                 node = null
                 doc = null
                 parent = null
@@ -48,7 +53,7 @@ module.exports = (window, document) ->
                         # If we just cleared the main document, start a new
                         # TaggedNodeCollection
                         if doc == document
-                            nodes = new TaggedNodeCollection()
+                            bindings.nodes = nodes = new TaggedNodeCollection()
                         nodes.add(doc, record.id)
                     when 'comment'
                         doc = document
@@ -76,15 +81,18 @@ module.exports = (window, document) ->
                         nodes.add(node, record.id)
                         parent = nodes.get(record.parent)
                         parent.appendChild(node)
+            if snapshot.bindings.length > 0
+                bindings.loadFromSnapshot(snapshot.bindings)
             if test_env
                 window.testClient.emit('loadFromSnapshot', snapshot)
+
 
         @tagDocument = (params) ->
             parent = nodes.get(params.parent)
             if parent.contentDocument?.readyState == 'complete'
                 nodes.add(parent.contentDocument, params.id)
             else
-                listener = () ->
+                listener = () =>
                     parent.removeEventListener('load', listener)
                     nodes.add(parent.contentDocument, params.id)
                 parent.addEventListener('load', listener)
@@ -102,7 +110,7 @@ module.exports = (window, document) ->
             # Only reset the TaggedNodeCollection if we cleared the global
             # window's document.
             if doc == document
-                nodes = new TaggedNodeCollection()
+                bindings.nodes = nodes = new TaggedNodeCollection()
             delete doc.__nodeID
 
         # Params:
@@ -130,8 +138,6 @@ module.exports = (window, document) ->
                 else
                     nodes.add(rv, rvID)
 
-            #printMethodCall(target, method, args, rvID)
-
         @DOMPropertyUpdate = (params) ->
             target = nodes.get(params.targetID)
             prop = params.prop
@@ -140,30 +146,5 @@ module.exports = (window, document) ->
                 value = nodes.unscrub(value)
             return target[prop] = value
 
-        undefined # Have to do this cause of coffeescript being weird.
 
-    if test_env
-        dnodeConnection.connect(3002)
-    else
-        #TODO: this is where we'd add reconnect param.
-        dnodeConnection.connect()
-
-printMethodCall = (node, method, args, rvID) ->
-    args = nodes.scrub(args)
-    nodeName = node.name || node.nodeName
-    argStr = ""
-    for arg in args
-        argStr += "#{arg}, "
-    argStr = argStr.replace(/,\s$/, '')
-    console.log "#{rvID} = #{nodeName}.#{method}(#{argStr})"
-
-printCommand = (cmd) ->
-    method = cmd['method']
-    params = cmd['params']
-    str = 'Exec: ' + method + '('
-    for p in params
-        if (params.hasOwnProperty(p))
-            str += p + ' => ' + params[p] + ","
-    str = str.replace(/,$/, ''); #TODO: not this.
-    str += ')'
-    console.log(str)
+module.exports = DNodeClient

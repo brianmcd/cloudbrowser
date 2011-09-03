@@ -22,6 +22,10 @@ class DNodeServer extends EventEmitter
                 dom = browser.dom
                 browser.addClient(remote)
 
+            @updateBindings = () ->
+                console.log("inside updateBindings in dnode server")
+                browser.bindings.updateBindings.apply(browser.bindings, arguments)
+
             @processEvent = (clientEv) ->
                 console.log("target: #{clientEv.target}")
                 clientEv.target = dom.nodes.get(clientEv.target)
