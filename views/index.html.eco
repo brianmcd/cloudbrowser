@@ -37,7 +37,25 @@
         <script src='http://ajax.googleapis.com/ajax/libs/jquery/1.6.2/jquery.min.js'></script>
         <script>
             $(function () {
+                // Poll for new browsers every 10 seconds.  Stop the interval
+                // once we join or create a browser, because then updates will
+                // come over DNode.
+                function pollBrowsers () {
+                    $.getJSON('/browserList',function (data) {
+                        var str, bId;
+                        $('#join-menu').empty()
+                        for (var i = 0; i < data.length; i++) {
+                            bId = data[i];
+                            str = "<option value ='" + encodeURIComponent(bId) +
+                                  "'>" + bId + "</option>";
+                            $('#join-menu').append(str);
+                        }
+                    });
+                }
+                pollBrowsers();
+                var pollID = setInterval(pollBrowsers, 10000);
                 $('#create-browser-form').submit(function () {
+                    clearInterval(pollID);
                     var name = $("input[name='browser[id]']").val(); 
                     $('#active').text(name);
                     name = encodeURIComponent(name);
@@ -49,23 +67,9 @@
                                        .html("<a href='/getText/" + name + "' target='_blank'>" +
                                              "<button>Dump Server DOM as Text</button>" +
                                              "</a>");
-                    // Get the browser list in 1 second, then poll for new
-                    // browsers every 10 seconds.
-                    setTimeout(function pollBrowsers () {
-                        $.getJSON('/browserList',function (data) {
-                            var str, bId;
-                            $('#join-menu').empty()
-                            for (var i = 0; i < data.length; i++) {
-                                bId = data[i];
-                                str = "<option value ='" + encodeURIComponent(bId) +
-                                      "'>" + bId + "</option>";
-                                $('#join-menu').append(str);
-                            }
-                        });
-                        setInterval(pollBrowsers, 10000);
-                    }, 1000);
                 });
                 $('#join-button').click(function () {
+                    clearInterval(pollID);
                     var browserWindow = window['browser']
                     var browser = $('#join-menu').val();
                     console.log("Trying to join: " + browser);

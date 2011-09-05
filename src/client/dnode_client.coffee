@@ -146,5 +146,15 @@ class DNodeClient
                 value = nodes.unscrub(value)
             return target[prop] = value
 
+        @updateBrowserList = (browserList) ->
+            parent = window.parent
+            menu = parent.document.getElementById('join-menu')
+            while menu.hasChildNodes()
+                menu.removeChild(menu.firstChild)
+            for id in browserList
+                opt = document.createElement('option')
+                opt.value = encodeURIComponent(id)
+                opt.innerHTML = id
+                menu.appendChild(opt)
 
 module.exports = DNodeClient
