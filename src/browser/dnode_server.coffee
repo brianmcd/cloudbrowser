@@ -4,49 +4,59 @@ EventEmitter = require('events').EventEmitter
 class DNodeServer extends EventEmitter
     constructor : (httpServer, browsers) ->
         @conns = conns = []
+        @remotes = remotes = []
         @server = DNode((remote, conn) ->
             console.log("Incoming connection")
             conns.push(conn)
-            browser = null
-            dom = null
+            remotes.push(remote)
+            @browser = null
+            @dom = null
 
             conn.on 'end', () ->
                 if browser?
                     browser.removeClient(remote)
+                conns = (c for c in conns when c != conn)
+                remotes = (r for r in remotes when r != conn)
 
             conn.on 'ready', () ->
                 console.log("Client is ready")
 
-            @auth = (browserID) ->
-                browser = browsers.find(decodeURIComponent(browserID))
-                dom = browser.dom
-                browser.addClient(remote)
+            @auth = (browserID) =>
+                @browser = browsers.find(decodeURIComponent(browserID))
+                @dom = @browser.dom
+                @browser.addClient(remote)
+                if !process.env.TESTS_RUNNING
+                    browserList = []
+                    for browserid, browser of browsers.browsers
+                        browserList.push(browserid)
+                    for rem in remotes
+                        rem.updateBrowserList(browserList)
 
-            @updateBindings = (update) ->
-                browser.bindings.updateBindings(update)
+            @updateBindings = (update) =>
+                @browser.bindings.updateBindings(update)
                 # Tell the browser to send this binding update to all clients
                 # except the one it came from.
-                browser.broadcastBindingUpdate(remote, update)
+                @browser.broadcastBindingUpdate(remote, update)
 
-            @processEvent = (clientEv) ->
+            @processEvent = (clientEv) =>
                 console.log("target: #{clientEv.target} type: #{clientEv.type} group:#{eventTypeToGroup[clientEv.type]}")
-                clientEv.target = dom.nodes.get(clientEv.target)
+                clientEv.target = @dom.nodes.get(clientEv.target)
                 if clientEv.relatedTarget?
-                    clientEv.relatedTarget = dom.nodes.get(clientEv.relatedTarget)
+                    clientEv.relatedTarget = @dom.nodes.get(clientEv.relatedTarget)
 
                 group = eventTypeToGroup[clientEv.type]
-                event = browser.window.document.createEvent(group) unless group == 'Special'
+                event = @browser.window.document.createEvent(group) unless group == 'Special'
                 switch group
                     when 'UIEvents'
                         event.initUIEvent(clientEv.type, clientEv.bubbles,
-                                          clientEv.cancelable, browser.window, clientEv.detail)
+                                          clientEv.cancelable, @browser.window, clientEv.detail)
                     when 'FocusEvent'
                         event.initFocusEvent(clientEv.type, clientEv.bubbles,
-                                             clientEv.cancelable, browser.window,
+                                             clientEv.cancelable, @browser.window,
                                              clientEv.detail, clientEv.relatedTarget)
                     when 'MouseEvents'
                         event.initMouseEvent(clientEv.type, clientEv.bubbles,
-                                             clientEv.cancelable, browser.window,
+                                             clientEv.cancelable, @browser.window,
                                              clientEv.detail, clientEv.screenX,
                                              clientEv.screenY, clientEv.clientX,
                                              clientEv.clientY, clientEv.ctrlKey,
@@ -55,12 +65,12 @@ class DNodeServer extends EventEmitter
                                              clientEv.relatedTarget)
                     when 'TextEvent'
                         event.initTextEvent(clientEv.type, clientEv.bubbles,
-                                            clientEv.cancelable, browser.window, clientEv.data,
+                                            clientEv.cancelable, @browser.window, clientEv.data,
                                             clientEv.inputMethod, clientEv.locale)
 
                     when 'WheelEvent'
                         event.initWheelEvent(clientEv.type, clientEv.bubbles,
-                                             clientEv.cancelable, browser.window,
+                                             clientEv.cancelable, @browser.window,
                                              clientEv.detail, clientEv.screenX,
                                              clientEv.screenY, clientEv.clientX,
                                              clientEv.clientY, clientEv.button,
@@ -70,14 +80,14 @@ class DNodeServer extends EventEmitter
                                              clientEv.deltaMode)
                     when 'KeyboardEvent'
                         event.initKeyboardEvent(clientEv.type, clientEv.bubbles,
-                                                clientEv.cancelable, browser.window,
+                                                clientEv.cancelable, @browser.window,
                                                 clientEv.char, clientEv.key,
                                                 clientEv.location,
                                                 clientEv.modifiersList,
                                                 clientEv.repeat, clientEv.locale)
                     when 'CompositionEvent'
                         event.initCompositionEvent(clientEv.type, clientEv.bubbles,
-                                                   clientEv.cancelable, browser.window,
+                                                   clientEv.cancelable, @browser.window,
                                                    clientEv.data, clientEv.locale)
 
 
@@ -89,7 +99,7 @@ class DNodeServer extends EventEmitter
                         throw new Error("target doesn't have 'value' attribute")
                 else
                     if event.type == 'click'
-                        console.log("Dispatching #{event.type} [#{group}] on #{clientEv.target[browser.idProp]}")
+                        console.log("Dispatching #{event.type} [#{group}] on #{clientEv.target.__nodeID}")
                     clientEv.target.dispatchEvent(event)
 
             # Have to return this here because of coffee script.
