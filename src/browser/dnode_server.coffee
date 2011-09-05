@@ -15,6 +15,8 @@ class DNodeServer extends EventEmitter
             conn.on 'end', () ->
                 if browser?
                     browser.removeClient(remote)
+                conns = (c for c in conns when c != conn)
+                remotes = (r for r in remotes when r != conn)
 
             conn.on 'ready', () ->
                 console.log("Client is ready")
