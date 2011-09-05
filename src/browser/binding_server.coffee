@@ -32,7 +32,7 @@ class BindingServer extends EventEmitter
     # An update looks like:
     #   id
     #   value
-    updateBindings : (updates) ->
+    updateBindings : (updates) =>
         for update in updates
             binding = @bindings[update.id]
             binding.node[binding.attribute] = update.value
@@ -74,11 +74,11 @@ class BindingServer extends EventEmitter
         for binding in @bindings
             node = binding.node
             attr = binding.attribute
-            bindings.push
+            bindings.push(
                 id : binding.id
                 nodeID : node.__nodeID
                 attribute : attr
-                value : node[attr]
+                value : node[attr])
         return bindings
 
     _chaseProperty : (window, path) ->

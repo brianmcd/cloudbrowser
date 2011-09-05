@@ -77,6 +77,16 @@ class Browser
         for client in @clients
             client[method](params)
 
+    # client - the client the update came from, therefore we don't want
+    #          to send the update back to it.
+    broadcastBindingUpdate : (remote, update) ->
+        if @clients.length == 1
+            return
+        for client in @clients
+            if client != remote
+                console.log(client)
+                client.updateBindings(update)
+
     addClient : (client) ->
         if !@window.document? || @window.document.readyState == 'loading'
             @connQ.push(client)
