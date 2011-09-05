@@ -4,7 +4,6 @@
 # TODO: JSDOM is missing defaultValue for HTMLTextAreaElement
 # TODO: entity reference, notationnode?
 # TODO: How should we handle cookie?
-# TODO: JSDOM is missing 'body' setter for HTMLDocument
 
 isDOMNode = (node) -> (node?.ELEMENT_NODE == 1)
 
@@ -130,17 +129,22 @@ exports.addAdvice = (dom, wrapper) ->
                     args[0].toLowerCase()
                 # If src attribute is set, jsdom will create/load a new document.
                 if attr == 'src'
-                    # At this point, JSDOM has deleted the old document
-                    # and created the new one, so we can (and should) go
-                    # ahead and tag it.
-                    wrapper.nodes.add(elem.contentDocument)
-                    # Next, we need to clean out the client's iframe, since
-                    # setting src creates a new iframe on the server.
-                    wrapper.emit('clear', frame : elem.__nodeID)
-                    # Then tag the document with its new ID.
-                    wrapper.emit('tagDocument',
-                        parent : elem.__nodeID
-                        id : elem.contentDocument.__nodeID
+                    # We need to wait for load because that means that the old
+                    # Document has been deleted, and the new one has been
+                    # created.
+                    elem.addEventListener('load', () ->
+                        # At this point, JSDOM has deleted the old document
+                        # and created the new one, so we can (and should) go
+                        # ahead and tag it.
+                        wrapper.nodes.add(elem.contentDocument)
+                        # Next, we need to clean out the client's iframe, since
+                        # setting src creates a new iframe on the server.
+                        wrapper.emit('clear', frame : elem.__nodeID)
+                        # Then tag the document with its new ID.
+                        wrapper.emit('tagDocument',
+                            parent : elem.__nodeID
+                            id : elem.contentDocument.__nodeID
+                        )
                     )
                 return false
             )
@@ -173,12 +177,10 @@ exports.addAdvice = (dom, wrapper) ->
                         targetID : elem.__nodeID
                         rvID : rv.__nodeID
                         method : method
-                        args : wrapper.nodes.scrub(args)
-                    )
+                        args : wrapper.nodes.scrub(args))
                     wrapper.emit('tagDocument',
                         parent : rv.__nodeID
-                        id : rv.contentDocument.__nodeID
-                    )
+                        id : rv.contentDocument.__nodeID)
                     # We return false because we already emitted the instruction.
                     return false
                 return true
