@@ -29,7 +29,7 @@ class DNodeServer extends EventEmitter
                 browser.broadcastBindingUpdate(remote, update)
 
             @processEvent = (clientEv) ->
-                console.log("target: #{clientEv.target}")
+                console.log("target: #{clientEv.target} type: #{clientEv.type} group:#{eventTypeToGroup[clientEv.type]}")
                 clientEv.target = dom.nodes.get(clientEv.target)
                 if clientEv.relatedTarget?
                     clientEv.relatedTarget = dom.nodes.get(clientEv.relatedTarget)
