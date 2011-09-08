@@ -45,6 +45,7 @@ class TaggedNodeCollection
         @ids[id] = node
 
     # Substitutes DOM elements in a parameter list with their id.
+    # TODO: do this in place
     scrub : (params) ->
         scrubbed = []
         for param in params
@@ -56,17 +57,20 @@ class TaggedNodeCollection
                 scrubbed.push param
         scrubbed
 
-    # Need to add support for scrubbing properties of an object (recursively)
+    # Replace nodeIDs with nodes in arrays or objects (shallow).
+    # Updates are done in place.
     unscrub : (params) ->
         if params instanceof Array
-            unscrubbed = []
-            for param in params
+            for param, index in params
                 if (typeof param == 'string') && /^node\d+$/.test(param)
-                    unscrubbed.push(@get(param))
-                else
-                    unscrubbed.push(param)
-            return unscrubbed
+                    params[index] = @get(param)
+            return params
+        else if params instanceof Object
+            for key, value of params
+                if (typeof value == 'string') && /^node\d+$/.test(value)
+                    params[key] = @get(value)
+            return params
         else
-            throw new Error "params must be an array"
+            throw new Error "params must be an array or object"
 
 module.exports = TaggedNodeCollection
