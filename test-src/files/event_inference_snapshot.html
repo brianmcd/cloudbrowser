@@ -1,0 +1,29 @@
+<html>
+    <head>
+    </head>
+    <body>
+        <div id='div1'></div>
+        <p id='p1'></p>
+        <textarea id='textarea1'></textarea>
+        <script>
+            count = 0;
+            var div = document.getElementById('div1');
+            var p = document.getElementById('p1');
+            var textarea = document.getElementById('textarea1');
+            div.addEventListener('click', function (event) {
+                count++;
+                test.equal(event.target, div);
+            });
+            p.addEventListener('focus', function (event) {
+                count++;
+                test.equal(event.target, p);
+            });
+            textarea.addEventListener('change', function (event) {
+                count++;
+                test.equal(event.target, textarea);
+                test.equal(count, 3);
+                test.done();
+            });
+        </script>
+    </body>
+</html>
