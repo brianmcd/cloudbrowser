@@ -33,12 +33,6 @@ class DNodeServer extends EventEmitter
                     for rem in remotes
                         rem.updateBrowserList(browserList)
 
-            @updateBindings = (update) =>
-                @browser.bindings.updateBindings(update)
-                # Tell the browser to send this binding update to all clients
-                # except the one it came from.
-                @browser.broadcastBindingUpdate(remote, update)
-
             @processEvent = (event) =>
                 @browser.events.processEvent(event)
 

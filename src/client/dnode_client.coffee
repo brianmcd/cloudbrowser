@@ -1,6 +1,5 @@
 TaggedNodeCollection = require('./tagged_node_collection')
 EventMonitor         = require('./event_monitor')
-BindingClient        = require('./binding_client')
 
 test_env = false
 if process?.env?.TESTS_RUNNING
@@ -9,15 +8,12 @@ if process?.env?.TESTS_RUNNING
 class DNodeClient
     constructor : (window, document, remote, conn) ->
         nodes = null
-        bindings = null
         monitor = null
         console.log("Connecting to server...")
         conn.on 'ready', () =>
             console.log "Connection is ready"
             remote.auth(window.__envSessionID)
             monitor = new EventMonitor(document, remote)
-            bindings = new BindingClient(nodes, remote)
-            conn.on('end', bindings.stopChecker)
 
         if test_env
             # If we're testing, expose a function to let the server signal when
@@ -27,12 +23,6 @@ class DNodeClient
             # emit it before the test data has made it accross.
             @testDone = () ->
                 window.testClient.emit('testDone')
-
-        # Data binding methods that are proxied to our BindingClient
-        @addBinding = () ->
-            bindings.addBinding.apply(bindings, arguments)
-        @updateBindings = () ->
-            bindings.updateBindings.apply(bindings, arguments)
 
         @addEventListener = (params) ->
             monitor.addEventListener.apply(monitor, arguments)
@@ -59,7 +49,7 @@ class DNodeClient
                         # If we just cleared the main document, start a new
                         # TaggedNodeCollection
                         if doc == document
-                            bindings.nodes = nodes = new TaggedNodeCollection()
+                            nodes = new TaggedNodeCollection()
                         nodes.add(doc, record.id)
                     when 'comment'
                         doc = document
@@ -87,8 +77,6 @@ class DNodeClient
                         nodes.add(node, record.id)
                         parent = nodes.get(record.parent)
                         parent.appendChild(node)
-            if snapshot.bindings.length > 0
-                bindings.loadFromSnapshot(snapshot.bindings)
             if snapshot.events.length > 0
                 monitor.loadFromSnapshot(snapshot.events)
             if test_env
@@ -118,7 +106,7 @@ class DNodeClient
             # Only reset the TaggedNodeCollection if we cleared the global
             # window's document.
             if doc == document
-                bindings.nodes = nodes = new TaggedNodeCollection()
+                nodes = new TaggedNodeCollection()
             delete doc.__nodeID
 
         # Params:

@@ -4,7 +4,6 @@ URL            = require('url')
 TestClient     = require('./test_client')
 DOM            = require('../dom')
 ResourceProxy  = require('./resource_proxy')
-BindingServer  = require('./binding_server')
 EventProcessor = require('./event_processor')
 
 class Browser
@@ -13,7 +12,6 @@ class Browser
         @window = null
         @resources = null
         @dom = new DOM(this)
-        @bindings = new BindingServer(@dom)
         @events = new EventProcessor(this)
 
         # The DOM can emit 'pagechange' when Location is set and we need to
@@ -44,8 +42,6 @@ class Browser
         @dom.removeAllListeners('DOMUpdate')
         @dom.removeAllListeners('DOMPropertyUpdate')
         @dom.removeAllListeners('tagDocument')
-        @bindings.removeAllListeners('updateBindings')
-        @bindings.removeAllListeners('addBinding')
         @events.removeAllListeners('addEventListener')
 
     resumeClientUpdates : () ->
@@ -58,10 +54,6 @@ class Browser
             @broadcastUpdate('DOMPropertyUpdate', params)
         @dom.on 'tagDocument', (params) =>
             @broadcastUpdate('tagDocument', params)
-        @bindings.on 'updateBindings', (params) =>
-            @broadcastUpdate('updateBindings', params)
-        @bindings.on 'addBinding', (params) =>
-            @broadcastUpdate('addBinding', params)
         @events.on 'addEventListener', (params) =>
             @broadcastUpdate('addEventListener', params)
 
@@ -72,7 +64,6 @@ class Browser
         @connQ = []
         snapshot =
             nodes : @dom.getSnapshot()
-            bindings : @bindings.getSnapshot()
             events : @events.getSnapshot()
         for client in @clients
             client.loadFromSnapshot(snapshot)
@@ -83,23 +74,12 @@ class Browser
         for client in @clients
             client[method](params)
 
-    # client - the client the update came from, therefore we don't want
-    #          to send the update back to it.
-    broadcastBindingUpdate : (remote, update) ->
-        if @clients.length == 1
-            return
-        for client in @clients
-            if client != remote
-                console.log(client)
-                client.updateBindings(update)
-
     addClient : (client) ->
         if !@window.document? || @window.document.readyState == 'loading'
             @connQ.push(client)
             return
         snapshot =
             nodes : @dom.getSnapshot()
-            bindings : @bindings.getSnapshot()
             events : @events.getSnapshot()
         client.loadFromSnapshot(snapshot)
         @clients.push(client)
