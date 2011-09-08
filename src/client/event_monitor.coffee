@@ -45,6 +45,10 @@ class EventMonitor
     _handler : (event) =>
         if DefaultEvents[event.type] || @activeEvents[event.target.__nodeID]?[event.type]
             rEvent = @_createRemoteEvent(event)
+            # Special case: we need to attach the changed data for the change
+            # event.
+            if event.type == 'change'
+                rEvent.changeData = event.target.value
             console.log("Sending event: #{rEvent.type}")
             @server.processEvent(rEvent)
         event.preventDefault()
