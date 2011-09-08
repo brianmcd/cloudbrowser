@@ -5,6 +5,7 @@ TestClient     = require('./test_client')
 DOM            = require('../dom')
 ResourceProxy  = require('./resource_proxy')
 BindingServer  = require('./binding_server')
+EventProcessor = require('./event_processor')
 
 class Browser
     constructor : (browserID, url) ->
@@ -13,6 +14,7 @@ class Browser
         @resources = null
         @dom = new DOM(this)
         @bindings = new BindingServer(@dom)
+        @events = new EventProcessor(this)
 
         # The DOM can emit 'pagechange' when Location is set and we need to
         # load a new page.
@@ -44,6 +46,7 @@ class Browser
         @dom.removeAllListeners('tagDocument')
         @bindings.removeAllListeners('updateBindings')
         @bindings.removeAllListeners('addBinding')
+        @events.removeAllListeners('addEventListener')
 
     resumeClientUpdates : () ->
         @syncAllClients()
@@ -59,6 +62,8 @@ class Browser
             @broadcastUpdate('updateBindings', params)
         @bindings.on 'addBinding', (params) =>
             @broadcastUpdate('addBinding', params)
+        @events.on 'addEventListener', (params) =>
+            @broadcastUpdate('addEventListener', params)
 
     syncAllClients : () ->
         if @clients.length == 0 && @connQ.length == 0
@@ -68,6 +73,7 @@ class Browser
         snapshot =
             nodes : @dom.getSnapshot()
             bindings : @bindings.getSnapshot()
+            events : @events.getSnapshot()
         for client in @clients
             client.loadFromSnapshot(snapshot)
 
@@ -90,12 +96,13 @@ class Browser
     addClient : (client) ->
         if !@window.document? || @window.document.readyState == 'loading'
             @connQ.push(client)
-        else
-            snapshot =
-                nodes : @dom.getSnapshot()
-                bindings : @bindings.getSnapshot()
-            client.loadFromSnapshot(snapshot)
-            @clients.push(client)
+            return
+        snapshot =
+            nodes : @dom.getSnapshot()
+            bindings : @bindings.getSnapshot()
+            events : @events.getSnapshot()
+        client.loadFromSnapshot(snapshot)
+        @clients.push(client)
 
     removeClient : (client) ->
         @clients = (c for c in @clients when c != client)

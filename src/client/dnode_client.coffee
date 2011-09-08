@@ -10,6 +10,7 @@ class DNodeClient
     constructor : (window, document, remote, conn) ->
         nodes = null
         bindings = null
+        monitor = null
         console.log("Connecting to server...")
         conn.on 'ready', () =>
             console.log "Connection is ready"
@@ -32,6 +33,11 @@ class DNodeClient
             bindings.addBinding.apply(bindings, arguments)
         @updateBindings = () ->
             bindings.updateBindings.apply(bindings, arguments)
+
+        @addEventListener = (params) ->
+            monitor.addEventListener.apply(monitor, arguments)
+            if test_env
+                window.testClient.emit('addEventListener', params)
     
         # Snapshot is an array of node records.  See dom/serializers.coffee.
         # This function is used to bootstrap the client so they're ready for
@@ -83,6 +89,8 @@ class DNodeClient
                         parent.appendChild(node)
             if snapshot.bindings.length > 0
                 bindings.loadFromSnapshot(snapshot.bindings)
+            if snapshot.events.length > 0
+                monitor.loadFromSnapshot(snapshot.events)
             if test_env
                 window.testClient.emit('loadFromSnapshot', snapshot)
 
