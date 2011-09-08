@@ -37,7 +37,7 @@ exports['tests'] =
             div.addEventListener('mousedown', () ->)
             div.addEventListener('mousemove', () ->)
 
-    'test event inference' : (test) ->
+    'test event inference - addEventListener' : (test) ->
         browser = new Browser('browser',
                               'http://localhost:3001/event_processor.html')
         processor = browser.events
@@ -46,6 +46,35 @@ exports['tests'] =
         processor.on 'addEventListener', (params) ->
             test.equal(events[count++], params.type)
             if count == events.length
+                test.done()
+
+    'test event inference - attribute handlers' : (test) ->
+        browser = new Browser('browser',
+                              'http://localhost:3001/event_processor_attributes.html')
+        processor = browser.events
+        events = ['click', 'change', 'mouseover', 'focus']
+        count = 0
+        processor.on 'addEventListener', (params) ->
+            # Make sure that we intercept attribute handlers correctly.
+            test.equal(events[count++], params.type)
+            if count == events.length
+                window = browser.window
+                document = window.document
+                # Now we test to make sure the event handler actually work.
+                ev = document.createEvent('MouseEvents')
+                ev.initMouseEvent('click', false, true)
+                window.div.dispatchEvent(ev)
+                ev = document.createEvent('HTMLEvents')
+                ev.initEvent('change', false, true)
+                window.input.dispatchEvent(ev)
+                ev = document.createEvent('MouseEvents')
+                ev.initMouseEvent('mouseover', false, true)
+                window.p.dispatchEvent(ev)
+                ev = document.createEvent('HTMLEvents')
+                ev.initEvent('focus', false, true)
+                window.div.dispatchEvent(ev)
+                # Each event handler should have incremented count once.
+                test.equal(window.count, 4)
                 test.done()
         
     'teardown' : (test) ->

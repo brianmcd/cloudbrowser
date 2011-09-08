@@ -1,7 +1,13 @@
 EventEmitter     = require('events').EventEmitter
 EventLists       = require('../event_lists')
+
+# These are events that are eligible for being shipped to the client.  We use
+# this to know which attribute handlers to register for, and which events we
+# need to capture in our advice.
 ClientEvents     = EventLists.clientEvents
+# Maps an event type, like 'click', to a group, like 'MouseEvents'
 EventTypeToGroup = EventLists.eventTypeToGroup
+
 
 # TODO: this needs to handle events on frames, which would need to be
 #       created from a different document.
@@ -11,6 +17,7 @@ class EventProcessor extends EventEmitter
         @dom = browser.dom
         @events = []
         @_wrapAddEventListener(@dom.jsdom.dom.level3.events)
+        @_installAttributeHandlerAdvice(@dom.jsdom.dom.level3.html)
 
     _wrapAddEventListener : (events) ->
         self = this
@@ -29,6 +36,30 @@ class EventProcessor extends EventEmitter
             self.emit('addEventListener', params)
             self.events.push(params)
             return rv
+
+    _installAttributeHandlerAdvice : (html) ->
+        self = this
+        for type of ClientEvents
+            do (type) ->
+                name = "on#{type}"
+                # TODO: remove listener if this is set to null?
+                #       this won't really effect correctness, but it will prevent
+                #       client from dispatching an event to server DOM that isn't
+                #       listened on.
+                html.HTMLElement.prototype.__defineSetter__ name, (func) ->
+                    this["__#{name}"] = func
+                    if !this.__nodeID || !ClientEvents[type]
+                        return func
+                    params =
+                        nodeID : this.__nodeID
+                        type : type
+                        capturing : false
+                    console.log("Attribute handler intercepted: #{params.type} " +
+                                "on #{params.nodeID}")
+                    self.emit('addEventListener', params)
+                    return func
+                html.HTMLElement.prototype.__defineGetter__ name, (func) ->
+                    return this["__#{name}"]
 
     getSnapshot : () ->
         return @events
