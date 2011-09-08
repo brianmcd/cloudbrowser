@@ -4,8 +4,15 @@ path          = require("path")
 {spawn, exec} = require("child_process")
 stdout        = process.stdout
 
-JS_FILES = [
-    'dom/XMLHttpRequest.js'
+LINKS = [
+        src : 'src/dom/XMLHttpRequest.js'
+        dest : 'lib/dom/XMLHttpRequest.js'
+    ,
+        src : 'lib/tagged_node_collection.js'
+        dest : 'lib/client/tagged_node_collection.js'
+    ,
+        src : 'lib/event_lists.js'
+        dest : 'lib/client/event_lists.js'
 ]
 
 # Use executables installed with npm bundle.
@@ -27,10 +34,7 @@ onerror = (err)->
     process.stdout.write "#{red}#{err.stack}#{reset}\n"
     process.exit -1
 
-
 ## Setup ##
-## TODO: run "cake build" in each example directory
-## TODO: run unit tests
 task "setup", "Install development dependencies", ->
     log "Installing required npm packages (this could take some time)...", green
     npm = spawn "npm", ["install", "--dev"]
@@ -42,6 +46,7 @@ task "setup", "Install development dependencies", ->
         git.stdout.on 'data', (data) -> process.stdout.write data + reset
         git.on 'error', (err) -> onerror err
         git.on 'exit', ->
+            count = 0
             deps = fs.readdirSync('deps')
             process.chdir('deps')
             deps.forEach (dep) ->
@@ -54,67 +59,60 @@ task "setup", "Install development dependencies", ->
                     depnpm.stdout.on 'data', (data) -> process.stdout.write data + reset
                     depnpm.on 'error', (err) -> onerror err
                     process.chdir('..')
+                    if ++count == deps.length
+                        process.chdir('..')
+                        runTests()
 
 ## Building ##
-copyJS = (callback) ->
-    log "Copying over raw js files ...", green
+linkFiles = (callback) ->
     count = 0
-    for file in JS_FILES
-        do (file) ->
-            src = "#{path.join(__dirname, 'src', file)}"
-            dst = "#{path.join(__dirname, 'lib', file)}"
-            exec "mkdir -p #{path.dirname(dst)}", (err, stdout) ->
-                if stdout != ""
-                    log stdout, green
-                onerror err
-                exec "cp #{src} #{dst}", (err, stdout) ->
-                    if stdout != ""
-                        log stdout, green
-                    onerror err
-                    if ++count == JS_FILES.length
-                        callback() if callback?
-                
+    for file in LINKS
+        log "Linking #{file.src} to #{file.dest}...", green
+        src = path.resolve(__dirname, file.src)
+        dest = path.resolve(__dirname, file.dest)
+        exec "ln -s #{src} #{dest}", (err, stdout) ->
+            onerror err
+            if stdout != ""
+                log stdout, green
+            if ++count == LINKS.length
+                if callback
+                    callback()
+
 build = (callback) ->
-    log "Compiling CoffeeScript to JavaScript ...", green
-    exec "rm -rf lib/ && coffee -c -l -b -o lib src", (err, stdout) ->
+    log "Compiling CoffeeScript to JavaScript...", green
+    exec "rm -rf lib/ && coffee -c -l -b -o lib/ src/", (err, stdout) ->
         onerror err
         if stdout != ""
             log stdout, green
+        log "Building tests...", green
         exec "rm -rf test/ && coffee -c -l -b -o test/ test-src/", (err, stdout) ->
             onerror err
             if stdout != ""
                 log stdout, green
-            copyJS () ->
-                log "Linking tagged_node_collection.js", green
-                src = path.join(__dirname, 'lib', 'tagged_node_collection.js')
-                dest = path.join(__dirname, 'lib', 'client', 'tagged_node_collection.js')
-                exec "ln -s #{src} #{dest}", (err, stdout) ->
-                    onerror err
-                    if stdout != ""
-                        log stdout, green
-                    callback() if callback
-
+            linkFiles(callback)
 task "build", "Compile CoffeeScript to JavaScript", -> build()
 
 task "watch", "Continously compile CoffeeScript to JavaScript", ->
-    exec "rm -rf lib", (err, stdout) ->
-        build ->
-            cmd = spawn("coffee", ["-cwb", "-o", "lib", "src"])
-            cmd.stdout.on "data", (data)-> process.stdout.write green + data + reset
-            cmd.on "error", onerror
+    build ->
+        cmd = spawn("coffee", ["-cwb", "-o", "lib", "src"])
+        cmd.stdout.on "data", (data)-> process.stdout.write green + data + reset
+        cmd.on "error", onerror
 
-            testcmd = spawn("coffee", ["-cwb", "-o", "test", "test-src"])
-            testcmd.stdout.on "data", (data)-> process.stdout.write green + data + reset
-            testcmd.on "error", onerror
+        testcmd = spawn("coffee", ["-cwb", "-o", "test", "test-src"])
+        testcmd.stdout.on "data", (data)-> process.stdout.write green + data + reset
+        testcmd.on "error", onerror
 
 task "clean", "Remove temporary files and such", ->
-    exec "rm -rf lib/", onerror
+    exec "rm -rf lib/ && rm -rf test/", onerror
 
 ## Testing ##
-runTests = () ->
+runTests = (callback) ->
   log "Running test suite ...", green
   nodeunit = spawn("node", ["run_tests.js"])
   nodeunit.stdout.on "data", (data) -> process.stdout.write data
   nodeunit.on 'error', onerror
+  nodeunit.on 'exit', () ->
+      if callback
+          callback()
 task "test", "Run all tests", ->
   runTests()
