@@ -13,6 +13,9 @@ LINKS = [
     ,
         src : 'lib/event_lists.js'
         dest : 'lib/client/event_lists.js'
+    ,
+        src : 'src/dom/event_patches.js'
+        dest : 'lib/dom/event_patches.js'
 ]
 
 # Use executables installed with npm bundle.
