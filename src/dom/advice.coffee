@@ -25,7 +25,7 @@ exports.addAdvice = (dom, wrapper) ->
             #console.log("#{prop} called")
             rv = originalSetter.call(this, value)
             if !func? || func(this, arguments, rv)
-                if value.__nodeID?
+                if value?.__nodeID?
                     value = wrapper.nodes.get(value.__nodeID)
                 params =
                     targetID : this.__nodeID
