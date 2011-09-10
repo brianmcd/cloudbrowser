@@ -22,7 +22,7 @@ class DOM extends EventEmitter
             MutationEvents : '2.0'
             QuerySelector : false
         addAdvice(@jsdom.dom.level3.html, this)
-        applyPatches(@jsdom.dom.level3.core)
+        applyPatches(@jsdom.dom.level3)
 
     getSnapshot : () ->
         if @currentWindow
@@ -38,7 +38,7 @@ class DOM extends EventEmitter
     getFreshJSDOM : () ->
         reqCache = require.cache
         for entry of reqCache
-            if /jsdom/.test(entry) # && !(/jsdom_wrapper/.test(entry))
+            if /jsdom/.test(entry)
                 delete reqCache[entry]
         return require('jsdom')
 

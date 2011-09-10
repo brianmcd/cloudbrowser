@@ -128,13 +128,31 @@ class EventProcessor extends EventEmitter
                                      clientEv.modifiersList, clientEv.deltaX,
                                      clientEv.deltaY, clientEv.deltaZ,
                                      clientEv.deltaMode)
+            # Eventually, we'll detect events from different browsers and
+            # handle them accordingly.
             when 'KeyboardEvent'
-                event.initKeyboardEvent(clientEv.type, clientEv.bubbles,
-                                        clientEv.cancelable, @browser.window,
-                                        clientEv.char, clientEv.key,
-                                        clientEv.location,
-                                        clientEv.modifiersList,
-                                        clientEv.repeat, clientEv.locale)
+                # For Chrome:
+                type = clientEv.type
+                bubbles = clientEv.bubbles
+                cancelable = clientEv.cancelable
+                view = @browser.window
+                char = String.fromCharCode(clientEv.which)
+                location = clientEv.keyLocation
+                modifiersList = ""
+                repeat = false
+                locale = ""
+                if clientEv.altGraphKey then modifiersList += "AltGraph"
+                if clientEv.altKey then modifiersList += "Alt"
+                if clientEv.ctrlKey then modifiersList += "Ctrl"
+                if clientEv.metaKey then modifiersList += "Meta"
+                if clientEv.shiftKey then modifiersList += "Shift"
+
+                # TODO: to get the "keyArg" parameter right, we'd need a lookup
+                # table for:
+                # http://www.w3.org/TR/DOM-Level-3-Events/#key-values-list
+                event.initKeyboardEvent(type, bubbles, cancelable,
+                                        @browser.window, char, char, location,
+                                        modifiersList, repeat, locale)
             when 'CompositionEvent'
                 event.initCompositionEvent(clientEv.type, clientEv.bubbles,
                                            clientEv.cancelable, @browser.window,

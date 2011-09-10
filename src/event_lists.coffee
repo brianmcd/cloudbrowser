@@ -4,6 +4,7 @@
 exports.defaultEvents =
     'click' : true
     'change' : true
+    'keypress' : true
 
 # These are events that are eligible for listening on the client.  We need
 # this because we need to know which events we should ignore inside our
@@ -78,6 +79,7 @@ exports.eventTypeToGroup = do ->
             'change'
             'blur'
             'focus'
+            'submit'
         ]
 
     eventTypeToGroup = {}

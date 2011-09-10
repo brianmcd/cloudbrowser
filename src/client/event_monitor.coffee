@@ -6,7 +6,6 @@ DefaultEvents = EventLists.defaultEvents
 
 # TODO: consider using jQuery
 # TODO: figure out how to handle capturing listeners
-# TODO: DOMFocusIn/DOMFocusOut/DOMActivate are UIEvents, not FocusEvents
 class EventMonitor
     constructor : (document, server) ->
         @document = document
@@ -51,7 +50,25 @@ class EventMonitor
                 rEvent.changeData = event.target.value
             console.log("Sending event: #{rEvent.type}")
             @server.processEvent(rEvent)
-        event.preventDefault()
+
+        # TODO: consult a lookup table in ClientEvents for when to call
+        # preventDefault/stopPropagation
+        if event.type == 'click'
+            event.preventDefault()
+            # Calling preventDefault on a submit button prevents the 'submit'
+            # event from being created/dispatched, so we do it manually here.
+            if event.target.type == 'submit'
+                # First, we need to work back from the button to get the form
+                # to fire the event on.
+                form = event.target
+                while form.tagName.toLowerCase() != 'form'
+                    form = form.parentNode
+                console.log("Generating a submit event from button click")
+                ev = document.createEvent('HTMLEvents')
+                ev.initEvent('submit', false, true)
+                form.dispatchEvent(ev)
+                # TODO: clear the form data.  Targetting a 'reset' event at
+                # the form doesn't seem to do it.
         event.stopPropagation()
         return false
 
@@ -90,16 +107,22 @@ class EventMonitor
             remoteEvent.data = event.data
             remoteEvent.inputMethod = event.inputMethod
             remoteEvent.locale = event.locale
+        # A note about KeyboardEvents:
+        #   As far as I can tell, no one implements these to any standard.
+        #   They are not included in the DOM level 2 spec, but they do exist
+        #   in DOM level 3.  So far, it seems like no one implements the level
+        #   3 version of KeyboardEvent.  I'm basing our use here off of
+        #   Chrome's apparent implementation.
         if event.initKeyboardEvent
-            remoteEvent.char = event.char
-            remoteEvent.key = event.key
-            remoteEvent.location = event.location
-            remoteEvent.ctrlKey = event.ctrlKey
-            remoteEvent.shiftKey = event.shiftKey
+            remoteEvent.altGraphKey = event.altGraphKey
             remoteEvent.altKey = event.altKey
-            remoteEvent.button = event.button
+            remoteEvent.charCode = event.charCode
+            remoteEvent.ctrlKey = event.ctrlKey
+            remoteEvent.keyCode = event.keyCode
+            remoteEvent.keyLocation = event.keyLocation
+            remoteEvent.shiftKey = event.shiftKey
             remoteEvent.repeat = event.repeat
-            remoteEvent.locale = event.locale
+            remoteEvent.which = event.which
         if event.initCompositionEvent
             remoteEvent.data = event.data
             remoteEvent.locale = event.locale
