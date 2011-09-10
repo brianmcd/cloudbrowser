@@ -25,3 +25,18 @@ addDefaultHandlers = (core) ->
             else
                 elem.value += event.char
             console.log(elem.value)
+
+    core.HTMLButtonElement.prototype._eventDefaults =
+        click : (event) ->
+            elem = event.target
+            console.log('Inside click handler for button')
+            # Clicks on submit buttons should generate a submit event on the
+            # enclosing form.
+            if elem.type == 'submit'
+                form =  elem.form
+                console.log("Generating a submit event from button click")
+                ev = elem.ownerDocument.createEvent('HTMLEvents')
+                ev.initEvent('submit', false, true)
+                form.dispatchEvent(ev)
+                form.reset()
+

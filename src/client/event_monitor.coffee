@@ -55,20 +55,6 @@ class EventMonitor
         # preventDefault/stopPropagation
         if event.type == 'click'
             event.preventDefault()
-            # Calling preventDefault on a submit button prevents the 'submit'
-            # event from being created/dispatched, so we do it manually here.
-            if event.target.type == 'submit'
-                # First, we need to work back from the button to get the form
-                # to fire the event on.
-                form = event.target
-                while form.tagName.toLowerCase() != 'form'
-                    form = form.parentNode
-                console.log("Generating a submit event from button click")
-                ev = document.createEvent('HTMLEvents')
-                ev.initEvent('submit', false, true)
-                form.dispatchEvent(ev)
-                # TODO: clear the form data.  Targetting a 'reset' event at
-                # the form doesn't seem to do it.
         event.stopPropagation()
         return false
 
