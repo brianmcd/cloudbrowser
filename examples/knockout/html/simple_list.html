@@ -1,0 +1,32 @@
+<html>
+    <head>
+        <script src='knockout-1.2.1.debug.js'></script>
+        <script>
+            window.onload = function () {
+                var b = document.getElementsByTagName('button')[0];
+                console.log(b);
+                var viewModel = {};
+                viewModel.items = ko.observableArray(["Alpha", "Beta", "Gamma"]);
+                viewModel.itemToAdd = ko.observable("");
+                viewModel.addItem = function () {
+                    if (viewModel.itemToAdd() != "") {
+                        viewModel.items.push(viewModel.itemToAdd()); // Adds the item. Writing to the "items" observableArray causes any associated UI to update.
+                        viewModel.itemToAdd("");                     // Clears the text box, because it's bound to the "itemToAdd" observable
+                    }
+                }
+                ko.applyBindings(viewModel);
+            };
+        </script>
+    </head>
+    <body>
+        <form data-bind="submit: addItem">
+            New item:
+            <input data-bind='value: itemToAdd, valueUpdate: "afterkeydown"' />
+            <!-- TODO: the greater than sign in this code causes html parser to
+                       mess up -->
+            <button type="submit" data-bind="enable: itemToAdd().length != 0">Add</button>
+            <p>Your items:</p>
+            <select multiple="multiple" width="50" data-bind="options: items"> </select>
+        </form>
+    </body>
+</html>
