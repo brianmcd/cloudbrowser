@@ -44,15 +44,13 @@ class EventMonitor
     _handler : (event) =>
         if DefaultEvents[event.type] || @activeEvents[event.target.__nodeID]?[event.type]
             rEvent = @_createRemoteEvent(event)
-            # Special case: we need to attach the changed data for the change
-            # event.
-            if event.type == 'change'
-                rEvent.changeData = event.target.value
             console.log("Sending event: #{rEvent.type}")
             @server.processEvent(rEvent)
 
         # TODO: consult a lookup table in ClientEvents for when to call
         # preventDefault/stopPropagation
+        # TODO: Alternatively, it would be better if we always call
+        #       preventDefault, and have default actions implemented on server.
         if event.type == 'click'
             event.preventDefault()
         event.stopPropagation()

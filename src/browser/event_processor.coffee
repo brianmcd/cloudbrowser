@@ -73,13 +73,6 @@ class EventProcessor extends EventEmitter
         # Swap nodeIDs with nodes
         clientEv = @dom.nodes.unscrub(clientEv)
 
-        # Special case: the change event doesn't usually attach the changed
-        # data, so we do it manually on the client side.  This way we can
-        # actually update the element before firing the event, which expects
-        # the value to be changed.
-        if clientEv.type == 'change'
-            clientEv.target.value = clientEv.changeData
-
         # Create an event we can dispatch on the server.
         event = @_createEvent(clientEv)
 
