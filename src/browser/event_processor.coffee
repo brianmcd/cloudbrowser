@@ -92,10 +92,9 @@ class EventProcessor extends EventEmitter
                 event.initUIEvent(clientEv.type, clientEv.bubbles,
                                   clientEv.cancelable, @browser.window,
                                   clientEv.detail)
-            when 'FocusEvent'
-                event.initFocusEvent(clientEv.type, clientEv.bubbles,
-                                     clientEv.cancelable, @browser.window,
-                                     clientEv.detail, clientEv.relatedTarget)
+            when 'HTMLEvents'
+                event.initEvent(clientEv.type, clientEv.bubbles,
+                                clientEv.cancelable)
             when 'MouseEvents'
                 event.initMouseEvent(clientEv.type, clientEv.bubbles,
                                      clientEv.cancelable, @browser.window,
@@ -105,22 +104,6 @@ class EventProcessor extends EventEmitter
                                      clientEv.altKey, clientEv.shiftKey,
                                      clientEv.metaKey, clientEv.button,
                                      clientEv.relatedTarget)
-            when 'TextEvent'
-                event.initTextEvent(clientEv.type, clientEv.bubbles,
-                                    clientEv.cancelable, @browser.window,
-                                    clientEv.data, clientEv.inputMethod,
-                                    clientEv.locale)
-
-            when 'WheelEvent'
-                event.initWheelEvent(clientEv.type, clientEv.bubbles,
-                                     clientEv.cancelable, @browser.window,
-                                     clientEv.detail, clientEv.screenX,
-                                     clientEv.screenY, clientEv.clientX,
-                                     clientEv.clientY, clientEv.button,
-                                     clientEv.relatedTarget,
-                                     clientEv.modifiersList, clientEv.deltaX,
-                                     clientEv.deltaY, clientEv.deltaZ,
-                                     clientEv.deltaMode)
             # Eventually, we'll detect events from different browsers and
             # handle them accordingly.
             when 'KeyboardEvent'
@@ -146,13 +129,6 @@ class EventProcessor extends EventEmitter
                 event.initKeyboardEvent(type, bubbles, cancelable,
                                         @browser.window, char, char, location,
                                         modifiersList, repeat, locale)
-            when 'CompositionEvent'
-                event.initCompositionEvent(clientEv.type, clientEv.bubbles,
-                                           clientEv.cancelable, @browser.window,
-                                           clientEv.data, clientEv.locale)
-            when 'HTMLEvents'
-                event.initEvent(clientEv.type, clientEv.bubbles,
-                                clientEv.cancelable)
         return event
 
 module.exports = EventProcessor

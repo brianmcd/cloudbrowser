@@ -55,10 +55,11 @@ class EventMonitor
         event.stopPropagation()
         return false
 
-    _initEventHelperObjects : () =>
+    _initEventHelperObjects : () ->
         server = @server
         @specialEventHandlers =
             click : (remoteEvent, clientEvent) ->
+                tagName = clientEvent.target.tagName.toLowerCase()
                 clientEvent.preventDefault()
                 server.processEvent(remoteEvent)
 
@@ -67,6 +68,11 @@ class EventMonitor
             # The default action fires between 'keypress' and 'keyup'.
             # Before sending the event, we send the latest value of the
             # target, to simulate the default action on the server.
+            #
+            # NOTE: these actually need to be batched to get the right
+            # semantics.  Knockout expects that calling setTimeout(fn, 0)
+            # inside an event handler for keydown or keypress will result in
+            # fn being called after default action has occured.
             keydown : (remoteEvent, clientEvent) ->
                 server.processEvent(remoteEvent)
 
@@ -77,12 +83,24 @@ class EventMonitor
             # Valid targets:
             #   input, select, textarea
             change : (remoteEvent, clientEvent) ->
-                if clientEvent.target.tagName.toLowerCase() == 'select'
-                    server.DOMUpdate(
-                        method : 'setAttribute'
-                        rvID : null
-                        targetID : clientEvent.target.__nodeID
-                        args : ['selectedIndex', clientEvent.target.selectedIndex])
+                target = clientEvent.target
+                if target.tagName.toLowerCase() == 'select'
+                    if target.multiple
+                        console.log("detected multiple")
+                        # TODO: batch these or make a specialized method
+                        for option in target.options
+                            server.DOMUpdate(
+                                method : 'setAttribute'
+                                rvID : null
+                                targetID : option.__nodeID
+                                args : ['selected', option.selected])
+                    else
+                        console.log("selectedIndex is now: #{clientEvent.target.selectedIndex}")
+                        server.DOMUpdate(
+                            method : 'setAttribute'
+                            rvID : null
+                            targetID : clientEvent.target.__nodeID
+                            args : ['selectedIndex', clientEvent.target.selectedIndex])
                 else # input or textarea
                     server.DOMUpdate(
                         method : 'setAttribute'
