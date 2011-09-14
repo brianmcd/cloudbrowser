@@ -36,6 +36,31 @@ class DNodeServer extends EventEmitter
             @processEvent = (event) =>
                 @browser.events.processEvent(event)
 
+            # Params:
+            #   'method'
+            #   'rvID'
+            #   'targetID'
+            #   'args'
+            @DOMUpdate = (params) ->
+                target = @dom.nodes.get(params.targetID)
+                method = params.method
+                rvID = params.rvID
+                args = @dom.nodes.unscrub(params.args)
+
+                if target[method] == undefined
+                    throw new Error("Tried to process an invalid method: #{method}")
+
+                rv = target[method].apply(target, args)
+
+                if rvID?
+                    if !rv?
+                        throw new Error('expected return value')
+                    else if rv.__nodeID?
+                        if rv.__nodeID != rvID
+                            throw new Error("id issue")
+                    else
+                        @dom.nodes.add(rv, rvID)
+
             # Have to return this here because of coffee script.
             undefined
         )

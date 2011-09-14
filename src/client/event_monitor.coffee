@@ -1,11 +1,11 @@
 EventLists = require('./event_lists')
+EventTypeToGroup = EventLists.eventTypeToGroup
+
 # These are events we listen on even if they aren't requested, because
 # the server needs to know about them no matter what.  They may also be
 # here to prevent the default action of the client's browser.
 DefaultEvents = EventLists.defaultEvents
 
-# TODO: consider using jQuery
-# TODO: figure out how to handle capturing listeners
 class EventMonitor
     constructor : (document, server) ->
         @document = document
@@ -25,6 +25,7 @@ class EventMonitor
             console.log("Adding capturing listener for: #{type}")
             @registeredEvents[type] = true
             @document.addEventListener(type, @_handler, true)
+        @_initEventHelperObjects()
 
     addEventListener : (params) ->
         {nodeID, type, capturing} = params
@@ -43,73 +44,99 @@ class EventMonitor
 
     _handler : (event) =>
         if DefaultEvents[event.type] || @activeEvents[event.target.__nodeID]?[event.type]
-            rEvent = @_createRemoteEvent(event)
-            console.log("Sending event: #{rEvent.type}")
-            @server.processEvent(rEvent)
-
-        # TODO: consult a lookup table in ClientEvents for when to call
-        # preventDefault/stopPropagation
-        # TODO: Alternatively, it would be better if we always call
-        #       preventDefault, and have default actions implemented on server.
-        if event.type == 'click'
-            event.preventDefault()
+            rEvent = {}
+            @eventInitializers["#{EventTypeToGroup[event.type]}"](rEvent, event)
+            if @specialEventHandlers["#{event.type}"]
+                console.log("Calling special handler for: #{rEvent.type}")
+                @specialEventHandlers["#{event.type}"](rEvent, event)
+            else
+                console.log("Sending event: #{rEvent.type}")
+                @server.processEvent(rEvent)
         event.stopPropagation()
         return false
 
-    _createRemoteEvent : (event) ->
-        # This is based off of the w3c level 3 event spec: 
-        # http://dev.w3.org/2006/webapi/DOM-Level-3-Events/html/DOM3-Events.html
-        # JSDOM doesn't support some of these.
-        remoteEvent = {}
-        remoteEvent.type = event.type
-        remoteEvent.target = event.target.__nodeID
-        remoteEvent.bubbles = event.bubbles
-        remoteEvent.cancelable = event.cancelable
-        if event.initUIEvent
-            remoteEvent.view = null # TODO: tag window objects and copy this event's document's window.__nodeID
-            remoteEvent.detail = event.detail
-        if event.initMouseEvent
-            remoteEvent.screenX = event.screenX
-            remoteEvent.screenY = event.screenY
-            remoteEvent.clientX = event.clientX
-            remoteEvent.clientY = event.clientY
-            remoteEvent.ctrlKey = event.ctrlKey
-            remoteEvent.shiftKey = event.shiftKey
-            remoteEvent.altKey = event.altKey
-            remoteEvent.metaKey = event.metaKey
-            remoteEvent.button = event.button
-            remoteEvent.buttons = event.buttons
-            remoteEvent.relatedTarget = event.relatedTarget?.__nodeID
-        if event.initFocusEvent
-            remoteEvent.relatedTarget = event.relatedTarget?.__nodeID
-        if event.initWheelEvent
-            remoteEvent.deltaX = event.deltaX
-            remoteEvent.deltaY = event.deltaY
-            remoteEvent.deltaZ = event.deltaZ
-            remoteEvent.deltaMode = event.deltaMode
-        if event.initTextEvent
-            remoteEvent.data = event.data
-            remoteEvent.inputMethod = event.inputMethod
-            remoteEvent.locale = event.locale
-        # A note about KeyboardEvents:
-        #   As far as I can tell, no one implements these to any standard.
-        #   They are not included in the DOM level 2 spec, but they do exist
-        #   in DOM level 3.  So far, it seems like no one implements the level
-        #   3 version of KeyboardEvent.  I'm basing our use here off of
-        #   Chrome's apparent implementation.
-        if event.initKeyboardEvent
-            remoteEvent.altGraphKey = event.altGraphKey
-            remoteEvent.altKey = event.altKey
-            remoteEvent.charCode = event.charCode
-            remoteEvent.ctrlKey = event.ctrlKey
-            remoteEvent.keyCode = event.keyCode
-            remoteEvent.keyLocation = event.keyLocation
-            remoteEvent.shiftKey = event.shiftKey
-            remoteEvent.repeat = event.repeat
-            remoteEvent.which = event.which
-        if event.initCompositionEvent
-            remoteEvent.data = event.data
-            remoteEvent.locale = event.locale
-        return remoteEvent
+    _initEventHelperObjects : () =>
+        server = @server
+        @specialEventHandlers =
+            click : (remoteEvent, clientEvent) ->
+                clientEvent.preventDefault()
+                server.processEvent(remoteEvent)
+
+            # We defer the event until keyup has fired.  The order for
+            # keyboard events is: 'keydown', 'keypress', 'keyup'.
+            # The default action fires between 'keypress' and 'keyup'.
+            # Before sending the event, we send the latest value of the
+            # target, to simulate the default action on the server.
+            keydown : (remoteEvent, clientEvent) ->
+                server.processEvent(remoteEvent)
+
+            keypress : (remoteEvent, clientEvent) ->
+                server.processEvent(remoteEvent)
+                #remoteEvent.fullvalue = event.target.value
+
+            # Valid targets:
+            #   input, select, textarea
+            change : (remoteEvent, clientEvent) ->
+                if clientEvent.target.tagName.toLowerCase() == 'select'
+                    server.DOMUpdate(
+                        method : 'setAttribute'
+                        rvID : null
+                        targetID : clientEvent.target.__nodeID
+                        args : ['selectedIndex', clientEvent.target.selectedIndex])
+                else # input or textarea
+                    server.DOMUpdate(
+                        method : 'setAttribute'
+                        rvID : null
+                        targetID : clientEvent.target.__nodeID
+                        args: ['value', clientEvent.target.value])
+                server.processEvent(remoteEvent)
+
+        @eventInitializers =
+            # This is based off of the w3c level 2 event spec: 
+            # http://www.w3.org/TR/DOM-Level-2-Events/events.html
+            Event : (remoteEvent, clientEvent) ->
+                remoteEvent.type = clientEvent.type
+                remoteEvent.target = clientEvent.target.__nodeID
+                remoteEvent.bubbles = clientEvent.bubbles
+                remoteEvent.cancelable = clientEvent.cancelable
+
+            HTMLEvents : (remoteEvent, clientEvent) ->
+                @Event(remoteEvent, clientEvent)
+
+            UIEvents : (remoteEvent, clientEvent) ->
+                @Event(remoteEvent, clientEvent)
+                remoteEvent.view = null # TODO: tag window objects and copy this event's document's window.__nodeID
+                remoteEvent.detail = clientEvent.detail
+
+            MouseEvents : (remoteEvent, clientEvent) ->
+                @UIEvents(remoteEvent, clientEvent)
+                remoteEvent.screenX = clientEvent.screenX
+                remoteEvent.screenY = clientEvent.screenY
+                remoteEvent.clientX = clientEvent.clientX
+                remoteEvent.clientY = clientEvent.clientY
+                remoteEvent.ctrlKey = clientEvent.ctrlKey
+                remoteEvent.shiftKey = clientEvent.shiftKey
+                remoteEvent.altKey = clientEvent.altKey
+                remoteEvent.metaKey = clientEvent.metaKey
+                remoteEvent.button = clientEvent.button
+                remoteEvent.relatedTarget = clientEvent.relatedTarget?.__nodeID
+
+            # A note about KeyboardEvents:
+            #   As far as I can tell, no one implements these to any standard.
+            #   They are not included in the DOM level 2 spec, but they do exist
+            #   in DOM level 3.  So far, it seems like no one implements the level
+            #   3 version of KeyboardEvent.  I'm basing our use here off of
+            #   Chrome's apparent implementation.
+            KeyboardEvent : (remoteEvent, clientEvent) ->
+                @UIEvents(remoteEvent, clientEvent)
+                remoteEvent.altGraphKey = clientEvent.altGraphKey
+                remoteEvent.altKey = clientEvent.altKey
+                remoteEvent.charCode = clientEvent.charCode
+                remoteEvent.ctrlKey = clientEvent.ctrlKey
+                remoteEvent.keyCode = clientEvent.keyCode
+                remoteEvent.keyLocation = clientEvent.keyLocation
+                remoteEvent.shiftKey = clientEvent.shiftKey
+                remoteEvent.repeat = clientEvent.repeat
+                remoteEvent.which = clientEvent.which
 
 module.exports = EventMonitor

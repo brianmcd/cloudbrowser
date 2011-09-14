@@ -63,23 +63,18 @@ exports.eventTypeToGroup = do ->
             'mouseup'
             'mousewheel'
         ]
-        'WheelEvent' : ['wheel'],
         'TextEvent' : ['textinput']
         'KeyboardEvent' : [
             'keydown'
             'keypress'
             'keyup'
         ]
-        'CompositionEvent' : [
-            'compositionstart'
-            'compositionupdate'
-            'compositionend'
-        ]
         'HTMLEvents' : [
             'change'
             'blur'
             'focus'
             'submit'
+            'select'
         ]
 
     eventTypeToGroup = {}
