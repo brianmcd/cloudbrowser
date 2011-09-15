@@ -119,23 +119,20 @@ class EventMonitor
             #   input, select, textarea
             change : (remoteEvent, clientEvent) ->
                 target = clientEvent.target
+                # TODO: use batch mechanism once it exists...this is inefficient.
                 if target.tagName.toLowerCase() == 'select'
-                    if target.multiple
-                        console.log("detected multiple")
-                        # TODO: batch these or make a specialized method
-                        for option in target.options
-                            server.DOMUpdate(
-                                method : 'setAttribute'
-                                rvID : null
-                                targetID : option.__nodeID
-                                args : ['selected', option.selected])
-                    else
-                        console.log("selectedIndex is now: #{clientEvent.target.selectedIndex}")
+                    for option in target.options
                         server.DOMUpdate(
                             method : 'setAttribute'
                             rvID : null
-                            targetID : clientEvent.target.__nodeID
-                            args : ['selectedIndex', clientEvent.target.selectedIndex])
+                            targetID : option.__nodeID
+                            args : ['selected', option.selected])
+                        console.log("selectedIndex is now: #{clientEvent.target.selectedIndex}")
+                    server.DOMUpdate(
+                        method : 'setAttribute'
+                        rvID : null
+                        targetID : clientEvent.target.__nodeID
+                        args : ['selectedIndex', clientEvent.target.selectedIndex])
                 else # input or textarea
                     server.DOMUpdate(
                         method : 'setAttribute'
