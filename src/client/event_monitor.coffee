@@ -56,12 +56,31 @@ class EventMonitor
         return false
 
     _initEventHelperObjects : () ->
-        server = @server
+        monitor = this
+        server = monitor.server
         @specialEventHandlers =
             click : (remoteEvent, clientEvent) ->
                 tagName = clientEvent.target.tagName.toLowerCase()
                 clientEvent.preventDefault()
                 server.processEvent(remoteEvent)
+
+            _pendingKeyup : false
+            _queuedKeyEvents : []
+            _keyupListener : (event) ->
+                @_pendingKeyup = false
+                # TODO: need batch processing method.
+                #       then we can run keydown, keypress, update value, keyup
+                #       in the same event tick.
+                # Technically, the value shouldn't be set until after keypress.
+                server.DOMUpdate(
+                    method : 'setAttribute'
+                    rvID : null
+                    targetID : event.target.__nodeID
+                    args : ['value', event.target.value]
+                )
+                for rEvent in @_queuedKeyEvents
+                    server.processEvent(rEvent)
+                @_queuedKeyEvents = []
 
             # We defer the event until keyup has fired.  The order for
             # keyboard events is: 'keydown', 'keypress', 'keyup'.
@@ -73,12 +92,26 @@ class EventMonitor
             # semantics.  Knockout expects that calling setTimeout(fn, 0)
             # inside an event handler for keydown or keypress will result in
             # fn being called after default action has occured.
+            # TODO: test this
             keydown : (remoteEvent, clientEvent) ->
-                server.processEvent(remoteEvent)
+                if !@_pendingKeyup
+                    @_pendingKeyup = true
+                    # TODO: this needs to listen on document, not target.
+                    #       this could conflict with a listener we've already
+                    #       added...
+                    #       that would be called first, since it was registered
+                    #       first.
+                    #       TODO: for now, keyup listening on server will be broken.
+                    #       TODO: if the server asks for keyup event, we register the
+                    #       special handler.
+                    monitor.document.addEventListener('keyup', @_keyupListener.bind(this))
+                @_queuedKeyEvents.push(remoteEvent)
 
             keypress : (remoteEvent, clientEvent) ->
-                server.processEvent(remoteEvent)
-                #remoteEvent.fullvalue = event.target.value
+                if !@_pendingKeyup
+                    @_pendingKeyup = true
+                    monitor.document.addEventListener('keyup', @_keyupListener.bind(this))
+                @_queuedKeyEvents.push(remoteEvent)
 
             # Valid targets:
             #   input, select, textarea
