@@ -5,8 +5,9 @@ TestClient     = require('./test_client')
 DOM            = require('../dom')
 ResourceProxy  = require('./resource_proxy')
 EventProcessor = require('./event_processor')
+EventEmitter   = require('events').EventEmitter
 
-class Browser
+class Browser extends EventEmitter
     constructor : (browserID, url) ->
         @id = browserID
         @window = null
@@ -36,7 +37,10 @@ class Browser
         @window.location = url
         # We know the event won't fire until a later tick since it has to make
         # an http request.
-        @window.addEventListener('load', () => @resumeClientUpdates())
+        @window.addEventListener 'load', () =>
+            @resumeClientUpdates()
+            @emit('load')
+            process.nextTick(() => @emit('afterload'))
 
     pauseClientUpdates : () ->
         @dom.removeAllListeners('DOMUpdate')
