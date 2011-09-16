@@ -4,6 +4,7 @@ TaggedNodeCollection = require('./tagged_node_collection')
 ImportXMLHttpRequest = require('./dom/XMLHttpRequest').ImportXMLHttpRequest
 Location             = require('./dom/location')
 Request              = require('request')
+HTML5                = require('html5')
 serialize            = require('./dom/serializer').serialize
 addAdvice            = require('./dom/advice').addAdvice
 applyPatches         = require('./dom/patches').applyPatches
@@ -114,7 +115,10 @@ class DOM extends EventEmitter
         Request({uri: url}, (err, response, html) =>
             throw err if err
             @nodes = new TaggedNodeCollection()
-            document = @jsdom.jsdom(false, null, {url:url, deferClose: true})
+            document = @jsdom.jsdom(false, null,
+                url : url
+                deferClose : true
+                parser : HTML5)
             document.parentWindow = window
             window.document = document
             # Fire window load event once document is loaded.
