@@ -4,7 +4,6 @@ EventEmitter = require('events').EventEmitter
 class MockDocument extends EventEmitter
     addEventListener : () ->
         console.log("mockdoc#addEventListener")
-        @listeners.push(arguments[0])
         @emit('addEventListener', arguments)
 
 class MockServer extends EventEmitter
