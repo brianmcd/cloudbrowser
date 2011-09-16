@@ -69,7 +69,7 @@ class SpecialEventHandler
                     rvID : null
                     targetID : option.__nodeID
                     args : ['selected', option.selected])
-                console.log("selectedIndex is now: #{clientEvent.target.selectedIndex}")
+            console.log("selectedIndex is now: #{clientEvent.target.selectedIndex}")
             @server.DOMUpdate(
                 method : 'setAttribute'
                 rvID : null
