@@ -8,42 +8,29 @@ exports.applyPatches = (level3) ->
 patchScriptTag = (level3) ->
     core = level3.core
     html = level3.html
-    # TODO: Copied from zombie - we should do somethign cleaner, this is just for testing.
-    core.CharacterData.prototype.__defineSetter__ "_nodeValue", (newValue) ->
-        oldValue = @_text || ""
-        @_text = newValue
-        if @ownerDocument && @parentNode
-            ev = @ownerDocument.createEvent("MutationEvents")
-            ev.initMutationEvent("DOMCharacterDataModified", true, false, this, oldValue, newValue, null, null)
-            @dispatchEvent ev
-    core.CharacterData.prototype.__defineGetter__ "_nodeValue", -> @_text
+    oldInsertBefore = html.HTMLScriptElement.prototype.insertBefore
+    html.HTMLScriptElement.prototype.insertBefore = (newChild, refChild) ->
+        rv = oldInsertBefore.apply(this, arguments)
+        if newChild.nodeType == this.TEXT_NODE
+            if this._queueTrigger
+                this._queueTrigger(null, this.text)
+                this._queueTrigger = null
+        return rv
     html.HTMLScriptElement._init = () ->
         this.addEventListener 'DOMNodeInsertedIntoDocument', () ->
-          if this.src
-            core.resourceLoader.load(this, this.src, this._eval)
-          else
-            src = this.sourceLocation || {}
-            filename = src.file || this._ownerDocument.URL
-
-            if src
-              filename += ':' + src.line + ':' + src.col
-            filename += '<script>'
-
-            if this.text
-                console.log('enqueuing inline script: ')
-                console.log(this.text)
-                console.log(this)
-                core.resourceLoader.enqueue(this, this._eval, filename)(null, this.text)
+            if this.src
+                core.resourceLoader.load(this, this.src, this._eval)
             else
-                # TODO
-                # Issues:
-                #   This doesn't hold its place in the resourcequeue, so onload fires before the script is loaded.
-                this.addEventListener 'DOMCharacterDataModified', (event) ->
-                    console.log('inside DOMChar')
-                    console.log('enqueuing inline script: ')
-                    console.log(this.text)
-                    console.log('end enqueed script')
-                    core.resourceLoader.enqueue(this, this._eval, filename)(null, this.text)
+                # We need to reserve our spot in the queue, or else window
+                # could fire 'load' before our script runs.
+                this._queueTrigger = core.resourceLoader.enqueue(this, this._eval, filename)
+                src = this.sourceLocation || {}
+                filename = src.file || this._ownerDocument.URL
+                if src
+                    filename += ':' + src.line + ':' + src.col
+                filename += '<script>'
+                if this.text
+                    this._queueTrigger(null, this.text)
 
 addDefaultHandlers = (core) ->
     core.HTMLAnchorElement.prototype._eventDefaults =
