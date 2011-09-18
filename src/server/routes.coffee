@@ -1,16 +1,19 @@
+fs   = require('fs')
+eco  = require('eco')
+path = require('path')
 # Sets up the routes for our front end express HTTP server.
-# Server is the instance of the Server class.
+# server is the instance of the Server class.
 # http is the express web server.
 exports.applyRoutes = (server, http) ->
     # Routes
     http.get '/', (req, res) =>
         fs.readdir server.staticDir, (err, files) ->
             throw err if err
-            indexPath = path.join(__dirname, '..', 'views', 'index.html.eco')
+            indexPath = path.join(__dirname, '..', '..', 'views', 'index.html.eco')
             fs.readFile indexPath, 'utf8', (err, str) ->
                 throw err if err
                 tmpl = eco.render str,
-                    browsers : self.browsers.browsers
+                    browsers : server.browsers.browsers
                     files : files.filter((file) -> /\.html$/.test(file)).sort()
                 res.send(tmpl)
 

@@ -1,16 +1,10 @@
 #!/usr/bin/env node
-fs              = require('fs')
 express         = require('express')
-assert          = require('assert')
-mime            = require('mime')
-http            = require('http')
-URL             = require('url')
 path            = require('path')
-eco             = require('eco')
+io              = require('socket.io')
 EventEmitter    = require('events').EventEmitter
 Browserify      = require('browserify')
 BrowserManager  = require('./browser_manager')
-DNodeServer     = require('./browser/dnode_server')
 applyRoutes     = require('./server/routes').applyRoutes
 
 # So that developer code can require modules in its own node_modules folder.
@@ -22,41 +16,49 @@ class Server extends EventEmitter
         @staticDir = staticDir
         if !@staticDir? then @staticDir = process.cwd()
         @browsers = new BrowserManager()
-        @httpServer = @createHTTPServer()
-        @dnodeServer = @createDNodeServer(@httpServer, @browsers)
-        @internalServer = @createInternalServer()
 
+        @httpServer = @createHTTPServer()
+        io = io.listen(@httpServer)
+        io.sockets.on 'connection', (socket) =>
+            socket.on 'auth', (browserID) =>
+                browser = @browsers.find(decodeURIComponent(browserID))
+                browser.addClient(socket)
+                socket.on 'disconnect', () ->
+                    browser.removeClient(socket)
+
+        @internalServer = express.createServer()
+        @internalServer.configure () =>
+            @internalServer.use(express.static(@staticDir))
+        @internalServer.listen 3001, =>
+           console.log('Internal HTTP server listening on port 3001.')
+           @registerServer()
         @listeningCount = 0
 
     close : () ->
         closed = 0
         closeServer = () =>
-            if ++closed == 3
+            if ++closed == 2
                 @emit('close')
         @httpServer.once('close', closeServer)
         @internalServer.once('close', closeServer)
-        @dnodeServer.once('close', closeServer)
         @httpServer.close()
         @internalServer.close()
-        @dnodeServer.close()
 
     registerServer : () =>
-        if ++@listeningCount == 3
+        if ++@listeningCount == 2
             @emit('ready')
 
     # The front-end HTTP server.
     createHTTPServer : () ->
-        self = this
         server = express.createServer()
         server.configure () ->
             server.use express.logger()
             server.use Browserify
-                mount : '/bootstrap.js',
+                mount : '/socketio_client.js',
                 require : [
-                    'dnode'
                     # Browserify will automatically bundle bootstrap's
                     # dependencies.
-                    path.join(__dirname, 'client', 'bootstrap')
+                    path.join(__dirname, 'client', 'socketio_client')
                 ]
             server.use express.bodyParser()
             server.use express.cookieParser()
@@ -73,27 +75,6 @@ class Server extends EventEmitter
             console.log 'Server listening on port 3000.'
             @registerServer()
 
-        return server
-
-    createDNodeServer : (httpServer, browsers) ->
-        # Create the DNode server
-        server = new DNodeServer(httpServer, browsers)
-        server.once('ready', () => @registerServer())
-        return server
-        
-
-    # The internal HTTP server used to serve pages to Browser Instances
-    createInternalServer : () ->
-        server = express.createServer()
-
-        server.configure( () =>
-            server.use(express.static(@staticDir))
-        )
-
-        server.listen(3001, =>
-            console.log 'Internal HTTP server listening on port 3001.'
-            @registerServer()
-        )
         return server
 
 module.exports = Server

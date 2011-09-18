@@ -1,5 +1,5 @@
-EventEmitter = require('events').EventEmitter
-bootstrap    = require('../client/bootstrap')
+EventEmitter   = require('events').EventEmitter
+SocketIOClient = require('../client/socketio_client')
 
 class TestClient extends EventEmitter
     constructor : (id, dom) ->
@@ -13,6 +13,6 @@ class TestClient extends EventEmitter
         # emit events on the testClient (like 'testDone')
         @window.testClient = this
         @window.__envSessionID = id
-        bootstrap(@window, @document)
+        @client = new SocketIOClient(@window, @document)
 
 module.exports = TestClient

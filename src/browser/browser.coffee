@@ -6,6 +6,7 @@ DOM            = require('../dom')
 ResourceProxy  = require('./resource_proxy')
 EventProcessor = require('./event_processor')
 EventEmitter   = require('events').EventEmitter
+ClientAPI      = require('./client_api')
 
 class Browser extends EventEmitter
     constructor : (browserID, url) ->
@@ -14,6 +15,8 @@ class Browser extends EventEmitter
         @resources = null
         @dom = new DOM(this)
         @events = new EventProcessor(this)
+        # These are the RPC functions we expose to clients over Socket.IO.
+        @clientAPI = new ClientAPI(this)
 
         # The DOM can emit 'pagechange' when Location is set and we need to
         # load a new page.
@@ -70,22 +73,24 @@ class Browser extends EventEmitter
             nodes : @dom.getSnapshot()
             events : @events.getSnapshot()
         for client in @clients
-            client.loadFromSnapshot(snapshot)
+            client.emit('loadFromSnapshot', snapshot)
 
     # method - either 'DOMUpdate' or 'DOMPropertyUpdate'.
     # params - the scrubbed params object.
     broadcastUpdate : (method, params) =>
         for client in @clients
-            client[method](params)
+            client.emit(method, params)
 
     addClient : (client) ->
+        # Sets up mapping between client events and our RPC API methods.
+        @clientAPI.initClient(client)
         if !@window.document? || @window.document.readyState == 'loading'
             @connQ.push(client)
             return
         snapshot =
             nodes : @dom.getSnapshot()
             events : @events.getSnapshot()
-        client.loadFromSnapshot(snapshot)
+        client.emit('loadFromSnapshot', snapshot)
         @clients.push(client)
 
     removeClient : (client) ->

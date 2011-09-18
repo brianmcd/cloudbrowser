@@ -3,7 +3,7 @@ EventTypeToGroup = require('./event_lists').eventTypeToGroup
 class SpecialEventHandler
     constructor : (monitor) ->
         @monitor = monitor
-        @server = monitor.server
+        @socket = monitor.socket
         @_pendingKeyup = false
         @_queuedKeyEvents = []
         @keyupListener = @_keyupListener.bind(this)
@@ -11,7 +11,7 @@ class SpecialEventHandler
     click : (remoteEvent, clientEvent) ->
         tagName = clientEvent.target.tagName.toLowerCase()
         clientEvent.preventDefault()
-        @server.processEvent(remoteEvent)
+        @socket.emit('processEvent', remoteEvent)
 
     _keyupListener : (event) =>
         @_pendingKeyup = false
@@ -19,17 +19,16 @@ class SpecialEventHandler
         #       then we can run keydown, keypress, update value, keyup
         #       in the same event tick.
         # Technically, the value shouldn't be set until after keypress.
-        @server.DOMUpdate(
+        @socket.emit('DOMUpdate'
             method : 'setAttribute'
             rvID : null
             targetID : event.target.__nodeID
-            args : ['value', event.target.value]
-        )
+            args : ['value', event.target.value])
         rEvent = {}
         @monitor.eventInitializers["#{EventTypeToGroup[event.type]}"](rEvent, event)
         @_queuedKeyEvents.push(rEvent)
         for ev in @_queuedKeyEvents
-            @server.processEvent(ev)
+            @socket.emit('processEvent', ev)
         @_queuedKeyEvents = []
         if !@monitor.registeredEvents['keyup']
             @monitor.document.removeEventListener('keyup', @keyupListener, true)
@@ -64,23 +63,23 @@ class SpecialEventHandler
         # TODO: use batch mechanism once it exists...this is inefficient.
         if target.tagName.toLowerCase() == 'select'
             for option in target.options
-                @server.DOMUpdate(
+                @socket.emit('DOMUpdate'
                     method : 'setAttribute'
                     rvID : null
                     targetID : option.__nodeID
                     args : ['selected', option.selected])
             console.log("selectedIndex is now: #{clientEvent.target.selectedIndex}")
-            @server.DOMUpdate(
+            @socket.emit('DOMUpdate',
                 method : 'setAttribute'
                 rvID : null
                 targetID : clientEvent.target.__nodeID
                 args : ['selectedIndex', clientEvent.target.selectedIndex])
         else # input or textarea
-            @server.DOMUpdate(
+            @socket.emit('DOMUpdate',
                 method : 'setAttribute'
                 rvID : null
                 targetID : clientEvent.target.__nodeID
                 args: ['value', clientEvent.target.value])
-        @server.processEvent(remoteEvent)
+        @socket.emit('processEvent', remoteEvent)
 
 module.exports = SpecialEventHandler
