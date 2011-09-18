@@ -1417,9 +1417,7 @@ ko.bindingHandlers['value'] = {
             ko.utils.registerEventHandler(element, eventName, function () {
                 runEventHandler(function() {
                     var modelValue = valueAccessor();
-                    console.log('old value: ' + modelValue());
                     var elementValue = ko.selectExtensions.readValue(element);
-                    console.log('new value: ' + elementValue);
                     if (ko.isWriteableObservable(modelValue))
                         modelValue(elementValue);
                     else {
