@@ -3,7 +3,6 @@ EventEmitter = require('events').EventEmitter
 
 class MockDocument extends EventEmitter
     addEventListener : () ->
-        console.log("mockdoc#addEventListener")
         @emit('addEventListener', arguments)
 
 class MockServer extends EventEmitter
@@ -24,8 +23,6 @@ exports['tests'] =
         events = ['click', 'change', 'mouseover', 'dblclick']
         count = 0
         document.on 'addEventListener', (args) ->
-            console.log('emit:')
-            console.log(args)
             test.equal(args[0], events[count++])
             if count == events.length
                 test.done()
