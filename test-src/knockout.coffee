@@ -34,7 +34,6 @@ exports['tests'] =
      
     'updating model should update views' : (test) ->
         html.onload = "
-            console.log('inside onload');
             window.viewModel = {
                 stringValue : ko.observable('Hello'),
                 booleanValue : ko.observable(true)
@@ -43,11 +42,11 @@ exports['tests'] =
         "
         html.body = "
             <div   id='stringOutput'
-                   data-bind='text: stringValue' />
+                   data-bind='text: stringValue'></div>
             <input id='stringInput'
                    data-bind='value: stringValue' />
             <div   id='boolOutput'
-                   data-bind='text: booleanValue() ? \"true\" : \"false\"' />
+                   data-bind='text: booleanValue() ? \"true\" : \"false\"'></div>
             <input id='boolInput' type='checkbox'
                    data-bind='checked: booleanValue' />
         "
