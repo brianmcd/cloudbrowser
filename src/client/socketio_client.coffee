@@ -25,23 +25,7 @@ class SocketIOClient
         # TaggedNodeCollection
         @nodes = null
 
-        if test_env
-            # socket.io-client for node doesn't seem to emit 'connect'
-            process.nextTick () =>
-                @socket.emit('auth', window.__envSessionID)
-                @monitor = new EventMonitor(@document, @socket)
-        else
-            @socket.on 'connect', () =>
-                console.log("Socket.IO connected...")
-                @socket.emit('auth', window.__envSessionID)
-                @monitor = new EventMonitor(@document, @socket)
-
-        if test_env
-            # If we're testing, expose a function to let the server signal when
-            # a test is finished.
-            @socket.on 'testDone', () ->
-                window.testClient.emit('testDone')
-
+        # Set up RPC API
         @socket.on 'addEventListener', @addEventListener
         @socket.on 'loadFromSnapshot', @loadFromSnapshot
         @socket.on 'tagDocument', @tagDocument
@@ -49,6 +33,21 @@ class SocketIOClient
         @socket.on 'DOMUpdate', @DOMUpdate
         @socket.on 'DOMPropertyUpdate', @DOMPropertyUpdate
         @socket.on 'updateBrowserList', @updateBrowserList
+
+        if test_env
+            # socket.io-client for node doesn't seem to emit 'connect'
+            process.nextTick () =>
+                @socket.emit('auth', window.__envSessionID)
+                @monitor = new EventMonitor(@document, @socket)
+            # If we're testing, expose a function to let the server signal when
+            # a test is finished.
+            @socket.on 'testDone', () ->
+                window.testClient.emit('testDone')
+        else
+            @socket.on 'connect', () =>
+                console.log("Socket.IO connected...")
+                @socket.emit('auth', window.__envSessionID)
+                @monitor = new EventMonitor(@document, @socket)
 
     disconnect : () =>
         @socket.disconnect()
