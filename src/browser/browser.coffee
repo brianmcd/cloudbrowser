@@ -27,6 +27,10 @@ class Browser extends EventEmitter
         @clients = []
         @load(url) if url?
 
+    close : () ->
+        for client in @clients
+            client.disconnect()
+
     # Note: this function returns before the page is loaded.  Listen on the
     # window's load event if you need to.
     load : (url) ->
@@ -108,7 +112,6 @@ class Browser extends EventEmitter
     # the client DOM.
     testDone : () ->
         for client in @clients
-            if typeof client.testDone == 'function'
-                client.testDone()
+            client.emit('testDone')
 
 module.exports = Browser

@@ -7,17 +7,34 @@ if process?.env?.TESTS_RUNNING
 
 class SocketIOClient
     constructor : (window, document) ->
+        if test_env
+            # We need to clear out the require cache so that each TestClient
+            # gets its own Socket.IO client
+            reqCache = require.cache
+            for entry of reqCache
+                if /socket\.io-client/.test(entry)
+                    delete reqCache[entry]
+            io = require('socket.io-client')
+            @socket = io.connect('http://localhost:3000')
+        else
+            @socket = window.io.connect()
         @window = window
         @document = document
-        @socket = io.connect()
         # EventMonitor
         @monitor = null
         # TaggedNodeCollection
         @nodes = null
 
-        @socket.on 'connect', () =>
-            @socket.emit('auth', window.__envSessionID)
-            @monitor = new EventMonitor(@document, @socket)
+        if test_env
+            # socket.io-client for node doesn't seem to emit 'connect'
+            process.nextTick () =>
+                @socket.emit('auth', window.__envSessionID)
+                @monitor = new EventMonitor(@document, @socket)
+        else
+            @socket.on 'connect', () =>
+                console.log("Socket.IO connected...")
+                @socket.emit('auth', window.__envSessionID)
+                @monitor = new EventMonitor(@document, @socket)
 
         if test_env
             # If we're testing, expose a function to let the server signal when
@@ -33,6 +50,8 @@ class SocketIOClient
         @socket.on 'DOMPropertyUpdate', @DOMPropertyUpdate
         @socket.on 'updateBrowserList', @updateBrowserList
 
+    disconnect : () =>
+        @socket.disconnect()
 
     addEventListener : (params) =>
         @monitor.addEventListener.apply(@monitor, arguments)
@@ -50,7 +69,7 @@ class SocketIOClient
             parent = null
             switch record.type
                 when 'document'
-                    doc = document
+                    doc = @document
                     if record.parent
                         doc = @nodes.get(record.parent).contentDocument
                     while doc.hasChildNodes()
@@ -58,11 +77,11 @@ class SocketIOClient
                     delete doc.__nodeID
                     # If we just cleared the main document, start a new
                     # TaggedNodeCollection
-                    if doc == document
+                    if doc == @document
                         @nodes = new TaggedNodeCollection()
                     @nodes.add(doc, record.id)
                 when 'comment'
-                    doc = document
+                    doc = @document
                     if record.ownerDocument
                         doc = @nodes.get(record.ownerDocument)
                     node = doc.createComment(record.value)
@@ -70,7 +89,7 @@ class SocketIOClient
                     parent = @nodes.get(record.parent)
                     parent.appendChild(node)
                 when 'element'
-                    doc = document
+                    doc = @document
                     if record.ownerDocument
                         doc = @nodes.get(record.ownerDocument)
                     node = doc.createElement(record.name)
@@ -80,7 +99,7 @@ class SocketIOClient
                     parent = @nodes.get(record.parent)
                     parent.appendChild(node)
                 when 'text'
-                    doc = document
+                    doc = @document
                     if record.ownerDocument
                         doc = @nodes.get(record.ownerDocument)
                     node = doc.createTextNode(record.value)

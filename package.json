@@ -25,6 +25,7 @@
     },
     "devDependencies" : {
         "nodeunit" : ">=0.5.x",
-        "coffee-script" : "*"
+        "coffee-script" : "*",
+        "socket.io-client" : "0.8.4"
     }
 }

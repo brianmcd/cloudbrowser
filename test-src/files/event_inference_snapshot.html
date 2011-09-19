@@ -22,6 +22,7 @@
                 count++;
                 test.equal(event.target, textarea);
                 test.equal(count, 3);
+                testClient.disconnect()
                 test.done();
             });
         </script>

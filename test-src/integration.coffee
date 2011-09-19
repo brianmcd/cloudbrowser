@@ -24,9 +24,13 @@ exports['tests'] =
     'basic test' : (test) ->
         browser = browsers.create('browser1',
                                   'http://localhost:3001/basic.html')
+        console.log('creating test client')
         client = browser.createTestClient()
+        console.log('created test client')
         client.once 'loadFromSnapshot', () ->
+            console.log('loadFromSnapshot fired')
             test.equal(client.document.getElementById('div1').innerHTML, 'Testing')
+            client.disconnect()
             test.done()
 
     # Loads a page that uses setTimeout, createElement, innerHTML, and
@@ -52,9 +56,11 @@ exports['tests'] =
                 }, 0);
             ")
             client.once 'testDone', () ->
+                console.log('inside testDone')
                 children = client.document.getElementById('div1').childNodes
                 for i in [1..20]
                     test.equal(children[i-1].innerHTML, "#{i}")
+                client.disconnect()
                 test.done()
 
     'iframe test1' : (test) ->
@@ -82,12 +88,14 @@ exports['tests'] =
             ")
             client.once 'testDone', () ->
                 test.equal(iframeDiv.innerHTML, 'Set from outside')
+                client.disconnect()
                 test.done()
 
     'event inference via advice' : (test) ->
         browser = browsers.create('browser4',
                                   'http://localhost:3001/event_inference_advice.html')
         client = browser.createTestClient()
+        browser.window.testClient = client
         test.notEqual(browser, null)
         test.notEqual(client, null)
         client.once 'loadFromSnapshot', () ->
@@ -116,6 +124,7 @@ exports['tests'] =
                     count++;
                     test.equal(event.target, textarea);
                     test.equal(count, 3);
+                    testClient.disconnect();
                     test.done();
                 });
             ")
@@ -151,6 +160,7 @@ exports['tests'] =
         browser = browsers.create('browser5',
                                   'http://localhost:3001/event_inference_snapshot.html')
         client = browser.createTestClient()
+        browser.window.testClient = client
         test.notEqual(browser, null)
         test.notEqual(client, null)
         client.once 'loadFromSnapshot', () ->

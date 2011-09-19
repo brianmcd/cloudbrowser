@@ -13,6 +13,9 @@ class TestClient extends EventEmitter
         # emit events on the testClient (like 'testDone')
         @window.testClient = this
         @window.__envSessionID = id
-        @client = new SocketIOClient(@window, @document)
+        @socket = new SocketIOClient(@window, @document)
+
+    disconnect : () ->
+        @socket.disconnect()
 
 module.exports = TestClient

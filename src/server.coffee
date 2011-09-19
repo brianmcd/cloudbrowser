@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 express         = require('express')
 path            = require('path')
-io              = require('socket.io')
+sio             = require('socket.io')
 EventEmitter    = require('events').EventEmitter
 Browserify      = require('browserify')
 BrowserManager  = require('./browser_manager')
@@ -18,7 +18,9 @@ class Server extends EventEmitter
         @browsers = new BrowserManager()
 
         @httpServer = @createHTTPServer()
-        io = io.listen(@httpServer)
+        io = sio.listen(@httpServer)
+        io.configure () ->
+            io.set('log level', 1)
         io.sockets.on 'connection', (socket) =>
             socket.on 'auth', (browserID) =>
                 browser = @browsers.find(decodeURIComponent(browserID))
@@ -35,6 +37,7 @@ class Server extends EventEmitter
         @listeningCount = 0
 
     close : () ->
+        @browsers.close()
         closed = 0
         closeServer = () =>
             if ++closed == 2
@@ -59,6 +62,9 @@ class Server extends EventEmitter
                     # Browserify will automatically bundle bootstrap's
                     # dependencies.
                     path.join(__dirname, 'client', 'socketio_client')
+                ]
+                ignore : [
+                    'socket.io-client'
                 ]
             server.use express.bodyParser()
             server.use express.cookieParser()

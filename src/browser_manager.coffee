@@ -18,4 +18,9 @@ class BrowserManager
             throw new Error "Tried to create an already existing BrowserInstance"
         return @browsers[id] = new Browser(id, url)
 
+    # Close all browsers
+    close : () ->
+        for browser in @browsers
+            browser.close()
+
 module.exports = BrowserManager
