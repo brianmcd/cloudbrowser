@@ -38,12 +38,30 @@ addDefaultHandlers = (core) ->
             console.log "Inside default click handler"
             window = event.target.ownerDocument.parentWindow
             window.location = event.target.href if event.target.href?
-    ###
+
     core.HTMLInputElement.prototype._eventDefaults =
         click : (event) ->
             console.log "Inside overridden click handler"
             #TODO: bring this back, but just double check things.
-            event.target.click()
+           # event.target.click()
+            target = event.target
+            if target.type == 'checkbox'
+                target.checked = !target.checked
+            else if target.type == 'radio'
+                console.log('This is a radio button')
+                doc = target.ownerDocument
+                others = doc.getElementsByName(target.name)
+                for other in others
+                    if other != target && other.type == 'radio'
+                        console.log("Setting other radio to false: #{other.value}")
+                        other.checked = false
+                console.log("Setting target to true: #{target.value}")
+                target.checked = true
+            else if target.type == 'submit'
+                form = target.form
+                if form
+                  form._dispatchSubmitEvent()
+        ###
         keypress : (event) ->
             # TODO: delete/backspace etc
             # is there a way to just 'apply' the key value to the string?
