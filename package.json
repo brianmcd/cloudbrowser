@@ -21,7 +21,8 @@
         "request" : "1.9.0",
         "html5" : "https://github.com/brianmcd/html5/tarball/master",
         "eco" : "*",
-        "mime" : "*"
+        "mime" : "*",
+        "hat" : "0.0.3"
     },
     "devDependencies" : {
         "nodeunit" : ">=0.5.x",
