@@ -34,6 +34,7 @@ class SocketIOClient
         @socket.on 'DOMPropertyUpdate', @DOMPropertyUpdate
         @socket.on 'updateBrowserList', @updateBrowserList
         @socket.on 'window.open', @windowOpen
+        @socket.on 'window.alert', @windowAlert
 
         if test_env
             # socket.io-client for node doesn't seem to emit 'connect'
@@ -55,6 +56,9 @@ class SocketIOClient
 
     windowOpen : (url) =>
         @window.open(url)
+
+    windowAlert : (msg) =>
+        @window.alert(msg)
 
     addEventListener : (params) =>
         @monitor.addEventListener.apply(@monitor, arguments)

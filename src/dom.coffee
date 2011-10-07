@@ -52,8 +52,11 @@ class DOM extends EventEmitter
         window.JSON = JSON
         # Thanks Zombie for Image code 
         self = this
+        # TODO: generalize these window props
         window.open = (url) =>
-            @browser.broadcastUpdate('window.open', url);
+            @browser.broadcastUpdate('window.open', url)
+        window.alert = (msg) =>
+            @browser.broadcastUpdate('window.alert', msg)
         # TODO: move this into JSDOM, or, why are we not using JSDOM's?
         window.Image = (width, height) ->
             img = new self.dom.jsdom
