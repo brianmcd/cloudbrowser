@@ -211,3 +211,5 @@ exports.addAdvice = (dom, wrapper) ->
     for method in ['insertCell', 'deleteCell']
         wrapMethod(dom.HTMLTableRowElement.prototype, method)
     wrapProperty(dom.HTMLTableCellElement.prototype, 'headers')
+
+    wrapProperty(dom.HTMLInputElement.prototype, 'checked')
