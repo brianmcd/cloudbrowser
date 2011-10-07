@@ -1,40 +1,37 @@
 #!/usr/bin/env node
 express         = require('express')
-path            = require('path')
+Path            = require('path')
 sio             = require('socket.io')
 EventEmitter    = require('events').EventEmitter
 Browserify      = require('browserify')
 BrowserManager  = require('./browser_manager')
-applyRoutes     = require('./server/routes').applyRoutes
+FS              = require('fs')
 
-# So that developer code can require modules in its own node_modules folder.
-# TODO: this is deprecated on Node 0.6.  Use NODE_ENV?
-require.paths.unshift path.join(process.cwd(), "node_modules")
-
+# TODO: server.listen(mainport, backgroundport)
 class Server extends EventEmitter
-    constructor : (staticDir) ->
-        @staticDir = staticDir
-        if !@staticDir? then @staticDir = process.cwd()
-        @browsers = new BrowserManager()
+    # config.appPath - the path to the default app this server is hosting.
+    # config.shared - an object that will be shared among all Browsers created
+    #                 by this server.
+    constructor : (config = {}) ->
+        @appPath = config.appPath
+        if !@appPath
+            throw new Error("Must supply path to an app.")
 
+        @sharedState = config.shared || {}
+        @staticDir = Path.dirname(@appPath)
+
+        @browsers = new BrowserManager()
         @httpServer = @createHTTPServer()
-        io = sio.listen(@httpServer)
-        io.configure () ->
-            io.set('log level', 1)
-        io.sockets.on 'connection', (socket) =>
-            socket.on 'auth', (browserID) =>
-                browser = @browsers.find(decodeURIComponent(browserID))
-                browser.addClient(socket)
-                socket.on 'disconnect', () ->
-                    browser.removeClient(socket)
 
         @internalServer = express.createServer()
         @internalServer.configure () =>
             @internalServer.use(express.static(@staticDir))
-        @internalServer.listen 3001, =>
+        @internalServer.listen 3001, => # TODO: port shouldn't be hardcoded.
            console.log('Internal HTTP server listening on port 3001.')
            @registerServer()
-        @listeningCount = 0
+        # We only allow 1 server per process.
+        global.server = this
+        global.browsers = @browsers
 
     close : () ->
         @browsers.close()
@@ -48,38 +45,70 @@ class Server extends EventEmitter
         @internalServer.close()
 
     registerServer : () =>
-        if ++@listeningCount == 2
+        if !@listeningCount
+            @listeningCount = 1
+        else
+            ++@listeningCount == 2
             @emit('ready')
 
     # The front-end HTTP server.
     createHTTPServer : () ->
         server = express.createServer()
         server.configure () ->
-            server.use express.logger()
-            server.use Browserify
+            server.use(express.logger())
+            server.use(Browserify(
                 mount : '/socketio_client.js',
-                require : [
-                    # Browserify will automatically bundle bootstrap's
-                    # dependencies.
-                    path.join(__dirname, 'client', 'socketio_client')
-                ]
-                ignore : [
-                    'socket.io-client'
-                ]
-            server.use express.bodyParser()
-            server.use express.cookieParser()
-            server.use express.session
-                secret: 'change me please'
-            server.set 'views', path.join(__dirname, '..', 'views')
-            server.set 'view options',
-                layout: false
+                require : [Path.join(__dirname, 'client', 'socketio_client')]
+                ignore : ['socket.io-client']
+            ))
+            server.use(express.bodyParser())
+            server.use(express.cookieParser())
+            server.use(express.session({secret: 'change me please'}))
+            server.set('views', Path.join(__dirname, '..', 'views'))
+            server.set('view options', {layout: false})
 
-        applyRoutes(this, server)
+        # This Path should be configurable, so they can host multiple apps
+        # like /app1, /app2
+        # TODO: check session for current Browser ID, and re-use that if found
+        #       session[currentBrowser]
+        server.get '/', (req, res) =>
+            # Load a Browser instance with the configured app.
+            browser = @browsers.create
+                app : @appPath
+                shared : @sharedState
+            console.log("id: #{browser.id}")
+            # TODO use browser.urlFor()
+            res.writeHead(301, {'Location' : "/browsers/#{browser.id}/index.html"})
+            res.end()
+
+        server.get '/browsers/:browserid/index.html', (req, res) ->
+            id = decodeURIComponent(req.params.browserid)
+            console.log "Joining: #{id}"
+            res.render 'base.jade', browserid : id
+
+        # Route for ResourceProxy
+        server.get '/browsers/:browserid/:resourceid', (req, res) =>
+            resourceid = req.params.resourceid
+            decoded = decodeURIComponent(req.params.browserid)
+            browser = @browsers.find(decoded)
+            # Note: fetch calles res.end()
+            browser.resources.fetch(resourceid, res)
 
         # Start up the front-end server.
         server.listen 3000, () =>
             console.log 'Server listening on port 3000.'
             @registerServer()
+
+        io = sio.listen(server)
+        io.configure () ->
+            io.set('log level', 1)
+        io.sockets.on 'connection', (socket) =>
+            socket.on 'auth', (browserID) =>
+                decoded = decodeURIComponent(browserID)
+                browser = @browsers.find(decoded)
+                browser.addClient(socket)
+                socket.on 'disconnect', () ->
+                    browser.removeClient(socket)
 
         return server
 

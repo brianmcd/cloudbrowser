@@ -1,16 +1,20 @@
-assert         = require('assert')
-path           = require('path')
-URL            = require('url')
-TestClient     = require('./test_client')
-DOM            = require('../dom')
-ResourceProxy  = require('./resource_proxy')
-EventProcessor = require('./event_processor')
-EventEmitter   = require('events').EventEmitter
-ClientAPI      = require('./client_api')
+Path                 = require('path')
+FS                   = require('fs')
+URL                  = require('url')
+TestClient           = require('./test_client')
+DOM                  = require('../dom')
+ResourceProxy        = require('./resource_proxy')
+EventProcessor       = require('./event_processor')
+EventEmitter         = require('events').EventEmitter
+ClientAPI            = require('./client_api')
+DevAPI               = require('../api')
+HTML5                = require('html5')
+TaggedNodeCollection = require('../tagged_node_collection')
 
 class Browser extends EventEmitter
-    constructor : (browserID, url) ->
-        @id = browserID
+    constructor : (browserID, sharedState) ->
+        @id = browserID # TODO: rename to 'name'
+        @sharedState = sharedState
         @window = null
         @resources = null
         @dom = new DOM(this)
@@ -25,20 +29,38 @@ class Browser extends EventEmitter
         @connQ = []
         # Array of currently connected DNode clients.
         @clients = []
-        @load(url) if url?
 
     close : () ->
         for client in @clients
             client.disconnect()
 
+    loadApp : (app) ->
+        url = "http://localhost:3001/#{Path.basename(app)}"
+        # load callback takes a configuration function that lets us manipulate
+        # the window object before the page is fetched/loaded.
+        # TODO: this gets the ResourceProxy wrong.
+        @load(url, (window) =>
+            # For now, we attach require and process.  Eventually, we will pass
+            # a customized version of require that restricts its capabilities
+            # based on a package.json manifest.
+            window.require = require
+            window.process = process
+            # Inject our helpers (these populate the window.vt namespace)
+            DevAPI.inject(window, @sharedState)
+            window.vt.shared = @sharedState # TODO
+
+        )
+
     # Note: this function returns before the page is loaded.  Listen on the
     # window's load event if you need to.
-    load : (url) ->
+    load : (url, configFunc) ->
         console.log "Loading: #{url}"
         @pauseClientUpdates()
         @window.close if @window?
         @resources = new ResourceProxy(url)
         @window = @dom.createWindow()
+        if configFunc?
+            configFunc(@window)
         # TODO TODO: also need to not process client events from now until the
         # new page loads.
         @window.location = url

@@ -1,4 +1,5 @@
 Browser = require('./browser/browser')
+Hat     = require('hat')
 
 # It is anticipated that this class will expand to have a persistant store and
 # high performance implementation.
@@ -7,16 +8,26 @@ class BrowserManager
         @browsers = {}
 
     find : (id) ->
-        if typeof id != 'string'
-            id = id.toString()
         return @browsers[id]
 
-    create : (id, url) ->
-        if typeof id != 'string'
-            id = id.toString()
+    create : (opts) ->
+        {id, url, app, shared} = opts
+        console.log("url: #{url}")
+        console.log("app: #{app}")
+        if !id
+            id = Hat()
+            # Since we allow use supplied ids, there's a very very small chance
+            # that a user supplied the same id that we got back from Hat().
+            while browsers[id]
+                id = Hat()
         if @browsers[id]?
             throw new Error "Tried to create an already existing BrowserInstance"
-        return @browsers[id] = new Browser(id, url)
+        b = @browsers[id] = new Browser(id, shared)
+        if url?
+            b.load(url)
+        else
+            b.loadApp(app)
+        return b
 
     # Close all browsers
     close : () ->
