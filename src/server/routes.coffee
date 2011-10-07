@@ -49,11 +49,12 @@ exports.applyRoutes = (server, http) ->
         for browserid, browser of server.browsers.browsers
             browsers.push(browserid)
         res.end(JSON.stringify(browsers))
-
+    
+    # TODO: this shouldn't be here, this should be part of a test server that
+    #       uses our library, not part of our library.
     http.post '/create', (req, res) =>
         browserInfo = req.body.browser
         id = browserInfo.id
-        runscripts = (browserInfo.runscripts? && (browserInfo.runscripts == 'yes'))
         resource = null
         if typeof browserInfo.url != 'string' || browserInfo.url == ''
             resource = "http://localhost:3001/#{browserInfo.localfile}"
