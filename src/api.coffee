@@ -1,3 +1,7 @@
+FS   = require('fs')
+Path = require('path')
+
+
 exports.inject = (window, shared) ->
     vt = window.vt = {}
 
@@ -25,3 +29,4 @@ exports.inject = (window, shared) ->
     # Have to do the require here to avoid circular dependency.
     vt.BrowserManager = global.browsers
 
+    vt.Model = require('./api/model')

@@ -80,6 +80,7 @@ class EventProcessor extends EventEmitter
                     "[#{EventTypeToGroup[clientEv.type]}] on " +
                     "#{clientEv.target.__nodeID}")
 
+        console.log("event.bubbles: #{event.bubbles}")
         clientEv.target.dispatchEvent(event)
 
     # Takes a clientEv (an event generated on the client and sent over DNode)

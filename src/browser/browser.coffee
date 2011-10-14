@@ -12,7 +12,7 @@ HTML5                = require('html5')
 TaggedNodeCollection = require('../tagged_node_collection')
 
 class Browser extends EventEmitter
-    constructor : (browserID, sharedState) ->
+    constructor : (browserID, sharedState, parser = 'HTML5') ->
         @id = browserID # TODO: rename to 'name'
         @sharedState = sharedState
         @window = null
@@ -48,7 +48,6 @@ class Browser extends EventEmitter
             # Inject our helpers (these populate the window.vt namespace)
             DevAPI.inject(window, @sharedState)
             window.vt.shared = @sharedState # TODO
-
         )
 
     # Note: this function returns before the page is loaded.  Listen on the

@@ -16,6 +16,9 @@ LINKS = [
     ,
         src : 'src/dom/event_patches.js'
         dest : 'lib/dom/event_patches.js'
+    ,
+        src : 'knockout-node.js'
+        dest : 'lib/api/ko.js'
 ]
 
 # Use executables installed with npm bundle.
