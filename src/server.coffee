@@ -72,13 +72,15 @@ class Server extends EventEmitter
         # TODO: check session for current Browser ID, and re-use that if found
         #       session[currentBrowser]
         server.get '/', (req, res) =>
-            # Load a Browser instance with the configured app.
-            browser = @browsers.create
-                app : @appPath
-                shared : @sharedState
-            console.log("id: #{browser.id}")
+            id = req.session.browserID
+            if !id? || !@browsers.find(id)
+                # Load a Browser instance with the configured app.
+                browser = @browsers.create
+                    app : @appPath
+                    shared : @sharedState
+                id = req.session.browserID = browser.id
             # TODO use browser.urlFor()
-            res.writeHead(301, {'Location' : "/browsers/#{browser.id}/index.html"})
+            res.writeHead(301, {'Location' : "/browsers/#{id}/index.html"})
             res.end()
 
         server.get '/browsers/:browserid/index.html', (req, res) ->
