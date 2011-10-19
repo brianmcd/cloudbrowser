@@ -11,22 +11,25 @@ module.exports = (schema, opts) ->
     class Model
         # seed is a JSON.parse'd object loaded from disk.
         constructor : (seed) ->
-            console.log("Seed:")
-            console.log(seed)
             @_persistentProperties = []
-            info = null
-            ctor = null
 
             for key, val of schema
+                persistObj = persist
+                defaultValue = null
+                ctor = null
                 if typeof val == 'function'
                     ctor = val
-                    persistObj = persist
                 else
                     # options object style.
                     ctor = val['type']
-                    persistObj = val['persist']
+                    if val['persist']?
+                        persistObj = val['persist']
+                    if val['defaultValue']?
+                        defaultValue = val['defaultValue']
                 if seed?[key]
                     this[key] = new ctor(seed[key])
+                else if defaultValue?
+                    this[key] = new ctor(defaultValue)
                 else
                     this[key] = new ctor()
                 if persistObj
@@ -71,9 +74,6 @@ module.exports = (schema, opts) ->
                     throw new Error("Couldn't destroy model.")
                 if callback? then callback()
 
-        # TODO: we could keep track of all "live" objects we've served with
-        # weak references, and in instance destroys, remove it from all of
-        # them.
         @load : () ->
             obj = {}
             records = FS.readdirSync(folder)
