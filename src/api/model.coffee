@@ -1,7 +1,7 @@
 FS   = require('fs')
 Path = require('path')
 
-module.exports = Model = (schema, opts) ->
+module.exports = (schema, opts) ->
     {persist, folder, filename} = opts if opts?
     if !persist then persist = true
     if persist
@@ -11,6 +11,8 @@ module.exports = Model = (schema, opts) ->
     class Model
         # seed is a JSON.parse'd object loaded from disk.
         constructor : (seed) ->
+            console.log("Seed:")
+            console.log(seed)
             @_persistentProperties = []
             info = null
             ctor = null
@@ -18,15 +20,16 @@ module.exports = Model = (schema, opts) ->
             for key, val of schema
                 if typeof val == 'function'
                     ctor = val
+                    persistObj = persist
                 else
                     # options object style.
                     ctor = val['type']
-                    persist = val['persist']
+                    persistObj = val['persist']
                 if seed?[key]
                     this[key] = new ctor(seed[key])
                 else
                     this[key] = new ctor()
-                if persist
+                if persistObj
                     @_persistentProperties.push(key)
                     if this[key].subscribe?
                         this[key].subscribe (val) =>
@@ -52,6 +55,7 @@ module.exports = Model = (schema, opts) ->
         # TODO: rename to "save"
         persist : (callback) ->
             json = JSON.stringify(@_toJSON())
+            console.log("Persisting: #{json}")
             FS.writeFile @_dbPath(), json, (err) ->
                 if err
                     console.log(err)
