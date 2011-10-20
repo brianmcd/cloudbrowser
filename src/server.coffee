@@ -108,9 +108,12 @@ class Server extends EventEmitter
             socket.on 'auth', (browserID) =>
                 decoded = decodeURIComponent(browserID)
                 browser = @browsers.find(decoded)
-                browser.addClient(socket)
-                socket.on 'disconnect', () ->
-                    browser.removeClient(socket)
+                if browser?
+                    browser.addClient(socket)
+                    socket.on 'disconnect', () ->
+                        browser.removeClient(socket)
+                else
+                    console.log("Requested non-existent browser...")
 
         return server
 
