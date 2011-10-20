@@ -213,3 +213,4 @@ exports.addAdvice = (dom, wrapper) ->
     wrapProperty(dom.HTMLTableCellElement.prototype, 'headers')
 
     wrapProperty(dom.HTMLInputElement.prototype, 'checked')
+    wrapProperty(dom.HTMLInputElement.prototype, 'value')
