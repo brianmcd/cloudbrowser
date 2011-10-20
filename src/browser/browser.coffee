@@ -31,8 +31,12 @@ class Browser extends EventEmitter
         @clients = []
 
     close : () ->
+        # TODO: remove from BrowserManager
         for client in @clients
+            client.emit('close')
             client.disconnect()
+        @pauseClientUpdates()
+        @window.close()
 
     loadApp : (app) ->
         url = "http://localhost:3001/#{Path.basename(app)}"
@@ -46,7 +50,7 @@ class Browser extends EventEmitter
             window.require = require
             window.process = process
             # Inject our helpers (these populate the window.vt namespace)
-            DevAPI.inject(window, @sharedState)
+            DevAPI.inject(window, @sharedState, this)
             window.vt.shared = @sharedState # TODO
         )
 

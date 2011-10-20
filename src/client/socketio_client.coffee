@@ -30,6 +30,7 @@ class SocketIOClient
         @socket.on 'loadFromSnapshot', @loadFromSnapshot
         @socket.on 'tagDocument', @tagDocument
         @socket.on 'clear', @clear
+        @socket.on 'close', @close
         @socket.on 'DOMUpdate', @DOMUpdate
         @socket.on 'DOMPropertyUpdate', @DOMPropertyUpdate
         @socket.on 'updateBrowserList', @updateBrowserList
@@ -53,6 +54,13 @@ class SocketIOClient
 
     disconnect : () =>
         @socket.disconnect()
+
+    close : () =>
+        document.write("
+            <html>
+                <head></head>
+                <body>This browser has been closed by the server.</body>
+            </html>")
 
     windowOpen : (url) =>
         @window.open(url)
@@ -131,7 +139,7 @@ class SocketIOClient
 
     # If params given, clear the document of the specified frame.
     # Otherwise, clear the global window's document.
-    clear : (params) ->
+    clear : (params) =>
         doc = @document
         frame = null
         if params?
@@ -179,6 +187,7 @@ class SocketIOClient
             value = @nodes.unscrub(value)
         return target[prop] = value
 
+    # TODO: remove this
     updateBrowserList : (browserList) =>
         parent = @window.parent
         menu = parent.document.getElementById('join-menu')
