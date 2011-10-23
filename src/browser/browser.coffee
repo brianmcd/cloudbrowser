@@ -39,7 +39,7 @@ class Browser extends EventEmitter
         @window.close()
 
     loadApp : (app) ->
-        url = "http://localhost:3001/#{Path.basename(app)}"
+        url = "http://localhost:3001/#{app}"
         # load callback takes a configuration function that lets us manipulate
         # the window object before the page is fetched/loaded.
         # TODO: this gets the ResourceProxy wrong.

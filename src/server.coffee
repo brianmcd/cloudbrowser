@@ -18,7 +18,7 @@ class Server extends EventEmitter
             throw new Error("Must supply path to an app.")
 
         @sharedState = config.shared || {}
-        @staticDir = Path.dirname(@appPath)
+        @staticDir = process.cwd()
 
         @browsers = new BrowserManager()
         @httpServer = @createHTTPServer()
