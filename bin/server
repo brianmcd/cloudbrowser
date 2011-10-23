@@ -1,7 +1,9 @@
 var Path   = require('path'),
     Server = require('../lib/server')
 
-var s = new Server(Path.join(process.cwd(), 'html'));
+var s = new Server({
+    appPath : Path.join(process.cwd(), 'html', 'index.html')
+});
 
 s.once('ready', function () {
     console.log('All services running, ready for clients.')
