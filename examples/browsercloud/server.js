@@ -29,6 +29,6 @@ Object.keys(shared.users).forEach(function(val) {
 shared.apps = ko.observableArray(fs.readdirSync(path.resolve(__dirname, 'db', 'apps')));
 
 var server = new vt.Server({
-    appPath : path.resolve(__dirname, 'index.html'),
+    appPath : 'index.html',
     shared : shared
 });
