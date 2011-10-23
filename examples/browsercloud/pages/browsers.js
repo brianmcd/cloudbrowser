@@ -46,41 +46,44 @@
 
 // Set up the behavior.
 (function () {
+    var Path = require('path');
     var model = window.pages.browsers.model;
 
     $('#create-browser-button').click(function () {
-        console.log(model.currentShareList())
         var name = model.newBrowserName();
-        var url = null;
-        // Not sure why jQuery returns an array instead of the element...
-        if ($('#url-load-type')[0].checked == true) {
-            url = model.newBrowserUrl();
-        } else if ($('#app-load-type')[0].checked == true) {
-            url = 'http://localhost:3001/db/apps/' +
-                  model.selectedApp() + '/index.html';
-        } else {
-            console.log('Fail');
+        if (!name) {
             return;
         }
-        if (name && url) {
+        var browser = null;
+        // Not sure why jQuery returns an array instead of the element...
+        if ($('#url-load-type')[0].checked == true) {
+            var url = model.newBrowserUrl();
             console.log("Creating browser: " + name + "    " + url);
-            var browser = vt.BrowserManager.create({
+            browser = vt.BrowserManager.create({
                 id : name,
                 url : url
             });
-            model.browsers.push(browser);
-            if (model.currentShareList().length) {
-                model.currentShareList().forEach(function (user) {
-                    user.browsers.push(browser);
-                });
-                browser.shareList = model.currentShareList();
-                model.currentShareList([]);
-            } else {
-                browser.shareList = [];
-            }
-            model.newBrowserName('');
-            model.newBrowserUrl('');
+        } else if ($('#app-load-type')[0].checked == true) {
+            browser = vt.BrowserManager.create({
+                id : name,
+                app : Path.join('db', 'apps', model.selectedApp(), 'index.html')
+            });
         }
+        if (browser == null) {
+            return;
+        }
+        model.browsers.push(browser);
+        if (model.currentShareList().length) {
+            model.currentShareList().forEach(function (user) {
+                user.browsers.push(browser);
+            });
+            browser.shareList = model.currentShareList();
+            model.currentShareList([]);
+        } else {
+            browser.shareList = [];
+        }
+        model.newBrowserName('');
+        model.newBrowserUrl('');
     });
     
     $('#launch-browser-button').click(function () {
