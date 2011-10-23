@@ -56,7 +56,7 @@
                    id='app-load-type' />
                    <!-- data-bind='checked: selectedLoadType' /> -->
             <label>Load Application: </label>
-            <select data-bind='options: appList, selected: selectedApp' />
+            <select data-bind='options: appList, value: selectedApp' />
         </div>
     </div>
     <div class='span-8 last'>
@@ -74,7 +74,7 @@
     <h1 class='last'>Launch an Existing Browser</h1>
     <h4 class='last' data-bind="text: browsers().length == 0 ? 'No Browsers Available' : ' '"></h4>
     <div class='span-10 last' data-bind='visible: browsers().length > 0'>
-        <select class='span-10 last' data-bind="options: browsers, optionsText: 'id', selected: browserToLaunch" />
+        <select class='span-10 last' data-bind="options: browsers, optionsText: 'id', value: browserToLaunch" />
         <button id='launch-browser-button' 
                 class='span-10 last' 
                 data-bind='enable: browsers().length > 0'>Launch Browser</button>
