@@ -1,0 +1,15 @@
+<div id='userDetails' style='text-align: center;'>
+    Username: <input id='usernameInput' data-bind='value: username' />
+</div>
+
+<script>
+    //TODO TODO TODO
+    // This is a test workaround for some weird behavior.
+    (function () {
+        var fs = require('fs');
+        var path = require('path');
+        var jsPath = path.resolve(process.cwd(), 'pages', 'usercp.js');
+        var js = fs.readFileSync(jsPath);
+        window.run(js, 'pages/usercp.js');
+    })();
+</script>

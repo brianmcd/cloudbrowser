@@ -1,0 +1,36 @@
+<table>
+    <thead>
+        <tr>
+            <th>Username</th>
+            <th>Last Access</th>
+            <th>Number of Browsers</th>
+            <th>Admin?</th>
+            <th colspan='2'>Controls</th>
+        </tr>
+    </thead>
+    <tbody data-bind="template: {name : 'userTemplate', foreach: users, afterRender: hookupDelete}">
+    </tbody>
+</table>
+
+<script id='userTemplate' type='text/html'>
+    <tr>
+        <td>${username}</td>
+        <td>${lastAccess}</td>
+        <td>${browsers().length}</td>
+        <td>${isAdmin}</td>
+        <td><button class='toggle-admin' data-username='${username}'>Toggle Admin</td>
+        <td><button class='delete-user' data-username='${username}'>Delete</button></td>
+    </tr>
+</script>
+
+<script>
+    //TODO TODO TODO
+    // This is a test workaround for some weird behavior.
+    (function () {
+        var fs = require('fs');
+        var path = require('path');
+        var jsPath = path.resolve(process.cwd(), 'pages', 'admin.js');
+        var js = fs.readFileSync(jsPath);
+        window.run(js, 'pages/admin.js');
+    })();
+</script>

@@ -1,0 +1,26 @@
+<div id='header' style='text-align: center;' class='span-24'>
+    Welcome!  Please create an account or log in.
+</div>
+<div id='loginBox' style='text-align: center;' class='span-24'>
+    <div class='span-24'>
+        Username: <input type='text' data-bind='value: username' />
+    </div>
+    <div class='span-24'>
+        Password: <input type='password' data-bind='value: password' />
+    </div>
+    <div class='span-24'>
+        <button id='loginButton'>Login</button> or <button id='registerButton'>Register</button>
+    </div>
+</div>
+
+<script>
+    //TODO TODO TODO
+    // This is a test workaround for some weird behavior.
+    (function () {
+        var fs = require('fs');
+        var path = require('path');
+        var jsPath = path.resolve(process.cwd(), 'pages', 'login.js');
+        var js = fs.readFileSync(jsPath);
+        window.run(js, 'pages/login.js');
+    })();
+</script>

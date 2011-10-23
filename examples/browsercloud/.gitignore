@@ -1,0 +1,10 @@
+.lock-wscript
+build/
+lib/
+doc/
+TODO
+*.swp
+*.swo
+node_modules/
+test/
+db/users/

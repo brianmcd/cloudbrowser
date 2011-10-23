@@ -1,0 +1,149 @@
+<html>
+  <head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <title>Conways Primegenerator</title>
+  <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.4.2/jquery.min.js"></script>  
+  <script type="text/javascript">
+    $(function(){
+        var n = [1,0,0,0,0,0,0,0,0,0];
+        var gc = 1, lr=0, istwopow = true;
+        var f = [
+            [ 0, 0, 0,-1, 0,-1, 1, 0, 0, 0],
+            [ 1, 1,-1, 0, 0, 1,-1, 0, 0, 0],
+            [ 0,-1, 0, 0, 0, 0,-1, 1, 0, 0],
+            [-1, 0, 0, 0, 0, 0, 0,-1, 1, 0],
+            [ 0,-1, 0, 0,-1, 0, 0, 0, 0, 1],
+            [ 0, 0, 0, 1, 1, 0, 0, 0, 0,-1],
+            [ 0, 0, 1, 0, 0, 0, 0, 1,-1, 0],
+            [ 0, 0, 0, 1, 1, 0, 0,-1, 0, 0],
+            [ 0, 0, 0, 0, 0, 0,-1, 0, 0, 0],
+            [ 0, 0, 0, 0, 1,-1, 0, 0, 0, 0],
+            [ 0, 0, 0, 0,-1, 1, 0, 0, 0, 0],
+            [-1, 1, 1, 0, 0, 0, 0, 0, 0, 0],
+            [ 0, 0, 0,-1, 0, 0, 0, 0, 0, 0],
+            [ 0, 0, 1, 0, 1, 0, 0, 0, 0, 0]
+            ];
+        var primes= [2,3,5,7,11,13,17,19,23,29];
+
+        function step() {
+          var i,j,nn=[0,0,0,0,0,0,0,0,0,0],ok;
+          for(i=0;i<f.length;i++)
+          {
+            ok = true; istwopow = true;
+            for(j=0;j<n.length;j++)
+            {
+              nn[j]=n[j]+f[i][j];
+              if(nn[j]<0)
+              {
+                ok=false;
+                break;
+              }
+              if(j>0 && nn[j]>0) istwopow = false;
+            }
+            if(ok)
+            {
+              n = nn;
+              lr = i;
+              break;
+            }
+          }
+        }
+
+        function printn() {
+          var i,row="",nt=1;
+          for (i=0;i<n.length;i++)
+          {
+            row += "<td>"+n[i].toString()+"</td>";
+            nt *= Math.pow(primes[i],n[i]);
+          }
+          $('#ntab tbody').prepend("<tr"+(istwopow? ' class="twopow" ':'')+">"
+              +"<td>"+gc.toString()+"</td>"
+              +row
+              +"<td>"+lr.toString()+"</td>"
+              +"<td>"+nt.toString()+"</td></tr>");
+          gc += 1;
+        }
+
+        $('#step').click(function(){
+            step();
+            printn();
+        });
+
+        $('#nextpow').click(function(){
+            istwopow = false;
+            while(!istwopow) {
+              step();
+              printn();
+            }
+        });
+
+        printn();
+    });
+  </script>
+  <style type="text/css">
+    #ntab {
+      border-collapse : none;
+      position: relative;
+    }
+    #ntab tbody {
+      display: block;
+      height:   40ex;
+      margin-top: 3ex;
+      overflow: auto;
+      width: 100%;
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+    #ntab thead {
+/*
+      position: absolute;
+*/
+      top: 0px;
+      left: 0px;
+      height: 3ex;
+      background-color: #fff;
+      width: 100%;
+    }
+    td , th {
+      width: 30px;
+      text-align: left;
+    }
+    #wrap {
+      position: relative;
+    }
+    .twopow {
+      color: #cc0000;
+    }
+  </style>
+</head>
+<body>
+  <h1>Conways prime generator</h1>
+  <br />
+  <button id="step">step</button>
+  <button id="nextpow">to next power of 2</button>
+  <div id="wrap">
+    <table id="ntab">
+      <thead>
+      <tr>
+        <th>#</th>
+        <th>2</th>
+        <th>3</th>
+        <th>5</th>
+        <th>7</th>
+        <th>11</th>
+        <th>13</th>
+        <th>17</th>
+        <th>19</th>
+        <th>23</th>
+        <th>29</th>
+        <th>r</th>
+        <th>n</th>
+      </tr>
+      </thead>
+      <tbody>
+      </tbody>
+    </table>
+  </div>
+</body>
+</html>

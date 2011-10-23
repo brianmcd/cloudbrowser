@@ -17,6 +17,9 @@ module.exports = (schema, opts) ->
                 persistObj = persist
                 defaultValue = null
                 ctor = null
+                if key == 'toString'
+                    this[key] = val
+                    continue
                 if typeof val == 'function'
                     ctor = val
                 else

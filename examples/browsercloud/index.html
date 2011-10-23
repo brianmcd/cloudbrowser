@@ -1,0 +1,62 @@
+<html>
+    <head>
+        <!-- jquery and knockout should be in a vt bootstrap file -->
+        <script src='js/jquery-1.6.2.js'></script>
+        <script src='js/jquery.tmpl.js'></script>
+        <script src='js/knockout-1.3.0beta.debug.js'></script>
+        <script src='js/vt-bootstrapper.js'></script>
+        <link rel='stylesheet' type='text/css' href='css/blueprint/screen.css' />
+        <link rel='stylesheet' type='text/css' href='css/app.css' />
+    </head>
+    <body>
+        <div id='nav' data-bind="visible: currentUser != null">
+            <ul class='tabs'>
+                <li id='goHome'><a>Home</a></li>
+                <li id='goBrowsers'><a>Browsers</a></li>
+                <li id='goUserCP'><a>Account Settings</a></li>
+                <li id='goAdmin'
+                    data-bind='visible: currentUser != null && currentUser.isAdmin() === true'><a>Admin</a></li>
+            </ul>
+        </div>
+        <div id='main' class='container'>
+            <!-- TODO: rename access.html to login.html -->
+            <div id='loginPage'    data-page="id: login,    location: pages/login.html"></div>
+            <div id='homePage'     data-page="id: home,     location: pages/home.html"></div>
+            <div id='browsersPage' data-page="id: browsers, location: pages/browsers.html"></div>
+            <div id='usercp'       data-page="id: usercp,   location: pages/usercp.html"></div>
+            <div id='adminPage'    data-page="id: admin,    location: pages/admin.html"></div>
+        </div>
+        <script>
+            // Similar to ko.applyBindings.
+            vt.loadPages('main', function () {
+                vt.loadPage('login');
+                $('#goHome').click(function () {
+                    if (window.currentUser) {
+                        vt.loadPage('home');
+                    }
+                });
+                $('#goBrowsers').click(function () {
+                    if (window.currentUser) {
+                        vt.loadPage('browsers');
+                    }
+                });
+                $('#goUserCP').click(function () {
+                    if (window.currentUser) {
+                        vt.loadPage('usercp');
+                    }
+                });
+                $("#goAdmin").click(function () {
+                    if (window.currentUser && window.currentUser.isAdmin()) {
+                        vt.loadPage('admin');
+                    } else {
+                        alert('Access denied');
+                    }
+                });
+            });
+
+            ko.applyBindings({
+                currentUser : window.currentUser
+            }, document.getElementById('nav'));
+        </script>
+    </body>
+</html>
