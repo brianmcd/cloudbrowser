@@ -72,4 +72,6 @@ exports.inject = (window, shared) ->
         html = page['html']
         if !html
             throw new Error("No html found for page: #{name}")
-        $('#main').html(html)
+        window.document.getElementById('main').innerHTML = html
+        # TODO: using the jQuery line below, script tags with src attributes aren't added to the DOM in JSDOM.
+        #$('#main').html(html)
