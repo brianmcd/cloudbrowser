@@ -23,14 +23,4 @@
     </tr>
 </script>
 
-<script>
-    //TODO TODO TODO
-    // This is a test workaround for some weird behavior.
-    (function () {
-        var fs = require('fs');
-        var path = require('path');
-        var jsPath = path.resolve(process.cwd(), 'pages', 'admin.js');
-        var js = fs.readFileSync(jsPath);
-        window.run(js, 'pages/admin.js');
-    })();
-</script>
+<script src='pages/admin.js'></script>

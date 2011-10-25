@@ -1,3 +1,4 @@
+console.log('LOGIN.JS RUNNING');
 // Set up the models.
 (function () {
     window.pages = window.pages || {};
