@@ -17,7 +17,7 @@ LINKS = [
         src : 'src/dom/event_patches.js'
         dest : 'lib/dom/event_patches.js'
     ,
-        src : 'knockout-node.js'
+        src : 'deps/knockout-node/build/output/knockout-node.debug.js'
         dest : 'lib/api/ko.js'
 ]
 
