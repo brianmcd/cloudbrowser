@@ -8,7 +8,9 @@ server = null
 exports['tests'] =
     'setup' : (test) ->
         filepath = Path.join(__dirname, '..', '..', 'test-src', 'files')
-        server = new Server(filepath)
+        server = new Server
+            appPath : '/'
+            staticDir : filepath
         server.once 'ready', () ->
             test.done()
 
@@ -19,7 +21,8 @@ exports['tests'] =
         test.done()
 
     'test addEventListener advice' : (test) ->
-        browser = new Browser('browser', 'http://localhost:3001/basic.html')
+        browser = new Browser('browser')
+        browser.load('http://localhost:3001/basic.html')
         processor = browser.events
         events = ['blur', 'click', 'change', 'mousedown', 'mousemove']
         count = 0
@@ -38,8 +41,8 @@ exports['tests'] =
             div.addEventListener('mousemove', () ->)
 
     'test event inference - addEventListener' : (test) ->
-        browser = new Browser('browser',
-                              'http://localhost:3001/event_processor.html')
+        browser = new Browser('browser')
+        browser.load('http://localhost:3001/event_processor.html')
         processor = browser.events
         events = ['mouseover', 'click', 'dblclick', 'change', 'focus']
         count = 0
@@ -49,8 +52,8 @@ exports['tests'] =
                 test.done()
 
     'test event inference - attribute handlers' : (test) ->
-        browser = new Browser('browser',
-                              'http://localhost:3001/event_processor_attributes.html')
+        browser = new Browser('browser')
+        browser.load('http://localhost:3001/event_processor_attributes.html')
         processor = browser.events
         events = ['click', 'change', 'mouseover', 'focus']
         count = 0

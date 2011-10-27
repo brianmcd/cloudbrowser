@@ -50,7 +50,8 @@ exports['tests'] =
             <input id='boolInput' type='checkbox'
                    data-bind='checked: booleanValue' />
         "
-        browser = new Browser('browser', 'http://localhost:3001/')
+        browser = new Browser('browser')
+        browser.load('http://localhost:3001/')
         browser.once 'afterload', () ->
             model = browser.window.viewModel
             document = browser.window.document
@@ -83,7 +84,8 @@ exports['tests'] =
             <div id='stringOutput' data-bind='text: stringValue'></div>
             <input id='inputBox' data-bind='value: stringValue' />
         "
-        browser = new Browser('browser', 'http://localhost:3001/')
+        browser = new Browser('browser')
+        browser.load('http://localhost:3001/')
         browser.once 'afterload', () ->
             window = browser.window
             document = window.document
@@ -114,7 +116,8 @@ exports['tests'] =
             <div id='stringOutput' data-bind='text: stringValue'></div>
             <input id='inputBox' data-bind='value: stringValue, valueUpdate: \"afterkeydown\"' />
         "
-        browser = new Browser('browser', 'http://localhost:3001/')
+        browser = new Browser('browser')
+        browser.load('http://localhost:3001/')
         browser.once 'afterload', () ->
             window = browser.window
             document = window.document

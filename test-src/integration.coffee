@@ -16,14 +16,17 @@ browsers = null
 # TODO: a test with dynamically appended iframes
 exports['tests'] =
     'setup' : (test) ->
-        server = new Server(Path.join(__dirname, '..', 'test-src', 'files'))
+        server = new Server
+            appPath : '/'
+            staticDir : Path.join(__dirname, '..', 'test-src', 'files')
         server.once 'ready', () ->
             browsers = server.browsers
             test.done()
 
     'basic test' : (test) ->
-        browser = browsers.create('browser1',
-                                  'http://localhost:3001/basic.html')
+        browser = browsers.create
+            id : 'browser1'
+            url : 'http://localhost:3001/basic.html'
         console.log('creating test client')
         client = browser.createTestClient()
         console.log('created test client')
@@ -36,8 +39,9 @@ exports['tests'] =
     # Loads a page that uses setTimeout, createElement, innerHTML, and
     # appendChild to create 20 nodes.
     'basic test2' : (test) ->
-        browser = browsers.create('browser2',
-                                  'http://localhost:3001/basic2.html')
+        browser = browsers.create
+            id : 'browser2'
+            url : 'http://localhost:3001/basic2.html'
         client = browser.createTestClient()
         client.once 'loadFromSnapshot', () ->
             browser.window.run("
@@ -64,8 +68,9 @@ exports['tests'] =
                 test.done()
 
     'iframe test1' : (test) ->
-        browser = browsers.create('browser3',
-                                  'http://localhost:3001/iframe-parent.html')
+        browser = browsers.create
+            id : 'browser3'
+            url : 'http://localhost:3001/iframe-parent.html'
         client = browser.createTestClient()
         test.notEqual(browser, null)
         client.once 'loadFromSnapshot', () ->
@@ -92,8 +97,9 @@ exports['tests'] =
                 test.done()
 
     'event inference via advice' : (test) ->
-        browser = browsers.create('browser4',
-                                  'http://localhost:3001/event_inference_advice.html')
+        browser = browsers.create
+            id : 'browser4'
+            url : 'http://localhost:3001/event_inference_advice.html'
         client = browser.createTestClient()
         browser.window.testClient = client
         test.notEqual(browser, null)
@@ -157,8 +163,9 @@ exports['tests'] =
     # this by putting the script inline at the bottom of the body.  When the
     # client fires 'loadFromSnapshot', the listeners should be installed.
     'event inference via snapshot' : (test) ->
-        browser = browsers.create('browser5',
-                                  'http://localhost:3001/event_inference_snapshot.html')
+        browser = browsers.create
+            id : 'browser5'
+            url : 'http://localhost:3001/event_inference_snapshot.html'
         client = browser.createTestClient()
         browser.window.testClient = client
         test.notEqual(browser, null)

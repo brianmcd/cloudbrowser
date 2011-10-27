@@ -13,7 +13,9 @@ targetSource = FS.readFileSync(targetPath, 'utf8')
 
 exports['tests'] =
     'setup' : (test) ->
-        server = new Server(Path.join(__dirname, '..', '..', 'test-src', 'files'))
+        server = new Server
+            appPath : '/'
+            staticDir : Path.join(__dirname, '..', '..', 'test-src', 'files')
         server.once('ready', () ->
             Request({uri : 'http://code.jquery.com/jquery-1.6.2.js'}, (err, res, js) ->
                 test.equal(res.statusCode, 200)
