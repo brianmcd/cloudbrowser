@@ -1,4 +1,3 @@
-# BIG TODO: real style wrapping
 # TODO: form handling
 # TODO: JSDOM is missing defaultValue and defaultChecked setters for HTMLInputElement
 # TODO: JSDOM is missing defaultValue for HTMLTextAreaElement
@@ -10,7 +9,6 @@ isDOMNode = (node) -> (node?.ELEMENT_NODE == 1)
 # dom - the jsdom dom implementation
 # wrapper - must have emit and nodes
 # TODO: rename params, cause dom is the jsdom dom, wrappers is DOM.  that is dumb.
-# TODO: this should take a browser object, which can reach wrapper and dom.
 exports.addAdvice = (dom, wrapper) ->
     # TODO: change event names to DOMMethod and DOMProperty
 
@@ -214,3 +212,17 @@ exports.addAdvice = (dom, wrapper) ->
 
     wrapProperty(dom.HTMLInputElement.prototype, 'checked')
     wrapProperty(dom.HTMLInputElement.prototype, 'value')
+
+    # On one hand, we don't need to actually do anything here to make basic
+    # stuff work on the client.  On the other hand, scripts running on the
+    # server might expect proper behavior.
+    createProxy = () ->
+
+    dom.HTMLElement.__defineGetter__ 'style', () ->
+        if !@_styleProxy?
+            @_styleProxy = createProxy(this)
+        return @_styleProxy
+
+    # val will be a string, because if this were using the property method,
+    # it would call the getter, not setter.
+    dom.HTMLElement.__defineSetter__ 'style', (val) ->

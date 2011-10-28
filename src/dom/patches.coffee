@@ -1,12 +1,11 @@
 patchEvents = require('./event_patches').patchEvents
 
 exports.applyPatches = (level3) ->
-    addDefaultHandlers(level3.core)
+    addDefaultHandlers(level3.html)
     patchEvents(level3)
     patchScriptTag(level3)
 
 patchScriptTag = (level3) ->
-    core = level3.core
     html = level3.html
     oldInsertBefore = html.HTMLScriptElement.prototype.insertBefore
     html.HTMLScriptElement.prototype.insertBefore = (newChild, refChild) ->
@@ -19,11 +18,11 @@ patchScriptTag = (level3) ->
     html.HTMLScriptElement._init = () ->
         this.addEventListener 'DOMNodeInsertedIntoDocument', () ->
             if this.src
-                core.resourceLoader.load(this, this.src, this._eval)
+                html.resourceLoader.load(this, this.src, this._eval)
             else
                 # We need to reserve our spot in the queue, or else window
                 # could fire 'load' before our script runs.
-                this._queueTrigger = core.resourceLoader.enqueue(this, this._eval, filename)
+                this._queueTrigger = html.resourceLoader.enqueue(this, this._eval, filename)
                 src = this.sourceLocation || {}
                 filename = src.file || this._ownerDocument.URL
                 if src
@@ -32,14 +31,14 @@ patchScriptTag = (level3) ->
                 if this.text
                     this._queueTrigger(null, this.text)
 
-addDefaultHandlers = (core) ->
-    core.HTMLAnchorElement.prototype._eventDefaults =
+addDefaultHandlers = (html) ->
+    html.HTMLAnchorElement.prototype._eventDefaults =
         click : (event) ->
             console.log "Inside default click handler"
             window = event.target.ownerDocument.parentWindow
             window.location = event.target.href if event.target.href?
 
-    core.HTMLInputElement.prototype._eventDefaults =
+    html.HTMLInputElement.prototype._eventDefaults =
         click : (event) ->
             console.log "Inside overridden click handler"
             #TODO: bring this back, but just double check things.
@@ -74,7 +73,7 @@ addDefaultHandlers = (core) ->
                 elem.value += event.char
             console.log(elem.value)
         ###
-    core.HTMLButtonElement.prototype._eventDefaults =
+    html.HTMLButtonElement.prototype._eventDefaults =
         # looks like this already is done for input
         click : (event) ->
             elem = event.target
