@@ -47,10 +47,10 @@ exports.inject = (window, shared) ->
                     page[key] = val
                 if !page['id']
                     throw new Error("Must supply an id for data-page.")
-                if !page['location']
-                    throw new Error("Must supply a location for data-page.")
+                if !page['src']
+                    throw new Error("Must supply a src for data-page.")
                 pendingPages++
-                window.$.get page['location'], (data) ->
+                window.$.get page['src'], (data) ->
                     page['html'] = data
                     if --pendingPages == 0
                         if callback then callback()
