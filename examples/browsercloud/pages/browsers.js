@@ -88,7 +88,7 @@
     
     $('#launch-browser-button').click(function () {
         if (model.browserToLaunch()) {
-            mode.browserToLaunch().launch();
+            model.browserToLaunch().launch();
         }
     });
 
