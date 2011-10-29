@@ -1,6 +1,7 @@
 (function () {
     var viewModel = {
         users : vt.shared.usersArray,
+        systemStats : vt.shared.systemStats,
         hookupDelete : function (elements) {
             var adminButton = $('.toggle-admin', elements[0]);
             var username = adminButton.attr('data-username');

@@ -38,7 +38,6 @@
                 // TODO
                 console.log("The user already has a primary browser...TODO: redirect");
             }
-            console.log(vt);
             user.primaryBrowser(vt.currentBrowser());
             user.lastAccess(Date());
             window.pages.home.load();

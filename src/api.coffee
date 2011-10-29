@@ -35,13 +35,13 @@ class InBrowserAPI
     createBrowser : (params) ->
         # The global BrowserManager
         manager = global.browsers
-        realBrowser = null
+        browser = null
         if params.app
-            realBrowser = manager.createBrowser
+            browser = manager.create
                 id : params.id
                 app : params.app
         else if params.url
-            realBrowser = manager.createBrowser
+            browser = manager.create
                 id : params.id
                 url : params.url
         else

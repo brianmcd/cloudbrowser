@@ -8,16 +8,13 @@ var path   = require('path'),
 // It won't be shared among Browser instances created manually inside apps.
 var shared = {};
 
-// The currently logged in user.
-shared.currentUser = null;
-
 shared.ko = ko;
 shared.models = models;
 
 // A list of all the users in the system.  This observable can be bound inside
 // browsers.
-var UserModel = models.UserModel;
-shared.users = UserModel.load();
+shared.users = models.UserModel.load();
+
 // TODO: we could make this the main list of users, and have a subscriber that
 // adds users to the object hash when one is pushed to the array.
 shared.usersArray = ko.observableArray();
@@ -27,6 +24,26 @@ Object.keys(shared.users).forEach(function(val) {
 
 // A list of all of the apps in the system.
 shared.apps = ko.observableArray(fs.readdirSync(path.resolve(__dirname, 'db', 'apps')));
+
+// System statistics
+shared.systemStats = {
+    rss : ko.observable(),
+    vsize : ko.observable(),
+    heapTotal : ko.observable(),
+    heapUsed : ko.observable(),
+    numBrowsers : ko.observable()
+};
+
+var digits = 2;
+setInterval(function () {
+    var usage = process.memoryUsage();
+    shared.systemStats.rss((usage.rss/(1024*1024)).toFixed(digits));
+    shared.systemStats.vsize((usage.vsize/(1024*1024)).toFixed(digits));
+    shared.systemStats.heapTotal((usage.heapTotal/(1024*1024)).toFixed(digits));
+    shared.systemStats.heapUsed((usage.heapUsed/(1024*1024)).toFixed(digits));
+    // TODO: browsermanager should track a numBrowsers, and close should rm from manager.
+    shared.systemStats.numBrowsers(Object.keys(global.browsers.browsers).length);
+}, 5000);
 
 var server = new vt.Server({
     appPath : 'index.html',
