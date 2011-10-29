@@ -23,7 +23,7 @@
                 viewModel.feedback(err.message);
             } else {
                 console.log('loading home');
-                vt.loadPage('home');
+                vt.pages.home.load();
             }
         });
     });

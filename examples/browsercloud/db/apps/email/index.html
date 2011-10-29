@@ -8,13 +8,14 @@
     </head>
     <body>
         <div id='main'>
-            <div data-page='id: login, location: pages/login.html'></div>
-            <div data-page='id: home, location: pages/home.html'></div>
+            <div data-page='id: login, src: pages/login.html'></div>
+            <div data-page='id: home,  src: pages/home.html'></div>
         </div>
         <script>
             window.ImapConnection = require('imap').ImapConnection;
-            vt.loadPages('main', function () {
-                vt.loadPage('login');
+            vt.initPages(document.getElementById('main'), function (pages) {
+                pages.login.load();
+                window.vt.pages = pages;
             });
         </script>
     </body>
