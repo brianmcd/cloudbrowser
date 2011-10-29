@@ -27,7 +27,6 @@ exports['tests'] = TestCase(
         test.notEqual(window.JSON, null)
         test.notEqual(window.Image, null)
         test.notEqual(window.XMLHttpRequest, null)
-        test.notEqual(window.require, null)
         test.notEqual(window.console, null)
         test.done()
 

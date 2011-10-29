@@ -60,6 +60,8 @@ class Browser extends EventEmitter
         @window.close if @window?
         @resources = new ResourceProxy(url)
         @window = @dom.createWindow()
+        if process.env.TESTS_RUNNING
+            @window.browser = this
         if configFunc?
             configFunc(@window)
         # TODO TODO: also need to not process client events from now until the
