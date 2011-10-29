@@ -10,9 +10,9 @@ class Page
         @container.innerHTML = @html
 
 class WrappedBrowser
-    constructor : (browser) ->
+    constructor : (parent, browser) ->
         @launch = () ->
-            browser.window.open("/browsers/#{browser.id}/index.html")
+            parent.window.open("/browsers/#{browser.id}/index.html")
         @id = browser.id
 
 class InBrowserAPI
@@ -46,7 +46,7 @@ class InBrowserAPI
                 url : params.url
         else
             throw new Error("Must specify an app or url for browser creation")
-        return new WrappedBrowser(browser)
+        return new WrappedBrowser(@window.__browser__, browser)
 
     initPages : (elem, callback) ->
         if !elem?
