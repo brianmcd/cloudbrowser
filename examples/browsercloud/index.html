@@ -28,26 +28,27 @@
         </div>
         <script>
             // Similar to ko.applyBindings.
-            vt.loadPages('main', function () {
-                vt.loadPage('login');
+            vt.initPages(document.getElementById('main'), function (pages) {
+                window.pages = pages;
+                pages.login.load();
                 $('#goHome').click(function () {
                     if (window.currentUser) {
-                        vt.loadPage('home');
+                        pages.home.load();
                     }
                 });
                 $('#goBrowsers').click(function () {
                     if (window.currentUser) {
-                        vt.loadPage('browsers');
+                        pages.browsers.load();
                     }
                 });
                 $('#goUserCP').click(function () {
                     if (window.currentUser) {
-                        vt.loadPage('usercp');
+                        pages.usercp.load();
                     }
                 });
                 $("#goAdmin").click(function () {
                     if (window.currentUser && window.currentUser.isAdmin()) {
-                        vt.loadPage('admin');
+                        pages.admin.load();
                     } else {
                         alert('Access denied');
                     }

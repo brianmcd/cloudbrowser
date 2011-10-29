@@ -10,6 +10,7 @@ ClientAPI            = require('./client_api')
 DevAPI               = require('../api')
 HTML5                = require('html5')
 TaggedNodeCollection = require('../tagged_node_collection')
+InBrowserAPI         = require('../api')
 
 class Browser extends EventEmitter
     constructor : (browserID, sharedState, parser = 'HTML5') ->
@@ -42,17 +43,14 @@ class Browser extends EventEmitter
         url = "http://localhost:3001/#{app}"
         # load callback takes a configuration function that lets us manipulate
         # the window object before the page is fetched/loaded.
-        # TODO: this gets the ResourceProxy wrong.
-        @load(url, (window) =>
+        @load url, (window) =>
             # For now, we attach require and process.  Eventually, we will pass
             # a customized version of require that restricts its capabilities
             # based on a package.json manifest.
             window.require = require
             window.process = process
-            # Inject our helpers (these populate the window.vt namespace)
-            DevAPI.inject(window, @sharedState, this)
-            window.vt.shared = @sharedState # TODO
-        )
+            window.__browser__ = this
+            window.vt = new InBrowserAPI(window, @sharedState)
 
     # Note: this function returns before the page is loaded.  Listen on the
     # window's load event if you need to.

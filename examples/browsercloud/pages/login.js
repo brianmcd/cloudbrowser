@@ -38,9 +38,10 @@
                 // TODO
                 console.log("The user already has a primary browser...TODO: redirect");
             }
+            console.log(vt);
             user.primaryBrowser(vt.currentBrowser());
             user.lastAccess(Date());
-            vt.loadPage('home');
+            window.pages.home.load();
         } else {
             alert('Login failed');
         }
@@ -66,7 +67,7 @@
             window.currentUser = users[username] = user;
             user.primaryBrowser(vt.currentBrowser());
             window.vt.shared.usersArray.push(user);
-            vt.loadPage('home');
+            window.pages.home.load();
         });
     });
 })();

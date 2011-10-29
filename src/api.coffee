@@ -1,44 +1,64 @@
 FS   = require('fs')
 Path = require('path')
 
+# TODO: cache nodes after they've been created once.
+class Page
+    constructor : (options) ->
+        {@id, @html, @src, @container} = options
 
-exports.inject = (window, shared) ->
-    vt = window.vt = {}
-    vt.shared = shared
+    load : () ->
+        @container.innerHTML = @html
 
-    # TODO: instead of vt.launch, we should have a launch function on the Browser.
-    # We can wrap vt-node-lib's Browser object here, and expose the API we want to
-    # the client.
-    # This requires wrapping BrowserManager.createBrowser.
-    # Maybe we just attach our own so it's vt.createBrowser, which calls
-    # BrowserManager.createBrowser to create the actual Browser, then wraps it in
-    # an object that exposes an API.
-    vt.launch = (browser) ->
-        window.open("/browsers/#{browser.id}/index.html")
+class WrappedBrowser
+    constructor : (browser) ->
+        @launch = () ->
+            browser.window.open("/browsers/#{browser.id}/index.html")
+        @id = browser.id
 
-    vt.embed = (browser) ->
-        # TODO
+class InBrowserAPI
+    constructor : (window, shared) ->
+        @window = window
+        @shared = shared
+    
+    @Model : require('./api/model')
 
-    vt.currentBrowser = () ->
-        # TODO
+    # This should load the browser in a target iframe.
+    embed : (browser) ->
 
-    # Have to do the require here to avoid circular dependency.
-    vt.BrowserManager = global.browsers
+    currentBrowser : () ->
+        # TODO: this gives the window access to the whole Browser
+        #       implementation, which we really don't want.
+        return @window.__browser__
 
-    vt.Model = require('./api/model')
+    # TODO: apps need to be objects...passing a url to an app isn't robust.
+    #       at worst, we should be passing a string app name.
+    createBrowser : (params) ->
+        # The global BrowserManager
+        manager = global.browsers
+        realBrowser = null
+        if params.app
+            realBrowser = manager.createBrowser
+                id : params.id
+                app : params.app
+        else if params.url
+            realBrowser = manager.createBrowser
+                id : params.id
+                url : params.url
+        else
+            throw new Error("Must specify an app or url for browser creation")
+        return new WrappedBrowser(browser)
 
-    vt.loadPages = (selector, callback) ->
-        elem = window.document.getElementById(selector)
+    initPages : (elem, callback) ->
         if !elem?
             throw new Error("Invalid element id passed to loadPages")
-        pages = vt.pages = vt.pages || {}
+        pages = {}
         pendingPages = 0
-        dfs = (node) ->
+        dfs = (node) =>
             if node.nodeType != node.ELEMENT_NODE
                 return
             attr = node.getAttribute('data-page')
             if attr? && attr != ''
-                page = {}
+                page = {container : elem}
                 info = attr.split(',')
                 for piece in info
                     piece = piece.trim()
@@ -50,11 +70,11 @@ exports.inject = (window, shared) ->
                 if !page['src']
                     throw new Error("Must supply a src for data-page.")
                 pendingPages++
-                window.$.get page['src'], (data) ->
-                    page['html'] = data
+                @window.$.get page['src'], (html) ->
+                    page['html'] = html
+                    pages[page['id']] = new Page(page)
                     if --pendingPages == 0
-                        if callback then callback()
-                pages[page['id']] = page
+                        if callback then callback(pages)
             else
                 for child in node.childNodes
                     dfs(child)
@@ -62,16 +82,4 @@ exports.inject = (window, shared) ->
         console.log("Here are the pages we found:")
         console.log(pages)
 
-    vt.loadPage = (name) ->
-        if !vt.pages?
-            throw new Error("Must call vt.loadPages before vt.loadPage")
-        $ = window.$
-        page = vt.pages[name]
-        if !page
-            throw new Error("Invalid page name: #{name}")
-        html = page['html']
-        if !html
-            throw new Error("No html found for page: #{name}")
-        window.document.getElementById('main').innerHTML = html
-        # TODO: using the jQuery line below, script tags with src attributes aren't added to the DOM in JSDOM.
-        #$('#main').html(html)
+module.exports = InBrowserAPI

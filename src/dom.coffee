@@ -69,9 +69,7 @@ class DOM extends EventEmitter
         # This sets window.XMLHttpRequest, and gives the XHR code access to
         # the window object.
         ImportXMLHttpRequest(window)
-        window.browser = @browser
         window.console = console
-        window.require = require
         window.__defineGetter__ 'location', () -> @__location
 
         emitHashchange = (oldURL, newURL) =>

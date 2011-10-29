@@ -22,7 +22,8 @@
                     var primaryBrowser = user.primaryBrowser();
                     if (primaryBrowser != null) {
                         // TODO: loadPage should be part of a browser API
-                        primaryBrowser.window.run("window.currentUser = null; vt.loadPage('login');");
+                        primaryBrowser.window.currentUser = null;
+                        primartBrowser.window.pages.login.load();
                     }
                 });
             });

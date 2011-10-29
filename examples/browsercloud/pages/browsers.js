@@ -59,12 +59,12 @@
         if ($('#url-load-type')[0].checked == true) {
             var url = model.newBrowserUrl();
             console.log("Creating browser: " + name + "    " + url);
-            browser = vt.BrowserManager.create({
+            browser = vt.createBrowser({
                 id : name,
                 url : url
             });
         } else if ($('#app-load-type')[0].checked == true) {
-            browser = vt.BrowserManager.create({
+            browser = vt.createBrowser({
                 id : name,
                 app : Path.join('db', 'apps', model.selectedApp(), 'index.html')
             });
@@ -88,7 +88,7 @@
     
     $('#launch-browser-button').click(function () {
         if (model.browserToLaunch()) {
-            window.open('/browsers/' + model.browserToLaunch().id + '/index.html');
+            mode.browserToLaunch().launch();
         }
     });
 
