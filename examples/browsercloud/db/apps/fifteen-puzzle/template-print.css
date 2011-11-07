@@ -1,0 +1,19 @@
+#leftnav,
+#right-zone,
+#outer-top-bar,
+#backtolink,
+#navarrows { display: none; }
+
+#content-zone,
+#center-zone,
+#left-contain { width: auto !important; }
+
+#left-contain { padding-left: inherit; }
+
+#outer-center { position: static; top: 0px; width: auto; }
+
+#center-zone h3 { -moz-border-radius: 0 0 0 0; margin: auto; }
+
+html, body, div, table { float: none !important; 
+overflow: visible !important; position: static !important;
+height: auto !important; width: auto !important; }

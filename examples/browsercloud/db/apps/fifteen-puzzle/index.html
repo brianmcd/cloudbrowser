@@ -1,0 +1,281 @@
+<html>
+<head>
+<meta name="generator" content=
+"HTML Tidy for Linux (vers 25 March 2009), see www.w3.org" />
+<title>15 Puzzle: A sliding tile game</title>
+
+<script type="text/javascript">
+//<![CDATA[
+if (top.location!= self.location)
+{
+        top.location = self.location.href;
+}
+
+function hidetoc()
+{
+        document.getElementById('toc-list').style.display = 'none';
+        document.getElementById('toc-show-hide').innerHTML = '<a href="javascript:showtoc()">show<\/a>';
+}
+
+function showtoc()
+{
+        document.getElementById('toc-list').style.display = 'block';
+        document.getElementById('toc-show-hide').innerHTML = '<a href="javascript:hidetoc()">hide<\/a>';
+}  
+//]]>
+</script>
+<meta name="Description" content=
+"Slide the 15 tiles to put them back in order. Shuffle to start a new game." />
+<link rel="stylesheet" type="text/css" href=
+"/better-template.css" />
+<link rel="stylesheet" type="text/css" href=
+"/fifteen-puzzle/custom.css" />
+<link rel="stylesheet" type="text/css" href="/template-print.css"
+media="print" />
+<style type="text/css">
+/*<![CDATA[*/
+table#puzzb { background-color: #777777; width: 249px; border: 6px solid #000000; padding: 0; margin: 0 auto; border-collapse: collapse; }
+table#puzzb tr { padding: 0; margin: 0; }
+table#puzzb td { height: 60px; width: 60px; border: 1px solid #000000; padding: 0; margin: 0; font-size: 35px; color: #ddaa00; font-weight: bold; }
+table#puzzb div.red { background-color: #ff0000; color: #dfdf00; }
+table#puzzb div { background-color: #ffffff; color: #0000ff; margin: 2px; width: 56px; height: 56px; vertical-align: middle; line-height: 50px; 
+cursor: pointer; text-align: center; }
+table#puzzb div.blocker { background-color: transparent; position: absolute; width: 60px; height: 60px; z-index: 10; }
+/*]]>*/
+</style>
+<link rel="stylesheet" type="text/css" href="/navnav.css" />
+<link rel="stylesheet" type="text/css" href="/the-template.css" />
+<link rel="stylesheet" type="text/css" href=
+"/game-icons/sprite-style.css" />
+</head>
+<body class="index">
+<!--chk-->
+<div id="outer-center">
+<!--[if lt IE 9]> <div style='text-align: center; width: 820px; margin: 0 auto; clear: both; padding:0 0 0 15px; position: relative;'>  <a
+href="http://www.microsoft.com/windows/internet-explorer/default.aspx?ocid=ie6_countdown_bannercode"><img
+src="http://mybrowserchoice.com/images/banner.jpg" border="0" height="42" width="820" alt="" />
+</a></div>  <![endif]-->
+<div id="center-zone">
+<div id="left-zone">
+<div id="left-contain">
+<div style="clear: both"><!-- --></div>
+<div id="content-zone" style="float: right; width: 790px;">
+<h2>15 Puzzle: A sliding tile game</h2>
+<p><strong>How to play:</strong> Click one of the four tiles next
+to the empty tile to slide it into the empty space. Rearrange the
+tiles until they go from 1 through 15 in left to right order.</p>
+<br />
+<br />
+<script type="text/javascript">
+//<![CDATA[
+var hole = 16;
+
+var cells = document.getElementsByTagName("td");
+var origboard = "<tr>\
+<td id=\"p1\"><div class=\"blocker\"><!-- --><\/div><div class=\"red\" id=\"s1\">1<\/div><\/td>\
+<td id=\"p2\"><div class=\"blocker\"><!-- --><\/div><div id=\"s2\">2<\/div><\/td>\
+<td id=\"p3\"><div class=\"blocker\"><!-- --><\/div><div class=\"red\" id=\"s3\">3<\/div><\/td>\
+<td id=\"p4\"><div class=\"blocker\"><!-- --><\/div><div id=\"s4\">4<\/div><\/td>\
+<\/tr>\
+<tr>\
+<td id=\"p5\"><div class=\"blocker\"><!-- --><\/div><div class=\"red\" id=\"s5\">5<\/div><\/td>\
+<td id=\"p6\"><div class=\"blocker\"><!-- --><\/div><div id=\"s6\">6<\/div><\/td>\
+<td id=\"p7\"><div class=\"blocker\"><!-- --><\/div><div class=\"red\" id=\"s7\">7<\/div><\/td>\
+<td id=\"p8\"><div class=\"blocker\"><!-- --><\/div><div id=\"s8\">8<\/div><\/td>\
+<\/tr>\
+<tr>\
+<td id=\"p9\"><div class=\"blocker\"><!-- --><\/div><div class=\"red\" id=\"s9\">9<\/div><\/td>\
+<td id=\"p10\"><div class=\"blocker\"><!-- --><\/div><div id=\"s10\">10<\/div><\/td>\
+<td id=\"p11\"><div class=\"blocker\"><!-- --><\/div><div class=\"red\" id=\"s11\">11<\/div><\/td>\
+<td id=\"p12\"><div class=\"blocker\"><!-- --><\/div><div id=\"s12\">12<\/div><\/td>\
+<\/tr>\
+<tr>\
+<td id=\"p13\"><div class=\"blocker\"><!-- --><\/div><div class=\"red\" id=\"s13\">13<\/div><\/td>\
+<td id=\"p14\"><div class=\"blocker\"><!-- --><\/div><div id=\"s14\">14<\/div><\/td>\
+<td id=\"p15\"><div class=\"blocker\"><!-- --><\/div><div class=\"red\" id=\"s15\">15<\/div><\/td>\
+<td id=\"p16\"><div class=\"blocker\"><!-- --><\/div><\/td>\
+<\/tr>";
+
+function swap(hole1,piece1)
+{
+    document.getElementById("p" + hole1).innerHTML = document.getElementById("p" + piece1).innerHTML;
+    document.getElementById("p" + piece1).innerHTML = "";
+    hole = piece1;
+}
+
+function scramble()
+{
+    var scrandom = Math.floor(Math.random() * (150 - 128 + 1)) + 128;
+
+    for (var q = 0; q < scrandom; q++)
+    {
+        var r = Math.random();
+
+        if (r < 0.5)
+        {
+            hcol = (hole - 1) % 4;
+            if (hcol == 0 || (r < 0.25 && hcol != 3))
+            {
+                t = hole;
+            }
+            else
+            {
+                t = hole - 2;
+            }
+        }
+        else
+        {
+            hrow = Math.floor((hole - 1) / 4);
+            if (hrow == 0 || (r < 0.75 && hrow != 3))
+            {
+                t = hole + 3;
+            }
+            else
+            {
+                t = hole - 5;
+            }
+        }
+
+        swap(hole, (t+1));
+    }
+}
+
+function reset()
+{
+    hole = 16;
+    document.getElementById("puzzb").innerHTML = origboard;
+
+
+    var cells = document.getElementsByTagName("td");
+    for (item in cells)
+    {
+        cells[item].onclick = move;
+    }
+}
+//]]>
+</script>
+<div style="width: 100%">
+<div style="width: 468px; margin: 0 auto;">
+<div style="float: left; width: 265px">
+<table id="puzzb">
+<tr>
+<td id="p1">
+<div class="blocker"><!-- --></div>
+<div class="red" id="s1">1</div>
+</td>
+<td id="p2">
+<div class="blocker"><!-- --></div>
+<div id="s2">2</div>
+</td>
+<td id="p3">
+<div class="blocker"><!-- --></div>
+<div class="red" id="s3">3</div>
+</td>
+<td id="p4">
+<div class="blocker"><!-- --></div>
+<div id="s4">4</div>
+</td>
+</tr>
+<tr>
+<td id="p5">
+<div class="blocker"><!-- --></div>
+<div class="red" id="s5">5</div>
+</td>
+<td id="p6">
+<div class="blocker"><!-- --></div>
+<div id="s6">6</div>
+</td>
+<td id="p7">
+<div class="blocker"><!-- --></div>
+<div class="red" id="s7">7</div>
+</td>
+<td id="p8">
+<div class="blocker"><!-- --></div>
+<div id="s8">8</div>
+</td>
+</tr>
+<tr>
+<td id="p9">
+<div class="blocker"><!-- --></div>
+<div class="red" id="s9">9</div>
+</td>
+<td id="p10">
+<div class="blocker"><!-- --></div>
+<div id="s10">10</div>
+</td>
+<td id="p11">
+<div class="blocker"><!-- --></div>
+<div class="red" id="s11">11</div>
+</td>
+<td id="p12">
+<div class="blocker"><!-- --></div>
+<div id="s12">12</div>
+</td>
+</tr>
+<tr>
+<td id="p13">
+<div class="blocker"><!-- --></div>
+<div class="red" id="s13">13</div>
+</td>
+<td id="p14">
+<div class="blocker"><!-- --></div>
+<div id="s14">14</div>
+</td>
+<td id="p15">
+<div class="blocker"><!-- --></div>
+<div class="red" id="s15">15</div>
+</td>
+<td id="p16">
+<div class="blocker"><!-- --></div>
+</td>
+</tr>
+</table>
+</div>
+<div style="float: left; width: 200px;">
+<p><input type="button" value="scramble the puzzle" onclick=
+"scramble()" /><br />
+<br />
+<input type="button" value="reset" onclick="reset()" /></p>
+</div>
+<div style="clear: both"><!-- --></div>
+</div>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;
+&nbsp;</div>
+<script type="text/javascript">
+//<![CDATA[
+function move()
+{
+    var piece = parseInt(this.id.replace(/p/,''));
+    var distance = hole - piece;
+
+        if (distance < 0)
+    {
+        distance = -(distance)
+    }
+
+        if (distance == 1 || distance == 4 )
+    {
+                swap(hole,piece)
+        }
+}
+
+var cells = document.getElementsByTagName("td");
+for (item in cells)
+{
+    cells[item].onclick = move;
+}
+//]]>
+</script><!-- google_ad_section_end -->
+</body>
+</html>

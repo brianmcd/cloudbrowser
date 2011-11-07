@@ -1,0 +1,88 @@
+body { margin: 0; font-family: Arial, Helvetica, Arial, 'Lucida Sans Unicode', 'Lucida Grande', Arial, Helvetica, sans-serif; color: #000000; }
+h1, h2, h3, h4, h5, h6 { font-family: Georgia, 'Times New Roman', Times, serif; font-weight: normal; margin: 10px 0; text-align: left; }
+body h2,
+body h3, body h4 { font-family: Helvetica, Arial, 'Lucida Sans Unicode', 'Lucida Grande', Helvetica, Arial, Helvetica, sans-serif; font-weight: bold; }
+body h2 { font-size: 32px; line-height: 33px;  }
+body h3 { font-size: large; background-color: #aaddff; padding: 3px; }
+body h4 { font-size: x-large; margin-top: 30px; margin-bottom: 0px; }
+p { font-size: 16px; line-height: 22px; margin-top: 0px; }
+p.beflist { margin-bottom: 0; }
+a { color: #0000aa; }
+
+/*#top-bar { height: 100px; border-bottom: 1px solid #666666; margin-bottom: 20px; }*/
+#outer-top-bar {  position: absolute; top: 0px; width: 100%; }
+#top-bar { width: 100%; height: 85px; background-color: #aaddff; margin-bottom: 20px; padding-top: 10px; }
+#top-inner { position: relative; width: 1000px; margin: 0 auto; }
+#top-inner h1 { letter-spacing: 3px; font-family: 'Trebuchet MS', sans-serif; font-weight: bold; font-size: 60px; margin: 0px; line-height: 60px; }
+#top-inner h1 a,
+.toplink a { color: #ffffff; text-decoration:none;}
+#top-inner h1 a:hover,
+.toplink a:hover { color: #aaddff; background-color: #ffffff; }
+#top-links { padding-right: 50px; }
+.toplink { padding-right: 50px; width: 55px; float: left; font-weight: bold; font-family: Tahoma, Geneva, sans-serif; }
+
+#outer-center { position: absolute; top: 115px; width: 100%; }
+#center-zone { width: 1040px; margin: 0 auto; }
+#left-zone { width: 840px; float: left; text-align: justify; }
+#left-contain { width: 830px; padding-left: 10px; float: left; }
+#right-zone { width: 175px; float: left; margin-left: 20px; }
+#footer { border-top: 1px solid #666666; text-align: center; color: #000000; font-size: 10px; padding: 0 20px 20px 20px; margin-top: 20px; } 
+
+#center-zone h3 { margin: 50px 0 10px 0; border-radius: 5px ; -moz-border-radius: 5px; }
+
+#center-zone h3.home-blue-top { border-radius: 5px 5px 0 0; -moz-border-radius: 5px 5px 0 0; }
+
+.inner-col { width: 300px; float: left; text-align: left }
+.inner-col.right { padding-left: 10px; width: 290px; }
+
+ul { margin-top: 0px; padding-left: 25px; }
+
+ol { padding-left: 25px; }
+
+.tall-ad { width: 160px; margin: 0 auto; }
+
+#leftnav { padding-right: 15px; width: 160px; float: left; margin: 0 5px 10px 0; line-height: 17px; background-color: #ffffff; }
+#leftnav div { text-align: left; font-size: small; padding: 3px; }
+#leftnav .toc-item { display: list-item; list-style-type: disc; list-style-position: inside; }
+#leftnav .toc-sec { font-weight: bold; }
+.toc-sec + .toc-item { border-bottom-width: 0 }
+
+.toc-sec-box { border-radius: 10px; border: 3px solid #ADF; margin-bottom: 11px; -moz-border-radius: 10px; }
+.toc-selected { background-color: #ADF; border-radius: 5px; }
+#leftnav .toc-head { background-color: #ADF; text-align: center; font-weight: bold; border-radius: 5px; margin-bottom: 5px; }
+span.toc-normal { margin-left: -3px; }
+
+.toc-sec-box ul { padding-left: 0px; }
+.toc-sec-box ul li { background-image: url(http://www.thonky.com/bullet_blue.png); background-position: 0 5px; background-repeat: no-repeat; list-style: none outside none; margin-bottom: 5px; padding: 0 0 0 10px; }
+
+a,
+a img { border: 0; }
+
+.toc-box { padding: 10px; width: 50%; border: #aaddff 1px solid; border-radius: 10px; -moz-border-radius: 10px; background-color: #ddffff; font-size: small; }
+.toc-box .toc-head { text-align: center; font-weight: bold; }
+.toc-box .toc-head span { font-weight: normal; }
+div.toc-box { text-align: left; }
+.toc-subheading { text-align: left; font-weight: bold }
+div.toc-box ul.toc-list ul { margin-bottom: 10px; }
+div.toc-box ul.toc-list ul ul { margin-bottom: 0 }
+
+.bordered, .bordered th, .bordered td {
+        border-collapse: collapse;
+        border: 2px solid #000000;
+}
+.bordered th, .bordered td {
+        padding: 5px;
+}
+.leftjustify td,
+.leftjustify th {
+text-align: left;
+}
+.padded td,
+.padded th {
+    padding: 10px;
+} 
+body table tr td,
+body table tr th {
+    text-align: left;
+}
+  
