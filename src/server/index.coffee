@@ -64,7 +64,7 @@ class Server extends EventEmitter
             server.use(express.bodyParser())
             server.use(express.cookieParser())
             server.use(express.session({secret: 'change me please'}))
-            server.set('views', Path.join(__dirname, '..', 'views'))
+            server.set('views', Path.join(__dirname, '..', '..', 'views'))
             server.set('view options', {layout: false})
 
         # This Path should be configurable, so they can host multiple apps
