@@ -1,6 +1,6 @@
 EventProcessor = require('../../../lib/server/browser/event_processor')
-Browser        = require('../../../lib/server/browser/browser')
-Server         = require('../../../lib/server/server')
+Browser        = require('../../../lib/server/browser')
+Server         = require('../../../lib/server')
 Path           = require('path')
 
 server = null

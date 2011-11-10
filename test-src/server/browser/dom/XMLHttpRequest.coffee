@@ -1,7 +1,7 @@
 FS      = require('fs')
 Path    = require('path')
-DOM     = require('../../../../lib/server/browser/dom/dom')
-Server  = require('../../../../lib/server/server')
+DOM     = require('../../../../lib/server/browser/dom')
+Server  = require('../../../../lib/server')
 Request = require('request')
 
 server = null

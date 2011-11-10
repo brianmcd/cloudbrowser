@@ -1,6 +1,6 @@
 Path          = require('path')
 FS            = require('fs')
-Server        = require('../../../lib/server/server')
+Server        = require('../../../lib/server')
 ResourceProxy = require('../../../lib/server/browser/resource_proxy')
 
 exports['tests'] =

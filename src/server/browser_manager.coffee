@@ -1,4 +1,4 @@
-Browser = require('./browser/browser')
+Browser = require('./browser')
 Hat     = require('hat')
 
 # It is anticipated that this class will expand to have a persistant store and

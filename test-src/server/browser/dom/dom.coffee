@@ -1,5 +1,5 @@
 TestCase             = require('nodeunit').testCase
-DOM                  = require('../../../../lib/server/browser/dom/dom')
+DOM                  = require('../../../../lib/server/browser/dom')
 TaggedNodeCollection = require('../../../../lib/shared/tagged_node_collection')
 
 #TODO: test window.location for navigation
