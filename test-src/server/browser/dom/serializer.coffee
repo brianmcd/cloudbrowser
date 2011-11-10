@@ -4,7 +4,7 @@ for entry of reqCache
         delete reqCache[entry]
 JSDOM = require('jsdom')
 
-Serialize = require('../../lib/dom/serializer').serialize
+Serialize = require('../../../../lib/server/browser/dom/serializer').serialize
 
 
 exports['tests'] =

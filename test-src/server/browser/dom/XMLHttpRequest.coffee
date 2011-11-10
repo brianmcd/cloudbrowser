@@ -1,21 +1,23 @@
 FS      = require('fs')
 Path    = require('path')
-DOM     = require('../../lib/dom')
-Server  = require('../../lib/server')
+DOM     = require('../../../../lib/server/browser/dom/dom')
+Server  = require('../../../../lib/server/server')
 Request = require('request')
 
 server = null
 jQuery = null
 
 # Info about the XHR target we'll use for most tests.
-targetPath = Path.join(__dirname, '..', '..', 'test-src', 'files', 'xhr-target.html')
+targetPath = Path.join(__dirname, '..', '..', '..', '..',
+                       'test-src', 'files', 'xhr-target.html')
 targetSource = FS.readFileSync(targetPath, 'utf8')
 
 exports['tests'] =
     'setup' : (test) ->
         server = new Server
             appPath : '/'
-            staticDir : Path.join(__dirname, '..', '..', 'test-src', 'files')
+            staticDir : Path.join(__dirname, '..', '..', '..', '..',
+                                  'test-src', 'files')
         server.once('ready', () ->
             Request({uri : 'http://code.jquery.com/jquery-1.6.2.js'}, (err, res, js) ->
                 test.equal(res.statusCode, 200)

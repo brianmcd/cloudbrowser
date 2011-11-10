@@ -6,6 +6,7 @@ class ClientAPI
         client.on('processEvent', @browser.events.processEvent)
         client.on('DOMUpdate', @DOMUpdate)
 
+    # TODO: sanitize the input (e.g. no scripts)
     DOMUpdate : (params) =>
         target = @browser.dom.nodes.get(params.targetID)
         method = params.method

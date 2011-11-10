@@ -1,7 +1,7 @@
 Path      = require('path')
 FS        = require('fs')
 TestCase  = require('nodeunit').testCase
-Server    = require('../lib/server')
+Server    = require('../lib/server/server')
 
 reqCache = require.cache
 for entry of reqCache

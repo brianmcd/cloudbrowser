@@ -58,7 +58,7 @@ class Server extends EventEmitter
             server.use(express.logger())
             server.use(Browserify(
                 mount : '/socketio_client.js',
-                require : [Path.join(__dirname, 'client', 'socketio_client')]
+                require : [Path.resolve(__dirname, '..', 'client', 'socketio_client')]
                 ignore : ['socket.io-client']
             ))
             server.use(express.bodyParser())

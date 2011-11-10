@@ -1,6 +1,6 @@
 HTTP = require('http')
 MIME = require('mime')
-URL = require('url')
+URL  = require('url')
 
 # TODO: scan @import rules for CSS and fetch subresources.
 # TODO: add URLs to ResourceProxy when src attributes are set in advice.

@@ -1,7 +1,7 @@
 HTTP    = require('http')
 Path    = require('path')
 FS      = require('fs')
-Browser = require('../lib/browser/browser')
+Browser = require('../lib/server/browser/browser')
 
 server = null
 html = null

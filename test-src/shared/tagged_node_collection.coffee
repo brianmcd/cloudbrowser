@@ -1,5 +1,5 @@
 TestCase             = require('nodeunit').testCase
-TaggedNodeCollection = require('../lib/tagged_node_collection')
+TaggedNodeCollection = require('../../lib/shared/tagged_node_collection')
 # Any tests that create a JSDOMWrapper and run before this will have added
 # advice to JSDOM, so we have to get a fresh copy.
 reqCache = require.cache

@@ -5,17 +5,17 @@ path          = require("path")
 stdout        = process.stdout
 
 LINKS = [
-        src : 'src/dom/XMLHttpRequest.js'
-        dest : 'lib/dom/XMLHttpRequest.js'
+        src : 'src/server/browser/dom/XMLHttpRequest.js'
+        dest : 'lib/server/browser/dom/XMLHttpRequest.js'
     ,
-        src : 'lib/tagged_node_collection.js'
+        src : 'lib/shared/tagged_node_collection.js'
         dest : 'lib/client/tagged_node_collection.js'
     ,
-        src : 'lib/event_lists.js'
+        src : 'lib/shared/event_lists.js'
         dest : 'lib/client/event_lists.js'
     ,
-        src : 'src/dom/event_patches.js'
-        dest : 'lib/dom/event_patches.js'
+        src : 'src/server/browser/dom/event_patches.js'
+        dest : 'lib/server/browser/dom/event_patches.js'
     ,
         src : 'deps/knockout-node/build/output/knockout-node.debug.js'
         dest : 'lib/api/ko.js'

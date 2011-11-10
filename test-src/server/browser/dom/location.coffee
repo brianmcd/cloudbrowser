@@ -1,4 +1,4 @@
-Location = require('../../lib/dom/location')
+Location = require('../../../../lib/server/browser/dom/location')
 
 exports['tests'] =
     'basic test' : (test) ->

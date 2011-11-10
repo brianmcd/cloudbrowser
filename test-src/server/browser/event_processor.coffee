@@ -1,13 +1,13 @@
-EventProcessor = require('../../lib/browser/event_processor')
-Browser        = require('../../lib/browser/browser')
-Server         = require('../../lib/server')
+EventProcessor = require('../../../lib/server/browser/event_processor')
+Browser        = require('../../../lib/server/browser/browser')
+Server         = require('../../../lib/server/server')
 Path           = require('path')
 
 server = null
 
 exports['tests'] =
     'setup' : (test) ->
-        filepath = Path.join(__dirname, '..', '..', 'test-src', 'files')
+        filepath = Path.join(__dirname, '..', '..', '..', 'test-src', 'files')
         server = new Server
             appPath : '/'
             staticDir : filepath

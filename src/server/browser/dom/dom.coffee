@@ -1,13 +1,13 @@
 URL                  = require('url')
 EventEmitter         = require('events').EventEmitter
-TaggedNodeCollection = require('./tagged_node_collection')
-ImportXMLHttpRequest = require('./dom/XMLHttpRequest').ImportXMLHttpRequest
-Location             = require('./dom/location')
+TaggedNodeCollection = require('../../../shared/tagged_node_collection')
+ImportXMLHttpRequest = require('./XMLHttpRequest').ImportXMLHttpRequest
+Location             = require('./location')
 Request              = require('request')
 HTML5                = require('html5')
-serialize            = require('./dom/serializer').serialize
-addAdvice            = require('./dom/advice').addAdvice
-applyPatches         = require('./dom/patches').applyPatches
+serialize            = require('./serializer').serialize
+addAdvice            = require('./advice').addAdvice
+applyPatches         = require('./patches').applyPatches
 
 # JSDOMWrapper.jsdom returns the wrapped JSDOM object.
 # Adds advice and utility methods.

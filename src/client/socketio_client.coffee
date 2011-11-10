@@ -1,5 +1,5 @@
 TaggedNodeCollection = require('./tagged_node_collection')
-EventMonitor = require('./event_monitor')
+EventMonitor         = require('./event_monitor')
 
 test_env = false
 if process?.env?.TESTS_RUNNING

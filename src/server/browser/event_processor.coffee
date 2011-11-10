@@ -1,5 +1,5 @@
 EventEmitter     = require('events').EventEmitter
-EventLists       = require('../event_lists')
+EventLists       = require('../../shared/event_lists')
 
 # These are events that are eligible for being shipped to the client.  We use
 # this to know which attribute handlers to register for, and which events we

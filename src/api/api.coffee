@@ -20,7 +20,7 @@ class InBrowserAPI
         @window = window
         @shared = shared
     
-    @Model : require('./api/model')
+    @Model : require('./model')
 
     # This should load the browser in a target iframe.
     embed : (browser) ->

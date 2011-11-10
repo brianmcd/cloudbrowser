@@ -3,8 +3,8 @@
 
 TestCase             = require('nodeunit').testCase
 Emitter              = require('events').EventEmitter
-TaggedNodeCollection = require('../../lib/tagged_node_collection')
-addAdvice            = require('../../lib/dom/advice').addAdvice
+TaggedNodeCollection = require('../../../../lib/shared/tagged_node_collection')
+addAdvice            = require('../../../../lib/server/browser/dom/advice').addAdvice
 
 # These are set for each test case in setUp
 JSDOM = null

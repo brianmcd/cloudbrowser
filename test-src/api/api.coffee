@@ -1,6 +1,6 @@
 FS    = require('fs')
 Path  = require('path')
-Model = require('../lib/api/model')
+Model = require('../../lib/api/model')
 
 exports['test'] =
     basic : (test) ->
@@ -8,7 +8,7 @@ exports['test'] =
             username : String
             password : String
         }, {
-            folder : '../test-src/fixtures/db'
+            folder : '../../test-src/fixtures/db'
             filename : 'username'
         })
         x = new userModel()
@@ -17,7 +17,7 @@ exports['test'] =
         test.done()
 
     persist : (test) ->
-        folder = Path.resolve(__dirname, '..', 'test-src', 'fixtures', 'db')
+        folder = Path.resolve(__dirname, '..', '..', 'test-src', 'fixtures', 'db')
         userModel = new Model({
             username : String
             password : String
@@ -37,7 +37,7 @@ exports['test'] =
             test.done()
 
     load : (test) ->
-        folder = Path.resolve(__dirname, '..', 'test-src', 'fixtures', 'db')
+        folder = Path.resolve(__dirname, '..', '..', 'test-src', 'fixtures', 'db')
         userModel = new Model({
             username : String
             password : String

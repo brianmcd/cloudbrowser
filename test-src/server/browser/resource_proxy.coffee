@@ -1,7 +1,7 @@
-Server        = require('../../lib/server')
 Path          = require('path')
 FS            = require('fs')
-ResourceProxy = require('../../lib/browser/resource_proxy')
+Server        = require('../../../lib/server/server')
+ResourceProxy = require('../../../lib/server/browser/resource_proxy')
 
 exports['tests'] =
     'basic test' : (test) ->
@@ -47,7 +47,7 @@ exports['tests'] =
         test.done()
 
     'test fetch' : (test) ->
-        filesPath = Path.join(__dirname, '..', '..', 'test-src', 'files')
+        filesPath = Path.join(__dirname, '..', '..', '..', 'test-src', 'files')
         server = new Server
             appPath : '/'
             staticDir : filesPath
@@ -74,7 +74,7 @@ exports['tests'] =
         test.equal(idx, 0)
         test.equal(proxy.urlsByIndex[idx].href,
                    'http://localhost:3001/xhr-target.html')
-        targetPath = Path.join(__dirname, '..', '..', 'test-src', 'files',
+        targetPath = Path.join(__dirname, '..', '..', '..', 'test-src', 'files',
                               'xhr-target.html')
         targetSource = FS.readFileSync(targetPath, 'utf8')
         res = new Response(targetSource)

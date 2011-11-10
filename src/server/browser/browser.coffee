@@ -2,15 +2,14 @@ Path                 = require('path')
 FS                   = require('fs')
 URL                  = require('url')
 TestClient           = require('./test_client')
-DOM                  = require('../dom')
+DOM                  = require('./dom/dom')
 ResourceProxy        = require('./resource_proxy')
 EventProcessor       = require('./event_processor')
 EventEmitter         = require('events').EventEmitter
 ClientAPI            = require('./client_api')
-DevAPI               = require('../api')
+InBrowserAPI         = require('../../api/api')
 HTML5                = require('html5')
-TaggedNodeCollection = require('../tagged_node_collection')
-InBrowserAPI         = require('../api')
+TaggedNodeCollection = require('../../shared/tagged_node_collection')
 
 class Browser extends EventEmitter
     constructor : (browserID, sharedState, parser = 'HTML5') ->
