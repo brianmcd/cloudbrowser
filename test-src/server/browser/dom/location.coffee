@@ -1,6 +1,41 @@
-Location = require('../../../../lib/server/browser/dom/location')
+URL             = require('url')
+TestCase        = require('nodeunit').testCase
+LocationBuilder = require('../../../../lib/server/browser/dom/location').LocationBuilder
 
-exports['tests'] =
+lastEvent = null
+MockWindow =
+    setLocation : (url) ->
+        @location = URL.parse(url)
+        @location.protocol = '' if !@location.protocol
+        @location.host     = '' if !@location.host
+        @location.hostname = '' if !@location.hostname
+        @location.port     = '' if !@location.port
+        @location.pathname = '' if !@location.pathname
+        @location.search   = '' if !@location.search
+        @location.hash     = '' if !@location.hash
+    document :
+        createEvent : () -> {initEvent : () ->}
+    dispatchEvent : () ->
+        lastEvent = 'hashchange'
+
+MockBrowser =
+    load : () ->
+        lastEvent = 'pagechange'
+
+MockDOM =
+    loadPage : () ->
+
+Location = LocationBuilder(MockWindow, MockBrowser, MockDOM)
+
+exports['tests'] = TestCase
+    setUp : (callback) ->
+        lastEvent = null
+        callback()
+
+    tearDown : (callback) ->
+        lastEvent = null
+        callback()
+
     'basic test' : (test) ->
         loc = new Location('http://www.google.com/awesome/page.html')
         test.equal(loc.protocol, 'http:')
@@ -13,57 +48,44 @@ exports['tests'] =
         test.done()
 
     'test navigation' : (test) ->
-        called = false
-        loc = new Location('http://www.google.com/newpage.html',
-                           new Location('http://www.google.com'))
-        test.equal(loc.PAGECHANGE, 'http://www.google.com/newpage.html')
-        test.equal(loc.HASHCHANGE, undefined)
+        MockWindow.setLocation('http://www.google.com')
+        loc = new Location('http://www.google.com/newpage.html')
+        test.equal(lastEvent, 'pagechange')
+        lastEvent = null
         
-        loc = new Location('http://www.site.com',
-                           new Location('http://www.site.com'))
-        test.equal(loc.PAGECHANGE, undefined)
-        test.equal(loc.HASHCHANGE, undefined)
+        MockWindow.setLocation('http://www.site.com')
+        loc = new Location('http://www.site.com')
+        test.equal(lastEvent, null)
 
-        loc = new Location('http://www.google.com/#!update',
-                           new Location('http://www.google.com/'))
-        test.equal(loc.PAGECHANGE, undefined)
-        test.notEqual(loc.HASHCHANGE, undefined)
-        test.equal(loc.HASHCHANGE.oldURL, 'http://www.google.com/')
-        test.equal(loc.HASHCHANGE.newURL, 'http://www.google.com/#!update')
+        MockWindow.setLocation('http://www.google.com')
+        loc = new Location('http://www.google.com/#!update')
+        test.equal(lastEvent, 'hashchange')
+        lastEvent = null
+        
+        MockWindow.setLocation('http://www.google.com')
+        loc = new Location('http://www.google.com')
+        test.equal(lastEvent, null)
 
-        loc = new Location('http://www.google.com',
-                           new Location('http://www.google.com'))
-        test.equal(loc.PAGECHANGE, undefined)
-        test.equal(loc.HASHCHANGE, undefined)
-        loc.once('pagechange', (url) ->
-            test.equal(url, 'http://www.google.com/page2.html')
-            test.done()
-        )
         loc.href = 'http://www.google.com/page2.html'
+        test.equal(lastEvent, 'pagechange')
+        test.done()
 
     'test hashchange' : (test) ->
-        called = false
         # None of these tests should cause navigation, only hash changes.
-        loc = new Location('http://www.google.com',
-                           new Location('http://www.google.com'))
-        test.equal(loc.PAGECHANGE, undefined)
-        test.equal(loc.HASHCHANGE, undefined)
+        MockWindow.setLocation('http://www.google.com')
+        loc = new Location('http://www.google.com')
+        test.equal(lastEvent, null)
 
-        urls = [
-            'http://www.google.com/'
-            'http://www.google.com/#!/more/stuff'
-            'http://www.google.com/#!changedagain' ]
+        loc.href = 'http://www.google.com/#!/more/stuff'
+        test.equal(lastEvent, 'hashchange')
+        lastEvent = null
 
-        count = 0
-        loc.on('hashchange', (oldURL, newURL) ->
-            test.equal(oldURL, urls[count])
-            count++
-            test.equal(newURL, urls[count])
-            if count == urls.length - 1
-                test.done()
-        )
+        MockWindow.setLocation('http://www.google.com/#!/more/stuff')
         loc.href = 'http://www.google.com/#!/more/stuff'
-        loc.href = 'http://www.google.com/#!/more/stuff'
+        test.equal(lastEvent, null)
+
         loc.href = 'http://www.google.com/#!changedagain'
+        test.equal(lastEvent, 'hashchange')
+        test.done()
 
     # TODO: test navigating by setting properties like pathname

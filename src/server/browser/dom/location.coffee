@@ -1,91 +1,125 @@
-EventEmitter = require('events').EventEmitter
-URL          = require('url')
+URL = require('url')
 
-# 'enum' for possible Location changes
-LocationChange =
-    NONE : 0,
-    HASHCHANGE : 1,
-    PAGECHANGE : 2
+# This method creates a Location class for the given window and browser objects.
+# There are some places where Location needs to access these objects:
+#   - to compare a new URL to the currently loaded one to detect changes.
+#   - to fire 'hashchange' on the window's DOM.
+#   - to cause the Browser to navigate to a new page.
+exports.LocationBuilder = (window, browser, dom) ->
+    # Partial implementation of w3c Location class:
+    # See: http://dev.w3.org/html5/spec/Overview.html#the-location-interface
+    #
+    # This supports:
+    #   - the assign method
+    #   - setting Location properties and having it do one of:
+    #       - nothing
+    #       - fire 'hashchange' event on DOM
+    #       - cause the Browser to load a new page.
+    class Location
+        # url can be absolute or relative
+        # The constructor sets up getters/setters, then calls assign to handle
+        # the url.
+        constructor : (url) ->
+            # The POJO that holds location info as properties.
+            @parsed = {}
 
-# Partial implementation of w3c Location class:
-# See: http://dev.w3.org/html5/spec/Overview.html#the-location-interface
-class Location extends EventEmitter
-    # newurl can be absolute or relative
-    constructor : (newurl, oldloc) ->
-        ['protocol', 'host', 'hostname', 'port',
-         'pathname', 'search', 'hash'].forEach (attr) =>
-            do (attr) =>
-                @__defineGetter__(attr, () ->
+            # Set up getters/setters for the properties of the Location object.
+            # Setting these can cause navigation or hashchange event.
+            ['protocol', 'host', 'hostname', 'port',
+             'pathname', 'search', 'hash'].forEach (attr) =>
+                @__defineGetter__ attr, () ->
                     return @parsed[attr] || ''
-                )
-                @__defineSetter__(attr, (value) ->
+
+                @__defineSetter__ attr, (value) ->
                     @parsed[attr] = value
                     # This still doesn't work, but it's closer.
                     @parsed = URL.parse(URL.format(@parsed))
-                    @reload()
-                )
-        @__defineGetter__ 'href', () -> @parsed.href
-        @__defineSetter__ 'href', (href) -> @assign(href)
-        # When we set Location in DOM class, we don't want to force a navigate.
-        if oldloc?
-            @assign(newurl, oldloc)
-        else
-            @parsed = URL.parse(newurl)
+                    @assign(@parsed.href)
 
-    assign : (newurl, oldloc) ->
-        constructing = true
-        if !oldloc?
-            # If !oldloc?, then assign was called directly on a Location
-            # object.  This means that the oldurl is the current URL for this
-            # Location.
-            oldloc = new Location(@href)
-            constructing = false
-        @parsed = URL.parse(URL.resolve(oldloc.href, newurl))
-        @reload(oldloc, constructing)
+            # href getter returns a string representation of the URL.
+            @__defineGetter__ 'href', () -> @parsed.href
 
-    replace : (url) ->
-        console.log("Location#replace not yet implemented")
-        throw new Error("Not yet implemented")
-    
-    # Main navigation function, loads the page for the current location.
-    # At this point, 'this' is the new location (and @parsed is set).
-    # 'oldloc' is the previous Location object.
-    reload : (oldloc, constructing) ->
-        # We don't support refreshing the page yet.
-        if !oldloc then return
+            # href setter can cause navigation or hashchange.
+            @__defineSetter__ 'href', (href) -> @assign(href)
 
-        changed = checkChange(this, oldloc)
-        if changed == LocationChange.HASHCHANGE
-            if constructing
-                @HASHCHANGE =
-                    oldURL : oldloc.href
-                    newURL : @href
+            # Special case: if there isn't a currently loaded page, then we
+            # need to use dom.loadPage, which:
+            #   - fetches the HTML from the url
+            #   - creates a DOM tree (document) for it
+            #   - associates the document object with the existing window object
+            if !window.location?
+                @parsed = URL.parse(url)
+                dom.loadPage(url)
+            # Otherwise, a page has been loaded so we need to see if we should
+            # navigate or fire a hashchange.  If we navigate, we use
+            # Browser#load, which causes a new window object to be created,
+            # which is what we need so that each page has its own script
+            # execution environment
             else
-                @emit('hashchange', oldloc.href, @href)
-        else if changed == LocationChange.PAGECHANGE
-            if constructing
-                @PAGECHANGE = @href
-            else
-                @emit('pagechange', @href)
-        # otherwise, change == LocationChange.NONE, so just return
+                # assign will check the current window object and see if we need
+                # to navigate or hashchange.
+                @assign(url)
 
-    toString : () -> URL.format(@parsed)
+        assign : (url) ->
+            # window.location could be 1 of 3 things right now:
+            #   1. 'this' if user used window.location.assign(url).
+            #   2. A different Location object if user used
+            #      window.location = url
+            #   3. undefined, if this is the first time window.location has
+            #      been set (initial page load)
+            oldLoc = window.location
 
-# Keep this out of the object so we don't expose it to pages.
-checkChange = (newloc, oldloc) ->
-    changes = 0
-    if (newloc.protocol != oldloc.protocol) ||
-       (newloc.host != oldloc.host) ||
-       (newloc.hostname != oldloc.hostname) ||
-       (newloc.port != oldloc.port) ||
-       (newloc.pathname != oldloc.pathname) ||
-       (newloc.search != oldloc.search)
-        return LocationChange.PAGECHANGE
-    if newloc.hash != oldloc.hash
-        return LocationChange.HASHCHANGE
-    return LocationChange.NONE
+            # Case 1 above.  We need a copy of the POJO so we can detect
+            # page change or hash change.
+            if oldLoc == this
+                oldLoc = URL.parse(URL.format(@parsed))
 
-module.exports = Location
+            # If the window already has a page loaded, resolve the new url
+            # relative to that page's url.
+            if oldLoc
+                url = URL.resolve(oldLoc.href, url)
+            
+            # Set up our POJO for the new URL.
+            @parsed = URL.parse(url)
+
+            # checkChange compares the new and current URLs and returns one of:
+            #    undefined   - URLs are the same
+            #   'hashchange' - URLs are the same except for hash
+            #   'pagechange' - URLs are different
+            switch checkChange(this, oldLoc)
+                when 'hashchange'
+                    event = window.document.createEvent('HTMLEvents')
+                    event.initEvent("hashchange", true, false)
+                    event.oldURL = oldLoc.href
+                    event.newURL = this.href
+                    window.dispatchEvent(event)
+                when 'pagechange'
+                    browser.load(@parsed.href)
+
+        replace : (url) ->
+            console.log("Location#replace not yet implemented")
+            throw new Error("Not yet implemented")
+        
+        reload : (oldloc, constructing) ->
+            console.log("Location#reload not yet implemented")
+            throw new Error("Not yet implemented")
+
+        toString : () -> URL.format(@parsed)
+
+    # Keep this out of the object so we don't expose it to pages.
+    checkChange = (newloc, oldloc) ->
+        if (newloc.protocol != oldloc.protocol) ||
+           (newloc.host     != oldloc.host)     ||
+           (newloc.hostname != oldloc.hostname) ||
+           (newloc.port     != oldloc.port)     ||
+           (newloc.pathname != oldloc.pathname) ||
+           (newloc.search   != oldloc.search)
+            return 'pagechange'
+        if newloc.hash != oldloc.hash
+            return 'hashchange'
+        return undefined
+
+    return Location
 
 ###
 interface Location {

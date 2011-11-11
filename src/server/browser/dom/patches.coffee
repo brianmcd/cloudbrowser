@@ -35,7 +35,9 @@ addDefaultHandlers = (html) ->
     html.HTMLAnchorElement.prototype._eventDefaults =
         click : (event) ->
             console.log "Inside default click handler"
+            console.log(event.target.tagName)
             window = event.target.ownerDocument.parentWindow
+            console.log("event.target.href:" + event.target.href)
             window.location = event.target.href if event.target.href?
 
     html.HTMLInputElement.prototype._eventDefaults =

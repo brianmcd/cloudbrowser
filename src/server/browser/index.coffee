@@ -22,10 +22,6 @@ class Browser extends EventEmitter
         # These are the RPC functions we expose to clients over Socket.IO.
         @clientAPI = new ClientAPI(this)
 
-        # The DOM can emit 'pagechange' when Location is set and we need to
-        # load a new page.
-        @dom.on('pagechange', (url) => @load(url))
-
         domEvents = ['DOMUpdate',
                      'DOMPropertyUpdate',
                      'tagDocument',
@@ -90,7 +86,6 @@ class Browser extends EventEmitter
         @window.addEventListener 'load', () =>
             @emit('load')
             @emitting = true
-            # TODO: merge this with load.
             @emit 'DOMEvent',
                 method : 'loadFromSnapshot'
                 params : @getSnapshot()
