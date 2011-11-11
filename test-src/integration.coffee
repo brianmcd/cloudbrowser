@@ -27,11 +27,8 @@ exports['tests'] =
         browser = browsers.create
             id : 'browser1'
             url : 'http://localhost:3001/basic.html'
-        console.log('creating test client')
         client = browser.createTestClient()
-        console.log('created test client')
         client.once 'loadFromSnapshot', () ->
-            console.log('loadFromSnapshot fired')
             test.equal(client.document.getElementById('div1').innerHTML, 'Testing')
             client.disconnect()
             test.done()
@@ -60,7 +57,6 @@ exports['tests'] =
                 }, 0);
             ")
             client.once 'testDone', () ->
-                console.log('inside testDone')
                 children = client.document.getElementById('div1').childNodes
                 for i in [1..20]
                     test.equal(children[i-1].innerHTML, "#{i}")

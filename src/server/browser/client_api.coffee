@@ -2,11 +2,11 @@ class ClientAPI
     constructor : (browser) ->
         @browser = browser
 
-    initClient : (client) ->
-        client.on('processEvent', @browser.events.processEvent)
-        client.on('DOMUpdate', @DOMUpdate)
 
     # TODO: sanitize the input (e.g. no scripts)
+    # TODO: this needs to go somewhere else.
+    #       probably in socketio server, and add a nice abstraction on
+    #       browser side to go with it.
     DOMUpdate : (params) =>
         target = @browser.dom.nodes.get(params.targetID)
         method = params.method
