@@ -19,13 +19,10 @@ exports['tests'] =
             staticDir : Path.join(__dirname, '..', '..', '..', '..',
                                   'test-src', 'files')
         server.once('ready', () ->
-            Request({uri : 'http://code.jquery.com/jquery-1.6.2.js'}, (err, res, js) ->
-                test.equal(res.statusCode, 200)
-                test.equal(err, null)
-                test.notEqual(js, null)
-                jQuery = js
-                test.done()
-            )
+            jqPath = Path.resolve(__dirname, '..', '..', '..', '..',
+                                  'test-src', 'files', 'jquery-1.6.2.js')
+            jQuery = FS.readFileSync(jqPath)
+            test.done()
         )
 
     # Using the XMLHttpRequest object, make an AJAX request.
@@ -51,7 +48,7 @@ exports['tests'] =
         window.test = test
         window.targetSource = targetSource
         window.location = 'http://localhost:3001/index.html'
-        window.addEventListener('load', () ->
+        window.addEventListener 'load', () ->
             window.run(jQuery)
             window.run("
                 $.get('http://localhost:3001/xhr-target.html', function (data) {
@@ -59,7 +56,6 @@ exports['tests'] =
                     test.done();
                 });
             ")
-        )
 
     # Using $.get, make an AJAX request using a relative URL.
     # This appears to be giving us trouble when running the jQuery test suite.
