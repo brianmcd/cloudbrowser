@@ -1,6 +1,7 @@
 (function () {
     var viewModel = {
         users : vt.shared.usersArray,
+        browsers : vt.shared.browsers,
         systemStats : vt.shared.systemStats,
         hookupDelete : function (elements) {
             var adminButton = $('.toggle-admin', elements[0]);

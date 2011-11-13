@@ -17,6 +17,16 @@
     </thead>
     <tbody data-bind="template: {name : 'userTemplate', foreach: users, afterRender: hookupDelete}">
     </tbody>
+    <h1 style='text-align: center'>Browser Info</h1>
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Characters Sent</th>
+            <th>Characters Received</th>
+        </tr>
+    </thead>
+    <tbody data-bind="template: {name : 'browserTemplate', foreach: browsers}">
+    </tbody>
 </table>
 
 <script id='userTemplate' type='text/html'>
@@ -27,6 +37,14 @@
         <td>${isAdmin}</td>
         <td><button class='toggle-admin' data-username='${username}'>Toggle Admin</td>
         <td><button class='delete-user' data-username='${username}'>Delete</button></td>
+    </tr>
+</script>
+
+<script id='browserTemplate' type='text/html'>
+    <tr>
+        <td>${id}</td>
+        <td>${bytesSent}</td>
+        <td>${bytesReceived}</td>
     </tr>
 </script>
 

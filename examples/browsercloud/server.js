@@ -34,6 +34,8 @@ shared.systemStats = {
     numBrowsers : ko.observable()
 };
 
+shared.browsers = ko.observableArray();
+
 var digits = 2;
 setInterval(function () {
     var usage = process.memoryUsage();
@@ -42,7 +44,12 @@ setInterval(function () {
     shared.systemStats.heapTotal((usage.heapTotal/(1024*1024)).toFixed(digits));
     shared.systemStats.heapUsed((usage.heapUsed/(1024*1024)).toFixed(digits));
     // TODO: browsermanager should track a numBrowsers, and close should rm from manager.
+    var oldnum = shared.systemStats.numBrowsers();
     shared.systemStats.numBrowsers(Object.keys(global.browsers.browsers).length);
+    shared.browsers([]);
+    Object.keys(global.browsers.browsers).forEach(function (k) {
+        shared.browsers.push(global.browsers.browsers[k]);
+    });
 }, 5000);
 
 var server = new vt.Server({
