@@ -43,9 +43,20 @@ class Browser extends EventEmitter
         @on 'DOMEvent', (params) =>
             @bytesSent += JSON.stringify(params).length
 
+    pauseRendering : () =>
+        @emit 'DOMEvent',
+            method : 'pauseRendering'
+
+    resumeRendering : () =>
+        @emit 'DOMEvent',
+            method : 'resumeRendering'
+        
+
     processClientEvent : (params) ->
         @bytesReceived += JSON.stringify(params).length
+        @pauseRendering()
         @events.processEvent(params)
+        @resumeRendering()
 
     processClientDOMUpdate : (params) ->
         @bytesReceived += JSON.stringify(params).length
@@ -84,21 +95,17 @@ class Browser extends EventEmitter
         @window = @dom.createWindow()
         self = this
         # TODO: handle args after interval
-        @window.setTimeout = (fn, interval) ->
+        @window.setTimeout = (fn, interval, args...) ->
             setTimeout () ->
-                self.emit 'DOMEvent',
-                    method : 'pauseRendering'
-                fn()
-                self.emit 'DOMEvent',
-                    method : 'resumeRendering'
+                self.pauseRendering()
+                fn.apply(this, args)
+                self.resumeRendering()
             , interval
         @window.setInterval = (fn, interval) ->
             setInterval () ->
-                self.emit 'DOMEvent',
-                    method : 'pauseRendering'
-                fn()
-                self.emit 'DOMEvent',
-                    method : 'resumeRendering'
+                self.pauseRendering()
+                fn.apply(this, args)
+                self.resumeRendering()
             , interval
 
         if process.env.TESTS_RUNNING
