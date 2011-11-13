@@ -33,7 +33,6 @@ class SocketIOClient
         @socket.on 'close', @close
         @socket.on 'DOMUpdate', @DOMUpdate
         @socket.on 'DOMPropertyUpdate', @DOMPropertyUpdate
-        @socket.on 'updateBrowserList', @updateBrowserList
         @socket.on 'window.open', @windowOpen
         @socket.on 'window.alert', @windowAlert
 
