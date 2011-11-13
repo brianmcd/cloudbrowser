@@ -35,9 +35,15 @@ class DOM extends EventEmitter
         # TODO: generalize these window props
         # Wrap some properties so we fire them on the client.
         window.open = (url) =>
-            @browser.broadcastUpdate('window.open', url)
+            @browser.emit 'DOMEvent',
+                method : 'window.open'
+                params :
+                    url :url
         window.alert = (msg) =>
-            @browser.broadcastUpdate('window.alert', msg)
+            @browser.emit 'DOMEvent'
+                method : 'window.alert'
+                params :
+                    msg : msg
 
         # Thanks Zombie for Image code 
         self = this

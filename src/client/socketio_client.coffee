@@ -62,11 +62,11 @@ class SocketIOClient
                 <body>This browser has been closed by the server.</body>
             </html>")
 
-    windowOpen : (url) =>
-        @window.open(url)
+    windowOpen : (params) =>
+        @window.open(params.url)
 
-    windowAlert : (msg) =>
-        @window.alert(msg)
+    windowAlert : (params) =>
+        @window.alert(params.msg)
 
     addEventListener : (params) =>
         @monitor.addEventListener.apply(@monitor, arguments)
@@ -186,17 +186,5 @@ class SocketIOClient
         if /^node\d+$/.test(value)
             value = @nodes.unscrub(value)
         return target[prop] = value
-
-    # TODO: remove this
-    updateBrowserList : (browserList) =>
-        parent = @window.parent
-        menu = parent.document.getElementById('join-menu')
-        while menu.hasChildNodes()
-            menu.removeChild(menu.firstChild)
-        for id in browserList
-            opt = document.createElement('option')
-            opt.value = encodeURIComponent(id)
-            opt.innerHTML = id
-            menu.appendChild(opt)
 
 module.exports = SocketIOClient
