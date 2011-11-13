@@ -25,16 +25,9 @@ class SocketIOClient
         # TaggedNodeCollection
         @nodes = null
 
-        # Set up RPC API
-        @socket.on 'addEventListener', @addEventListener
-        @socket.on 'loadFromSnapshot', @loadFromSnapshot
-        @socket.on 'tagDocument', @tagDocument
-        @socket.on 'clear', @clear
-        @socket.on 'close', @close
-        @socket.on 'DOMUpdate', @DOMUpdate
-        @socket.on 'DOMPropertyUpdate', @DOMPropertyUpdate
-        @socket.on 'window.open', @windowOpen
-        @socket.on 'window.alert', @windowAlert
+        @setupRPC(@socket)
+
+        @renderingPaused = false
 
         if test_env
             # socket.io-client for node doesn't seem to emit 'connect'
@@ -51,6 +44,30 @@ class SocketIOClient
                 @socket.emit('auth', window.__envSessionID)
                 @monitor = new EventMonitor(@document, @socket)
 
+    setupRPC : (socket) ->
+        [
+            'addEventListener'
+            'loadFromSnapshot'
+            'tagDocument'
+            'clear'
+            'close'
+            'DOMUpdate'
+            'DOMPropertyUpdate'
+            'windowOpen'
+            'windowAlert'
+            'pauseRendering'
+            'resumeRendering'
+        ].forEach (rpcMethod) =>
+            socket.on rpcMethod, () =>
+                if rpcMethod == 'resumeRendering'
+                    @renderingPaused = false
+                if @renderingPaused
+                    @eventQueue.push
+                        method : rpcMethod
+                        args : arguments
+                else
+                    @[rpcMethod].apply(this, arguments)
+
     disconnect : () =>
         @socket.disconnect()
 
@@ -60,6 +77,16 @@ class SocketIOClient
                 <head></head>
                 <body>This browser has been closed by the server.</body>
             </html>")
+
+    pauseRendering : () ->
+        @eventQueue = []
+        @renderingPaused = true
+
+    resumeRendering : () ->
+        for event in @eventQueue
+            @[event.method].apply(this, event.args)
+        @eventQueue = []
+        @renderingPaused = false
 
     windowOpen : (params) =>
         @window.open(params.url)

@@ -36,12 +36,12 @@ class DOM extends EventEmitter
         # Wrap some properties so we fire them on the client.
         window.open = (url) =>
             @browser.emit 'DOMEvent',
-                method : 'window.open'
+                method : 'windowOpen'
                 params :
                     url :url
         window.alert = (msg) =>
             @browser.emit 'DOMEvent'
-                method : 'window.alert'
+                method : 'windowAlert'
                 params :
                     msg : msg
 

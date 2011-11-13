@@ -37,10 +37,18 @@ class Browser extends EventEmitter
         # If true, then DOM events should be emitted, otherwise, drop them.
         @emitting = false
 
+        # Performance tracking.
+        @bytesSent = 0
+        @bytesReceived = 0
+        @on 'DOMEvent', (params) =>
+            @bytesSent += JSON.stringify(params).length
+
     processClientEvent : (params) ->
+        @bytesReceived += JSON.stringify(params).length
         @events.processEvent(params)
 
     processClientDOMUpdate : (params) ->
+        @bytesReceived += JSON.stringify(params).length
         @clientAPI.DOMUpdate(params)
 
     handleDOMEvent : (event, params) =>
@@ -74,6 +82,25 @@ class Browser extends EventEmitter
         @window.close if @window?
         @resources = new ResourceProxy(url)
         @window = @dom.createWindow()
+        self = this
+        # TODO: handle args after interval
+        @window.setTimeout = (fn, interval) ->
+            setTimeout () ->
+                self.emit 'DOMEvent',
+                    method : 'pauseRendering'
+                fn()
+                self.emit 'DOMEvent',
+                    method : 'resumeRendering'
+            , interval
+        @window.setInterval = (fn, interval) ->
+            setInterval () ->
+                self.emit 'DOMEvent',
+                    method : 'pauseRendering'
+                fn()
+                self.emit 'DOMEvent',
+                    method : 'resumeRendering'
+            , interval
+
         if process.env.TESTS_RUNNING
             @window.browser = this
         if configFunc?

@@ -27,9 +27,12 @@ class SocketIO
                     # Otherwise, we'll sync on the loadFromSnapshot DOMEvent.
                     if browser.isPageLoaded()
                         socket.emit('loadFromSnapshot', browser.getSnapshot())
+
                     listener = (params) ->
                         socket.emit(params.method, params.params)
+
                     browser.on 'DOMEvent', listener
+
                     socket.on 'disconnect', () ->
                         browser.removeListener('DOMEvent', listener)
 
@@ -38,7 +41,6 @@ class SocketIO
 
                     socket.on 'DOMUpdate', (params) ->
                         browser.processClientDOMUpdate(params)
-
                 else
                     console.log("Requested non-existent browser...")
 
