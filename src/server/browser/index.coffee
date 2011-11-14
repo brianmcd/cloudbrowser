@@ -101,7 +101,7 @@ class Browser extends EventEmitter
                 fn.apply(this, args)
                 self.resumeRendering()
             , interval
-        @window.setInterval = (fn, interval) ->
+        @window.setInterval = (fn, interval, args...) ->
             setInterval () ->
                 self.pauseRendering()
                 fn.apply(this, args)
