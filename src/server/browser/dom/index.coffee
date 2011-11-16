@@ -7,6 +7,7 @@ ImportXMLHttpRequest = require('./XMLHttpRequest').ImportXMLHttpRequest
 LocationBuilder      = require('./location').LocationBuilder
 serialize            = require('./serializer').serialize
 addAdvice            = require('./advice').addAdvice
+wrapStyle            = require('./advice').wrapStyle
 applyPatches         = require('./patches').applyPatches
 
 # A DOM that emits events whenever the DOM changes.
@@ -23,6 +24,8 @@ class DOM extends EventEmitter
             MutationEvents : '2.0'
             QuerySelector : false
         addAdvice(@jsdom.dom.level3.html, this)
+        #console.log(@jsdom.dom.level3.core)
+        wrapStyle(@jsdom.dom.level3.html, this)
         applyPatches(@jsdom.dom.level3)
 
     # Creates a window with some additions that JSDOM doesn't have.

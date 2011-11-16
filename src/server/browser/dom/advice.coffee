@@ -213,16 +213,59 @@ exports.addAdvice = (dom, wrapper) ->
     wrapProperty(dom.HTMLInputElement.prototype, 'checked')
     wrapProperty(dom.HTMLInputElement.prototype, 'value')
 
-    # On one hand, we don't need to actually do anything here to make basic
-    # stuff work on the client.  On the other hand, scripts running on the
-    # server might expect proper behavior.
-    createProxy = () ->
 
-    dom.HTMLElement.__defineGetter__ 'style', () ->
-        if !@_styleProxy?
-            @_styleProxy = createProxy(this)
-        return @_styleProxy
+exports.wrapStyle = (dom, wrapper) ->
+    do () ->
+        proto = dom.HTMLElement.prototype
+        getter = proto.__lookupGetter__('style')
+        proto.__defineGetter__ 'style', () ->
+            style = getter.call(this)
+            style._parentElement = this
+            return style
 
-    # val will be a string, because if this were using the property method,
-    # it would call the getter, not setter.
-    dom.HTMLElement.__defineSetter__ 'style', (val) ->
+    # This list is from:
+    #   http://dev.w3.org/csswg/cssom/#the-cssstyledeclaration-interface
+    cssAttrs = [
+        'azimuth', 'background', 'backgroundAttachment', 'backgroundColor',
+        'backgroundImage', 'backgroundPosition', 'backgroundRepeat', 'border',
+        'borderCollapse', 'borderColor', 'borderSpacing', 'borderStyle',
+        'borderTop', 'borderRight', 'borderBottom', 'borderLeft',
+        'borderTopColor', 'borderRightColor', 'borderBottomColor',
+        'borderLeftColor', 'borderTopStyle', 'borderRightStyle',
+        'borderBottomStyle', 'borderLeftStyle', 'borderTopWidth',
+        'borderRightWidth', 'borderBottomWidth', 'borderLeftWidth',
+        'borderWidth', 'bottom', 'captionSide', 'clear', 'clip', 'color',
+        'content', 'counterIncrement', 'counterReset', 'cue', 'cueAfter',
+        'cueBefore', 'cursor', 'direction', 'display', 'elevation',
+        'emptyCells', 'cssFloat', 'font', 'fontFamily', 'fontSize',
+        'fontSizeAdjust', 'fontStretch', 'fontStyle', 'fontVariant',
+        'fontWeight', 'height', 'left', 'letterSpacing', 'lineHeight',
+        'listStyle', 'listStyleImage', 'listStylePosition', 'listStyleType',
+        'margin', 'marginTop', 'marginRight', 'marginBottom', 'marginLeft',
+        'markerOffset', 'marks', 'maxHeight', 'maxWidth', 'minHeight',
+        'minWidth', 'orphans', 'outline', 'outlineColor', 'outlineStyle',
+        'outlineWidth', 'overflow', 'padding', 'paddingTop', 'paddingRight',
+        'paddingBottom', 'paddingLeft', 'page', 'pageBreakAfter',
+        'pageBreakBefore', 'pageBreakInside', 'pause', 'pauseAfter',
+        'pauseBefore', 'pitch', 'pitchRange', 'playDuring', 'position',
+        'quotes', 'richness', 'right', 'size', 'speak', 'speakHeader',
+        'speakNumeral', 'speakPunctuation', 'speechRate', 'stress',
+        'tableLayout', 'textAlign', 'textDecoration', 'textIndent',
+        'textShadow', 'textTransform', 'top', 'unicodeBidi', 'verticalAlign',
+        'visibility', 'voiceFamily', 'volume', 'whiteSpace', 'widows', 'width',
+        'wordSpacing', 'zIndex'
+    ]
+
+    proto = dom.CSSStyleDeclaration.prototype
+    cssAttrs.forEach (attr) ->
+        proto.__defineSetter__ attr, (val) ->
+            if this._parentElement
+                wrapper.emit 'DOMPropertyUpdate',
+                    targetID : this._parentElement.__nodeID
+                    style : true
+                    prop : attr
+                    value : val
+            return @["_#{attr}"] = val
+        proto.__defineGetter__ attr, () ->
+            return @["_#{attr}"]
+

@@ -211,6 +211,8 @@ class SocketIOClient
         value = params.value
         if /^node\d+$/.test(value)
             value = @nodes.unscrub(value)
+        if params.style == true
+            return target.style[prop] = value
         return target[prop] = value
 
 module.exports = SocketIOClient
