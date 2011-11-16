@@ -1,0 +1,20 @@
+<html>
+    <head>
+        <script>
+            window.addEventListener('load', function () {
+                var count = 0;
+                var div = document.getElementById('thediv');
+                setInterval(function () {
+                    if (++count % 2) {
+                        div.style.display = 'none';
+                    } else {
+                        div.style.display = 'block';
+                    }
+                }, 500);
+            });
+        </script>
+    </head>
+    <body>
+        <div id='thediv'>Here's the text</div>
+    </body>
+</html>
