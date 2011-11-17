@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="http://yui.yahooapis.com/3.4.1/build/yui/yui-min.js"></script>
+</head>
+<body class="yui3-skin-sam">
+    <h4>Horizontal Slider</h4>
+    <p>
+        <span class="horiz_slider"></span>
+    </p>
+    <script type="text/javascript">
+        // Create a YUI instance and request the slider module and its dependencies
+        YUI().use("slider", function (Y) {
+            // Create a horizontal Slider using all defaults
+            var xSlider = new Y.Slider();
+            // Render the Slider next to the input
+            xSlider.render('.horiz_slider')
+        });
+    </script>
+</body>
+</html>
