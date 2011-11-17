@@ -27,7 +27,9 @@ class ResourceProxy
     fetch : (id, res) ->
         url = @urlsByIndex[id]
         if !url?
-            throw new Error("Tried to fetch invalid id: #{id}")
+            url = URL.parse(URL.resolve(@baseURL, id))
+            console.log("Looking up non-existant: #{url}")
+            #throw new Error("Tried to fetch invalid id: #{id}")
         type = MIME.lookup(url.href) #TODO: how does this deal with hashes?
         opts =
             host : url.hostname

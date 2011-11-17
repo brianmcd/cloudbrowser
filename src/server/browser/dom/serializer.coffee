@@ -75,7 +75,7 @@ serializers =
             for attr in node.attributes
                 name = attr.name
                 value = attr.value
-                # Don't send src attribute for frames or iframs
+                # Don't send src attribute for frames or iframes
                 if /^i?frame$/.test(tagName) && (name.toLowerCase() == 'src')
                     continue
                 lowercase = name.toLowerCase()

@@ -20,7 +20,7 @@ class DOM extends EventEmitter
         @jsdom = @getFreshJSDOM()
         @jsdom.defaultDocumentFeatures =
             FetchExternalResources : ['script', 'img', 'css', 'frame', 'link', 'iframe']
-            ProcessExternalResources : ['script', 'frame', 'iframe']
+            ProcessExternalResources : ['script', 'frame', 'iframe', 'css']
             MutationEvents : '2.0'
             QuerySelector : false
         addAdvice(@jsdom.dom.level3.html, this)

@@ -215,6 +215,11 @@ exports.addAdvice = (dom, wrapper) ->
 
 
 exports.wrapStyle = (dom, wrapper) ->
+    # JSDOM level2/style.js uses the style getter to lazily create the 
+    # CSSStyleDeclaration object for the element.  To be able to emit
+    # the right instruction in the style object advice, we need to have
+    # a pointer to the element that owns the style object, so we create it
+    # here.
     do () ->
         proto = dom.HTMLElement.prototype
         getter = proto.__lookupGetter__('style')
@@ -256,16 +261,28 @@ exports.wrapStyle = (dom, wrapper) ->
         'wordSpacing', 'zIndex'
     ]
 
-    proto = dom.CSSStyleDeclaration.prototype
-    cssAttrs.forEach (attr) ->
-        proto.__defineSetter__ attr, (val) ->
-            if this._parentElement
-                wrapper.emit 'DOMPropertyUpdate',
-                    targetID : this._parentElement.__nodeID
-                    style : true
-                    prop : attr
-                    value : val
-            return @["_#{attr}"] = val
-        proto.__defineGetter__ attr, () ->
-            return @["_#{attr}"]
+    # For each possible style property, add a wrapper to emit advice.
+    do () ->
+        proto = dom.CSSStyleDeclaration.prototype
+        cssAttrs.forEach (attr) ->
+            proto.__defineSetter__ attr, (val) ->
+                # cssom seems to use some CSSStyleDeclaration objects
+                # internally, so we only want to emit instructions if there
+                # is a parent element pointer, meaning this CSSStyleDeclaration
+                # belongs to an element.
+                if this._parentElement
+                    wrapper.emit 'DOMPropertyUpdate',
+                        targetID : this._parentElement.__nodeID
+                        style : true
+                        prop : attr
+                        value : val
+                return @["_#{attr}"] = val
+            proto.__defineGetter__ attr, () ->
+                return @["_#{attr}"]
 
+    # TODO:
+    # JSDOM uses CSSOM's parse() method to turn text into CSSStyleSheet
+    # objects.  We need to replace the current @import rules, which use
+    # non-ResourceProxy'd URLs, with ResourceProxy URLs.
+    # The ResourceProxy should return the modified CSS sheet instead of
+    # fetching from source.
