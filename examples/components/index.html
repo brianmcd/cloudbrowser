@@ -1,0 +1,30 @@
+<html>
+    <head>
+        <script src='js/knockout-1.3.0beta.debug.js'></script>
+        <script>
+            window.addEventListener('load', function () {
+                var vm = {
+                    xSliderVal : ko.observable(),
+                    ySliderVal : ko.observable()
+                };
+                ko.applyBindings(vm);
+                var xSlider = document.getElementById('xSlider');
+                xSlider.addEventListener('slider:valueChange', function (e) {
+                    console.log('xSlider value: ' + e.info.newVal)
+                    vm.xSliderVal(e.info.newVal);
+                });
+                ySlider = document.getElementById('ySlider');
+                ySlider.addEventListener('slider:valueChange', function (e) {
+                    console.log('ySlider value: ' + e.info.newVal)
+                    vm.ySliderVal(e.info.newVal);
+                });
+            });
+        </script>
+    </head>
+    <body>
+        <input data-bind='value: xSliderVal'></input>
+        <div id='xSlider' data-component='name: slider'></div>
+        <input data-bind='value: ySliderVal'></input>
+        <div id='ySlider' data-component='name: slider, axis: y'></div>
+    </body>
+</html>
