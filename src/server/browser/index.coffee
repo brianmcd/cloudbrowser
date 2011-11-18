@@ -25,7 +25,8 @@ class Browser extends EventEmitter
         domEvents = ['DOMUpdate',
                      'DOMPropertyUpdate',
                      'tagDocument',
-                     'addEventListener']
+                     'addEventListener',
+                     'createComponent']
         for event in domEvents
             do (event) =>
                 @dom.on event, (params) =>
@@ -61,6 +62,15 @@ class Browser extends EventEmitter
     processClientDOMUpdate : (params) ->
         @bytesReceived += JSON.stringify(params).length
         @clientAPI.DOMUpdate(params)
+
+    processComponentEvent : (params) ->
+        node = @dom.nodes.get(params.nodeID)
+        if !node
+            throw new Error("Invalid component nodeID: #{params.nodeID}")
+        event = @window.document.createEvent('HTMLEvents')
+        event.initEvent(params.event.type, false, false)
+        event.info = params.event
+        node.dispatchEvent(event)
 
     handleDOMEvent : (event, params) =>
         return if !@emitting
@@ -132,6 +142,7 @@ class Browser extends EventEmitter
         return {
             nodes : @dom.getSnapshot()
             events : @events.getSnapshot()
+            components : @dom.components
         }
 
     # For testing purposes, return an emulated client for this browser.

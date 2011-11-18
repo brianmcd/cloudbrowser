@@ -41,6 +41,10 @@ class SocketIO
 
                     socket.on 'DOMUpdate', (params) ->
                         browser.processClientDOMUpdate(params)
+
+                    socket.on 'componentEvent', (params) ->
+                        console.log('Got a componentEvent')
+                        browser.processComponentEvent(params)
                 else
                     console.log("Requested non-existent browser...")
 

@@ -66,6 +66,13 @@ class EventProcessor extends EventEmitter
 
     # Called by client via DNode
     processEvent : (clientEv) =>
+        # TODO
+        # This bail out happens when an event fires on a component, which 
+        # only really exists client side and doesn't have a nodeID (and we 
+        # can't handle clicks on the server anyway).
+        # Need something more elegant.
+        if !clientEv.target
+            return
         console.log("target: #{clientEv.target}\t" +
                     "type: #{clientEv.type}\t" +
                     "group: #{EventTypeToGroup[clientEv.type]}")

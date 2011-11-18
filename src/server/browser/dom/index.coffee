@@ -16,6 +16,7 @@ class DOM extends EventEmitter
     constructor : (browser) ->
         @browser = browser
         @nodes = new TaggedNodeCollection()
+        @components = [] # TODO: empty this at the right time.
         @currentWindow = null
         @jsdom = @getFreshJSDOM()
         @jsdom.defaultDocumentFeatures =

@@ -1,5 +1,6 @@
 TaggedNodeCollection = require('./tagged_node_collection')
 EventMonitor         = require('./event_monitor')
+Components           = require('./components')
 
 test_env = false
 if process?.env?.TESTS_RUNNING
@@ -57,6 +58,7 @@ class SocketIOClient
             'windowAlert'
             'pauseRendering'
             'resumeRendering'
+            'createComponent'
         ].forEach (rpcMethod) =>
             socket.on rpcMethod, () =>
                 if rpcMethod == 'resumeRendering'
@@ -70,6 +72,13 @@ class SocketIOClient
 
     disconnect : () =>
         @socket.disconnect()
+
+    createComponent : (params) =>
+        node = @nodes.get(params.nodeID)
+        Constructor = Components[params.componentName]
+        if !Constructor
+            throw new Error("Invalid component: #{params.componentName}")
+        component = new Constructor(@socket, node, params.opts)
 
     close : () =>
         document.write("
@@ -149,6 +158,9 @@ class SocketIOClient
                     parent.appendChild(node)
         if snapshot.events.length > 0
             @monitor.loadFromSnapshot(snapshot.events)
+        if snapshot.components.length > 0
+            for component in snapshot.components
+                @createComponent(component)
         if test_env
             @window.testClient.emit('loadFromSnapshot', snapshot)
 

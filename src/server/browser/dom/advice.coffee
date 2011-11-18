@@ -69,7 +69,7 @@ exports.addAdvice = (dom, wrapper) ->
                'removeAttribute', 'removeAttributeNS']
     for method in methods
         do (method) ->
-            wrapMethod(dom.Element.prototype, method, (elem, args, rv) ->
+            wrapMethod dom.Element.prototype, method, (elem, args, rv) ->
                 tagName = elem.tagName.toLowerCase()
                 attr = null
                 value = null
@@ -88,8 +88,27 @@ exports.addAdvice = (dom, wrapper) ->
                         # HTMLFrameElement's function has been called.
                         return false
                     console.log("FOUND A URL IN ADVICE TODO: RESOURCEPROXY")
+                if /data-component/.test(attr)
+                    console.log("Found a component")
+                    params =
+                        nodeID: elem.__nodeID
+                        componentName : null
+                        opts : {}
+                    pairs = value.split(',')
+                    for pair in pairs
+                        [key, val] = pair.split(':')
+                        key = key.trim()
+                        val = val.trim()
+                        console.log("key: #{key}\nval: #{val}")
+                        if key == 'name'
+                            params.componentName = val
+                        else
+                            params.opts[key] = val
+                    console.log('Component:')
+                    console.log(params)
+                    wrapper.components.push(params)
+                    wrapper.emit('createComponent', params)
                 return true
-            )
 
     methods = ['setAttributeNode', 'setAttributeNodeNS',
                'removeAttributeNode', 'removeAttributeNodeNS']
