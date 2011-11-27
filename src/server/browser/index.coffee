@@ -44,6 +44,11 @@ class Browser extends EventEmitter
         @on 'DOMEvent', (params) =>
             @bytesSent += JSON.stringify(params).length
 
+        logPath = Path.resolve(__dirname, '..', '..', '..', 'logs', "#{@id}.log")
+        @logStream = FS.createWriteStream(logPath)
+        @logStream.write("Log opened: #{Date()}\n")
+        @logStream.write("BrowserID: #{@id}\n")
+
     pauseRendering : () =>
         @emit 'DOMEvent',
             method : 'pauseRendering'
@@ -103,8 +108,8 @@ class Browser extends EventEmitter
         @window.close if @window?
         @resources = new ResourceProxy(url)
         @window = @dom.createWindow()
+
         self = this
-        # TODO: handle args after interval
         @window.setTimeout = (fn, interval, args...) ->
             setTimeout () ->
                 self.pauseRendering()
@@ -118,10 +123,20 @@ class Browser extends EventEmitter
                 self.resumeRendering()
             , interval
 
+        if !process.env.TESTS_RUNNING
+            # TODO: do browsers support printf style like node?
+            @window.console =
+                log : () ->
+                    args = Array.prototype.slice.call(arguments)
+                    args.push('\n')
+                    self.logStream.write(args.join(' '))
+
         if process.env.TESTS_RUNNING
             @window.browser = this
+
         if configFunc?
             configFunc(@window)
+
         # TODO TODO: also need to not process client events from now until the
         # new page loads.
         @window.location = url

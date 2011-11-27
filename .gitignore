@@ -7,3 +7,4 @@ TODO
 *.swo
 node_modules/
 test/
+logs/*
