@@ -32,10 +32,10 @@ class Server extends EventEmitter
         @httpServer.once('listen', @registerServer)
         @httpServer.listen(3000)
 
-        # TODO: fix inconsistent API with httpServer re: port
         @debug = new DebugServer
             browsers : @browsers
-            port : 3002
+        @debug.once('listen', @registerServer)
+        @debug.listen(3002)
 
         @socketIOServer = new SocketIO
             http : @httpServer.getRawServer()
@@ -52,19 +52,20 @@ class Server extends EventEmitter
         @browsers.close()
         closed = 0
         closeServer = () =>
-            if ++closed == 2
+            if ++closed == 3
                 @listeningCount = 0
                 @emit('close')
         @httpServer.once('close', closeServer)
         @internalServer.once('close', closeServer)
+        @debug.once('close', closeServer)
         @httpServer.close()
         @internalServer.close()
+        @debug.close()
 
     registerServer : () =>
         if !@listeningCount
             @listeningCount = 1
-        else
-            ++@listeningCount == 2
+        else if ++@listeningCount == 3
             @emit('ready')
 
 module.exports = Server

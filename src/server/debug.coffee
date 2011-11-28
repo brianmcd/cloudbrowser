@@ -1,13 +1,14 @@
-FS      = require('fs')
-Path    = require('path')
-express = require('express')
-sio     = require('socket.io')
-eco     = require('eco')
+FS           = require('fs')
+Path         = require('path')
+EventEmitter = require('events').EventEmitter
+express      = require('express')
+sio          = require('socket.io')
+eco          = require('eco')
 
-class DebugServer
+class DebugServer extends EventEmitter
     constructor : (opts) ->
-        {@browsers, @port} = opts
-        if !@browsers? || !@port?
+        {@browsers} = opts
+        if !@browsers?
             throw new Error("Missing arguments")
         @server = express.createServer()
         @server.configure () =>
@@ -26,8 +27,16 @@ class DebugServer
         @io = sio.listen(@server)
         @io.set('log level', 1)
         @io.sockets.on 'connection', @handleSocket
-        @server.listen @port, () =>
-            console.log("Debug server listening on port: #{@port}")
+
+    listen : (port) ->
+        @server.listen port, () =>
+            @emit('listen')
+            console.log("Debug server listening on port: #{port}")
+
+    close : () ->
+        @server.once 'close', () =>
+            @emit('close')
+        @server.close()
 
     handleSocket : (socket) =>
         socket.on 'attach', (browserID) =>
