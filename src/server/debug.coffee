@@ -42,17 +42,24 @@ class DebugServer extends EventEmitter
         socket.on 'attach', (browserID) =>
             browser = @browsers.find(browserID)
             if browser
-                browser.on 'log', (msg) ->
+                # Send the existing log file contents.
+                FS.readFile browser.logPath, 'utf8', (err, data) ->
+                    if !err
+                        socket.emit('browserLog', data)
+
+                logListener = (msg) ->
                     socket.emit('browserLog', msg)
+                browser.on 'log', logListener
+
                 socket.on 'evaluate', (cmd) =>
                     try
                         rv = browser.window.run(cmd, 'remote-debug')
                         socket.emit('evalRV', rv)
                     catch e
                         socket.emit('evalRV', e.stack)
-                FS.readFile browser.logPath, 'utf8', (err, data) ->
-                    if !err
-                        socket.emit('browserLog', data)
+
+                socket.on 'disconnect', () ->
+                    browser.removeListener('log', logListener)
 
 
 module.exports = DebugServer
