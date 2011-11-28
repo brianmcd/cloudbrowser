@@ -38,17 +38,22 @@ class Browser extends EventEmitter
         # If true, then DOM events should be emitted, otherwise, drop them.
         @emitting = false
 
-        # Performance tracking.
-        @bytesSent = 0
-        @bytesReceived = 0
-        @on 'DOMEvent', (params) =>
-            @bytesSent += JSON.stringify(params).length
 
         # Browsers log to logs/#{browser.id}.log
+        # TODO: only use logfile if not running tests.
         @logPath = Path.resolve(__dirname, '..', '..', '..', 'logs', "#{@id}.log")
         @logStream = FS.createWriteStream(@logPath)
         @logStream.write("Log opened: #{Date()}\n")
         @logStream.write("BrowserID: #{@id}\n")
+
+        # Performance tracking.
+        @bytesSent = 0
+        @bytesReceived = 0
+        @on 'DOMEvent', (params) =>
+            msg = JSON.stringify(params)
+            bytes = msg.length
+            @bytesSent += bytes
+            @logStream.write("#{Date()}  -- Sent #{bytes} bytes (#{msg})\n")
 
     pauseRendering : () =>
         @emit 'DOMEvent',
@@ -60,13 +65,19 @@ class Browser extends EventEmitter
         
 
     processClientEvent : (params) ->
-        @bytesReceived += JSON.stringify(params).length
+        msg = JSON.stringify(params)
+        bytes = msg.length
+        @bytesReceived += bytes
+        @logStream.write("#{Date()}  -- Recv #{bytes} bytes (#{msg})\n")
         @pauseRendering()
         @events.processEvent(params)
         @resumeRendering()
 
     processClientDOMUpdate : (params) ->
-        @bytesReceived += JSON.stringify(params).length
+        msg = JSON.stringify(params)
+        bytes = msg.length
+        @bytesReceived += bytes
+        @logStream.write("#{Date()}  -- Recv #{bytes} bytes (#{msg})\n")
         @clientAPI.DOMUpdate(params)
 
     processComponentEvent : (params) ->
