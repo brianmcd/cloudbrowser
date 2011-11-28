@@ -1,0 +1,12 @@
+<html>
+    <head>
+    </head>
+    <body>
+        <h1>Browsers</h1>
+        <table>
+            <% for own id, browser of @browsers: %>
+                <tr><td><a href="/<%= id %>"><%= id %></a></td></tr>
+            <% end %>
+        </table>
+    </body>
+</html>

@@ -6,6 +6,7 @@ BrowserManager  = require('./browser_manager')
 FS              = require('fs')
 HTTP            = require('./http')
 SocketIO        = require('./socket_io')
+DebugServer     = require('./debug')
 
 # TODO: server.listen(mainport, backgroundport)
 class Server extends EventEmitter
@@ -30,6 +31,11 @@ class Server extends EventEmitter
             appPath     : @appPath
         @httpServer.once('listen', @registerServer)
         @httpServer.listen(3000)
+
+        # TODO: fix inconsistent API with httpServer re: port
+        @debug = new DebugServer
+            browsers : @browsers
+            port : 3002
 
         @socketIOServer = new SocketIO
             http : @httpServer.getRawServer()

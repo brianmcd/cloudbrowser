@@ -44,8 +44,9 @@ class Browser extends EventEmitter
         @on 'DOMEvent', (params) =>
             @bytesSent += JSON.stringify(params).length
 
-        logPath = Path.resolve(__dirname, '..', '..', '..', 'logs', "#{@id}.log")
-        @logStream = FS.createWriteStream(logPath)
+        # Browsers log to logs/#{browser.id}.log
+        @logPath = Path.resolve(__dirname, '..', '..', '..', 'logs', "#{@id}.log")
+        @logStream = FS.createWriteStream(@logPath)
         @logStream.write("Log opened: #{Date()}\n")
         @logStream.write("BrowserID: #{@id}\n")
 
@@ -129,7 +130,9 @@ class Browser extends EventEmitter
                 log : () ->
                     args = Array.prototype.slice.call(arguments)
                     args.push('\n')
-                    self.logStream.write(args.join(' '))
+                    str = args.join(' ')
+                    self.logStream.write(str)
+                    self.emit('log', str)
 
         if process.env.TESTS_RUNNING
             @window.browser = this

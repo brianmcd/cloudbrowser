@@ -1,0 +1,39 @@
+<html>
+    <head>
+        <script src='/socket.io/socket.io.js'></script>
+        <script src='http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js'></script>
+    </head>
+    <body>
+        <h1><%= @browser.id %></h1>
+        Logging output: <br />
+        <textarea id='output' rows='20' cols='160' readonly='readonly'></textarea>
+        <br />
+        Evaluate:<br />
+        <textarea id='input' rows='5' cols='80'></textarea><br />
+        <button id='eval'>Execute</button>
+        <br />
+        Evaluation Return Value:<br />
+        <textarea id='evalRV' rows='5' cols='160'></textarea>
+        <script>
+            (function () {
+                var socket = io.connect();
+                var output = $('#output');
+                var input = $('#input');
+                var evalRV = $('#evalRV');
+                socket.on('connect', function () {
+                    console.log("socket.io connected.");
+                    socket.emit('attach', '<%= @browser.id %>');
+                    $('#eval').click(function () {
+                        socket.emit('evaluate', input.val());
+                    });
+                    socket.on('browserLog', function (msg) {
+                        output.append(msg);
+                    });
+                    socket.on('evalRV', function (rv) {
+                        evalRV.val(rv);
+                    });
+                });
+            })();
+        </script>
+    </body>
+</html>
