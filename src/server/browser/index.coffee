@@ -53,7 +53,7 @@ class Browser extends EventEmitter
             msg = JSON.stringify(params)
             bytes = msg.length
             @bytesSent += bytes
-            @logStream.write("#{Date()}  -- Sent #{bytes} bytes (#{msg})\n")
+            @logStream.write("#{Date()}  -- Sent #{bytes} characters (#{msg})\n")
 
     pauseRendering : () =>
         @emit 'DOMEvent',
@@ -68,7 +68,7 @@ class Browser extends EventEmitter
         msg = JSON.stringify(params)
         bytes = msg.length
         @bytesReceived += bytes
-        @logStream.write("#{Date()}  -- Recv #{bytes} bytes (#{msg})\n")
+        @logStream.write("#{Date()}  -- Recv #{bytes} characters (#{msg})\n")
         @pauseRendering()
         @events.processEvent(params)
         @resumeRendering()
@@ -77,7 +77,7 @@ class Browser extends EventEmitter
         msg = JSON.stringify(params)
         bytes = msg.length
         @bytesReceived += bytes
-        @logStream.write("#{Date()}  -- Recv #{bytes} bytes (#{msg})\n")
+        @logStream.write("#{Date()}  -- Recv #{bytes} characters (#{msg})\n")
         @clientAPI.DOMUpdate(params)
 
     processComponentEvent : (params) ->
