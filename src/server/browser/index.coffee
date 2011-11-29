@@ -41,10 +41,15 @@ class Browser extends EventEmitter
 
         # Browsers log to logs/#{browser.id}.log
         # TODO: only use logfile if not running tests.
-        @logPath = Path.resolve(__dirname, '..', '..', '..', 'logs', "#{@id}.log")
-        @logStream = FS.createWriteStream(@logPath)
-        @logStream.write("Log opened: #{Date()}\n")
-        @logStream.write("BrowserID: #{@id}\n")
+        @consoleLogPath = Path.resolve(__dirname, '..', '..', '..', 'logs', "#{@id}.log")
+        @consoleLogStream = FS.createWriteStream(@consoleLogPath)
+
+        @bwLogPath = Path.resolve(__dirname, '..', '..', '..', 'logs', "#{@id}.bw.log")
+        @bwLogStream = FS.createWriteStream(@bwLogPath)
+
+        for stream in [@consoleLogStream, @bwLogStream]
+            stream.write("Log opened: #{Date()}\n")
+            stream.write("BrowserID: #{@id}\n")
 
         # Performance tracking.
         @bytesSent = 0
@@ -53,7 +58,7 @@ class Browser extends EventEmitter
             msg = JSON.stringify(params)
             bytes = msg.length
             @bytesSent += bytes
-            @logStream.write("#{Date()}  -- Sent #{bytes} characters (#{msg})\n")
+            @bwLogStream.write("#{Date()}  -- Sent #{bytes} characters (#{msg})\n")
 
     pauseRendering : () =>
         @emit 'DOMEvent',
@@ -68,7 +73,7 @@ class Browser extends EventEmitter
         msg = JSON.stringify(params)
         bytes = msg.length
         @bytesReceived += bytes
-        @logStream.write("#{Date()}  -- Recv #{bytes} characters (#{msg})\n")
+        @bwLogStream.write("#{Date()}  -- Recv #{bytes} characters (#{msg})\n")
         @pauseRendering()
         @events.processEvent(params)
         @resumeRendering()
@@ -77,10 +82,14 @@ class Browser extends EventEmitter
         msg = JSON.stringify(params)
         bytes = msg.length
         @bytesReceived += bytes
-        @logStream.write("#{Date()}  -- Recv #{bytes} characters (#{msg})\n")
+        @bwLogStream.write("#{Date()}  -- Recv #{bytes} characters (#{msg})\n")
         @clientAPI.DOMUpdate(params)
 
     processComponentEvent : (params) ->
+        msg = JSON.stringify(params)
+        bytes = msg.length
+        @bytesReceived += bytes
+        @bwLogStream.write("#{Date()}  -- Recv #{bytes} characters (#{msg})\n")
         node = @dom.nodes.get(params.nodeID)
         if !node
             throw new Error("Invalid component nodeID: #{params.nodeID}")
@@ -142,7 +151,8 @@ class Browser extends EventEmitter
                     args = Array.prototype.slice.call(arguments)
                     args.push('\n')
                     str = args.join(' ')
-                    self.logStream.write(str)
+                    self.consoleLogStream.write(str)
+                    # For connected debug clients.
                     self.emit('log', str)
 
         if process.env.TESTS_RUNNING
