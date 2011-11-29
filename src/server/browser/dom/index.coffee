@@ -25,9 +25,8 @@ class DOM extends EventEmitter
             MutationEvents : '2.0'
             QuerySelector : false
         addAdvice(@jsdom.dom.level3.html, this)
-        #console.log(@jsdom.dom.level3.core)
         wrapStyle(@jsdom.dom.level3.html, this)
-        applyPatches(@jsdom.dom.level3)
+        applyPatches(@jsdom.dom.level3, this)
 
     # Creates a window with some additions that JSDOM doesn't have.
     createWindow : (url) ->

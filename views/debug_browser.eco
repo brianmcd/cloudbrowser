@@ -27,7 +27,7 @@
                         socket.emit('evaluate', input.val());
                     });
                     socket.on('browserLog', function (msg) {
-                        output.append(msg);
+                        output.text(output.text() + msg);
                     });
                     socket.on('evalRV', function (rv) {
                         evalRV.val(rv);

@@ -1,9 +1,9 @@
 patchEvents = require('./event_patches').patchEvents
 
-exports.applyPatches = (level3) ->
+exports.applyPatches = (level3, browser) ->
     addDefaultHandlers(level3.html)
     patchEvents(level3)
-    patchScriptTag(level3)
+    patchScriptTag(level3, browser)
 
 patchScriptTag = (level3) ->
     html = level3.html
@@ -30,6 +30,17 @@ patchScriptTag = (level3) ->
                 filename += '<script>'
                 if this.text
                     this._queueTrigger(null, this.text)
+
+    html.languageProcessors =
+        javascript : (element, code, filename) ->
+            doc = element.ownerDocument
+            window = doc?.parentWindow
+            if window?
+                try
+                    window.run(code, filename)
+                catch e
+                    browser.consoleLogStream.write("JavaScript ERROR\n")
+                    browser.consoleLogStream.write(e.stack + "\n")
 
 addDefaultHandlers = (html) ->
     html.HTMLAnchorElement.prototype._eventDefaults =

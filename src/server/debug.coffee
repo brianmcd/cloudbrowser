@@ -43,7 +43,7 @@ class DebugServer extends EventEmitter
             browser = @browsers.find(browserID)
             if browser
                 # Send the existing log file contents.
-                FS.readFile browser.logPath, 'utf8', (err, data) ->
+                FS.readFile browser.consoleLogPath, 'utf8', (err, data) ->
                     if !err
                         socket.emit('browserLog', data)
 
@@ -56,6 +56,8 @@ class DebugServer extends EventEmitter
                         rv = browser.window.run(cmd, 'remote-debug')
                         socket.emit('evalRV', rv)
                     catch e
+                        browser.consoleLogStream.write(e.stack + '\n')
+                        socket.emit('browserLog', e.stack + '\n')
                         socket.emit('evalRV', e.stack)
 
                 socket.on 'disconnect', () ->
