@@ -2,7 +2,6 @@ class ClientAPI
     constructor : (browser) ->
         @browser = browser
 
-
     # TODO: sanitize the input (e.g. no scripts)
     # TODO: this needs to go somewhere else.
     #       probably in socketio server, and add a nice abstraction on

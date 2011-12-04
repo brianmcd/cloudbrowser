@@ -10,18 +10,20 @@
 #   [value] - Optional. Given for text and comment nodes.
 #   [attributes] - Optional. An object like:
 #       Property : value
-exports.serialize = (document, resources) ->
+exports.serialize = (root, resources) ->
+    document = root.ownerDocument || root
+    if document.nodeType != 9
+        throw new Error("Couldn't find document")
+
     cmds = []
 
     # A filter that skips script tags.
     filter = (node) ->
-        if !node?
+        if !node? || node.tagName?.toLowerCase() == 'script'
             return false
-        if node.tagName?.toLowerCase() != 'script'
-            return true
-        return false
+        return true
 
-    dfs(document, filter, (node) ->
+    dfs root, filter, (node) ->
         typeStr = nodeTypeToString[node.nodeType]
         func = serializers[typeStr]
         if func == undefined
@@ -29,17 +31,16 @@ exports.serialize = (document, resources) ->
             return
         # Each serializer pushes its command(s) onto the command stack.
         func(node, cmds, document, resources)
-    )
+
     return cmds
 
 # Depth-first search
 dfs = (node, filter, visit) ->
     if filter(node)
         visit(node)
-        if !!node.tagName
-            tagName = node.tagName.toLowerCase()
+        tagName = node.tagName?.toLowerCase()
 
-        if (tagName == 'iframe') || (tagName == 'frame')
+        if tagName == 'iframe' || tagName == 'frame'
             dfs(node.contentDocument, filter, visit)
         else if node.hasChildNodes()
             for child in node.childNodes
@@ -67,26 +68,23 @@ serializers =
             record.ownerDocument = node.ownerDocument.__nodeID
         cmds.push(record)
 
+    # TODO: Maybe if node.tagName == '[i]frame]' pass off to a helper.
     Element : (node, cmds, topDoc, resources) ->
         tagName = node.tagName.toLowerCase()
         attributes = null
-        if node.attributes && (node.attributes.length > 0)
+        if node.attributes?.length > 0
             attributes = {}
             for attr in node.attributes
-                name = attr.name
-                value = attr.value
+                {name, value} = attr
                 # Don't send src attribute for frames or iframes
                 if /^i?frame$/.test(tagName) && (name.toLowerCase() == 'src')
                     continue
                 lowercase = name.toLowerCase()
                 if (lowercase == 'src') || ((tagName == 'link') && (lowercase == 'href'))
-                    if resources? && value
+                    if value
                         console.log("Proxying src for #{tagName} [src = #{value}]")
-                        console.log(value)
                         value = "#{resources.addURL(value)}"
                         console.log(value)
-                    else
-                        console.log("No ResourceProxy given to Serialize")
                 attributes[name] = value
         record =
             type : 'element'
@@ -107,11 +105,10 @@ serializers =
                 parent : node.__nodeID
 
     Text : (node, cmds, topDoc) ->
-        # TODO: find a better fix.  The issue is that JSDOM gives Document 2
-        # child nodes: the HTML element and a Text element.  We get a
-        # HIERARCHY_REQUEST_ERR in the client browser if we try to insert a
-        # Text node as the child of the Document
-        # TODO: look into ignore whitespace option to node-htmlparser
+        # The issue is that JSDOM gives Document 2 child nodes: the HTML
+        # element and a Text element.  We get a HIERARCHY_REQUEST_ERR in the
+        # client browser if we try to insert a Text node as the child of the
+        # Document
         if node.parentNode.nodeType != 9 # Document node
             record =
                 type : 'text'
@@ -133,7 +130,7 @@ nodeTypeToString = [
     'Processing_Instruction'   #7
     'Comment'                  #8
     'Document'                 #9
-    'Docment_Type'             #10
+    'Document_Type'            #10
     'Document_Fragment'        #11
     'Notation'                 #12
 ]

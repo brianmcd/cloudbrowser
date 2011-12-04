@@ -2,12 +2,11 @@ URL                  = require('url')
 EventEmitter         = require('events').EventEmitter
 HTML5                = require('html5')
 Request              = require('request')
-TaggedNodeCollection = require('../../../shared/tagged_node_collection')
 ImportXMLHttpRequest = require('./XMLHttpRequest').ImportXMLHttpRequest
 LocationBuilder      = require('./location').LocationBuilder
 serialize            = require('./serializer').serialize
-addAdvice            = require('./advice').addAdvice
-wrapStyle            = require('./advice').wrapStyle
+addAdvice            = require('./newadvice').addAdvice
+wrapStyle            = require('./newadvice').wrapStyle
 applyPatches         = require('./patches').applyPatches
 
 # A DOM that emits events whenever the DOM changes.
@@ -15,7 +14,6 @@ applyPatches         = require('./patches').applyPatches
 class DOM extends EventEmitter
     constructor : (browser) ->
         @browser = browser
-        @nodes = new TaggedNodeCollection()
         @components = [] # TODO: empty this at the right time.
         @currentWindow = null
         @jsdom = @getFreshJSDOM()
@@ -102,7 +100,6 @@ class DOM extends EventEmitter
         window = @currentWindow
         Request {uri: url}, (err, response, html) =>
             throw err if err
-            @nodes = new TaggedNodeCollection()
             document = @jsdom.jsdom(false, null,
                 url : url
                 deferClose : true
@@ -114,7 +111,6 @@ class DOM extends EventEmitter
                 ev = document.createEvent('HTMLEvents')
                 ev.initEvent('load', false, false)
                 window.dispatchEvent(ev)
-            @nodes.add(document)
             document.innerHTML = html
             document.close()
 

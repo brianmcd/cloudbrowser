@@ -18,27 +18,26 @@ class Browser extends EventEmitter
         @window = null
         @resources = null
         @dom = new DOM(this)
+        ['DOMNodeInserted',
+         'DOMNodeInsertedIntoDocument',
+         'DOMNodeRemovedFromDocument',
+         'DOMAttrModified',
+         'DocumentCreated'].forEach (type) =>
+             @dom.on type, (event) =>
+                 @emit(type, event)
+
         @events = new EventProcessor(this)
         # These are the RPC functions we expose to clients over Socket.IO.
         @clientAPI = new ClientAPI(this)
 
-        domEvents = ['DOMUpdate',
-                     'DOMPropertyUpdate',
-                     'tagDocument',
-                     'addEventListener',
-                     'createComponent']
-        for event in domEvents
-            do (event) =>
-                @dom.on event, (params) =>
-                    @handleDOMEvent(event, params)
-
+        # TODO: this should be part of advice.
         @events.on 'addEventListener', (params) =>
             @handleDOMEvent('addEventListener', params)
 
         # If true, then DOM events should be emitted, otherwise, drop them.
         @emitting = false
 
-
+        # TODO: logging stuff should be abstracted.
         # Browsers log to logs/#{browser.id}.log
         # TODO: only use logfile if not running tests.
         @consoleLogPath = Path.resolve(__dirname, '..', '..', '..', 'logs', "#{@id}.log")
@@ -59,15 +58,6 @@ class Browser extends EventEmitter
             bytes = msg.length
             @bytesSent += bytes
             @bwLogStream.write("#{Date()}  -- Sent #{bytes} characters (#{msg})\n")
-
-    pauseRendering : () =>
-        @emit 'DOMEvent',
-            method : 'pauseRendering'
-
-    resumeRendering : () =>
-        @emit 'DOMEvent',
-            method : 'resumeRendering'
-        
 
     processClientEvent : (params) ->
         msg = JSON.stringify(params)
@@ -97,12 +87,6 @@ class Browser extends EventEmitter
         event.initEvent(params.event.type, false, false)
         event.info = params.event
         node.dispatchEvent(event)
-
-    handleDOMEvent : (event, params) =>
-        return if !@emitting
-        @emit 'DOMEvent',
-            method : event
-            params : params
 
     close : () ->
         @removeAllListeners('DOMEvent')
