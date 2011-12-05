@@ -13,7 +13,7 @@ Browser              = require('./browser')
 class BrowserServer
     constructor : (opts) ->
         @id = opts.id
-        @browser = new Browser(opts.id)
+        @browser = new Browser(opts.id, opts.shared)
         @sockets = []
         @nodes = new TaggedNodeCollection()
 
@@ -33,8 +33,13 @@ class BrowserServer
         #           'pageLoaded' - resumse
 
     addSocket : (socket) ->
+        console.log("ADDING A SOCKET")
         cmds = serialize(@browser.window.document, @browser.resources)
-        socket.emit('loadFromSnapshot', cmds)
+        bsnapshot = @browser.getSnapshot()
+        socket.emit 'loadFromSnapshot'
+            nodes : cmds
+            events : bsnapshot.events
+            components : bsnapshot.components
         @sockets.push(socket)
         # TODO: handle disconnection
 

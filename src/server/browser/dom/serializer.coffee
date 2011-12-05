@@ -47,17 +47,8 @@ dfs = (node, filter, visit) ->
                 dfs(child, filter, visit)
 
 serializers =
-    Document : (node, cmds, topDoc) ->
-        if node == topDoc
-            cmds.push
-                type : 'document'
-                id : node.__nodeID
-        # else
-        # Frames generate the creation command for their own documents.
-        # This is because we need to know which frame a document belongs to
-        # so we tell the client which document to tag, but we can't easily
-        # figure that out from here.
-
+    Document : () ->
+        undefined
     Comment : (node, cmds, topDoc) ->
         record =
             type : 'comment'
@@ -95,6 +86,8 @@ serializers =
             record.attributes = attributes
         if node.ownerDocument != topDoc
             record.ownerDocument = node.ownerDocument.__nodeID
+        if /^i?frame$/.test(tagName)
+            record.docID = node.contentDocument.__nodeID
 
         cmds.push(record)
 

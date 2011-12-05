@@ -1,13 +1,26 @@
 TaggedNodeCollection = require('./tagged_node_collection')
 EventMonitor         = require('./event_monitor')
 Components           = require('./components')
+{deserialize}        = require('./deserializer')
 
-test_env = false
-if process?.env?.TESTS_RUNNING
-    test_env = true
+test_env = !!process?.env?.TESTS_RUNNING
 
 class SocketIOClient
-    constructor : (window, document) ->
+    constructor : (@window, @document) ->
+        @socket = @connectSocket()
+
+        # EventMonitor
+        @monitor = null
+
+        # TaggedNodeCollection
+        @nodes = null
+
+        @setupRPC(@socket)
+
+        @renderingPaused = false
+
+    connectSocket : () ->
+        socket = null
         if test_env
             # We need to clear out the require cache so that each TestClient
             # gets its own Socket.IO client
@@ -16,59 +29,76 @@ class SocketIOClient
                 if /socket\.io-client/.test(entry)
                     delete reqCache[entry]
             io = require('socket.io-client')
-            @socket = io.connect('http://localhost:3000')
-        else
-            @socket = window.io.connect()
-        @window = window
-        @document = document
-        # EventMonitor
-        @monitor = null
-        # TaggedNodeCollection
-        @nodes = null
-
-        @setupRPC(@socket)
-
-        @renderingPaused = false
-
-        if test_env
+            socket = io.connect('http://localhost:3000')
             # socket.io-client for node doesn't seem to emit 'connect'
             process.nextTick () =>
                 @socket.emit('auth', window.__envSessionID)
                 @monitor = new EventMonitor(@document, @socket)
             # If we're testing, expose a function to let the server signal when
             # a test is finished.
-            @socket.on 'testDone', () ->
-                window.testClient.emit('testDone')
+            socket.on 'testDone', () =>
+                @window.testClient.emit('testDone')
         else
-            @socket.on 'connect', () =>
+            socket = window.io.connect()
+            socket.on 'connect', () =>
                 console.log("Socket.IO connected...")
-                @socket.emit('auth', window.__envSessionID)
+                socket.emit('auth', window.__envSessionID)
                 @monitor = new EventMonitor(@document, @socket)
+        return socket
 
     setupRPC : (socket) ->
         [
+            'attachSubtree'
+            'removeSubtree'
+            'setAttr'
+            'removeAttr'
             'addEventListener'
             'loadFromSnapshot'
             'tagDocument'
             'clear'
             'close'
-            'DOMUpdate'
-            'DOMPropertyUpdate'
-            'windowOpen'
-            'windowAlert'
             'pauseRendering'
             'resumeRendering'
             'createComponent'
         ].forEach (rpcMethod) =>
             socket.on rpcMethod, () =>
+                console.log("Got: #{rpcMethod}")
                 if rpcMethod == 'resumeRendering'
                     @renderingPaused = false
                 if @renderingPaused
+                    console.log("@renderingPaused: #{@renderingPaused}")
                     @eventQueue.push
                         method : rpcMethod
                         args : arguments
                 else
+                    console.log("Calling: #{rpcMethod}")
                     @[rpcMethod].apply(this, arguments)
+
+    # This function is called for partial updates AFTER the initial load.
+    attachSubtree : (args) =>
+        #TODO: remove 'parent' from server of this, don't need it!
+        deserialize(args.subtree, this)
+
+    removeSubtree : (args) =>
+        parent = @nodes.get(args.parent)
+        child = @nodes.get(args.node)
+        parent.removeChild(child)
+
+    loadFromSnapshot : (snapshot) =>
+        console.log('loadFromSnapshot')
+        console.log(snapshot)
+        while @document.childNodes.length
+            @document.removeChild(document.childNodes[0])
+        @nodes = new TaggedNodeCollection()
+        delete @document.__nodeID
+        @nodes.add(@document, 'node1')
+        deserialize(snapshot, this)
+
+    setAttr : (args) =>
+        console.log('setAttr')
+
+    removeAttr : (args) =>
+        console.log('removeAttr')
 
     disconnect : () =>
         @socket.disconnect()
@@ -107,74 +137,7 @@ class SocketIOClient
         @monitor.addEventListener.apply(@monitor, arguments)
         if test_env
             @window.testClient.emit('addEventListener', params)
-
-    # Snapshot is an array of node records.  See dom/serializers.coffee.
-    # This function is used to bootstrap the client so they're ready for
-    # updates.
-    loadFromSnapshot : (snapshot) =>
-        console.log("Loading from snapshot...")
-        for record in snapshot.nodes
-            node = null
-            doc = null
-            parent = null
-            switch record.type
-                when 'document'
-                    doc = @document
-                    if record.parent
-                        doc = @nodes.get(record.parent).contentDocument
-                    while doc.hasChildNodes()
-                        doc.removeChild(doc.firstChild)
-                    delete doc.__nodeID
-                    # If we just cleared the main document, start a new
-                    # TaggedNodeCollection
-                    if doc == @document
-                        @nodes = new TaggedNodeCollection()
-                    @nodes.add(doc, record.id)
-                when 'comment'
-                    doc = @document
-                    if record.ownerDocument
-                        doc = @nodes.get(record.ownerDocument)
-                    node = doc.createComment(record.value)
-                    @nodes.add(node, record.id)
-                    parent = @nodes.get(record.parent)
-                    parent.appendChild(node)
-                when 'element'
-                    doc = @document
-                    if record.ownerDocument
-                        doc = @nodes.get(record.ownerDocument)
-                    node = doc.createElement(record.name)
-                    for name, value of record.attributes
-                        node.setAttribute(name, value)
-                    @nodes.add(node, record.id)
-                    parent = @nodes.get(record.parent)
-                    parent.appendChild(node)
-                when 'text'
-                    doc = @document
-                    if record.ownerDocument
-                        doc = @nodes.get(record.ownerDocument)
-                    node = doc.createTextNode(record.value)
-                    @nodes.add(node, record.id)
-                    parent = @nodes.get(record.parent)
-                    parent.appendChild(node)
-        if snapshot.events.length > 0
-            @monitor.loadFromSnapshot(snapshot.events)
-        if snapshot.components.length > 0
-            for component in snapshot.components
-                @createComponent(component)
-        if test_env
-            @window.testClient.emit('loadFromSnapshot', snapshot)
-
-    # TODO: document this
-    tagDocument : (params) =>
-        parent = @nodes.get(params.parent)
-        if parent.contentDocument?.readyState == 'complete'
-            @nodes.add(parent.contentDocument, params.id)
-        else
-            listener = () =>
-                parent.removeEventListener('load', listener)
-                @nodes.add(parent.contentDocument, params.id)
-            parent.addEventListener('load', listener)
-
+       
     # If params given, clear the document of the specified frame.
     # Otherwise, clear the global window's document.
     clear : (params) =>
@@ -190,41 +153,5 @@ class SocketIOClient
         if doc == @document
             @nodes = new TaggedNodeCollection()
         delete doc.__nodeID
-
-    # Params:
-    #   'method'
-    #   'rvID'
-    #   'targetID'
-    #   'args'
-    DOMUpdate : (params) =>
-        target = @nodes.get(params.targetID)
-        method = params.method
-        rvID = params.rvID
-        args = @nodes.unscrub(params.args)
-
-        if target[method] == undefined
-            throw new Error("Tried to process an invalid method: #{method}")
-
-        rv = target[method].apply(target, args)
-
-        if rvID?
-            if !rv?
-                throw new Error('expected return value')
-            else if rv.__nodeID?
-                if rv.__nodeID != rvID
-                    throw new Error("id issue")
-            else
-                @nodes.add(rv, rvID)
-
-    # TODO: document this
-    DOMPropertyUpdate : (params) =>
-        target = @nodes.get(params.targetID)
-        prop = params.prop
-        value = params.value
-        if /^node\d+$/.test(value)
-            value = @nodes.unscrub(value)
-        if params.style == true
-            return target.style[prop] = value
-        return target[prop] = value
 
 module.exports = SocketIOClient

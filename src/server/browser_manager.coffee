@@ -1,8 +1,6 @@
-Browser = require('./browser')
-Hat     = require('hat')
+BrowserServer = require('./browser_server')
+Hat           = require('hat')
 
-# It is anticipated that this class will expand to have a persistant store and
-# high performance implementation.
 class BrowserManager
     constructor : () ->
         @browsers = {}
@@ -22,12 +20,16 @@ class BrowserManager
                 id = Hat()
         if @browsers[id]?
             throw new Error "Tried to create an already existing BrowserInstance"
-        b = @browsers[id] = new Browser(id, shared)
+        bserver = @browsers[id] = new BrowserServer
+            id : id
+            shared: shared
+        browser = bserver.browser
+        # TODO: should load/loadApp be exposed on BrowserServer?
         if url?
-            b.load(url)
+            browser.load(url)
         else
-            b.loadApp(app)
-        return b
+            browser.loadApp(app)
+        return bserver
 
     # Close all browsers
     close : () ->

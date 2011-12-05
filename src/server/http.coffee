@@ -47,10 +47,10 @@ class HTTP extends EventEmitter
             id = req.session.browserID
             if !id? || !@browsers.find(id)
                 # Load a Browser instance with the configured app.
-                browser = @browsers.create
+                bserver = @browsers.create
                     app : @appPath
                     shared : @sharedState
-                id = req.session.browserID = browser.id
+                id = req.session.browserID = bserver.browser.id
             # TODO use browser.urlFor()
             res.writeHead(301, {'Location' : "/browsers/#{id}/index.html"})
             res.end()
@@ -64,9 +64,9 @@ class HTTP extends EventEmitter
         server.get '/browsers/:browserid/:resourceid', (req, res) =>
             resourceid = req.params.resourceid
             decoded = decodeURIComponent(req.params.browserid)
-            browser = @browsers.find(decoded)
+            bserver = @browsers.find(decoded)
             # Note: fetch calles res.end()
-            browser.resources.fetch(resourceid, res)
+            bserver.browser.resources.fetch(resourceid, res)
         
         return server
 

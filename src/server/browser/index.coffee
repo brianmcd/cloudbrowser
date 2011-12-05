@@ -18,10 +18,10 @@ class Browser extends EventEmitter
         @window = null
         @resources = null
         @dom = new DOM(this)
-        ['DOMNodeInserted',
-         'DOMNodeInsertedIntoDocument',
-         'DOMNodeRemovedFromDocument',
-         'DOMAttrModified',
+        ['DOMNodeInserted'
+         'DOMNodeInsertedIntoDocument'
+         'DOMNodeRemovedFromDocument'
+         'DOMAttrModified'
          'DocumentCreated'].forEach (type) =>
              @dom.on type, (event) =>
                  @emit(type, event)
@@ -30,56 +30,23 @@ class Browser extends EventEmitter
         # These are the RPC functions we expose to clients over Socket.IO.
         @clientAPI = new ClientAPI(this)
 
-        # TODO: this should be part of advice.
-        @events.on 'addEventListener', (params) =>
-            @handleDOMEvent('addEventListener', params)
-
-        # If true, then DOM events should be emitted, otherwise, drop them.
-        @emitting = false
-
         # TODO: logging stuff should be abstracted.
         # Browsers log to logs/#{browser.id}.log
         # TODO: only use logfile if not running tests.
         @consoleLogPath = Path.resolve(__dirname, '..', '..', '..', 'logs', "#{@id}.log")
         @consoleLogStream = FS.createWriteStream(@consoleLogPath)
-
-        @bwLogPath = Path.resolve(__dirname, '..', '..', '..', 'logs', "#{@id}.bw.log")
-        @bwLogStream = FS.createWriteStream(@bwLogPath)
-
-        for stream in [@consoleLogStream, @bwLogStream]
-            stream.write("Log opened: #{Date()}\n")
-            stream.write("BrowserID: #{@id}\n")
-
-        # Performance tracking.
-        @bytesSent = 0
-        @bytesReceived = 0
-        @on 'DOMEvent', (params) =>
-            msg = JSON.stringify(params)
-            bytes = msg.length
-            @bytesSent += bytes
-            @bwLogStream.write("#{Date()}  -- Sent #{bytes} characters (#{msg})\n")
+        @consoleLogStream.write("Log opened: #{Date()}\n")
+        @consoleLogStream.write("BrowserID: #{@id}\n")
 
     processClientEvent : (params) ->
-        msg = JSON.stringify(params)
-        bytes = msg.length
-        @bytesReceived += bytes
-        @bwLogStream.write("#{Date()}  -- Recv #{bytes} characters (#{msg})\n")
         @pauseRendering()
         @events.processEvent(params)
         @resumeRendering()
 
     processClientDOMUpdate : (params) ->
-        msg = JSON.stringify(params)
-        bytes = msg.length
-        @bytesReceived += bytes
-        @bwLogStream.write("#{Date()}  -- Recv #{bytes} characters (#{msg})\n")
         @clientAPI.DOMUpdate(params)
 
     processComponentEvent : (params) ->
-        msg = JSON.stringify(params)
-        bytes = msg.length
-        @bytesReceived += bytes
-        @bwLogStream.write("#{Date()}  -- Recv #{bytes} characters (#{msg})\n")
         node = @dom.nodes.get(params.nodeID)
         if !node
             throw new Error("Invalid component nodeID: #{params.nodeID}")
@@ -163,7 +130,6 @@ class Browser extends EventEmitter
 
     getSnapshot : () ->
         return {
-            nodes : @dom.getSnapshot()
             events : @events.getSnapshot()
             components : @dom.components
         }

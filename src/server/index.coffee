@@ -8,7 +8,7 @@ HTTP            = require('./http')
 SocketIO        = require('./socket_io')
 DebugServer     = require('./debug')
 
-# TODO: server.listen(mainport, backgroundport)
+# TODO: server.listen(mainport, backgroundport, debugport)
 class Server extends EventEmitter
     # config.appPath - the path to the default app this server is hosting.
     # config.shared - an object that will be shared among all Browsers created
@@ -19,7 +19,6 @@ class Server extends EventEmitter
             throw new Error("Must supply path to an app.")
         @sharedState = config.shared || {}
         @staticDir = config.staticDir || process.cwd()
-
         
         # We only allow 1 server and 1 BrowserManager per process.
         global.browsers = @browsers = new BrowserManager()
