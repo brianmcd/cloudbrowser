@@ -2,27 +2,20 @@
 #   nodes - serialized node list.
 #   events - list of events to register on
 #   components - list of components to create
-#
-#   TODO: should this deserialize things and return a documentfragment?
-#         maybe loadFromSnapshot takes a nodeid for doc, and this returns a
-#         doc frag which can be appended to document after setting its node id?
-#
-#         for updates, this returns a doc frag that can be appended to the
-#         specified parent.
-#
-#         TODO: need to make sure the ORDER of children is preserved (might be
-#               what broke admin page)
-# TODO: need to try to get node from client.nodes before creating since this is used for
-#       updates now too.
+# TODO: need to make sure the ORDER of children is preserved (might be
+#       what broke admin page)
 exports.deserialize = (snapshot, client) ->
+    console.log(snapshot.nodes)
     for record in snapshot.nodes
         node = null
-        doc = client.document
         parent = null
+        doc = null
+        if record.ownerDocument
+            doc = client.nodes.get(record.ownerDocument)
+        else
+            doc = client.document
         switch record.type
             when 'element'
-                if record.ownerDocument
-                    doc = client.nodes.get(record.ownerDocument)
                 node = doc.createElement(record.name)
                 for name, value of record.attributes
                     # TODO: use properties instead of setAttribute.
@@ -35,16 +28,17 @@ exports.deserialize = (snapshot, client) ->
                 # The server sends a docID attached to the record.
                 if /i?frame/.test(record.name.toLowerCase())
                     client.nodes.add(node.contentDocument, record.docID)
-            when 'text'
-                if record.ownerDocument
-                    doc = client.nodes.get(record.ownerDocument)
-                node = doc.createTextNode(record.value)
+            when 'text', 'comment'
+                if record.type == 'text'
+                    node = doc.createTextNode(record.value)
+                else
+                    node = doc.createComment(record.value)
                 client.nodes.add(node, record.id)
                 parent = client.nodes.get(record.parent)
                 parent.appendChild(node)
-    if snapshot.events.length > 0
+    if snapshot.events?.length > 0
         client.monitor.loadFromSnapshot(snapshot.events)
-    if snapshot.components.length > 0
+    if snapshot.components?.length > 0
         for component in snapshot.components
             client.createComponent(component)
     if process?.env?.TESTS_RUNNING

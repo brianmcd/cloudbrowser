@@ -1,3 +1,4 @@
+EventProcessor       = require('./browser/event_processor') # TODO move this
 TaggedNodeCollection = require('../shared/tagged_node_collection')
 Browser              = require('./browser')
 {serialize}          = require('./browser/dom/serializer')
@@ -16,11 +17,13 @@ class BrowserServer
         @browser = new Browser(opts.id, opts.shared)
         @sockets = []
         @nodes = new TaggedNodeCollection()
+        @events = new EventProcessor(this)
 
         ['DOMNodeInserted',
          'DOMNodeInsertedIntoDocument',
          'DOMNodeRemovedFromDocument',
          'DOMAttrModified',
+         'DOMCharacterDataModified'
          'DocumentCreated'].forEach (event) =>
              @browser.on event, @["handle#{event}"]
 
@@ -31,40 +34,69 @@ class BrowserServer
         #       this should be 2 events:
         #           'pageLoading' - stop client updates and event processing
         #           'pageLoaded' - resumse
+    
+    processEvent : (args ) =>
+        @events.processEvent(args)
+
+    # TODO: This is copied from previous iteration...
+    # TODO: The client currently only calls setAttribute, so make this only
+    #       allow that.
+    processDOMUpdate : (params) =>
+        target = @nodes.get(params.targetID)
+        method = params.method
+        rvID = params.rvID
+        args = @nodes.unscrub(params.args)
+
+        if target[method] == undefined
+            throw new Error("Tried to process an invalid method: #{method}")
+
+        rv = target[method].apply(target, args)
+
+        if rvID?
+            if !rv?
+                throw new Error('expected return value')
+            else if rv.__nodeID?
+                if rv.__nodeID != rvID
+                    throw new Error("id issue")
+            else
+                @nodes.add(rv, rvID)
 
     addSocket : (socket) ->
-        console.log("ADDING A SOCKET")
         cmds = serialize(@browser.window.document, @browser.resources)
-        bsnapshot = @browser.getSnapshot()
         socket.emit 'loadFromSnapshot'
             nodes : cmds
-            events : bsnapshot.events
-            components : bsnapshot.components
+            events : @events.getSnapshot()
+            components : @browser.getSnapshot().components
         @sockets.push(socket)
+        socket.on 'processEvent', @processEvent
+        socket.on 'DOMUpdate', @processDOMUpdate
         # TODO: handle disconnection
 
     handleDocumentCreated : (event) =>
         @nodes.add(event.target)
 
+    handleDOMCharacterDataModified : (event) =>
+        @broadcastEvent 'setCharacterData',
+            target : event.target.__nodeID
+            value : event.target.nodeValue
+
     # Tag all newly created nodes.
     # This seems cleaner than having serializer do the tagging.
     # TODO: this won't tag the document node.
     handleDOMNodeInserted : (event) =>
-        console.log "DOMNodeInserted: #{event.target}"
         if !event.target.__nodeID
             @nodes.add(event.target)
 
     # TODO: How can we handle removal/re-insertion efficiently?
     # TODO: what if serialization starts at an iframe?
     handleDOMNodeInsertedIntoDocument : (event) =>
-        @broadcastEvent 'attachSubtree',
-            parent  : event.relatedNode.__nodeID
-            subtree : serialize(event.target, @browser.resources)
+        @broadcastEvent 'attachSubtree', serialize(event.target, @browser.resources)
 
     handleDOMNodeRemovedFromDocument : (event) =>
-        @broadcastEvent 'removeSubtree',
-            parent : event.relatedNode.__nodeID
-            node   : event.target.__nodeID
+        if event.target.tagName != 'SCRIPT'
+            @broadcastEvent 'removeSubtree',
+                parent : event.relatedNode.__nodeID
+                node   : event.target.__nodeID
 
     # TODO: we want client to set these using properties, should we do
     #       the conversion from attribute name to property name here or on

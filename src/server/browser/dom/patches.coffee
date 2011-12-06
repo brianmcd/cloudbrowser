@@ -45,7 +45,7 @@ patchScriptTag = (level3) ->
 addDefaultHandlers = (html) ->
     html.HTMLAnchorElement.prototype._eventDefaults =
         click : (event) ->
-            console.log "Inside default click handler"
+            console.log "Inside ANCHOR click handler"
             console.log(event.target.tagName)
             window = event.target.ownerDocument.parentWindow
             console.log("event.target.href:" + event.target.href)
@@ -53,7 +53,7 @@ addDefaultHandlers = (html) ->
 
     html.HTMLInputElement.prototype._eventDefaults =
         click : (event) ->
-            console.log "Inside overridden click handler"
+            console.log "Inside INPUT click handler"
             #TODO: bring this back, but just double check things.
            # event.target.click()
             target = event.target
@@ -89,8 +89,8 @@ addDefaultHandlers = (html) ->
     html.HTMLButtonElement.prototype._eventDefaults =
         # looks like this already is done for input
         click : (event) ->
+            console.log('Inside BUTTON click handler')
             elem = event.target
-            console.log('Inside click handler for button')
             # Clicks on submit buttons should generate a submit event on the
             # enclosing form.
             if elem.type == 'submit'

@@ -51,6 +51,7 @@ class SocketIOClient
             'removeSubtree'
             'setAttr'
             'removeAttr'
+            'setCharacterData'
             'addEventListener'
             'loadFromSnapshot'
             'tagDocument'
@@ -74,9 +75,8 @@ class SocketIOClient
                     @[rpcMethod].apply(this, arguments)
 
     # This function is called for partial updates AFTER the initial load.
-    attachSubtree : (args) =>
-        #TODO: remove 'parent' from server of this, don't need it!
-        deserialize(args.subtree, this)
+    attachSubtree : (nodes) =>
+        deserialize({nodes : nodes}, this)
 
     removeSubtree : (args) =>
         parent = @nodes.get(args.parent)
@@ -98,6 +98,10 @@ class SocketIOClient
 
     removeAttr : (args) =>
         console.log('removeAttr')
+
+    setCharacterData : (args) =>
+        target = @nodes.get(args.target)
+        target.nodeValue = args.value
 
     disconnect : () =>
         @socket.disconnect()

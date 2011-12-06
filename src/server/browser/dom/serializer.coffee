@@ -39,7 +39,6 @@ dfs = (node, filter, visit) ->
     if filter(node)
         visit(node)
         tagName = node.tagName?.toLowerCase()
-
         if tagName == 'iframe' || tagName == 'frame'
             dfs(node.contentDocument, filter, visit)
         else if node.hasChildNodes()
@@ -49,6 +48,7 @@ dfs = (node, filter, visit) ->
 serializers =
     Document : () ->
         undefined
+
     Comment : (node, cmds, topDoc) ->
         record =
             type : 'comment'

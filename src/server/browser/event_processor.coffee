@@ -12,9 +12,10 @@ EventTypeToGroup = EventLists.eventTypeToGroup
 # TODO: this needs to handle events on frames, which would need to be
 #       created from a different document.
 class EventProcessor extends EventEmitter
-    constructor : (browser) ->
-        @browser = browser
-        @dom = browser.dom
+    constructor : (bserver) ->
+        @bserver = bserver
+        @browser = bserver.browser
+        @dom = @browser.dom
         @events = []
         @_wrapAddEventListener(@dom.jsdom.dom.level3.events)
         @_installAttributeHandlerAdvice(@dom.jsdom.dom.level3.html)
@@ -78,7 +79,7 @@ class EventProcessor extends EventEmitter
                     "group: #{EventTypeToGroup[clientEv.type]}")
 
         # Swap nodeIDs with nodes
-        clientEv = @dom.nodes.unscrub(clientEv)
+        clientEv = @bserver.nodes.unscrub(clientEv)
 
         # Create an event we can dispatch on the server.
         event = @_createEvent(clientEv)
@@ -88,6 +89,8 @@ class EventProcessor extends EventEmitter
                     "#{clientEv.target.__nodeID}")
 
         console.log("event.bubbles: #{event.bubbles}")
+
+        console.log("TARGET: #{clientEv.target.tagName}")
         clientEv.target.dispatchEvent(event)
 
     # Takes a clientEv (an event generated on the client and sent over DNode)

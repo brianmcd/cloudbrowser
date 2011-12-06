@@ -22,13 +22,10 @@ class Browser extends EventEmitter
          'DOMNodeInsertedIntoDocument'
          'DOMNodeRemovedFromDocument'
          'DOMAttrModified'
+         'DOMCharacterDataModified'
          'DocumentCreated'].forEach (type) =>
              @dom.on type, (event) =>
                  @emit(type, event)
-
-        @events = new EventProcessor(this)
-        # These are the RPC functions we expose to clients over Socket.IO.
-        @clientAPI = new ClientAPI(this)
 
         # TODO: logging stuff should be abstracted.
         # Browsers log to logs/#{browser.id}.log
@@ -37,14 +34,6 @@ class Browser extends EventEmitter
         @consoleLogStream = FS.createWriteStream(@consoleLogPath)
         @consoleLogStream.write("Log opened: #{Date()}\n")
         @consoleLogStream.write("BrowserID: #{@id}\n")
-
-    processClientEvent : (params) ->
-        @pauseRendering()
-        @events.processEvent(params)
-        @resumeRendering()
-
-    processClientDOMUpdate : (params) ->
-        @clientAPI.DOMUpdate(params)
 
     processComponentEvent : (params) ->
         node = @dom.nodes.get(params.nodeID)
@@ -84,18 +73,18 @@ class Browser extends EventEmitter
         self = this
         @window.setTimeout = (fn, interval, args...) ->
             setTimeout () ->
-                self.pauseRendering()
+                #self.pauseRendering()
                 fn.apply(this, args)
-                self.resumeRendering()
+                #self.resumeRendering()
             , interval
         @window.setInterval = (fn, interval, args...) ->
             setInterval () ->
-                self.pauseRendering()
+                #self.pauseRendering()
                 fn.apply(this, args)
-                self.resumeRendering()
+                #self.resumeRendering()
             , interval
 
-        if !process.env.TESTS_RUNNING
+        if false #!process.env.TESTS_RUNNING
             # TODO: do browsers support printf style like node?
             @window.console =
                 log : () ->
@@ -130,7 +119,6 @@ class Browser extends EventEmitter
 
     getSnapshot : () ->
         return {
-            events : @events.getSnapshot()
             components : @dom.components
         }
 

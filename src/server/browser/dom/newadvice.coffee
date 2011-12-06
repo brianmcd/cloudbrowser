@@ -30,7 +30,7 @@ exports.addAdvice = (core, DOM) ->
         # Note: unlike the DOM, we only emit DOMNodeInsertedIntoDocument
         # on the root of a removed subtree, meaning the handler should check
         # to see if it has children.
-        if elem._attachedToDocument
+        if parent._attachedToDocument
             DOM.emit 'DOMNodeInsertedIntoDocument',
                 target : elem
                 relatedNode : parent
@@ -68,6 +68,16 @@ exports.addAdvice = (core, DOM) ->
     advise core.AttrNodeMap, 'setNamedItem', attributeHandler('ADDITION')
     # attr = removeNamedItem(string)
     advise core.AttrNodeMap, 'removeNamedItem', attributeHandler('REMOVAL')
+
+    do () ->
+        obj = core.CharacterData.prototype
+        oldSetter = obj.__lookupSetter__('_nodeValue')
+        obj.__defineSetter__ '_nodeValue', (value) ->
+            rv = oldSetter.apply(this, arguments)
+            DOM.emit 'DOMCharacterDataModified',
+                target : this
+            return rv
+
 
 # TODO TODO: need to update this.
 exports.wrapStyle = (core, DOM) ->
