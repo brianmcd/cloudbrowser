@@ -23,7 +23,10 @@ exports.deserialize = (snapshot, client) ->
                     node.setAttribute(name, value)
                 client.nodes.add(node, record.id)
                 parent = client.nodes.get(record.parent)
-                parent.appendChild(node)
+                # Note: If record.before is null, then the TaggedNodeCollection
+                #       returns null.
+                sibling = client.nodes.get(record.before)
+                parent.insertBefore(node, sibling)
                 # For [i]frames, we need to tag the contentDocument.
                 # The server sends a docID attached to the record.
                 if /i?frame/.test(record.name.toLowerCase())
@@ -35,7 +38,8 @@ exports.deserialize = (snapshot, client) ->
                     node = doc.createComment(record.value)
                 client.nodes.add(node, record.id)
                 parent = client.nodes.get(record.parent)
-                parent.appendChild(node)
+                sibling = client.nodes.get(record.before)
+                parent.insertBefore(node, sibling)
     if snapshot.events?.length > 0
         client.monitor.loadFromSnapshot(snapshot.events)
     if snapshot.components?.length > 0

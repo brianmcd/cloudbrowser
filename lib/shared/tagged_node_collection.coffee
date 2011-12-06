@@ -9,6 +9,7 @@ class TaggedNodeCollection
         @propName = '__nodeID'
 
     get : (id) ->
+        if !id then return null
         if @ids[id] == undefined
             throw new Error('node id not in table: ' + id)
         return @ids[id]

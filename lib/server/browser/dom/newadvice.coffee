@@ -74,8 +74,9 @@ exports.addAdvice = (core, DOM) ->
         oldSetter = obj.__lookupSetter__('_nodeValue')
         obj.__defineSetter__ '_nodeValue', (value) ->
             rv = oldSetter.apply(this, arguments)
-            DOM.emit 'DOMCharacterDataModified',
-                target : this
+            if this._parentNode?._attachedToDocument
+                DOM.emit 'DOMCharacterDataModified',
+                    target : this
             return rv
 
 

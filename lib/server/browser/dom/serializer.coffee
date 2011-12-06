@@ -1,7 +1,7 @@
 # Each node in the DOM is represented by an object.
 # A serialized DOM (or snapshot) is an array of these objects.
 # Sample record:
-#   type - 'text' || 'element' || 'document'
+#   type - 'text' || 'element' || 'comment'
 #   id
 #   [ownerDocument] - If null, then window.document.  If in a frame, then
 #                     this will be supplied.
@@ -49,16 +49,6 @@ serializers =
     Document : () ->
         undefined
 
-    Comment : (node, cmds, topDoc) ->
-        record =
-            type : 'comment'
-            id : node.__nodeID
-            parent : node.parentNode.__nodeID
-            value : node.nodeValue
-        if node.ownerDocument != topDoc
-            record.ownerDocument = node.ownerDocument.__nodeID
-        cmds.push(record)
-
     # TODO: Maybe if node.tagName == '[i]frame]' pass off to a helper.
     Element : (node, cmds, topDoc, resources) ->
         tagName = node.tagName.toLowerCase()
@@ -78,10 +68,10 @@ serializers =
                         console.log(value)
                 attributes[name] = value
         record =
-            type : 'element'
-            id : node.__nodeID
+            type   : 'element'
+            id     : node.__nodeID
             parent : node.parentNode.__nodeID
-            name : node.tagName
+            name   : node.tagName
         if attributes != null
             record.attributes = attributes
         if node.ownerDocument != topDoc
@@ -91,23 +81,27 @@ serializers =
 
         cmds.push(record)
 
-        if tagName == 'iframe'
-            cmds.push
-                type : 'document'
-                id : node.contentDocument.__nodeID
-                parent : node.__nodeID
+    Comment : (node, cmds, topDoc) ->
+        record =
+            type : 'comment'
+            id : node.__nodeID
+            parent : node.parentNode.__nodeID
+            value : node.nodeValue
+        if node.ownerDocument != topDoc
+            record.ownerDocument = node.ownerDocument.__nodeID
+        cmds.push(record)
 
     Text : (node, cmds, topDoc) ->
-        # The issue is that JSDOM gives Document 2 child nodes: the HTML
+        # The issue is that JSDOM gives Document 3 child nodes: the HTML
         # element and a Text element.  We get a HIERARCHY_REQUEST_ERR in the
         # client browser if we try to insert a Text node as the child of the
         # Document
         if node.parentNode.nodeType != 9 # Document node
             record =
-                type : 'text'
-                id : node.__nodeID
+                type   : 'text'
+                id     : node.__nodeID
                 parent : node.parentNode.__nodeID
-                value : node.data
+                value  : node.data
             if node.ownerDocument != topDoc
                 record.ownerDocument = node.ownerDocument.__nodeID
             cmds.push(record)

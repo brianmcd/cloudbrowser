@@ -35,6 +35,21 @@ class BrowserServer
         #           'pageLoading' - stop client updates and event processing
         #           'pageLoaded' - resumse
     
+    broadcastEvent : (name, params) ->
+        for socket in @sockets
+            socket.emit(name, params)
+
+    addSocket : (socket) ->
+        cmds = serialize(@browser.window.document, @browser.resources)
+        socket.emit 'loadFromSnapshot'
+            nodes : cmds
+            events : @events.getSnapshot()
+            components : @browser.getSnapshot().components
+        @sockets.push(socket)
+        socket.on 'processEvent', @processEvent
+        socket.on 'DOMUpdate', @processDOMUpdate
+        # TODO: handle disconnection
+
     processEvent : (args ) =>
         @events.processEvent(args)
 
@@ -61,39 +76,41 @@ class BrowserServer
             else
                 @nodes.add(rv, rvID)
 
-    addSocket : (socket) ->
-        cmds = serialize(@browser.window.document, @browser.resources)
-        socket.emit 'loadFromSnapshot'
-            nodes : cmds
-            events : @events.getSnapshot()
-            components : @browser.getSnapshot().components
-        @sockets.push(socket)
-        socket.on 'processEvent', @processEvent
-        socket.on 'DOMUpdate', @processDOMUpdate
-        # TODO: handle disconnection
-
     handleDocumentCreated : (event) =>
         @nodes.add(event.target)
 
     handleDOMCharacterDataModified : (event) =>
         @broadcastEvent 'setCharacterData',
             target : event.target.__nodeID
-            value : event.target.nodeValue
+            value  : event.target.nodeValue
 
     # Tag all newly created nodes.
     # This seems cleaner than having serializer do the tagging.
     # TODO: this won't tag the document node.
     handleDOMNodeInserted : (event) =>
-        if !event.target.__nodeID
+        if event.target.tagName != 'SCRIPT' &&
+           event.target.parentNode.tagName != 'SCRIPT' &&
+           !event.target.__nodeID
             @nodes.add(event.target)
 
     # TODO: How can we handle removal/re-insertion efficiently?
     # TODO: what if serialization starts at an iframe?
     handleDOMNodeInsertedIntoDocument : (event) =>
-        @broadcastEvent 'attachSubtree', serialize(event.target, @browser.resources)
+        if event.target.tagName != 'SCRIPT' && event.target.parentNode.tagName != 'SCRIPT'
+            node = event.target
+            cmds = serialize(node, @browser.resources)
+            # 'before' tells the client where to insert the top level node in
+            # relation to its siblings.
+            # We only need it for the top level node because nodes in its tree
+            # are serialized in order.
+            before = node.nextSibling
+            while before?.tagName?.toLowerCase() == 'script'
+                before = before.nextSibling
+            cmds[0].before = before?.__nodeID
+            @broadcastEvent 'attachSubtree', cmds
 
     handleDOMNodeRemovedFromDocument : (event) =>
-        if event.target.tagName != 'SCRIPT'
+        if event.target.tagName != 'SCRIPT' && event.relatedNode.tagName != 'SCRIPT'
             @broadcastEvent 'removeSubtree',
                 parent : event.relatedNode.__nodeID
                 node   : event.target.__nodeID
@@ -113,8 +130,4 @@ class BrowserServer
                 target : event.target.__nodeID
                 name   : event.attrName
             
-    broadcastEvent : (name, params) ->
-        for socket in @sockets
-            socket.emit(name, params)
-
 module.exports = BrowserServer
