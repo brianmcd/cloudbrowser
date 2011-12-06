@@ -1,3 +1,4 @@
+require('coffee-script');
 exports.Server         = require('./lib/server');
 exports.BrowserManager = require('./lib/server/browser_manager');
 exports.Browser        = require('./lib/server/browser');
