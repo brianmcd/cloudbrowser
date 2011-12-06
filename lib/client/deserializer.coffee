@@ -8,7 +8,10 @@ exports.deserialize = (snapshot, client) ->
     console.log(snapshot.nodes)
     for record in snapshot.nodes
         node = null
-        parent = null
+        parent = client.nodes.get(record.parent)
+        # Note: If record.before is null, then the TaggedNodeCollection
+        #       returns null.
+        sibling = client.nodes.get(record.before)
         doc = null
         if record.ownerDocument
             doc = client.nodes.get(record.ownerDocument)
@@ -18,14 +21,8 @@ exports.deserialize = (snapshot, client) ->
             when 'element'
                 node = doc.createElement(record.name)
                 for name, value of record.attributes
-                    # TODO: use properties instead of setAttribute.
-                    # TODO: this requires a lookup table for things like class -> className
                     node.setAttribute(name, value)
                 client.nodes.add(node, record.id)
-                parent = client.nodes.get(record.parent)
-                # Note: If record.before is null, then the TaggedNodeCollection
-                #       returns null.
-                sibling = client.nodes.get(record.before)
                 parent.insertBefore(node, sibling)
                 # For [i]frames, we need to tag the contentDocument.
                 # The server sends a docID attached to the record.
@@ -37,8 +34,6 @@ exports.deserialize = (snapshot, client) ->
                 else
                     node = doc.createComment(record.value)
                 client.nodes.add(node, record.id)
-                parent = client.nodes.get(record.parent)
-                sibling = client.nodes.get(record.before)
                 parent.insertBefore(node, sibling)
     if snapshot.events?.length > 0
         client.monitor.loadFromSnapshot(snapshot.events)

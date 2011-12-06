@@ -94,10 +94,12 @@ class SocketIOClient
         deserialize(snapshot, this)
 
     setAttr : (args) =>
-        console.log('setAttr')
+        target = @nodes.get(args.target)
+        target.setAttribute(args.name, args.value)
 
     removeAttr : (args) =>
-        console.log('removeAttr')
+        target = @nodes.get(args.target)
+        target.removeAttribute(args.name)
 
     setCharacterData : (args) =>
         target = @nodes.get(args.target)
