@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+require('coffee-script')
 express         = require('express')
 Path            = require('path')
 EventEmitter    = require('events').EventEmitter
