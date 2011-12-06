@@ -4,23 +4,6 @@ path          = require("path")
 {spawn, exec} = require("child_process")
 stdout        = process.stdout
 
-LINKS = [
-        src : 'src/server/browser/dom/XMLHttpRequest.js'
-        dest : 'lib/server/browser/dom/XMLHttpRequest.js'
-    ,
-        src : 'lib/shared/tagged_node_collection.js'
-        dest : 'lib/client/tagged_node_collection.js'
-    ,
-        src : 'lib/shared/event_lists.js'
-        dest : 'lib/client/event_lists.js'
-    ,
-        src : 'src/server/browser/dom/event_patches.js'
-        dest : 'lib/server/browser/dom/event_patches.js'
-    ,
-        src : 'deps/knockout-node/build/output/knockout-node.debug.js'
-        dest : 'lib/api/ko.js'
-]
-
 # Use executables installed with npm bundle.
 process.env["PATH"] = "node_modules/.bin:#{process.env["PATH"]}"
 
@@ -70,46 +53,31 @@ task "setup", "Install development dependencies", ->
                         runTests()
 
 ## Building ##
-linkFiles = (callback) ->
-    count = 0
-    for file in LINKS
-        log "Linking #{file.src} to #{file.dest}...", green
-        src = path.resolve(__dirname, file.src)
-        dest = path.resolve(__dirname, file.dest)
-        exec "ln -s #{src} #{dest}", (err, stdout) ->
-            onerror err
-            if stdout != ""
-                log stdout, green
-            if ++count == LINKS.length
-                if callback
-                    callback()
-
 build = (callback) ->
     log "Compiling CoffeeScript to JavaScript...", green
-    exec "rm -rf lib/ && coffee -c -l -b -o lib/ src/", (err, stdout) ->
+    exec "rm -rf compiled/ && coffee -c -l -b -o compiled/ lib/", (err, stdout) ->
         onerror err
         if stdout != ""
             log stdout, green
         log "Building tests...", green
-        exec "rm -rf test/ && coffee -c -l -b -o test/ test-src/", (err, stdout) ->
+        exec "rm -rf compiled-test/ && coffee -c -l -b -o compiled-test/ test/", (err, stdout) ->
             onerror err
             if stdout != ""
                 log stdout, green
-            linkFiles(callback)
 task "build", "Compile CoffeeScript to JavaScript", -> build()
 
 task "watch", "Continously compile CoffeeScript to JavaScript", ->
     build ->
-        cmd = spawn("coffee", ["-cwb", "-o", "lib", "src"])
+        cmd = spawn("coffee", ["-cwb", "-o", "compiled", "lib"])
         cmd.stdout.on "data", (data)-> process.stdout.write green + data + reset
         cmd.on "error", onerror
 
-        testcmd = spawn("coffee", ["-cwb", "-o", "test", "test-src"])
+        testcmd = spawn("coffee", ["-cwb", "-o", "compiled-test", "test"])
         testcmd.stdout.on "data", (data)-> process.stdout.write green + data + reset
         testcmd.on "error", onerror
 
 task "clean", "Remove temporary files and such", ->
-    exec "rm -rf lib/ && rm -rf test/", onerror
+    exec "rm -rf compiled/ && rm -rf compiled-test/", onerror
 
 ## Testing ##
 runTests = (callback) ->
@@ -120,5 +88,6 @@ runTests = (callback) ->
   nodeunit.on 'exit', () ->
       if callback
           callback()
+
 task "test", "Run all tests", ->
   runTests()
