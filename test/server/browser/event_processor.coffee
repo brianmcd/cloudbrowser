@@ -7,7 +7,7 @@ server = null
 
 exports['tests'] =
     'setup' : (test) ->
-        filepath = Path.join(__dirname, '..', '..', '..', 'test-src', 'files')
+        filepath = Path.join(__dirname, '..', '..', 'files')
         server = new Server
             appPath : '/'
             staticDir : filepath

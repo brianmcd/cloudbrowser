@@ -8,19 +8,16 @@ server = null
 jQuery = null
 
 # Info about the XHR target we'll use for most tests.
-targetPath = Path.join(__dirname, '..', '..', '..', '..',
-                       'test-src', 'files', 'xhr-target.html')
+targetPath = Path.join(__dirname, '..', '..', '..', 'files', 'xhr-target.html')
 targetSource = FS.readFileSync(targetPath, 'utf8')
 
 exports['tests'] =
     'setup' : (test) ->
         server = new Server
             appPath : '/'
-            staticDir : Path.join(__dirname, '..', '..', '..', '..',
-                                  'test-src', 'files')
+            staticDir : Path.join(__dirname, '..', '..', '..', 'files')
         server.once('ready', () ->
-            jqPath = Path.resolve(__dirname, '..', '..', '..', '..',
-                                  'test-src', 'files', 'jquery-1.6.2.js')
+            jqPath = Path.resolve(__dirname, '..', '..', '..', 'files', 'jquery-1.6.2.js')
             jQuery = FS.readFileSync(jqPath)
             test.done()
         )

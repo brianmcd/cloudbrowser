@@ -12,7 +12,7 @@ exports['tests'] =
     'setup' : (test) ->
         server = new Server
             appPath : '/'
-            staticDir : Path.join(__dirname, '..', 'test-src', 'files')
+            staticDir : Path.join(__dirname, 'files')
         server.once 'ready', () ->
             browsers = server.browsers
             test.done()

@@ -20,8 +20,7 @@ html =
 
 exports['tests'] =
     'setup' : (test) ->
-        koPath = Path.resolve(__dirname, '..', 'test-src', 'files',
-                              'knockout-1.2.1.debug.js')
+        koPath = Path.resolve(__dirname, 'files', 'knockout-1.2.1.debug.js')
         ko = FS.readFileSync(koPath, 'utf8')
         server = HTTP.createServer (req, res) ->
             if req.url == '/ko.js'

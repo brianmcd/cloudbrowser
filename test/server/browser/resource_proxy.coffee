@@ -47,7 +47,7 @@ exports['tests'] =
         test.done()
 
     'test fetch' : (test) ->
-        filesPath = Path.join(__dirname, '..', '..', '..', 'test-src', 'files')
+        filesPath = Path.join(__dirname, '..', '..', 'files')
         server = new Server
             appPath : '/'
             staticDir : filesPath
@@ -74,8 +74,7 @@ exports['tests'] =
         test.equal(idx, 0)
         test.equal(proxy.urlsByIndex[idx].href,
                    'http://localhost:3001/xhr-target.html')
-        targetPath = Path.join(__dirname, '..', '..', '..', 'test-src', 'files',
-                              'xhr-target.html')
+        targetPath = Path.join(__dirname, '..', '..', 'files', 'xhr-target.html')
         targetSource = FS.readFileSync(targetPath, 'utf8')
         res = new Response(targetSource)
 
