@@ -8,14 +8,13 @@ test_env = !!process?.env?.TESTS_RUNNING
 class SocketIOClient
     constructor : (@window, @document) ->
         @socket = @connectSocket()
+        @setupRPC(@socket)
 
         # EventMonitor
         @monitor = null
 
         # TaggedNodeCollection
         @nodes = null
-
-        @setupRPC(@socket)
 
         @renderingPaused = false
 
