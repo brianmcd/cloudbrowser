@@ -7,6 +7,12 @@
 exports.deserialize = (snapshot, client) ->
     console.log(snapshot.nodes)
     for record in snapshot.nodes
+        # If the node already exists, we don't need to create it.
+        # This can happen if a node is removed then re-added.
+        try
+            client.nodes.get(record.id)
+            continue
+        catch e
         node = null
         parent = client.nodes.get(record.parent)
         # Note: If record.before is null, then the TaggedNodeCollection

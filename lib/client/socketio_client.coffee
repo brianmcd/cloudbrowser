@@ -54,7 +54,6 @@ class SocketIOClient
             'setCharacterData'
             'addEventListener'
             'loadFromSnapshot'
-            'tagDocument'
             'clear'
             'close'
             'pauseRendering'
@@ -79,6 +78,7 @@ class SocketIOClient
         deserialize({nodes : nodes}, this)
 
     removeSubtree : (args) =>
+        console.log(args)
         parent = @nodes.get(args.parent)
         child = @nodes.get(args.node)
         parent.removeChild(child)
@@ -94,10 +94,19 @@ class SocketIOClient
         deserialize(snapshot, this)
 
     setAttr : (args) =>
+        console.log(args)
         target = @nodes.get(args.target)
-        target.setAttribute(args.name, args.value)
+        name = args.name
+        # For HTMLOptionElement, HTMLInputELement, HTMLSelectElement
+        if /^selected$|^selectedIndex$|^value$|^checked$/.test(name)
+            # Calling setAttribute doesn't cause the displayed value to change,
+            # but setting it as a property does.
+            target[name] = args.value
+        else
+            target.setAttribute(args.name, args.value)
 
     removeAttr : (args) =>
+        console.log(args)
         target = @nodes.get(args.target)
         target.removeAttribute(args.name)
 

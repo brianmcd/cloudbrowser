@@ -54,20 +54,15 @@ addDefaultHandlers = (html) ->
     html.HTMLInputElement.prototype._eventDefaults =
         click : (event) ->
             console.log "Inside INPUT click handler"
-            #TODO: bring this back, but just double check things.
-           # event.target.click()
             target = event.target
             if target.type == 'checkbox'
                 target.checked = !target.checked
             else if target.type == 'radio'
-                console.log('This is a radio button')
                 doc = target.ownerDocument
                 others = doc.getElementsByName(target.name)
                 for other in others
                     if other != target && other.type == 'radio'
-                        console.log("Setting other radio to false: #{other.value}")
                         other.checked = false
-                console.log("Setting target to true: #{target.value}")
                 target.checked = true
             else if target.type == 'submit'
                 form = target.form

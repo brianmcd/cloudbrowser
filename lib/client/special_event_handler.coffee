@@ -9,7 +9,6 @@ class SpecialEventHandler
         @keyupListener = @_keyupListener.bind(this)
 
     click : (remoteEvent, clientEvent) ->
-        tagName = clientEvent.target.tagName.toLowerCase()
         clientEvent.preventDefault()
         @socket.emit('processEvent', remoteEvent)
 
@@ -62,18 +61,20 @@ class SpecialEventHandler
         target = clientEvent.target
         # TODO: use batch mechanism once it exists...this is inefficient.
         if target.tagName.toLowerCase() == 'select'
-            for option in target.options
-                @socket.emit('DOMUpdate'
+            if target.multiple
+                for option in target.options
+                    @socket.emit('DOMUpdate'
+                        method : 'setAttribute'
+                        rvID : null
+                        targetID : option.__nodeID
+                        args : ['selected', option.selected])
+            else
+                console.log("selectedIndex is now: #{clientEvent.target.selectedIndex}")
+                @socket.emit('DOMUpdate',
                     method : 'setAttribute'
                     rvID : null
-                    targetID : option.__nodeID
-                    args : ['selected', option.selected])
-            console.log("selectedIndex is now: #{clientEvent.target.selectedIndex}")
-            @socket.emit('DOMUpdate',
-                method : 'setAttribute'
-                rvID : null
-                targetID : clientEvent.target.__nodeID
-                args : ['selectedIndex', clientEvent.target.selectedIndex])
+                    targetID : clientEvent.target.__nodeID
+                    args : ['selectedIndex', clientEvent.target.selectedIndex])
         else # input or textarea
             @socket.emit('DOMUpdate',
                 method : 'setAttribute'

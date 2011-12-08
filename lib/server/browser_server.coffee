@@ -3,14 +3,10 @@ TaggedNodeCollection = require('../shared/tagged_node_collection')
 Browser              = require('./browser')
 {serialize}          = require('./browser/dom/serializer')
 
-# TODO
-#   Where does snapshot live?  That should be here, right?  A DOM traversal on the Browser.
-#   This class could use helpers that give some utilities for traversing the DOM.
-#
 #   TODO: where should resourceproxy live?
 #       Maybe here instead of Browser?
 
-# Serves the Browser to n clients.
+# Serves 1 Browser to n clients.
 class BrowserServer
     constructor : (opts) ->
         @id = opts.id
@@ -65,6 +61,10 @@ class BrowserServer
         if target[method] == undefined
             throw new Error("Tried to process an invalid method: #{method}")
 
+        if method == 'setAttribute'
+            console.log("From client: #{target.__nodeID}.setAtrribute(#{args[0]}, #{args[1]})")
+            return target[args[0]] = args[1]
+
         rv = target[method].apply(target, args)
 
         if rvID?
@@ -79,23 +79,26 @@ class BrowserServer
     handleDocumentCreated : (event) =>
         @nodes.add(event.target)
 
-    handleDOMCharacterDataModified : (event) =>
-        @broadcastEvent 'setCharacterData',
-            target : event.target.__nodeID
-            value  : event.target.nodeValue
-
     # Tag all newly created nodes.
     # This seems cleaner than having serializer do the tagging.
     # TODO: this won't tag the document node.
     handleDOMNodeInserted : (event) =>
+        console.log("DOMNodeInserted: #{event.target.tagName}")
         if event.target.tagName != 'SCRIPT' &&
            event.target.parentNode.tagName != 'SCRIPT' &&
            !event.target.__nodeID
             @nodes.add(event.target)
 
+    handleDOMCharacterDataModified : (event) =>
+        console.log("DOMCharacterDataModified: #{event.target.tagName}")
+        @broadcastEvent 'setCharacterData',
+            target : event.target.__nodeID
+            value  : event.target.nodeValue
+
     # TODO: How can we handle removal/re-insertion efficiently?
     # TODO: what if serialization starts at an iframe?
     handleDOMNodeInsertedIntoDocument : (event) =>
+        console.log("DOMNodeInsertedIntoDocument: #{event.target.tagName}")
         if event.target.tagName != 'SCRIPT' && event.target.parentNode.tagName != 'SCRIPT'
             node = event.target
             cmds = serialize(node, @browser.resources)
@@ -110,6 +113,7 @@ class BrowserServer
             @broadcastEvent 'attachSubtree', cmds
 
     handleDOMNodeRemovedFromDocument : (event) =>
+        console.log("DOMNodeRemovedFromDocument: #{event.target.tagName}")
         if event.target.tagName != 'SCRIPT' && event.relatedNode.tagName != 'SCRIPT'
             @broadcastEvent 'removeSubtree',
                 parent : event.relatedNode.__nodeID
@@ -121,11 +125,13 @@ class BrowserServer
     handleDOMAttrModified : (event) =>
         # Note: ADDITION can really be MODIFIED as well.
         if event.attrChange == 'ADDITION'
+            console.log("Sending #{event.target.__nodeID}.setAttr(#{event.attrName}, #{event.newValue})")
             @broadcastEvent 'setAttr',
                 target : event.target.__nodeID
                 name   : event.attrName
                 value  : event.newValue
         else
+            console.log("Sending #{event.target.__nodeID}.removeAttr(#{event.attrName})")
             @broadcastEvent 'removeAttr',
                 target : event.target.__nodeID
                 name   : event.attrName
