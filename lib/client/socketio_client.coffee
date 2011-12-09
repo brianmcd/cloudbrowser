@@ -1,12 +1,14 @@
 TaggedNodeCollection = require('./tagged_node_collection')
 EventMonitor         = require('./event_monitor')
 Components           = require('./components')
+Compressor           = require('./compressor')
 {deserialize}        = require('./deserializer')
 
 test_env = !!process?.env?.TESTS_RUNNING
 
 class SocketIOClient
     constructor : (@window, @document) ->
+        @compressor = new Compressor()
         @socket = @connectSocket()
         @setupRPC(@socket)
 
@@ -60,6 +62,12 @@ class SocketIOClient
                         func.apply(this, arguments)
 
 RPCMethods =
+    newSymbol : (original, compressed) ->
+        console.log("newSymbol: #{original} -> #{compressed}")
+        @compressor.register(original, compressed)
+        @socket.on compressed, () =>
+            RPCMethods[original].apply(this, arguments)
+
     changeStyle : (args) ->
         target = @nodes.get(args.target)
         target.style[args.attribute] = args.value
@@ -86,6 +94,8 @@ RPCMethods =
         delete @document.__nodeID
         @nodes.add(@document, 'node1')
         deserialize(snapshot, this)
+        for own original, compressed of snapshot.compressionTable
+            RPCMethods['newSymbol'].call(this, original, compressed)
 
     setAttr : (args) ->
         target = @nodes.get(args.target)

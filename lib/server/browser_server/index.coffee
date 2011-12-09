@@ -3,6 +3,7 @@ FS                   = require('fs')
 EventProcessor       = require('./event_processor')
 TaggedNodeCollection = require('../../shared/tagged_node_collection')
 Browser              = require('../browser')
+Compressor           = require('../../shared/compressor')
 {serialize}          = require('./serializer')
 
 #   TODO: where should resourceproxy live?
@@ -12,10 +13,16 @@ Browser              = require('../browser')
 class BrowserServer
     constructor : (opts) ->
         @id = opts.id
+        @compressionEnabled = false #TODO: make configurable.
         @browser = new Browser(opts.id, opts.shared)
         @sockets = []
         @nodes = new TaggedNodeCollection()
         @events = new EventProcessor(this)
+        @compressor = new Compressor()
+        @compressor.on 'newSymbol', (args) =>
+            console.log("newSymbol: #{args.original} -> #{args.compressed}")
+            for socket in @sockets
+                socket.emit('newSymbol', args.original, args.compressed)
 
         # Indicates whether @browser is currently loading a page.
         # If so, we don't process client events/updates.
@@ -45,6 +52,8 @@ class BrowserServer
     broadcastEvent : (name, params) ->
         # TODO: need to see exactly how socket.io does event emission to better
         #       measure overhead.
+        if @compressionEnabled
+            name = @compressor.compress(name)
         if @sockets.length
             @serverProtocolLog.write("#{name}")
             if params
@@ -55,9 +64,11 @@ class BrowserServer
     addSocket : (socket) ->
         cmds = serialize(@browser.window.document, @browser.resources)
         snapshot =
-            nodes : cmds
-            events : @events.getSnapshot()
-            components : @browser.getSnapshot().components
+            nodes            : cmds
+            events           : @events.getSnapshot()
+            components       : @browser.getSnapshot().components
+        if @compressionEnabled
+            snapshot.compressionTable = @compressor.textToSymbol
         @serverProtocolLog.write("loadFromSnapshot #{JSON.stringify(snapshot)}\n")
         socket.emit 'loadFromSnapshot', snapshot
         @sockets.push(socket)
@@ -159,14 +170,14 @@ DOMEventHandlers =
 
     PageLoaded : () ->
         @browserLoading = false
-        cmds = serialize(@browser.window.document, @browser.resources)
-        events = @events.getSnapshot()
-        components = @browser.getSnapshot().components
+        snapshot =
+            nodes : serialize(@browser.window.document, @browser.resources)
+            events : @events.getSnapshot()
+            components : @browser.getSnapshot().components
+        if @compressionEnabled
+            snapshot.compressionTable = @compressor.textToSymbol
         for socket in @sockets
-            socket.emit 'loadFromSnapshot'
-                nodes      : cmds
-                events     : events
-                components : components
+            socket.emit 'loadFromSnapshot', snapshot
 
     WindowMethodCalled : (event) ->
         @broadcastEvent 'callWindowMethod',
