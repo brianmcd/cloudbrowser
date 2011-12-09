@@ -15,6 +15,10 @@ class BrowserServer
         @nodes = new TaggedNodeCollection()
         @events = new EventProcessor(this)
 
+        # Indicates whether @browser is currently loading a page.
+        # If so, we don't process client events/updates.
+        @browserLoading = false
+
         for own event, handler of DOMEventHandlers
             do (event, handler) =>
                 @browser.on event, () =>
@@ -23,10 +27,6 @@ class BrowserServer
         # TODO:
         #   'log'
         #   bandwidth measuring and logging etc should go here, since browser is protocol agnostic.
-        #   some sort of page load event so we can resync.
-        #       this should be 2 events:
-        #           'pageLoading' - stop client updates and event processing
-        #           'pageLoaded' - resumse
     
     broadcastEvent : (name, params) ->
         for socket in @sockets
@@ -45,18 +45,20 @@ class BrowserServer
             @sockets = (s for s in @sockets when s != socket)
 
     processEvent : (args ) =>
-        @broadcastEvent 'pauseRendering'
-        @events.processEvent(args)
-        @broadcastEvent 'resumeRendering'
+        if !@browserLoading
+            @broadcastEvent 'pauseRendering'
+            @events.processEvent(args)
+            @broadcastEvent 'resumeRendering'
 
     processClientSetAttribute : (args) =>
-        target = @nodes.get(args.target)
-        {attribute, value} = args
-        if attribute == 'src'
-            return
-        if attribute == 'selectedIndex'
-            return target[attribute] = value
-        target.setAttribute(attribute, value)
+        if !@browserLoading
+            target = @nodes.get(args.target)
+            {attribute, value} = args
+            if attribute == 'src'
+                return
+            if attribute == 'selectedIndex'
+                return target[attribute] = value
+            target.setAttribute(attribute, value)
 
 # The BrowserServer constructor iterates over the properties in this object and
 # adds an event handler to the Browser for each one.  The function name must
@@ -127,5 +129,19 @@ DOMEventHandlers =
 
     ExitedTimer : () ->
         @broadcastEvent 'resumeRendering'
+
+    PageLoading : () ->
+        @browserLoading = true
+
+    PageLoaded : () ->
+        @browserLoading = false
+        cmds = serialize(@browser.window.document, @browser.resources)
+        events = @events.getSnapshot()
+        components = @browser.getSnapshot().components
+        for socket in @sockets
+            socket.emit 'loadFromSnapshot'
+                nodes      : cmds
+                events     : events
+                components : components
 
 module.exports = BrowserServer
