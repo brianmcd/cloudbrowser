@@ -1,3 +1,5 @@
+compiled/
+compiled-test/
 .lock-wscript
 build/
 doc/
