@@ -4,8 +4,8 @@ HTML5                = require('html5')
 Request              = require('request')
 ImportXMLHttpRequest = require('./XMLHttpRequest').ImportXMLHttpRequest
 LocationBuilder      = require('./location').LocationBuilder
-addAdvice            = require('./newadvice').addAdvice
-wrapStyle            = require('./newadvice').wrapStyle
+addAdvice            = require('./advice').addAdvice
+wrapStyle            = require('./advice').wrapStyle
 applyPatches         = require('./patches').applyPatches
 
 # A DOM that emits events whenever the DOM changes.
