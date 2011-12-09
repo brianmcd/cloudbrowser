@@ -49,11 +49,12 @@ class SocketIOClient
         for own name, func of RPCMethods
             do (name, func) =>
                 socket.on name, () =>
+                    # This way resumeRendering actually can be called.
                     if name == 'resumeRendering'
                         @renderingPaused = false
                     if @renderingPaused
                         @eventQueue.push
-                            method : name
+                            func : func
                             args : arguments
                     else
                         func.apply(this, arguments)
@@ -128,7 +129,7 @@ RPCMethods =
 
     resumeRendering : () ->
         for event in @eventQueue
-            @[event.method].apply(this, event.args)
+            event.func.apply(this, event.args)
         @eventQueue = []
         @renderingPaused = false
 

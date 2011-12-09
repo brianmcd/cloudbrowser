@@ -5,7 +5,6 @@
 # TODO: need to make sure the ORDER of children is preserved (might be
 #       what broke admin page)
 exports.deserialize = (snapshot, client) ->
-    console.log(snapshot.nodes)
     for record in snapshot.nodes
         # If the node already exists, we don't need to create it.
         # This can happen if a node is removed then re-added.

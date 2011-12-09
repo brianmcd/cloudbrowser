@@ -29,9 +29,7 @@ class Browser extends EventEmitter
              @dom.on type, (event) =>
                  @emit(type, event)
 
-        # TODO: logging stuff should be abstracted.
         # Browsers log to logs/#{browser.id}.log
-        # TODO: only use logfile if not running tests.
         @consoleLogPath = Path.resolve(__dirname, '..', '..', '..', 'logs', "#{@id}.log")
         @consoleLogStream = FS.createWriteStream(@consoleLogPath)
         @consoleLogStream.write("Log opened: #{Date()}\n")
@@ -47,7 +45,7 @@ class Browser extends EventEmitter
         node.dispatchEvent(event)
 
     close : () ->
-        @removeAllListeners('DOMEvent')
+        @emit('BrowserClose')
         @window.close()
 
     loadApp : (app) ->
@@ -67,7 +65,7 @@ class Browser extends EventEmitter
     # window's load event if you need to.
     load : (url, configFunc) ->
         console.log "Loading: #{url}"
-        @emitting = false
+        @emit 'PageLoading'
         @window.close if @window?
         @resources = new ResourceProxy(url)
         @window = @dom.createWindow()
@@ -75,27 +73,22 @@ class Browser extends EventEmitter
         self = this
         @window.setTimeout = (fn, interval, args...) ->
             setTimeout () ->
-                #self.pauseRendering()
+                self.emit('EnteredTimer')
                 fn.apply(this, args)
-                #self.resumeRendering()
+                self.emit('ExitedTimer')
             , interval
         @window.setInterval = (fn, interval, args...) ->
             setInterval () ->
-                #self.pauseRendering()
+                self.emit('EnteredTimer')
                 fn.apply(this, args)
-                #self.resumeRendering()
+                self.emit('ExitedTimer')
             , interval
-
-        if false #!process.env.TESTS_RUNNING
-            # TODO: do browsers support printf style like node?
-            @window.console =
-                log : () ->
-                    args = Array.prototype.slice.call(arguments)
-                    args.push('\n')
-                    str = args.join(' ')
-                    self.consoleLogStream.write(str)
-                    # For connected debug clients.
-                    self.emit('log', str)
+        @window.console =
+            log : () ->
+                args = Array.prototype.slice.call(arguments)
+                args.push('\n')
+                str = args.join(' ')
+                self.emit('ConsoleLog', str)
 
         if process.env.TESTS_RUNNING
             @window.browser = this
@@ -103,21 +96,13 @@ class Browser extends EventEmitter
         if configFunc?
             configFunc(@window)
 
-        # TODO TODO: also need to not process client events from now until the
-        # new page loads.
         @window.location = url
         # We know the event won't fire until a later tick since it has to make
         # an http request.
         @window.addEventListener 'load', () =>
-            @emit('load')
-            @emitting = true
-            @emit 'DOMEvent',
-                method : 'loadFromSnapshot'
-                params : @getSnapshot()
+            @emit('load') # TODO: deprecate
+            @emit('PageLoaded')
             process.nextTick(() => @emit('afterload'))
-
-    isPageLoaded : () ->
-        return @window?.document?.readyState == 'complete'
 
     getSnapshot : () ->
         return {

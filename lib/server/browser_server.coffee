@@ -45,7 +45,9 @@ class BrowserServer
             @sockets = (s for s in @sockets when s != socket)
 
     processEvent : (args ) =>
+        @broadcastEvent 'pauseRendering'
         @events.processEvent(args)
+        @broadcastEvent 'resumeRendering'
 
     processClientSetAttribute : (args) =>
         target = @nodes.get(args.target)
@@ -61,7 +63,6 @@ class BrowserServer
 # match the Browser event name.  'this' is set to the Browser via apply.
 DOMEventHandlers =
     DOMStyleChanged : (event) ->
-        console.log("detected style change")
         @broadcastEvent 'changeStyle',
             target : event.target.__nodeID
             attribute : event.attribute
@@ -78,7 +79,6 @@ DOMEventHandlers =
 
     # Tag all newly created nodes.
     # This seems cleaner than having serializer do the tagging.
-    # TODO: this won't tag the document node.
     DOMNodeInserted : (event) ->
         if event.target.tagName != 'SCRIPT' &&
            event.target.parentNode.tagName != 'SCRIPT' &&
@@ -90,8 +90,6 @@ DOMEventHandlers =
             target : event.target.__nodeID
             value  : event.target.nodeValue
 
-    # TODO: How can we handle removal/re-insertion efficiently?
-    # TODO: what if serialization starts at an iframe?
     DOMNodeInsertedIntoDocument : (event) ->
         if event.target.tagName != 'SCRIPT' && event.target.parentNode.tagName != 'SCRIPT'
             node = event.target
@@ -112,9 +110,6 @@ DOMEventHandlers =
                 parent : event.relatedNode.__nodeID
                 node   : event.target.__nodeID
 
-    # TODO: we want client to set these using properties, should we do
-    #       the conversion from attribute name to property name here or on
-    #       client?
     DOMAttrModified : (event) ->
         # Note: ADDITION can really be MODIFIED as well.
         if event.attrChange == 'ADDITION'
@@ -126,5 +121,11 @@ DOMEventHandlers =
             @broadcastEvent 'removeAttr',
                 target : event.target.__nodeID
                 name   : event.attrName
+
+    EnteredTimer : () ->
+        @broadcastEvent 'pauseRendering'
+
+    ExitedTimer : () ->
+        @broadcastEvent 'resumeRendering'
 
 module.exports = BrowserServer
