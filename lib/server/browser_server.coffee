@@ -1,3 +1,5 @@
+Path                 = require('path')
+FS                   = require('fs')
 EventProcessor       = require('./browser/event_processor') # TODO move this
 TaggedNodeCollection = require('../shared/tagged_node_collection')
 Browser              = require('./browser')
@@ -9,6 +11,8 @@ Browser              = require('./browser')
 # Serves 1 Browser to n clients.
 class BrowserServer
     constructor : (opts) ->
+        @initLogs()
+
         @id = opts.id
         @browser = new Browser(opts.id, opts.shared)
         @sockets = []
@@ -24,20 +28,38 @@ class BrowserServer
                 @browser.on event, () =>
                     handler.apply(this, arguments)
 
-        # TODO:
-        #   'log'
-        #   bandwidth measuring and logging etc should go here, since browser is protocol agnostic.
-    
+    initLogs : () ->
+        logDir = Path.resolve(__dirname, '..', '..', 'logs')
+
+        consoleLogPath = Path.resolve(logDir, "#{@browser.id}.log")
+        @consoleLog = FS.createWriteStream(consoleLogPath)
+        @consoleLog.write("Log opened: #{Date()}\n")
+        @consoleLog.write("BrowserID: #{@browser.id}\n")
+
+        serverProtocolLogPath = Path.resolve(logDir, "#{@browser.id}.server-protocol.log")
+        @serverProtocolLog = FS.createWriteStream(serverProtocolLogPath)
+
+        clientProtocolLogPath = Path.resolve(logDir, "#{@browser.id}.client-protocol.log")
+        @clientProtocolLog = FS.createWriteStream(clientProtocolLogPath)
+
     broadcastEvent : (name, params) ->
+        # TODO: need to see exactly how socket.io does event emission to better
+        #       measure overhead.
+        if @sockets.length
+            @serverProtocolLog.write("#{name}")
+            if params
+                @serverProtocolLog.write(" #{JSON.stringify(params)}\n")
         for socket in @sockets
             socket.emit(name, params)
 
     addSocket : (socket) ->
         cmds = serialize(@browser.window.document, @browser.resources)
-        socket.emit 'loadFromSnapshot'
+        snapshot =
             nodes : cmds
             events : @events.getSnapshot()
             components : @browser.getSnapshot().components
+        @serverProtocolLog.write("loadFromSnapshot #{JSON.stringify(snapshot)}\n")
+        socket.emit 'loadFromSnapshot', snapshot
         @sockets.push(socket)
         socket.on 'processEvent', @processEvent
         socket.on 'setAttribute', @processClientSetAttribute
@@ -45,12 +67,14 @@ class BrowserServer
             @sockets = (s for s in @sockets when s != socket)
 
     processEvent : (args ) =>
+        @clientProtocolLog.write("processEvent #{JSON.stringify(args)}")
         if !@browserLoading
             @broadcastEvent 'pauseRendering'
             @events.processEvent(args)
             @broadcastEvent 'resumeRendering'
 
     processClientSetAttribute : (args) =>
+        @clientProtocolLog.write("setAttribute #{JSON.stringify(args)}")
         if !@browserLoading
             target = @nodes.get(args.target)
             {attribute, value} = args
@@ -148,5 +172,10 @@ DOMEventHandlers =
         @broadcastEvent 'callWindowMethod',
             method : event.method
             args : event.args
+    
+    ConsoleLog : (event) ->
+        @consoleLog.write(event.msg + '\n')
+        # TODO: debug flag to enable line below.
+        console.log("[[[#{@browser.id}]]] #{event.msg}")
 
 module.exports = BrowserServer

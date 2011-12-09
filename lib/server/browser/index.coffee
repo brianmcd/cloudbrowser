@@ -29,12 +29,6 @@ class Browser extends EventEmitter
              @dom.on type, (event) =>
                  @emit(type, event)
 
-        # Browsers log to logs/#{browser.id}.log
-        @consoleLogPath = Path.resolve(__dirname, '..', '..', '..', 'logs', "#{@id}.log")
-        @consoleLogStream = FS.createWriteStream(@consoleLogPath)
-        @consoleLogStream.write("Log opened: #{Date()}\n")
-        @consoleLogStream.write("BrowserID: #{@id}\n")
-
     processComponentEvent : (params) ->
         node = @dom.nodes.get(params.nodeID)
         if !node
