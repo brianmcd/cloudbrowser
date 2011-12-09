@@ -11,6 +11,31 @@ class SpecialEventHandler
     click : (remoteEvent, clientEvent) ->
         clientEvent.preventDefault()
         @socket.emit('processEvent', remoteEvent)
+    # Valid targets:
+    #   input, select, textarea
+    #
+    change : (remoteEvent, clientEvent) ->
+        target = clientEvent.target
+        # TODO: use batch mechanism once it exists...this is inefficient.
+        if target.tagName.toLowerCase() == 'select'
+            if target.multiple == true
+                for option in target.options
+                    @socket.emit 'setAttribute',
+                        target : option.__nodeID
+                        attribute : 'selected'
+                        value : option.selected
+            else
+                @socket.emit 'setAttribute',
+                    target : clientEvent.target.__nodeID
+                    attribute : 'selectedIndex'
+                    value : clientEvent.target.selectedIndex
+        else # input or textarea
+            @socket.emit 'setAttribute',
+                target : clientEvent.target.__nodeID
+                attribute : 'value'
+                value : clientEvent.target.value
+        @socket.emit('processEvent', remoteEvent)
+
 
     _keyupListener : (event) =>
         @_pendingKeyup = false
@@ -53,29 +78,5 @@ class SpecialEventHandler
             @_pendingKeyup = true
             @monitor.document.addEventListener('keyup', @keyupListener.bind(this), true)
         @_queuedKeyEvents.push(remoteEvent)
-
-    # Valid targets:
-    #   input, select, textarea
-    change : (remoteEvent, clientEvent) ->
-        target = clientEvent.target
-        # TODO: use batch mechanism once it exists...this is inefficient.
-        if target.tagName.toLowerCase() == 'select'
-            if target.multiple == true
-                for option in target.options
-                    @socket.emit 'setAttribute',
-                        target : option.__nodeID
-                        attribute : 'selected'
-                        value : option.selected
-            else
-                @socket.emit 'setAttribute',
-                    target : clientEvent.target.__nodeID
-                    attribute : 'selectedIndex'
-                    value : clientEvent.target.selectedIndex
-        else # input or textarea
-            @socket.emit 'setAttribute',
-                target : clientEvent.target.__nodeID
-                attribute : 'value'
-                value : clientEvent.target.value
-        @socket.emit('processEvent', remoteEvent)
 
 module.exports = SpecialEventHandler
