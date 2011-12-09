@@ -11,6 +11,7 @@ class SpecialEventHandler
     click : (remoteEvent, clientEvent) ->
         clientEvent.preventDefault()
         @socket.emit('processEvent', remoteEvent)
+
     # Valid targets:
     #   input, select, textarea
     #
