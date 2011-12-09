@@ -68,19 +68,7 @@ addDefaultHandlers = (html) ->
                 form = target.form
                 if form
                   form._dispatchSubmitEvent()
-        ###
-        keypress : (event) ->
-            # TODO: delete/backspace etc
-            # is there a way to just 'apply' the key value to the string?
-            # look at string methods.
-            elem = event.target
-            #console.log(event)
-            if !elem.value
-                elem.value = event.char
-            else
-                elem.value += event.char
-            console.log(elem.value)
-        ###
+
     html.HTMLButtonElement.prototype._eventDefaults =
         # looks like this already is done for input
         click : (event) ->

@@ -5,7 +5,7 @@ URL = require('url')
 #   - to compare a new URL to the currently loaded one to detect changes.
 #   - to fire 'hashchange' on the window's DOM.
 #   - to cause the Browser to navigate to a new page.
-exports.LocationBuilder = (window, browser, dom) ->
+exports.LocationBuilder = (window, browser) ->
     # Partial implementation of w3c Location class:
     # See: http://dev.w3.org/html5/spec/Overview.html#the-location-interface
     #
@@ -49,7 +49,7 @@ exports.LocationBuilder = (window, browser, dom) ->
             #   - associates the document object with the existing window object
             if !window.location?
                 @parsed = URL.parse(url)
-                dom.loadPage(url)
+                browser.loadDOM(url)
             # Otherwise, a page has been loaded so we need to see if we should
             # navigate or fire a hashchange.  If we navigate, we use
             # Browser#load, which causes a new window object to be created,
@@ -94,7 +94,7 @@ exports.LocationBuilder = (window, browser, dom) ->
                     event.newURL = this.href
                     window.dispatchEvent(event)
                 when 'pagechange'
-                    browser.load(@parsed.href)
+                    browser.loadFromURL(@parsed.href)
 
         replace : (url) ->
             console.log("Location#replace not yet implemented")

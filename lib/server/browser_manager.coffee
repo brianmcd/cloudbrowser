@@ -26,7 +26,7 @@ class BrowserManager
         browser = bserver.browser
         # TODO: should load/loadApp be exposed on BrowserServer?
         if url?
-            browser.load(url)
+            browser.loadFromURL(url)
         else
             browser.loadApp(app)
         return bserver

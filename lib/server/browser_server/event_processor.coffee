@@ -8,17 +8,15 @@ ClientEvents     = EventLists.clientEvents
 # Maps an event type, like 'click', to a group, like 'MouseEvents'
 EventTypeToGroup = EventLists.eventTypeToGroup
 
-
 # TODO: this needs to handle events on frames, which would need to be
 #       created from a different document.
 class EventProcessor extends EventEmitter
     constructor : (bserver) ->
         @bserver = bserver
         @browser = bserver.browser
-        @dom = @browser.dom
         @events = []
-        @_wrapAddEventListener(@dom.jsdom.dom.level3.events)
-        @_installAttributeHandlerAdvice(@dom.jsdom.dom.level3.html)
+        @_wrapAddEventListener(@browser.jsdom.dom.level3.events)
+        @_installAttributeHandlerAdvice(@browser.jsdom.dom.level3.html)
 
     _wrapAddEventListener : (events) ->
         self = this
