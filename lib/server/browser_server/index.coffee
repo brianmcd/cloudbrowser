@@ -1,9 +1,9 @@
 Path                 = require('path')
 FS                   = require('fs')
-EventProcessor       = require('./browser/event_processor') # TODO move this
-TaggedNodeCollection = require('../shared/tagged_node_collection')
-Browser              = require('./browser')
-{serialize}          = require('./browser/dom/serializer')
+EventProcessor       = require('./event_processor')
+TaggedNodeCollection = require('../../shared/tagged_node_collection')
+Browser              = require('../browser')
+{serialize}          = require('./serializer')
 
 #   TODO: where should resourceproxy live?
 #       Maybe here instead of Browser?
@@ -29,7 +29,7 @@ class BrowserServer
         @initLogs()
 
     initLogs : () ->
-        logDir = Path.resolve(__dirname, '..', '..', 'logs')
+        logDir = Path.resolve(__dirname, '..', '..', '..', 'logs')
 
         consoleLogPath = Path.resolve(logDir, "#{@browser.id}.log")
         @consoleLog = FS.createWriteStream(consoleLogPath)
