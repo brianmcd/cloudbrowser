@@ -18,11 +18,10 @@ class SpecialEventHandler
         #       then we can run keydown, keypress, update value, keyup
         #       in the same event tick.
         # Technically, the value shouldn't be set until after keypress.
-        @socket.emit('DOMUpdate'
-            method : 'setAttribute'
-            rvID : null
-            targetID : event.target.__nodeID
-            args : ['value', event.target.value])
+        @socket.emit 'setAttribute'
+            target : event.target.__nodeID
+            attribute : 'value'
+            value : event.target.value
         rEvent = {}
         @monitor.eventInitializers["#{EventTypeToGroup[event.type]}"](rEvent, event)
         @_queuedKeyEvents.push(rEvent)
@@ -63,24 +62,20 @@ class SpecialEventHandler
         if target.tagName.toLowerCase() == 'select'
             if target.multiple == true
                 for option in target.options
-                    @socket.emit('DOMUpdate'
-                        method : 'setAttribute'
-                        rvID : null
-                        targetID : option.__nodeID
-                        args : ['selected', option.selected])
+                    @socket.emit 'setAttribute',
+                        target : option.__nodeID
+                        attribute : 'selected'
+                        value : option.selected
             else
-                console.log("selectedIndex is now: #{clientEvent.target.selectedIndex}")
-                @socket.emit('DOMUpdate',
-                    method : 'setAttribute'
-                    rvID : null
-                    targetID : clientEvent.target.__nodeID
-                    args : ['selectedIndex', clientEvent.target.selectedIndex])
+                @socket.emit 'setAttribute',
+                    target : clientEvent.target.__nodeID
+                    attribute : 'selectedIndex'
+                    value : clientEvent.target.selectedIndex
         else # input or textarea
-            @socket.emit('DOMUpdate',
-                method : 'setAttribute'
-                rvID : null
-                targetID : clientEvent.target.__nodeID
-                args: ['value', clientEvent.target.value])
+            @socket.emit 'setAttribute',
+                target : clientEvent.target.__nodeID
+                attribute : 'value'
+                value : clientEvent.target.value
         @socket.emit('processEvent', remoteEvent)
 
 module.exports = SpecialEventHandler

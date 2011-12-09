@@ -46,20 +46,19 @@ class SocketIOClient
         return socket
 
     setupRPC : (socket) ->
-        [
-            'attachSubtree'
-            'removeSubtree'
-            'setAttr'
-            'removeAttr'
-            'setCharacterData'
-            'setProperty'
-            'addEventListener'
-            'loadFromSnapshot'
-            'clear'
-            'close'
-            'pauseRendering'
-            'resumeRendering'
-            'createComponent'
+        ['attachSubtree'
+         'removeSubtree'
+         'setAttr'
+         'removeAttr'
+         'setCharacterData'
+         'setProperty'
+         'addEventListener'
+         'loadFromSnapshot'
+         'clear'
+         'close'
+         'pauseRendering'
+         'resumeRendering'
+         'createComponent'
         ].forEach (rpcMethod) =>
             socket.on rpcMethod, () =>
                 console.log("Got: #{rpcMethod}")
@@ -145,12 +144,6 @@ class SocketIOClient
             @[event.method].apply(this, event.args)
         @eventQueue = []
         @renderingPaused = false
-
-    windowOpen : (params) =>
-        @window.open(params.url)
-
-    windowAlert : (params) =>
-        @window.alert(params.msg)
 
     addEventListener : (params) =>
         @monitor.addEventListener.apply(@monitor, arguments)

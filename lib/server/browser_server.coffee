@@ -44,39 +44,24 @@ class BrowserServer
             components : @browser.getSnapshot().components
         @sockets.push(socket)
         socket.on 'processEvent', @processEvent
-        socket.on 'DOMUpdate', @processDOMUpdate
-        # TODO: handle disconnection
+        socket.on 'setAttribute', @processClientSetAttribute
+        socket.on 'disconnect', () =>
+            @sockets = (s for s in @sockets when s != socket)
 
     processEvent : (args ) =>
         @events.processEvent(args)
 
-    # TODO: This is copied from previous iteration...
-    # TODO: The client currently only calls setAttribute, so make this only
-    #       allow that.
-    processDOMUpdate : (params) =>
-        target = @nodes.get(params.targetID)
-        method = params.method
-        rvID = params.rvID
-        args = @nodes.unscrub(params.args)
+    processClientSetAttribute : (args) =>
+        target = @nodes.get(args.target)
+        {attribute, value} = args
 
-        if target[method] == undefined
-            throw new Error("Tried to process an invalid method: #{method}")
+        if attribute == 'src'
+            return
 
-        # TODO: change this to only setAttribute, and lookup table to tell which to use.
-        if args[0] == 'selectedIndex'
-            console.log("From client: #{target.__nodeID}.setAttribute(#{args[0]}, #{args[1]})")
-            return target[args[0]] = args[1]
-
-        rv = target[method].apply(target, args)
-
-        if rvID?
-            if !rv?
-                throw new Error('expected return value')
-            else if rv.__nodeID?
-                if rv.__nodeID != rvID
-                    throw new Error("id issue")
-            else
-                @nodes.add(rv, rvID)
+        if attribute == 'selectedIndex'
+            return target[attribute] = value
+        else
+            target.setAttribute(attribute, value)
 
     handleDOMPropertyModified : (event) =>
         console.log("Sending setProperty: #{event.property}=#{event.value} (#{event.target.value})")
