@@ -144,4 +144,9 @@ DOMEventHandlers =
                 events     : events
                 components : components
 
+    WindowMethodCalled : (event) ->
+        @broadcastEvent 'callWindowMethod',
+            method : event.method
+            args : event.args
+
 module.exports = BrowserServer

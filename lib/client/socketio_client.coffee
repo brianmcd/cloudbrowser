@@ -154,4 +154,7 @@ RPCMethods =
             @nodes = new TaggedNodeCollection()
         delete doc.__nodeID
 
+    callWindowMethod : (params) ->
+       window[params.method].apply(window, params.args)
+
 module.exports = SocketIOClient

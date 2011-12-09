@@ -89,6 +89,15 @@ class Browser extends EventEmitter
                 args.push('\n')
                 str = args.join(' ')
                 self.emit('ConsoleLog', str)
+        # Note: this loads the URL out of a virtual browser.
+        @window.open = (url) =>
+            @emit 'WindowMethodCalled'
+                method : 'open'
+                args   : [url]
+        @window.alert = (msg) =>
+            @emit 'WindowMethodCalled'
+                method : 'alert'
+                args   : [msg]
 
         if process.env.TESTS_RUNNING
             @window.browser = this
