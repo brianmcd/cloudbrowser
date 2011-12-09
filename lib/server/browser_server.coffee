@@ -15,15 +15,10 @@ class BrowserServer
         @nodes = new TaggedNodeCollection()
         @events = new EventProcessor(this)
 
-        ['DOMNodeInserted',
-         'DOMNodeInsertedIntoDocument',
-         'DOMNodeRemovedFromDocument',
-         'DOMAttrModified',
-         'DOMStyleChanged'
-         'DOMPropertyModified'
-         'DOMCharacterDataModified'
-         'DocumentCreated'].forEach (event) =>
-             @browser.on event, @["handle#{event}"]
+        for own event, handler of DOMEventHandlers
+            do (event, handler) =>
+                @browser.on event, () =>
+                    handler.apply(this, arguments)
 
         # TODO:
         #   'log'
@@ -61,39 +56,43 @@ class BrowserServer
             return target[attribute] = value
         target.setAttribute(attribute, value)
 
-    handleDOMStyleChanged : (event) =>
+# The BrowserServer constructor iterates over the properties in this object and
+# adds an event handler to the Browser for each one.  The function name must
+# match the Browser event name.  'this' is set to the Browser via apply.
+DOMEventHandlers =
+    DOMStyleChanged : (event) ->
         console.log("detected style change")
         @broadcastEvent 'changeStyle',
             target : event.target.__nodeID
             attribute : event.attribute
             value : event.value
 
-    handleDOMPropertyModified : (event) =>
+    DOMPropertyModified : (event) ->
         @broadcastEvent 'setProperty',
             target   : event.target.__nodeID
             property : event.property
             value    : event.value
 
-    handleDocumentCreated : (event) =>
+    DocumentCreated : (event) ->
         @nodes.add(event.target)
 
     # Tag all newly created nodes.
     # This seems cleaner than having serializer do the tagging.
     # TODO: this won't tag the document node.
-    handleDOMNodeInserted : (event) =>
+    DOMNodeInserted : (event) ->
         if event.target.tagName != 'SCRIPT' &&
            event.target.parentNode.tagName != 'SCRIPT' &&
            !event.target.__nodeID
             @nodes.add(event.target)
 
-    handleDOMCharacterDataModified : (event) =>
+    DOMCharacterDataModified : (event) ->
         @broadcastEvent 'setCharacterData',
             target : event.target.__nodeID
             value  : event.target.nodeValue
 
     # TODO: How can we handle removal/re-insertion efficiently?
     # TODO: what if serialization starts at an iframe?
-    handleDOMNodeInsertedIntoDocument : (event) =>
+    DOMNodeInsertedIntoDocument : (event) ->
         if event.target.tagName != 'SCRIPT' && event.target.parentNode.tagName != 'SCRIPT'
             node = event.target
             cmds = serialize(node, @browser.resources)
@@ -107,7 +106,7 @@ class BrowserServer
             cmds[0].before = before?.__nodeID
             @broadcastEvent 'attachSubtree', cmds
 
-    handleDOMNodeRemovedFromDocument : (event) =>
+    DOMNodeRemovedFromDocument : (event) ->
         if event.target.tagName != 'SCRIPT' && event.relatedNode.tagName != 'SCRIPT'
             @broadcastEvent 'removeSubtree',
                 parent : event.relatedNode.__nodeID
@@ -116,7 +115,7 @@ class BrowserServer
     # TODO: we want client to set these using properties, should we do
     #       the conversion from attribute name to property name here or on
     #       client?
-    handleDOMAttrModified : (event) =>
+    DOMAttrModified : (event) ->
         # Note: ADDITION can really be MODIFIED as well.
         if event.attrChange == 'ADDITION'
             @broadcastEvent 'setAttr',
@@ -127,5 +126,5 @@ class BrowserServer
             @broadcastEvent 'removeAttr',
                 target : event.target.__nodeID
                 name   : event.attrName
-            
+
 module.exports = BrowserServer

@@ -46,50 +46,37 @@ class SocketIOClient
         return socket
 
     setupRPC : (socket) ->
-        ['attachSubtree'
-         'removeSubtree'
-         'setAttr'
-         'removeAttr'
-         'changeStyle'
-         'setCharacterData'
-         'setProperty'
-         'addEventListener'
-         'loadFromSnapshot'
-         'clear'
-         'close'
-         'pauseRendering'
-         'resumeRendering'
-         'createComponent'
-        ].forEach (rpcMethod) =>
-            socket.on rpcMethod, () =>
-                if rpcMethod == 'resumeRendering'
-                    @renderingPaused = false
-                if @renderingPaused
-                    console.log("@renderingPaused: #{@renderingPaused}")
-                    @eventQueue.push
-                        method : rpcMethod
-                        args : arguments
-                else
-                    @[rpcMethod].apply(this, arguments)
+        for own name, func of RPCMethods
+            do (name, func) =>
+                socket.on name, () =>
+                    if name == 'resumeRendering'
+                        @renderingPaused = false
+                    if @renderingPaused
+                        @eventQueue.push
+                            method : name
+                            args : arguments
+                    else
+                        func.apply(this, arguments)
 
-    changeStyle : (args) =>
+RPCMethods =
+    changeStyle : (args) ->
         target = @nodes.get(args.target)
         target.style[args.attribute] = args.value
 
-    setProperty : (args) =>
+    setProperty : (args) ->
         target = @nodes.get(args.target)
         target[args.property] = args.value
 
     # This function is called for partial updates AFTER the initial load.
-    attachSubtree : (nodes) =>
+    attachSubtree : (nodes) ->
         deserialize({nodes : nodes}, this)
 
-    removeSubtree : (args) =>
+    removeSubtree : (args) ->
         parent = @nodes.get(args.parent)
         child = @nodes.get(args.node)
         parent.removeChild(child)
 
-    loadFromSnapshot : (snapshot) =>
+    loadFromSnapshot : (snapshot) ->
         console.log('loadFromSnapshot')
         console.log(snapshot)
         while @document.childNodes.length
@@ -99,7 +86,7 @@ class SocketIOClient
         @nodes.add(@document, 'node1')
         deserialize(snapshot, this)
 
-    setAttr : (args) =>
+    setAttr : (args) ->
         target = @nodes.get(args.target)
         name = args.name
         # For HTMLOptionElement, HTMLInputELement, HTMLSelectElement
@@ -110,25 +97,25 @@ class SocketIOClient
         else
             target.setAttribute(args.name, args.value)
 
-    removeAttr : (args) =>
+    removeAttr : (args) ->
         target = @nodes.get(args.target)
         target.removeAttribute(args.name)
 
-    setCharacterData : (args) =>
+    setCharacterData : (args) ->
         target = @nodes.get(args.target)
         target.nodeValue = args.value
 
-    disconnect : () =>
+    disconnect : () ->
         @socket.disconnect()
 
-    createComponent : (params) =>
+    createComponent : (params) ->
         node = @nodes.get(params.nodeID)
         Constructor = Components[params.componentName]
         if !Constructor
             throw new Error("Invalid component: #{params.componentName}")
         component = new Constructor(@socket, node, params.opts)
 
-    close : () =>
+    close : () ->
         document.write("
             <html>
                 <head></head>
@@ -145,14 +132,14 @@ class SocketIOClient
         @eventQueue = []
         @renderingPaused = false
 
-    addEventListener : (params) =>
+    addEventListener : (params) ->
         @monitor.addEventListener.apply(@monitor, arguments)
         if test_env
             @window.testClient.emit('addEventListener', params)
        
     # If params given, clear the document of the specified frame.
     # Otherwise, clear the global window's document.
-    clear : (params) =>
+    clear : (params) ->
         doc = @document
         frame = null
         if params?
