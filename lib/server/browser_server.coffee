@@ -11,8 +11,6 @@ Browser              = require('./browser')
 # Serves 1 Browser to n clients.
 class BrowserServer
     constructor : (opts) ->
-        @initLogs()
-
         @id = opts.id
         @browser = new Browser(opts.id, opts.shared)
         @sockets = []
@@ -27,6 +25,8 @@ class BrowserServer
             do (event, handler) =>
                 @browser.on event, () =>
                     handler.apply(this, arguments)
+
+        @initLogs()
 
     initLogs : () ->
         logDir = Path.resolve(__dirname, '..', '..', 'logs')
