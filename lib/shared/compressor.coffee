@@ -2,6 +2,7 @@
 
 class Compressor extends EventEmitter
     constructor : () ->
+        @compressionEnabled = false
         @textToSymbol = {}
         @symbolToText = {}
         @nextID = 0
@@ -26,5 +27,7 @@ class Compressor extends EventEmitter
             throw new Error("Can't register: text=#{text} compressed=#{compressed}")
         @symbolToText[compressed] = text
         @textToSymbol[text] = compressed
+        if compressed >= @nextID
+            @nextID = compressed + 1
 
 module.exports = Compressor

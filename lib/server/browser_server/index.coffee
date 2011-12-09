@@ -13,12 +13,12 @@ Compressor           = require('../../shared/compressor')
 class BrowserServer
     constructor : (opts) ->
         @id = opts.id
-        @compressionEnabled = false #TODO: make configurable.
         @browser = new Browser(opts.id, opts.shared)
         @sockets = []
         @nodes = new TaggedNodeCollection()
         @events = new EventProcessor(this)
         @compressor = new Compressor()
+        @compressionEnabled = @compressor.compressionEnabled #TODO: make configurable with command line arg
         @compressor.on 'newSymbol', (args) =>
             console.log("newSymbol: #{args.original} -> #{args.compressed}")
             for socket in @sockets
@@ -62,7 +62,7 @@ class BrowserServer
             socket.emit(name, params)
 
     addSocket : (socket) ->
-        cmds = serialize(@browser.window.document, @browser.resources)
+        cmds = serialize(@browser.window.document, @browser.resources, @compressionEnabled)
         snapshot =
             nodes            : cmds
             events           : @events.getSnapshot()
@@ -101,9 +101,9 @@ class BrowserServer
 DOMEventHandlers =
     DOMStyleChanged : (event) ->
         @broadcastEvent 'changeStyle',
-            target : event.target.__nodeID
+            target    : event.target.__nodeID
             attribute : event.attribute
-            value : event.value
+            value     : event.value
 
     DOMPropertyModified : (event) ->
         @broadcastEvent 'setProperty',
@@ -130,7 +130,7 @@ DOMEventHandlers =
     DOMNodeInsertedIntoDocument : (event) ->
         if event.target.tagName != 'SCRIPT' && event.target.parentNode.tagName != 'SCRIPT'
             node = event.target
-            cmds = serialize(node, @browser.resources)
+            cmds = serialize(node, @browser.resources, @compressionEnabled)
             # 'before' tells the client where to insert the top level node in
             # relation to its siblings.
             # We only need it for the top level node because nodes in its tree
@@ -171,7 +171,7 @@ DOMEventHandlers =
     PageLoaded : () ->
         @browserLoading = false
         snapshot =
-            nodes : serialize(@browser.window.document, @browser.resources)
+            nodes : serialize(@browser.window.document, @browser.resources, @compressionEnabled)
             events : @events.getSnapshot()
             components : @browser.getSnapshot().components
         if @compressionEnabled

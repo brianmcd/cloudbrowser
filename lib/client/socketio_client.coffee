@@ -9,6 +9,7 @@ test_env = !!process?.env?.TESTS_RUNNING
 class SocketIOClient
     constructor : (@window, @document) ->
         @compressor = new Compressor()
+        @compressionEnabled = @compressor.compressionEnabled
         @socket = @connectSocket()
         @setupRPC(@socket)
 
@@ -51,6 +52,10 @@ class SocketIOClient
         for own name, func of RPCMethods
             do (name, func) =>
                 socket.on name, () =>
+                    # We always process newSymbol because resumeRendering will
+                    # be compressed if compression is enabled.
+                    if name == 'newSymbol'
+                        return func.apply(this, arguments)
                     # This way resumeRendering actually can be called.
                     if name == 'resumeRendering'
                         @renderingPaused = false
@@ -66,7 +71,16 @@ RPCMethods =
         console.log("newSymbol: #{original} -> #{compressed}")
         @compressor.register(original, compressed)
         @socket.on compressed, () =>
-            RPCMethods[original].apply(this, arguments)
+            #TODO: factor this out with setupRPC above
+            # This way resumeRendering actually can be called.
+            if original == 'resumeRendering'
+                @renderingPaused = false
+            if @renderingPaused
+                @eventQueue.push
+                    func : RPCMethods[original]
+                    args : arguments
+            else
+                RPCMethods[original].apply(this, arguments)
 
     changeStyle : (args) ->
         target = @nodes.get(args.target)
@@ -78,7 +92,7 @@ RPCMethods =
 
     # This function is called for partial updates AFTER the initial load.
     attachSubtree : (nodes) ->
-        deserialize({nodes : nodes}, this)
+        deserialize({nodes : nodes}, this, @compressionEnabled)
 
     removeSubtree : (args) ->
         parent = @nodes.get(args.parent)
@@ -93,7 +107,7 @@ RPCMethods =
         @nodes = new TaggedNodeCollection()
         delete @document.__nodeID
         @nodes.add(@document, 'node1')
-        deserialize(snapshot, this)
+        deserialize(snapshot, this, @compressionEnabled)
         for own original, compressed of snapshot.compressionTable
             RPCMethods['newSymbol'].call(this, original, compressed)
 
