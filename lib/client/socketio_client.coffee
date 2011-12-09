@@ -52,6 +52,7 @@ class SocketIOClient
             'setAttr'
             'removeAttr'
             'setCharacterData'
+            'setProperty'
             'addEventListener'
             'loadFromSnapshot'
             'clear'
@@ -72,6 +73,10 @@ class SocketIOClient
                 else
                     console.log("Calling: #{rpcMethod}")
                     @[rpcMethod].apply(this, arguments)
+
+    setProperty : (args) =>
+        target = @nodes.get(args.target)
+        target[args.property] = args.value
 
     # This function is called for partial updates AFTER the initial load.
     attachSubtree : (nodes) =>

@@ -4,6 +4,7 @@
     window.pages.browsers = window.pages.browsers || {};
     var shared = vt.shared;
     var username = window.currentUser.username();
+    var defaultApp = shared.apps()[0];
     var model = window.pages.browsers.model = {
         username : username,
         // An array of actual Browser objects that this user has access to.
@@ -13,7 +14,7 @@
         // List of all applications in the system
         appList : shared.apps,
         // The currently selected app to load.
-        selectedApp : ko.observable(shared.apps()[0]),
+        selectedApp : ko.observable(defaultApp),
         // The list of people with whom to share a newly created Browser.
         currentShareList : ko.observableArray(),
         // Whether we're loading an 'app' or a 'url'

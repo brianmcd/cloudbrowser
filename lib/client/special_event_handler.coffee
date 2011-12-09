@@ -61,7 +61,7 @@ class SpecialEventHandler
         target = clientEvent.target
         # TODO: use batch mechanism once it exists...this is inefficient.
         if target.tagName.toLowerCase() == 'select'
-            if target.multiple
+            if target.multiple == true
                 for option in target.options
                     @socket.emit('DOMUpdate'
                         method : 'setAttribute'

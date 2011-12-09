@@ -19,6 +19,7 @@ class BrowserServer
          'DOMNodeInsertedIntoDocument',
          'DOMNodeRemovedFromDocument',
          'DOMAttrModified',
+         'DOMPropertyModified'
          'DOMCharacterDataModified'
          'DocumentCreated'].forEach (event) =>
              @browser.on event, @["handle#{event}"]
@@ -61,8 +62,9 @@ class BrowserServer
         if target[method] == undefined
             throw new Error("Tried to process an invalid method: #{method}")
 
-        if method == 'setAttribute'
-            console.log("From client: #{target.__nodeID}.setAtrribute(#{args[0]}, #{args[1]})")
+        # TODO: change this to only setAttribute, and lookup table to tell which to use.
+        if args[0] == 'selectedIndex'
+            console.log("From client: #{target.__nodeID}.setAttribute(#{args[0]}, #{args[1]})")
             return target[args[0]] = args[1]
 
         rv = target[method].apply(target, args)
@@ -75,6 +77,13 @@ class BrowserServer
                     throw new Error("id issue")
             else
                 @nodes.add(rv, rvID)
+
+    handleDOMPropertyModified : (event) =>
+        console.log("Sending setProperty: #{event.property}=#{event.value} (#{event.target.value})")
+        @broadcastEvent 'setProperty',
+            target   : event.target.__nodeID
+            property : event.property
+            value    : event.value
 
     handleDocumentCreated : (event) =>
         @nodes.add(event.target)
@@ -125,7 +134,7 @@ class BrowserServer
     handleDOMAttrModified : (event) =>
         # Note: ADDITION can really be MODIFIED as well.
         if event.attrChange == 'ADDITION'
-            console.log("Sending #{event.target.__nodeID}.setAttr(#{event.attrName}, #{event.newValue})")
+            console.log("Sending #{event.target.__nodeID}.setAttr(#{event.attrName}, #{event.newValue.toString()})")
             @broadcastEvent 'setAttr',
                 target : event.target.__nodeID
                 name   : event.attrName

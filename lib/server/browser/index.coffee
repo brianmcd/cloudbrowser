@@ -22,6 +22,7 @@ class Browser extends EventEmitter
          'DOMNodeInsertedIntoDocument'
          'DOMNodeRemovedFromDocument'
          'DOMAttrModified'
+         'DOMPropertyModified'
          'DOMCharacterDataModified'
          'DocumentCreated'].forEach (type) =>
              @dom.on type, (event) =>

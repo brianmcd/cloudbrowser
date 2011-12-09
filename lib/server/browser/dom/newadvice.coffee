@@ -69,6 +69,19 @@ exports.addAdvice = (core, DOM) ->
     # attr = removeNamedItem(string)
     advise core.AttrNodeMap, 'removeNamedItem', attributeHandler('REMOVAL')
 
+
+    do () ->
+        obj = core.HTMLOptionElement.prototype
+        oldSetter = obj.__lookupSetter__('selected')
+        obj.__defineSetter__ 'selected', (value) ->
+            rv = oldSetter.apply(this, arguments)
+            if this._attachedToDocument
+                DOM.emit 'DOMPropertyModified',
+                    target   : this
+                    property : 'selected'
+                    value    : value
+            return rv
+
     do () ->
         obj = core.CharacterData.prototype
         oldSetter = obj.__lookupSetter__('_nodeValue')
