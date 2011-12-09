@@ -8,6 +8,13 @@ advise = (obj, name, func) ->
         func(this, arguments, rv)
         return rv
 
+adviseProperty = (obj, name, func) ->
+    oldSetter = obj.prototype.__lookupSetter__(name)
+    obj.prototype.__defineSetter__ name, (value) ->
+        rv = oldSetter.apply(this, arguments)
+        func(this, value)
+        return rv
+
 # TODO: rename params, cause core is the jscore core, DOMs is DOM.  that is dumb.
 exports.addAdvice = (core, DOM) ->
     # Wrap the HTMLDocument constructor so we can emit an event when one is
@@ -17,7 +24,6 @@ exports.addAdvice = (core, DOM) ->
         oldDoc.apply(this, arguments)
         DOM.emit 'DocumentCreated',
             target : this
-
     core.HTMLDocument.prototype = oldDoc.prototype
 
     # insertBefore looks like:
@@ -46,7 +52,6 @@ exports.addAdvice = (core, DOM) ->
                 target : elem
                 relatedNode : parent
     
-    # TODO: make sure this catches attribute changes.
     # type : either 'ADDITION' or 'REMOVAL'
     attributeHandler = (type) ->
         return (map, args, rv) ->
@@ -69,31 +74,18 @@ exports.addAdvice = (core, DOM) ->
     # attr = removeNamedItem(string)
     advise core.AttrNodeMap, 'removeNamedItem', attributeHandler('REMOVAL')
 
+    adviseProperty core.HTMLOptionElement, 'selected', (elem, value) ->
+        if elem._attachedToDocument
+            DOM.emit 'DOMPropertyModified',
+                target   : elem
+                property : 'selected'
+                value    : value
 
-    do () ->
-        obj = core.HTMLOptionElement.prototype
-        oldSetter = obj.__lookupSetter__('selected')
-        obj.__defineSetter__ 'selected', (value) ->
-            rv = oldSetter.apply(this, arguments)
-            if this._attachedToDocument
-                DOM.emit 'DOMPropertyModified',
-                    target   : this
-                    property : 'selected'
-                    value    : value
-            return rv
+    adviseProperty core.CharacterData, '_nodeValue', (elem, value) ->
+        if elem._parentNode?._attachedToDocument
+            DOM.emit 'DOMCharacterDataModified',
+                target : elem
 
-    do () ->
-        obj = core.CharacterData.prototype
-        oldSetter = obj.__lookupSetter__('_nodeValue')
-        obj.__defineSetter__ '_nodeValue', (value) ->
-            rv = oldSetter.apply(this, arguments)
-            if this._parentNode?._attachedToDocument
-                DOM.emit 'DOMCharacterDataModified',
-                    target : this
-            return rv
-
-
-# TODO TODO: need to update this.
 exports.wrapStyle = (core, DOM) ->
     # JSDOM level2/style.js uses the style getter to lazily create the 
     # CSSStyleDeclaration object for the element.  To be able to emit
@@ -141,7 +133,7 @@ exports.wrapStyle = (core, DOM) ->
         'wordSpacing', 'zIndex'
     ]
 
-    # For each possible style property, add a DOM to emit advice.
+    # For each possible style property, add a setter to emit advice.
     do () ->
         proto = core.CSSStyleDeclaration.prototype
         cssAttrs.forEach (attr) ->
@@ -151,10 +143,9 @@ exports.wrapStyle = (core, DOM) ->
                 # is a parent element pointer, meaning this CSSStyleDeclaration
                 # belongs to an element.
                 if this._parentElement
-                    DOM.emit 'DOMPropertyUpdate',
-                        targetID : this._parentElement.__nodeID
-                        style : true
-                        prop : attr
+                    DOM.emit 'DOMStyleChanged',
+                        target : this._parentElement
+                        attribute : attr
                         value : val
                 return @["_#{attr}"] = val
             proto.__defineGetter__ attr, () ->

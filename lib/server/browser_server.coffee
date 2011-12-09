@@ -19,6 +19,7 @@ class BrowserServer
          'DOMNodeInsertedIntoDocument',
          'DOMNodeRemovedFromDocument',
          'DOMAttrModified',
+         'DOMStyleChanged'
          'DOMPropertyModified'
          'DOMCharacterDataModified'
          'DocumentCreated'].forEach (event) =>
@@ -54,17 +55,20 @@ class BrowserServer
     processClientSetAttribute : (args) =>
         target = @nodes.get(args.target)
         {attribute, value} = args
-
         if attribute == 'src'
             return
-
         if attribute == 'selectedIndex'
             return target[attribute] = value
-        else
-            target.setAttribute(attribute, value)
+        target.setAttribute(attribute, value)
+
+    handleDOMStyleChanged : (event) =>
+        console.log("detected style change")
+        @broadcastEvent 'changeStyle',
+            target : event.target.__nodeID
+            attribute : event.attribute
+            value : event.value
 
     handleDOMPropertyModified : (event) =>
-        console.log("Sending setProperty: #{event.property}=#{event.value} (#{event.target.value})")
         @broadcastEvent 'setProperty',
             target   : event.target.__nodeID
             property : event.property
@@ -77,14 +81,12 @@ class BrowserServer
     # This seems cleaner than having serializer do the tagging.
     # TODO: this won't tag the document node.
     handleDOMNodeInserted : (event) =>
-        console.log("DOMNodeInserted: #{event.target.tagName}")
         if event.target.tagName != 'SCRIPT' &&
            event.target.parentNode.tagName != 'SCRIPT' &&
            !event.target.__nodeID
             @nodes.add(event.target)
 
     handleDOMCharacterDataModified : (event) =>
-        console.log("DOMCharacterDataModified: #{event.target.tagName}")
         @broadcastEvent 'setCharacterData',
             target : event.target.__nodeID
             value  : event.target.nodeValue
@@ -92,7 +94,6 @@ class BrowserServer
     # TODO: How can we handle removal/re-insertion efficiently?
     # TODO: what if serialization starts at an iframe?
     handleDOMNodeInsertedIntoDocument : (event) =>
-        console.log("DOMNodeInsertedIntoDocument: #{event.target.tagName}")
         if event.target.tagName != 'SCRIPT' && event.target.parentNode.tagName != 'SCRIPT'
             node = event.target
             cmds = serialize(node, @browser.resources)
@@ -107,7 +108,6 @@ class BrowserServer
             @broadcastEvent 'attachSubtree', cmds
 
     handleDOMNodeRemovedFromDocument : (event) =>
-        console.log("DOMNodeRemovedFromDocument: #{event.target.tagName}")
         if event.target.tagName != 'SCRIPT' && event.relatedNode.tagName != 'SCRIPT'
             @broadcastEvent 'removeSubtree',
                 parent : event.relatedNode.__nodeID
@@ -119,13 +119,11 @@ class BrowserServer
     handleDOMAttrModified : (event) =>
         # Note: ADDITION can really be MODIFIED as well.
         if event.attrChange == 'ADDITION'
-            console.log("Sending #{event.target.__nodeID}.setAttr(#{event.attrName}, #{event.newValue.toString()})")
             @broadcastEvent 'setAttr',
                 target : event.target.__nodeID
                 name   : event.attrName
                 value  : event.newValue
         else
-            console.log("Sending #{event.target.__nodeID}.removeAttr(#{event.attrName})")
             @broadcastEvent 'removeAttr',
                 target : event.target.__nodeID
                 name   : event.attrName

@@ -50,6 +50,7 @@ class SocketIOClient
          'removeSubtree'
          'setAttr'
          'removeAttr'
+         'changeStyle'
          'setCharacterData'
          'setProperty'
          'addEventListener'
@@ -61,7 +62,6 @@ class SocketIOClient
          'createComponent'
         ].forEach (rpcMethod) =>
             socket.on rpcMethod, () =>
-                console.log("Got: #{rpcMethod}")
                 if rpcMethod == 'resumeRendering'
                     @renderingPaused = false
                 if @renderingPaused
@@ -70,8 +70,11 @@ class SocketIOClient
                         method : rpcMethod
                         args : arguments
                 else
-                    console.log("Calling: #{rpcMethod}")
                     @[rpcMethod].apply(this, arguments)
+
+    changeStyle : (args) =>
+        target = @nodes.get(args.target)
+        target.style[args.attribute] = args.value
 
     setProperty : (args) =>
         target = @nodes.get(args.target)
@@ -82,7 +85,6 @@ class SocketIOClient
         deserialize({nodes : nodes}, this)
 
     removeSubtree : (args) =>
-        console.log(args)
         parent = @nodes.get(args.parent)
         child = @nodes.get(args.node)
         parent.removeChild(child)
@@ -98,7 +100,6 @@ class SocketIOClient
         deserialize(snapshot, this)
 
     setAttr : (args) =>
-        console.log(args)
         target = @nodes.get(args.target)
         name = args.name
         # For HTMLOptionElement, HTMLInputELement, HTMLSelectElement
@@ -110,7 +111,6 @@ class SocketIOClient
             target.setAttribute(args.name, args.value)
 
     removeAttr : (args) =>
-        console.log(args)
         target = @nodes.get(args.target)
         target.removeAttribute(args.name)
 
