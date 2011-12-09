@@ -4,13 +4,11 @@ HTML5                = require('html5')
 Request              = require('request')
 ImportXMLHttpRequest = require('./XMLHttpRequest').ImportXMLHttpRequest
 LocationBuilder      = require('./location').LocationBuilder
-serialize            = require('./serializer').serialize
 addAdvice            = require('./newadvice').addAdvice
 wrapStyle            = require('./newadvice').wrapStyle
 applyPatches         = require('./patches').applyPatches
 
 # A DOM that emits events whenever the DOM changes.
-# TODO: document the protocol here.
 class DOM extends EventEmitter
     constructor : (browser) ->
         @browser = browser
@@ -32,19 +30,6 @@ class DOM extends EventEmitter
         # Copy over some useful objects from our namespace.
         window.JSON = JSON
         window.console = console
-
-        # TODO: generalize these window props
-        # Wrap some properties so we fire them on the client.
-        window.open = (url) =>
-            @browser.emit 'DOMEvent',
-                method : 'windowOpen'
-                params :
-                    url :url
-        window.alert = (msg) =>
-            @browser.emit 'DOMEvent'
-                method : 'windowAlert'
-                params :
-                    msg : msg
 
         # Thanks Zombie for Image code 
         self = this
@@ -70,12 +55,6 @@ class DOM extends EventEmitter
             return @__location = new Location(href)
 
         return window
-
-    # TODO: update this once we move more stuff into advice.
-    getSnapshot : () ->
-        if @currentWindow
-            return serialize(@currentWindow.document, @browser.resources)
-        return null
 
     # Clear JSDOM out of the require cache.  We have to do this because
     # we modify JSDOM's internal data structures with per-BrowserInstance
