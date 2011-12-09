@@ -138,7 +138,11 @@ DOMEventHandlers =
             before = node.nextSibling
             while before?.tagName?.toLowerCase() == 'script'
                 before = before.nextSibling
-            cmds[0].before = before?.__nodeID
+            if @compressionEnabled
+                cmds[0].push(before?.__nodeID)
+            else
+                cmds[0].before = before?.__nodeID
+
             @broadcastEvent 'attachSubtree', cmds
 
     DOMNodeRemovedFromDocument : (event) ->

@@ -50,6 +50,7 @@ class NodeCompressor
                     ownerDocument : compressed[4]
                     docID         : compressed[5]
                     attributes    : compressed[6]
+                    before        : compressed[7]
                 }
             when 1,2
                 return {

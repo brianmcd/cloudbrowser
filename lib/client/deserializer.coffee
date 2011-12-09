@@ -23,7 +23,7 @@ exports.deserialize = (snapshot, client, compression) ->
         parent = client.nodes.get(record.parent)
         # Note: If record.before is null, then the TaggedNodeCollection
         #       returns null.
-        # TODO: we always use appendChild here ultimately anyway...optimize for it.
+        # TODO: we always use appendChild here after 1st node ultimately anyway...optimize for it.
         sibling = client.nodes.get(record.before)
         doc = null
         if record.ownerDocument
