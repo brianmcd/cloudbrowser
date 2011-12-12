@@ -1,11 +1,11 @@
 Path                 = require('path')
 FS                   = require('fs')
-EventProcessor       = require('./event_processor')
 TaggedNodeCollection = require('../../shared/tagged_node_collection')
 Browser              = require('../browser')
 ResourceProxy        = require('./resource_proxy')
 Compressor           = require('../../shared/compressor')
 {serialize}          = require('./serializer')
+{eventTypeToGroup}   = require('../../shared/event_lists')
 
 # Serves 1 Browser to n clients.
 class BrowserServer
@@ -13,7 +13,6 @@ class BrowserServer
         @id = opts.id
         @browser = new Browser(opts.id, opts.shared)
         @sockets = []
-        @eventProcessor = new EventProcessor(this)
         @compressor = new Compressor()
         @compressionEnabled = @compressor.compressionEnabled #TODO: make configurable with command line arg
         @compressor.on 'newSymbol', (args) =>
@@ -47,8 +46,6 @@ class BrowserServer
         @clientProtocolLog = FS.createWriteStream(clientProtocolLogPath)
 
     broadcastEvent : (name, params) ->
-        # TODO: need to see exactly how socket.io does event emission to better
-        #       measure overhead.
         if @compressionEnabled
             name = @compressor.compress(name)
         if @sockets.length
@@ -73,13 +70,6 @@ class BrowserServer
         socket.on 'disconnect', () =>
             @sockets = (s for s in @sockets when s != socket)
 
-    processEvent : (args ) =>
-        @clientProtocolLog.write("processEvent #{JSON.stringify(args)}")
-        if !@browserLoading
-            @broadcastEvent 'pauseRendering'
-            @eventProcessor.processEvent(args)
-            @broadcastEvent 'resumeRendering'
-
     processClientSetAttribute : (args) =>
         @clientProtocolLog.write("setAttribute #{JSON.stringify(args)}")
         if !@browserLoading
@@ -90,6 +80,75 @@ class BrowserServer
             if attribute == 'selectedIndex'
                 return target[attribute] = value
             target.setAttribute(attribute, value)
+
+    processEvent : (clientEv) =>
+        @clientProtocolLog.write("processEvent #{JSON.stringify(clientEv)}")
+        if !@browserLoading
+            @broadcastEvent 'pauseRendering'
+            # TODO
+            # This bail out happens when an event fires on a component, which 
+            # only really exists client side and doesn't have a nodeID (and we 
+            # can't handle clicks on the server anyway).
+            # Need something more elegant.
+            if !clientEv.target
+                return
+
+            # Swap nodeIDs with nodes
+            clientEv = @nodes.unscrub(clientEv)
+
+            # Create an event we can dispatch on the server.
+            event = @_createEvent(clientEv)
+
+            console.log("Dispatching #{event.type}\t" +
+                        "[#{eventTypeToGroup[clientEv.type]}] on " +
+                        "#{clientEv.target.__nodeID} [#{clientEv.target.tagName}]")
+
+            clientEv.target.dispatchEvent(event)
+            @broadcastEvent 'resumeRendering'
+
+    # Takes a clientEv (an event generated on the client and sent over DNode)
+    # and creates a corresponding event for the server's DOM.
+    _createEvent : (clientEv) ->
+        group = eventTypeToGroup[clientEv.type]
+        event = @browser.window.document.createEvent(group)
+        switch group
+            when 'UIEvents'
+                event.initUIEvent(clientEv.type, clientEv.bubbles,
+                                  clientEv.cancelable, @browser.window,
+                                  clientEv.detail)
+            when 'HTMLEvents'
+                event.initEvent(clientEv.type, clientEv.bubbles,
+                                clientEv.cancelable)
+            when 'MouseEvents'
+                event.initMouseEvent(clientEv.type, clientEv.bubbles,
+                                     clientEv.cancelable, @browser.window,
+                                     clientEv.detail, clientEv.screenX,
+                                     clientEv.screenY, clientEv.clientX,
+                                     clientEv.clientY, clientEv.ctrlKey,
+                                     clientEv.altKey, clientEv.shiftKey,
+                                     clientEv.metaKey, clientEv.button,
+                                     clientEv.relatedTarget)
+            # Eventually, we'll detect events from different browsers and
+            # handle them accordingly.
+            when 'KeyboardEvent'
+                # For Chrome:
+                char = String.fromCharCode(clientEv.which)
+                locale = modifiersList = ""
+                repeat = false
+                if clientEv.altGraphKey then modifiersList += "AltGraph"
+                if clientEv.altKey      then modifiersList += "Alt"
+                if clientEv.ctrlKey     then modifiersList += "Ctrl"
+                if clientEv.metaKey     then modifiersList += "Meta"
+                if clientEv.shiftKey    then modifiersList += "Shift"
+
+                # TODO: to get the "keyArg" parameter right, we'd need a lookup
+                # table for:
+                # http://www.w3.org/TR/DOM-Level-3-Events/#key-values-list
+                event.initKeyboardEvent(clientEv.type, clientEv.bubbles,
+                                        clientEv.cancelable, @browser.window,
+                                        char, char, clientEv.keyLocation,
+                                        modifiersList, repeat, locale)
+        return event
 
 # The BrowserServer constructor iterates over the properties in this object and
 # adds an event handler to the Browser for each one.  The function name must
