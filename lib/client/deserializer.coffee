@@ -46,8 +46,6 @@ exports.deserialize = (snapshot, client, compression) ->
                     node = doc.createComment(record.value)
                 client.nodes.add(node, record.id)
                 parent.insertBefore(node, sibling)
-    if snapshot.events?.length > 0
-        client.monitor.loadFromSnapshot(snapshot.events)
     if snapshot.components?.length > 0
         for component in snapshot.components
             client.createComponent(component)

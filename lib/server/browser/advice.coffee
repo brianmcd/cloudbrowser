@@ -123,7 +123,6 @@ exports.addAdvice = (dom, browser) ->
     # TODO: wrap removeEventListener.
     adviseMethod events.EventTarget, 'addEventListener', (elem, args, rv) ->
         browser.emit 'AddEventListener',
-            handlerType : 'normal'
             target      : elem
             type        : args[0]
 
@@ -141,7 +140,6 @@ exports.addAdvice = (dom, browser) ->
                 # TODO: remove listener if this is set to something not a function
                 html.HTMLElement.prototype.__defineSetter__ name, (func) ->
                     browser.emit 'AddEventListener',
-                        handlerType : 'attribute'
                         target      : this
                         type        : type
                     return this["__#{name}"] = func

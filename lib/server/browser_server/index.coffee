@@ -181,7 +181,6 @@ DOMEventHandlers =
         instruction =
             target      : target.__nodeID
             type        : event.type
-            handlerType : event.handlerType
         
         if !target.__registeredListeners
             target.__registeredListeners = [instruction]
