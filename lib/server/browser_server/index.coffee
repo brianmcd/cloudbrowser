@@ -3,11 +3,9 @@ FS                   = require('fs')
 EventProcessor       = require('./event_processor')
 TaggedNodeCollection = require('../../shared/tagged_node_collection')
 Browser              = require('../browser')
+ResourceProxy          = require('./resource_proxy')
 Compressor           = require('../../shared/compressor')
 {serialize}          = require('./serializer')
-
-#   TODO: where should resourceproxy live?
-#       Maybe here instead of Browser?
 
 # Serves 1 Browser to n clients.
 class BrowserServer
@@ -15,7 +13,6 @@ class BrowserServer
         @id = opts.id
         @browser = new Browser(opts.id, opts.shared)
         @sockets = []
-        @nodes = new TaggedNodeCollection()
         @events = new EventProcessor(this)
         @compressor = new Compressor()
         @compressionEnabled = @compressor.compressionEnabled #TODO: make configurable with command line arg
@@ -62,7 +59,7 @@ class BrowserServer
             socket.emit(name, params)
 
     addSocket : (socket) ->
-        cmds = serialize(@browser.window.document, @browser.resources, @compressionEnabled)
+        cmds = serialize(@browser.window.document, @resources, @compressionEnabled)
         snapshot =
             nodes            : cmds
             events           : @events.getSnapshot()
@@ -99,6 +96,22 @@ class BrowserServer
 # adds an event handler to the Browser for each one.  The function name must
 # match the Browser event name.  'this' is set to the Browser via apply.
 DOMEventHandlers =
+    PageLoading : (event) ->
+        @nodes = new TaggedNodeCollection()
+        @resources = new ResourceProxy(event.url)
+        @browserLoading = true
+
+    PageLoaded : () ->
+        @browserLoading = false
+        snapshot =
+            nodes : serialize(@browser.window.document, @resources, @compressionEnabled)
+            events : @events.getSnapshot()
+            components : @browser.getSnapshot().components
+        if @compressionEnabled
+            snapshot.compressionTable = @compressor.textToSymbol
+        for socket in @sockets
+            socket.emit 'loadFromSnapshot', snapshot
+
     DOMStyleChanged : (event) ->
         @broadcastEvent 'changeStyle',
             target    : event.target.__nodeID
@@ -130,7 +143,7 @@ DOMEventHandlers =
     DOMNodeInsertedIntoDocument : (event) ->
         if event.target.tagName != 'SCRIPT' && event.target.parentNode.tagName != 'SCRIPT'
             node = event.target
-            cmds = serialize(node, @browser.resources, @compressionEnabled)
+            cmds = serialize(node, @resources, @compressionEnabled)
             # 'before' tells the client where to insert the top level node in
             # relation to its siblings.
             # We only need it for the top level node because nodes in its tree
@@ -168,20 +181,6 @@ DOMEventHandlers =
 
     ExitedTimer : () ->
         @broadcastEvent 'resumeRendering'
-
-    PageLoading : () ->
-        @browserLoading = true
-
-    PageLoaded : () ->
-        @browserLoading = false
-        snapshot =
-            nodes : serialize(@browser.window.document, @browser.resources, @compressionEnabled)
-            events : @events.getSnapshot()
-            components : @browser.getSnapshot().components
-        if @compressionEnabled
-            snapshot.compressionTable = @compressor.textToSymbol
-        for socket in @sockets
-            socket.emit 'loadFromSnapshot', snapshot
 
     WindowMethodCalled : (event) ->
         @broadcastEvent 'callWindowMethod',

@@ -5,7 +5,6 @@ URL                    = require('url')
 Request                = require('request')
 HTML5                  = require('html5')
 TestClient             = require('./test_client')
-ResourceProxy          = require('./resource_proxy')
 ImportXMLHttpRequest   = require('./XMLHttpRequest').ImportXMLHttpRequest
 LocationBuilder        = require('./location').LocationBuilder
 InBrowserAPI           = require('../../api')
@@ -19,7 +18,6 @@ class Browser extends EventEmitter
         @components = [] # TODO: empty this at the right time; move to BrowserServer
         @sharedState = sharedState
         @window = null
-        @resources = null
 
         @initDOM()
         
@@ -77,9 +75,9 @@ class Browser extends EventEmitter
     # window's load event if you need to.
     loadFromURL : (url, configFunc) ->
         console.log "Loading: #{url}"
-        @emit 'PageLoading'
+        @emit 'PageLoading',
+            url : url
         @window.close if @window?
-        @resources = new ResourceProxy(url)
         @window = @jsdom.createWindow(@jsdom.dom.level3.html)
         @augmentWindow(@window)
 
