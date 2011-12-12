@@ -1,30 +1,47 @@
-advise = (obj, name, func) ->
+adviseMethod = (obj, name, func) ->
     originalMethod = obj.prototype[name]
     obj.prototype[name] = () ->
         rv = originalMethod.apply(this, arguments)
         func(this, arguments, rv)
         return rv
 
-adviseProperty = (obj, name, func) ->
-    oldSetter = obj.prototype.__lookupSetter__(name)
-    obj.prototype.__defineSetter__ name, (value) ->
-        rv = oldSetter.apply(this, arguments)
-        func(this, value)
-        return rv
+adviseProperty = (obj, name, args) ->
+    for own type, func of args
+        do (type, func) ->
+            if type == 'setter'
+                oldSetter = obj.prototype.__lookupSetter__(name)
+                obj.prototype.__defineSetter__ name, (value) ->
+                    rv = oldSetter.apply(this, arguments)
+                    func(this, value)
+                    return rv
+            else if type == 'getter'
+                oldGetter = obj.prototype.__lookupGetter__(name)
+                obj.prototype.__defineGetter__ name, () ->
+                    rv = oldGetter.apply(this, arguments)
+                    func(this, rv)
+                    return rv
 
-exports.addAdvice = (core, browser) ->
+# Adds advice to a number of DOM methods so we can emit events when the DOM
+# changes.
+exports.addAdvice = (dom, browser) ->
+    {html, events} = dom
+
+    # Advice for: HTMLDocument constructor
+    #
     # Wrap the HTMLDocument constructor so we can emit an event when one is
     # created.  We need this so we can tag Document nodes.
-    oldDoc = core.HTMLDocument
-    core.HTMLDocument = () ->
-        oldDoc.apply(this, arguments)
-        browser.emit 'DocumentCreated',
-            target : this
-    core.HTMLDocument.prototype = oldDoc.prototype
+    do () ->
+        oldDoc = html.HTMLDocument
+        html.HTMLDocument = () ->
+            oldDoc.apply(this, arguments)
+            browser.emit 'DocumentCreated',
+                target : this
+        html.HTMLDocument.prototype = oldDoc.prototype
 
-    # insertBefore looks like:
-    # var insertedElement = parentElement.insertBefore(newElement, referenceElement);
-    advise core.Node, 'insertBefore', (parent, args, rv) ->
+    # Advice for: Node.insertBefore
+    #
+    # var insertedNode = parentNode.insertBefore(newNode, referenceNode);
+    adviseMethod html.Node, 'insertBefore', (parent, args, rv) ->
         elem = args[0]
         browser.emit 'DOMNodeInserted',
             target : elem
@@ -37,9 +54,10 @@ exports.addAdvice = (core, browser) ->
                 target : elem
                 relatedNode : parent
 
-    # removeChild looks like:
-    # var oldChild = element.removeChild(child);
-    advise core.Node, 'removeChild', (parent, args, rv) ->
+    # Advice for: Node.removeChild
+    #
+    # var oldChild = node.removeChild(child);
+    adviseMethod html.Node, 'removeChild', (parent, args, rv) ->
         elem = args[0]
         # Note: Unlike DOM, we only emit DOMNodeRemovedFromDocument on the root
         # of the removed subtree.
@@ -48,53 +66,97 @@ exports.addAdvice = (core, browser) ->
                 target : elem
                 relatedNode : parent
     
+    # Advice for AttrNodeMap.[set|remove]NamedItem
+    #
+    # This catches changes to node attributes.
     # type : either 'ADDITION' or 'REMOVAL'
-    attributeHandler = (type) ->
-        return (map, args, rv) ->
-            attr = if type == 'ADDITION'
-                args[0]
-            else
-                rv
-            if !attr then return
+    do () ->
+        attributeHandler = (type) ->
+            return (map, args, rv) ->
+                attr = if type == 'ADDITION'
+                    args[0]
+                else
+                    rv
+                if !attr then return
 
-            target = map._parentNode
-            if target._attachedToDocument
-                browser.emit 'DOMAttrModified',
-                    target : target
-                    attrName : attr.name
-                    newValue : attr.value
-                    attrChange : type
+                target = map._parentNode
+                if target._attachedToDocument
+                    browser.emit 'DOMAttrModified',
+                        target : target
+                        attrName : attr.name
+                        newValue : attr.value
+                        attrChange : type
+        # setNamedItem(node)
+        adviseMethod html.AttrNodeMap,
+                          'setNamedItem',
+                          attributeHandler('ADDITION')
+        # attr = removeNamedItem(string)
+        adviseMethod html.AttrNodeMap,
+                     'removeNamedItem',
+                     attributeHandler('REMOVAL')
 
-    # setNamedItem(node)
-    advise core.AttrNodeMap, 'setNamedItem', attributeHandler('ADDITION')
-    # attr = removeNamedItem(string)
-    advise core.AttrNodeMap, 'removeNamedItem', attributeHandler('REMOVAL')
+    # Advice for: HTMLOptionElement.selected property.
+    #
+    # The client needs to set this as a property, not an attribute, or the
+    # selection won't actually be changed.
+    adviseProperty html.HTMLOptionElement, 'selected',
+        setter : (elem, value) ->
+            if elem._attachedToDocument
+                browser.emit 'DOMPropertyModified',
+                    target   : elem
+                    property : 'selected'
+                    value    : value
 
-    adviseProperty core.HTMLOptionElement, 'selected', (elem, value) ->
-        if elem._attachedToDocument
-            browser.emit 'DOMPropertyModified',
-                target   : elem
-                property : 'selected'
-                value    : value
+    # Advice for: CharacterData._nodeValue
+    #
+    # This is the only way to detect changes to the text contained in a node.
+    adviseProperty html.CharacterData, '_nodeValue',
+        setter : (elem, value) ->
+            if elem._parentNode?._attachedToDocument
+                browser.emit 'DOMCharacterDataModified',
+                    target : elem
 
-    adviseProperty core.CharacterData, '_nodeValue', (elem, value) ->
-        if elem._parentNode?._attachedToDocument
-            browser.emit 'DOMCharacterDataModified',
-                target : elem
+    # Advice for: EventTarget.addEventListener
+    #
+    # This allows us to know which events need to be listened for on the
+    # client.
+    # TODO: wrap removeEventListener.
+    adviseMethod events.EventTarget, 'addEventListener', (elem, args, rv) ->
+        browser.emit 'AddEventListener',
+            target    : elem
+            type      : args[0]
+            capturing : args[2]
 
-exports.wrapStyle = (core, browser) ->
+    # Advice for: all possible attribute event listeners
+    #
+    # For each type of event that can be listened for on the client, we wrap
+    # the corresponding "on" property on each node.
+    # TODO: really, this should emit on all event types and shouldn't know
+    #       about ClientEvents.
+    do () ->
+        {ClientEvents} = require('../../shared/event_lists')
+        for type of ClientEvents
+            do (type) ->
+                name = "on#{type}"
+                # TODO: remove listener if this is set to something not a function
+                html.HTMLElement.prototype.__defineSetter__ name, (func) ->
+                    browser.emit 'AddAttributeEventListener',
+                        target : this
+                        type   : type
+                    return this["__#{name}"] = func
+                html.HTMLElement.prototype.__defineGetter__ name, () ->
+                    return this["__#{name}"]
+
+    # Advice for: HTMLElement.style
+    #
     # JSDOM level2/style.js uses the style getter to lazily create the 
     # CSSStyleDeclaration object for the element.  To be able to emit
     # the right instruction in the style object advice, we need to have
     # a pointer to the element that owns the style object, so we create it
     # here.
-    do () ->
-        proto = core.HTMLElement.prototype
-        getter = proto.__lookupGetter__('style')
-        proto.__defineGetter__ 'style', () ->
-            style = getter.call(this)
-            style._parentElement = this
-            return style
+    adviseProperty html.HTMLElement, 'style',
+        getter : (elem, rv) ->
+            rv._parentElement = elem
 
     # This list is from:
     #   http://dev.w3.org/csswg/cssom/#the-cssstyledeclaration-interface
@@ -129,9 +191,10 @@ exports.wrapStyle = (core, browser) ->
         'wordSpacing', 'zIndex'
     ]
 
+    # Advice for: Element.style.*
     # For each possible style property, add a setter to emit advice.
     do () ->
-        proto = core.CSSStyleDeclaration.prototype
+        proto = html.CSSStyleDeclaration.prototype
         cssAttrs.forEach (attr) ->
             proto.__defineSetter__ attr, (val) ->
                 # cssom seems to use some CSSStyleDeclaration objects

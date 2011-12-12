@@ -9,7 +9,7 @@ ImportXMLHttpRequest   = require('./XMLHttpRequest').ImportXMLHttpRequest
 LocationBuilder        = require('./location').LocationBuilder
 InBrowserAPI           = require('../../api')
 TaggedNodeCollection   = require('../../shared/tagged_node_collection')
-{addAdvice, wrapStyle} = require('./advice')
+{addAdvice}            = require('./advice')
 {applyPatches}         = require('./patches')
 
 class Browser extends EventEmitter
@@ -28,8 +28,7 @@ class Browser extends EventEmitter
             ProcessExternalResources : ['script', 'frame', 'iframe', 'css']
             MutationEvents : '2.0'
             QuerySelector : false
-        addAdvice(@jsdom.dom.level3.html, this)
-        wrapStyle(@jsdom.dom.level3.html, this)
+        addAdvice(@jsdom.dom.level3, this)
         applyPatches(@jsdom.dom.level3, this)
 
     # Clear JSDOM out of the require cache.  We have to do this because
