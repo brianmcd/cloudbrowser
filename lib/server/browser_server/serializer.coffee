@@ -11,7 +11,7 @@ NodeCompressor = require('../../shared/node_compressor')
 #   [value] - Optional. Given for text and comment nodes.
 #   [attributes] - Optional. An object like:
 #       Property : value
-exports.serialize = (root, resources, compress) ->
+exports.serialize = (root, resources, compress, events) ->
     document = root.ownerDocument || root
     if document.nodeType != 9
         throw new Error("Couldn't find document")
@@ -31,7 +31,7 @@ exports.serialize = (root, resources, compress) ->
             console.log("Can't create instructions for #{typeStr}")
             return
         # Each serializer pushes its command(s) onto the command stack.
-        func(node, cmds, document, resources, compress)
+        func(node, cmds, document, resources, compress, events)
 
     return cmds
 
@@ -51,7 +51,7 @@ serializers =
         undefined
 
     # TODO: Maybe if node.tagName == '[i]frame]' pass off to a helper.
-    Element : (node, cmds, topDoc, resources, compress) ->
+    Element : (node, cmds, topDoc, resources, compress, events) ->
         tagName = node.tagName.toLowerCase()
         attributes = null
         if node.attributes?.length > 0
@@ -79,6 +79,8 @@ serializers =
             record.ownerDocument = node.ownerDocument.__nodeID
         if /^i?frame$/.test(tagName)
             record.docID = node.contentDocument.__nodeID
+        if node.__registeredListeners?.length
+            record.events = node.__registeredListeners
 
         if compress
             cmds.push(NodeCompressor.compress(record))

@@ -29,13 +29,12 @@ class EventMonitor
             @document.addEventListener(type, @_handler, true)
 
     addEventListener : (params) ->
-        {nodeID, type, capturing} = params
-        console.log("Client adding listener for: #{type} on #{nodeID}")
-        if !@activeEvents[nodeID]
-            @activeEvents[nodeID] = {}
-        @activeEvents[nodeID][type] = true
+        {target, type} = params
+        console.log("Client adding listener for: #{type} on #{target}")
+        if !@activeEvents[target]
+            @activeEvents[target] = {}
+        @activeEvents[target][type] = true
         if !@registeredEvents[type]
-            # TODO: unit test for this case
             if type == 'keyup'
                 @document.addEventListener(type,
                                            @specialEvents.keyupListener,
@@ -43,11 +42,6 @@ class EventMonitor
             else
                 @document.addEventListener(type, @_handler, true)
             @registeredEvents[type] = true
-
-    # listeners is an array of params objects for addEventListener.
-    loadFromSnapshot : (listeners) ->
-        for listener in listeners
-            @addEventListener(listener)
 
     _handler : (event) =>
         if DefaultEvents[event.type] || @activeEvents[event.target.__nodeID]?[event.type]

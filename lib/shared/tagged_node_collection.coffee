@@ -13,6 +13,9 @@ class TaggedNodeCollection
         if @ids[id] == undefined
             throw new Error('node id not in table: ' + id)
         return @ids[id]
+    
+    exists : (id) ->
+        return !!@ids[id]
 
     # If ID is not supplied, it will be generated (the common case)
     add : (node, id) ->

@@ -123,9 +123,9 @@ exports.addAdvice = (dom, browser) ->
     # TODO: wrap removeEventListener.
     adviseMethod events.EventTarget, 'addEventListener', (elem, args, rv) ->
         browser.emit 'AddEventListener',
-            target    : elem
-            type      : args[0]
-            capturing : args[2]
+            handlerType : 'normal'
+            target      : elem
+            type        : args[0]
 
     # Advice for: all possible attribute event listeners
     #
@@ -140,9 +140,10 @@ exports.addAdvice = (dom, browser) ->
                 name = "on#{type}"
                 # TODO: remove listener if this is set to something not a function
                 html.HTMLElement.prototype.__defineSetter__ name, (func) ->
-                    browser.emit 'AddAttributeEventListener',
-                        target : this
-                        type   : type
+                    browser.emit 'AddEventListener',
+                        handlerType : 'attribute'
+                        target      : this
+                        type        : type
                     return this["__#{name}"] = func
                 html.HTMLElement.prototype.__defineGetter__ name, () ->
                     return this["__#{name}"]

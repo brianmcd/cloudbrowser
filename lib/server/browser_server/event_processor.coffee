@@ -1,12 +1,6 @@
-EventEmitter     = require('events').EventEmitter
-EventLists       = require('../../shared/event_lists')
-
-# These are events that are eligible for being shipped to the client.  We use
-# this to know which attribute handlers to register for, and which events we
-# need to capture in our advice.
-ClientEvents     = EventLists.clientEvents
+EventEmitter       = require('events').EventEmitter
 # Maps an event type, like 'click', to a group, like 'MouseEvents'
-EventTypeToGroup = EventLists.eventTypeToGroup
+{eventTypeToGroup} = require('../../shared/event_lists')
 
 # TODO: this needs to handle events on frames, which would need to be
 #       created from a different document.
@@ -14,56 +8,7 @@ class EventProcessor extends EventEmitter
     constructor : (bserver) ->
         @bserver = bserver
         @browser = bserver.browser
-        @events = []
-        @_wrapAddEventListener(@browser.jsdom.dom.level3.events)
-        @_installAttributeHandlerAdvice(@browser.jsdom.dom.level3.html)
 
-    _wrapAddEventListener : (events) ->
-        self = this
-        proto = events.EventTarget.prototype
-        original = proto.addEventListener
-        proto.addEventListener = (type, listener, capturing) ->
-            rv = original.apply(this, arguments)
-            if !this.__nodeID || !ClientEvents[type]
-                return rv
-            params =
-                nodeID : this.__nodeID
-                type : type
-                capturing : capturing
-            console.log("addEventListener advice asking client to listen " +
-                        "for #{params.type} on #{params.nodeID}")
-            self.emit('addEventListener', params)
-            self.events.push(params)
-            return rv
-
-    _installAttributeHandlerAdvice : (html) ->
-        self = this
-        for type of ClientEvents
-            do (type) ->
-                name = "on#{type}"
-                # TODO: remove listener if this is set to null?
-                #       this won't really effect correctness, but it will prevent
-                #       client from dispatching an event to server DOM that isn't
-                #       listened on.
-                html.HTMLElement.prototype.__defineSetter__ name, (func) ->
-                    this["__#{name}"] = func
-                    if !this.__nodeID || !ClientEvents[type]
-                        return func
-                    params =
-                        nodeID : this.__nodeID
-                        type : type
-                        capturing : false
-                    console.log("Attribute handler intercepted: #{params.type} " +
-                                "on #{params.nodeID}")
-                    self.emit('addEventListener', params)
-                    return func
-                html.HTMLElement.prototype.__defineGetter__ name, (func) ->
-                    return this["__#{name}"]
-
-    getSnapshot : () ->
-        return @events
-
-    # Called by client via DNode
     processEvent : (clientEv) =>
         # TODO
         # This bail out happens when an event fires on a component, which 
@@ -72,9 +17,6 @@ class EventProcessor extends EventEmitter
         # Need something more elegant.
         if !clientEv.target
             return
-        console.log("target: #{clientEv.target}\t" +
-                    "type: #{clientEv.type}\t" +
-                    "group: #{EventTypeToGroup[clientEv.type]}")
 
         # Swap nodeIDs with nodes
         clientEv = @bserver.nodes.unscrub(clientEv)
@@ -83,18 +25,15 @@ class EventProcessor extends EventEmitter
         event = @_createEvent(clientEv)
 
         console.log("Dispatching #{event.type}\t" +
-                    "[#{EventTypeToGroup[clientEv.type]}] on " +
-                    "#{clientEv.target.__nodeID}")
+                    "[#{eventTypeToGroup[clientEv.type]}] on " +
+                    "#{clientEv.target.__nodeID} [#{clientEv.target.tagName}")
 
-        console.log("event.bubbles: #{event.bubbles}")
-
-        console.log("TARGET: #{clientEv.target.tagName}")
         clientEv.target.dispatchEvent(event)
 
     # Takes a clientEv (an event generated on the client and sent over DNode)
     # and creates a corresponding event for the server's DOM.
     _createEvent : (clientEv) ->
-        group = EventTypeToGroup[clientEv.type]
+        group = eventTypeToGroup[clientEv.type]
         event = @browser.window.document.createEvent(group)
         switch group
             when 'UIEvents'
@@ -117,26 +56,21 @@ class EventProcessor extends EventEmitter
             # handle them accordingly.
             when 'KeyboardEvent'
                 # For Chrome:
-                type = clientEv.type
-                bubbles = clientEv.bubbles
-                cancelable = clientEv.cancelable
-                view = @browser.window
                 char = String.fromCharCode(clientEv.which)
-                location = clientEv.keyLocation
-                modifiersList = ""
+                locale = modifiersList = ""
                 repeat = false
-                locale = ""
                 if clientEv.altGraphKey then modifiersList += "AltGraph"
-                if clientEv.altKey then modifiersList += "Alt"
-                if clientEv.ctrlKey then modifiersList += "Ctrl"
-                if clientEv.metaKey then modifiersList += "Meta"
-                if clientEv.shiftKey then modifiersList += "Shift"
+                if clientEv.altKey      then modifiersList += "Alt"
+                if clientEv.ctrlKey     then modifiersList += "Ctrl"
+                if clientEv.metaKey     then modifiersList += "Meta"
+                if clientEv.shiftKey    then modifiersList += "Shift"
 
                 # TODO: to get the "keyArg" parameter right, we'd need a lookup
                 # table for:
                 # http://www.w3.org/TR/DOM-Level-3-Events/#key-values-list
-                event.initKeyboardEvent(type, bubbles, cancelable,
-                                        @browser.window, char, char, location,
+                event.initKeyboardEvent(clientEv.type, clientEv.bubbles,
+                                        clientEv.cancelable, @browser.window,
+                                        char, char, clientEv.keyLocation,
                                         modifiersList, repeat, locale)
         return event
 

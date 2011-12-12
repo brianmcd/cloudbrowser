@@ -8,6 +8,7 @@
 #       docID         : node.contentDocument.__nodeID
 #       attributes    :
 #               name : value
+#       events        : [event1, event2]
 # 'comment' | 'text'
 #       type          : 'comment' == 1, 'text' == 2
 #       id            : node.__nodeID
@@ -27,6 +28,7 @@ class NodeCompressor
                     record.ownerDocument
                     record.docID
                     record.attributes
+                    record.events
                 ]
             when 'comment', 'text'
                 typeNum = if record.type == 'comment' then 1 else 2
@@ -50,7 +52,8 @@ class NodeCompressor
                     ownerDocument : compressed[4]
                     docID         : compressed[5]
                     attributes    : compressed[6]
-                    before        : compressed[7]
+                    events        : compressed[7]
+                    before        : compressed[8]
                 }
             when 1,2
                 return {

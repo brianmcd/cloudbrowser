@@ -158,7 +158,7 @@ RPCMethods =
         @renderingPaused = false
 
     addEventListener : (params) ->
-        @monitor.addEventListener.apply(@monitor, arguments)
+        @monitor.addEventListener(params)
         if test_env
             @window.testClient.emit('addEventListener', params)
        

@@ -3,7 +3,7 @@ FS                   = require('fs')
 EventProcessor       = require('./event_processor')
 TaggedNodeCollection = require('../../shared/tagged_node_collection')
 Browser              = require('../browser')
-ResourceProxy          = require('./resource_proxy')
+ResourceProxy        = require('./resource_proxy')
 Compressor           = require('../../shared/compressor')
 {serialize}          = require('./serializer')
 
@@ -13,7 +13,7 @@ class BrowserServer
         @id = opts.id
         @browser = new Browser(opts.id, opts.shared)
         @sockets = []
-        @events = new EventProcessor(this)
+        @eventProcessor = new EventProcessor(this)
         @compressor = new Compressor()
         @compressionEnabled = @compressor.compressionEnabled #TODO: make configurable with command line arg
         @compressor.on 'newSymbol', (args) =>
@@ -62,7 +62,6 @@ class BrowserServer
         cmds = serialize(@browser.window.document, @resources, @compressionEnabled)
         snapshot =
             nodes            : cmds
-            events           : @events.getSnapshot()
             components       : @browser.getSnapshot().components
         if @compressionEnabled
             snapshot.compressionTable = @compressor.textToSymbol
@@ -78,7 +77,7 @@ class BrowserServer
         @clientProtocolLog.write("processEvent #{JSON.stringify(args)}")
         if !@browserLoading
             @broadcastEvent 'pauseRendering'
-            @events.processEvent(args)
+            @eventProcessor.processEvent(args)
             @broadcastEvent 'resumeRendering'
 
     processClientSetAttribute : (args) =>
@@ -105,7 +104,6 @@ DOMEventHandlers =
         @browserLoading = false
         snapshot =
             nodes : serialize(@browser.window.document, @resources, @compressionEnabled)
-            events : @events.getSnapshot()
             components : @browser.getSnapshot().components
         if @compressionEnabled
             snapshot.compressionTable = @compressor.textToSymbol
@@ -127,6 +125,11 @@ DOMEventHandlers =
     DocumentCreated : (event) ->
         @nodes.add(event.target)
 
+    DOMCharacterDataModified : (event) ->
+        @broadcastEvent 'setCharacterData',
+            target : event.target.__nodeID
+            value  : event.target.nodeValue
+
     # Tag all newly created nodes.
     # This seems cleaner than having serializer do the tagging.
     DOMNodeInserted : (event) ->
@@ -135,13 +138,9 @@ DOMEventHandlers =
            !event.target.__nodeID
             @nodes.add(event.target)
 
-    DOMCharacterDataModified : (event) ->
-        @broadcastEvent 'setCharacterData',
-            target : event.target.__nodeID
-            value  : event.target.nodeValue
-
     DOMNodeInsertedIntoDocument : (event) ->
-        if event.target.tagName != 'SCRIPT' && event.target.parentNode.tagName != 'SCRIPT'
+        if event.target.tagName != 'SCRIPT' &&
+           event.target.parentNode.tagName != 'SCRIPT'
             node = event.target
             cmds = serialize(node, @resources, @compressionEnabled)
             # 'before' tells the client where to insert the top level node in
@@ -159,7 +158,8 @@ DOMEventHandlers =
             @broadcastEvent 'attachSubtree', cmds
 
     DOMNodeRemovedFromDocument : (event) ->
-        if event.target.tagName != 'SCRIPT' && event.relatedNode.tagName != 'SCRIPT'
+        if event.target.tagName != 'SCRIPT' &&
+           event.relatedNode.tagName != 'SCRIPT'
             @broadcastEvent 'removeSubtree',
                 parent : event.relatedNode.__nodeID
                 node   : event.target.__nodeID
@@ -176,11 +176,24 @@ DOMEventHandlers =
                 target : event.target.__nodeID
                 name   : event.attrName
 
-    EnteredTimer : () ->
-        @broadcastEvent 'pauseRendering'
+    AddEventListener : (event) ->
+        {target} = event
+        instruction =
+            target      : target.__nodeID
+            type        : event.type
+            handlerType : event.handlerType
+        
+        if !target.__registeredListeners
+            target.__registeredListeners = [instruction]
+        else
+            target.__registeredListeners.push(instruction)
 
-    ExitedTimer : () ->
-        @broadcastEvent 'resumeRendering'
+        if target._attachedToDocument
+            @broadcastEvent('addEventListener', instruction)
+
+    EnteredTimer : () -> @broadcastEvent 'pauseRendering'
+
+    ExitedTimer :  () -> @broadcastEvent 'resumeRendering'
 
     WindowMethodCalled : (event) ->
         @broadcastEvent 'callWindowMethod',
@@ -191,5 +204,5 @@ DOMEventHandlers =
         @consoleLog.write(event.msg + '\n')
         # TODO: debug flag to enable line below.
         console.log("[[[#{@browser.id}]]] #{event.msg}")
-
+        
 module.exports = BrowserServer

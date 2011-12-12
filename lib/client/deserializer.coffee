@@ -6,30 +6,25 @@ NodeCompressor = require('./node_compressor')
 # TODO: need to make sure the ORDER of children is preserved (might be
 #       what broke admin page)
 exports.deserialize = (snapshot, client, compression) ->
-    for compressedRecord in snapshot.nodes
-        record = null
+    for record in snapshot.nodes
         if compression
-            record = NodeCompressor.uncompress(compressedRecord)
-        else
-            record = compressedRecord
+            record = NodeCompressor.uncompress(record)
 
         # If the node already exists, we don't need to create it.
         # This can happen if a node is removed then re-added.
-        try
-            client.nodes.get(record.id)
+        if client.nodes.exists(record.id)
             continue
-        catch e
+
         node = null
         parent = client.nodes.get(record.parent)
         # Note: If record.before is null, then the TaggedNodeCollection
         #       returns null.
         # TODO: we always use appendChild here after 1st node ultimately anyway...optimize for it.
         sibling = client.nodes.get(record.before)
-        doc = null
+        doc = client.document
         if record.ownerDocument
             doc = client.nodes.get(record.ownerDocument)
-        else
-            doc = client.document
+
         switch record.type
             when 'element'
                 node = doc.createElement(record.name)
@@ -41,6 +36,9 @@ exports.deserialize = (snapshot, client, compression) ->
                 # The server sends a docID attached to the record.
                 if /i?frame/.test(record.name.toLowerCase())
                     client.nodes.add(node.contentDocument, record.docID)
+                record.events?.forEach (event) ->
+                    client.monitor.addEventListener(event)
+
             when 'text', 'comment'
                 if record.type == 'text'
                     node = doc.createTextNode(record.value)
