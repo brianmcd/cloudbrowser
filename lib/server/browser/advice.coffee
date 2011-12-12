@@ -1,6 +1,3 @@
-# TODO: JSDOM is missing defaultValue and defaultChecked setters for HTMLInputElement
-# TODO: JSDOM is missing defaultValue for HTMLTextAreaElement
-
 advise = (obj, name, func) ->
     originalMethod = obj.prototype[name]
     obj.prototype[name] = () ->
@@ -15,14 +12,13 @@ adviseProperty = (obj, name, func) ->
         func(this, value)
         return rv
 
-# TODO: rename params, cause core is the jscore core, DOMs is DOM.  that is dumb.
-exports.addAdvice = (core, DOM) ->
+exports.addAdvice = (core, browser) ->
     # Wrap the HTMLDocument constructor so we can emit an event when one is
     # created.  We need this so we can tag Document nodes.
     oldDoc = core.HTMLDocument
     core.HTMLDocument = () ->
         oldDoc.apply(this, arguments)
-        DOM.emit 'DocumentCreated',
+        browser.emit 'DocumentCreated',
             target : this
     core.HTMLDocument.prototype = oldDoc.prototype
 
@@ -30,14 +26,14 @@ exports.addAdvice = (core, DOM) ->
     # var insertedElement = parentElement.insertBefore(newElement, referenceElement);
     advise core.Node, 'insertBefore', (parent, args, rv) ->
         elem = args[0]
-        DOM.emit 'DOMNodeInserted',
+        browser.emit 'DOMNodeInserted',
             target : elem
             relatedNode : parent
         # Note: unlike the DOM, we only emit DOMNodeInsertedIntoDocument
         # on the root of a removed subtree, meaning the handler should check
         # to see if it has children.
         if parent._attachedToDocument
-            DOM.emit 'DOMNodeInsertedIntoDocument',
+            browser.emit 'DOMNodeInsertedIntoDocument',
                 target : elem
                 relatedNode : parent
 
@@ -48,7 +44,7 @@ exports.addAdvice = (core, DOM) ->
         # Note: Unlike DOM, we only emit DOMNodeRemovedFromDocument on the root
         # of the removed subtree.
         if parent._attachedToDocument
-            DOM.emit 'DOMNodeRemovedFromDocument',
+            browser.emit 'DOMNodeRemovedFromDocument',
                 target : elem
                 relatedNode : parent
     
@@ -63,7 +59,7 @@ exports.addAdvice = (core, DOM) ->
 
             target = map._parentNode
             if target._attachedToDocument
-                DOM.emit 'DOMAttrModified',
+                browser.emit 'DOMAttrModified',
                     target : target
                     attrName : attr.name
                     newValue : attr.value
@@ -76,17 +72,17 @@ exports.addAdvice = (core, DOM) ->
 
     adviseProperty core.HTMLOptionElement, 'selected', (elem, value) ->
         if elem._attachedToDocument
-            DOM.emit 'DOMPropertyModified',
+            browser.emit 'DOMPropertyModified',
                 target   : elem
                 property : 'selected'
                 value    : value
 
     adviseProperty core.CharacterData, '_nodeValue', (elem, value) ->
         if elem._parentNode?._attachedToDocument
-            DOM.emit 'DOMCharacterDataModified',
+            browser.emit 'DOMCharacterDataModified',
                 target : elem
 
-exports.wrapStyle = (core, DOM) ->
+exports.wrapStyle = (core, browser) ->
     # JSDOM level2/style.js uses the style getter to lazily create the 
     # CSSStyleDeclaration object for the element.  To be able to emit
     # the right instruction in the style object advice, we need to have
@@ -143,7 +139,7 @@ exports.wrapStyle = (core, DOM) ->
                 # is a parent element pointer, meaning this CSSStyleDeclaration
                 # belongs to an element.
                 if this._parentElement
-                    DOM.emit 'DOMStyleChanged',
+                    browser.emit 'DOMStyleChanged',
                         target : this._parentElement
                         attribute : attr
                         value : val
