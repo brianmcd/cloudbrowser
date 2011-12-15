@@ -33,7 +33,7 @@
         var hash = hashPassword(password);
         if (hash == user.hashedPassword()) {
             console.log('login successful');
-            window.currentUser = user;
+            window.currentUser(user);
             if (user.primaryBrowser() != null) {
                 // TODO
                 console.log("The user already has a primary browser...TODO: redirect");
@@ -63,7 +63,7 @@
         console.log(user.username());
         console.log(user.hashedPassword());
         user.persist(function () {
-            window.currentUser = users[username] = user;
+            window.currentUser(users[username] = user);
             user.primaryBrowser(vt.currentBrowser());
             window.vt.shared.usersArray.push(user);
             window.pages.home.load();

@@ -3,7 +3,7 @@
     window.pages = window.pages || {};
     window.pages.browsers = window.pages.browsers || {};
     var shared = vt.shared;
-    var username = window.currentUser.username();
+    var username = window.currentUser().username();
     var defaultApp = shared.apps()[0];
     var model = window.pages.browsers.model = {
         username : username,

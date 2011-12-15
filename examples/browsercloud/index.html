@@ -15,7 +15,7 @@
                 <li id='goBrowsers'><a>Browsers</a></li>
                 <li id='goUserCP'><a>Account Settings</a></li>
                 <li id='goAdmin'
-                    data-bind='visible: currentUser != null && currentUser.isAdmin() === true'><a>Admin</a></li>
+                    data-bind='visible: currentUser() != null && currentUser().isAdmin() === true'><a>Admin</a></li>
             </ul>
         </div>
         <div id='main' class='container'>
@@ -32,29 +32,20 @@
                 window.pages = pages;
                 pages.login.load();
                 $('#goHome').click(function () {
-                    if (window.currentUser) {
-                        pages.home.load();
-                    }
+                    pages.home.load();
                 });
                 $('#goBrowsers').click(function () {
-                    if (window.currentUser) {
-                        pages.browsers.load();
-                    }
+                    pages.browsers.load();
                 });
                 $('#goUserCP').click(function () {
-                    if (window.currentUser) {
-                        pages.usercp.load();
-                    }
+                    pages.usercp.load();
                 });
                 $("#goAdmin").click(function () {
-                    if (window.currentUser && window.currentUser.isAdmin()) {
-                        pages.admin.load();
-                    } else {
-                        alert('Access denied');
-                    }
+                    pages.admin.load();
                 });
             });
 
+            window.currentUser = ko.observable();
             ko.applyBindings({
                 currentUser : window.currentUser
             }, document.getElementById('nav'));
