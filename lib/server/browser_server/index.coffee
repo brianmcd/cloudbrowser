@@ -86,7 +86,6 @@ class BrowserServer
 
         for own nodeID, value of specifics
             node = @nodes.get(nodeID) # Should cache these for the restore.
-            console.log("Setting client specific value: #{nodeID} = #{value}")
             node.__oldValue = node.value
             node.value = value
 
@@ -116,7 +115,6 @@ class BrowserServer
 
         for own nodeID, value of specifics
             node = @nodes.get(nodeID)
-            console.log("Restoring client specific value: #{nodeID} = #{node.__oldValue}")
             node.value = node.__oldValue
             delete node.__oldValue
 
