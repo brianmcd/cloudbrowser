@@ -28,7 +28,6 @@ shared.apps = ko.observableArray(fs.readdirSync(path.resolve(__dirname, 'db', 'a
 // System statistics
 shared.systemStats = {
     rss : ko.observable(),
-    vsize : ko.observable(),
     heapTotal : ko.observable(),
     heapUsed : ko.observable(),
     numBrowsers : ko.observable()
@@ -40,7 +39,6 @@ var digits = 2;
 setInterval(function () {
     var usage = process.memoryUsage();
     shared.systemStats.rss((usage.rss/(1024*1024)).toFixed(digits));
-    shared.systemStats.vsize((usage.vsize/(1024*1024)).toFixed(digits));
     shared.systemStats.heapTotal((usage.heapTotal/(1024*1024)).toFixed(digits));
     shared.systemStats.heapUsed((usage.heapUsed/(1024*1024)).toFixed(digits));
     // TODO: browsermanager should track a numBrowsers, and close should rm from manager.
@@ -48,7 +46,7 @@ setInterval(function () {
     shared.systemStats.numBrowsers(Object.keys(global.browsers.browsers).length);
     shared.browsers([]);
     Object.keys(global.browsers.browsers).forEach(function (k) {
-        shared.browsers.push(global.browsers.browsers[k]);
+        shared.browsers.push(global.browsers.browsers[k].browser);
     });
 }, 5000);
 
