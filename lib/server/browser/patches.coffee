@@ -39,8 +39,12 @@ patchScriptTag = (level3) ->
                 try
                     window.run(code, filename)
                 catch e
+                    # TODO: log this based on debug flag.
+                    console.log(e.stack)
                     browser.consoleLogStream.write("JavaScript ERROR\n")
                     browser.consoleLogStream.write(e.stack + "\n")
+                    # TODO: JSDOM swallows this exception.
+                    throw e
 
 addDefaultHandlers = (html) ->
     html.HTMLAnchorElement.prototype._eventDefaults =
