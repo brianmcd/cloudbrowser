@@ -7,7 +7,12 @@ class Page
         {@id, @html, @src, @container} = options
 
     load : () ->
-        @container.innerHTML = @html
+        div = @container._ownerDocument.createElement('div')
+        div.innerHTML = @html
+        while @container.childNodes.length
+            @container.removeChild(@container.childNodes[0])
+        while div.childNodes.length
+            @container.appendChild(div.removeChild(div.childNodes[0]))
 
 class WrappedBrowser
     constructor : (parent, browser) ->
