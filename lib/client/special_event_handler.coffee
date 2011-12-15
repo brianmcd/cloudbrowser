@@ -10,13 +10,17 @@ class SpecialEventHandler
 
     click : (remoteEvent, clientEvent) ->
         clientEvent.preventDefault()
-        @socket.emit('processEvent', remoteEvent)
+        @socket.emit 'processEvent',
+            event : remoteEvent
+            specifics : @monitor.client.getSpecificValues()
 
     # Valid targets:
     #   input, select, textarea
     #
     change : (remoteEvent, clientEvent) ->
         target = clientEvent.target
+        if target.clientSpecific
+            return
         # TODO: use batch mechanism once it exists...this is inefficient.
         if target.tagName.toLowerCase() == 'select'
             if target.multiple == true
@@ -35,7 +39,9 @@ class SpecialEventHandler
                 target : clientEvent.target.__nodeID
                 attribute : 'value'
                 value : clientEvent.target.value
-        @socket.emit('processEvent', remoteEvent)
+        @socket.emit 'processEvent',
+            event : remoteEvent
+            specifics : @monitor.client.getSpecificValues()
 
 
     _keyupListener : (event) =>
@@ -52,7 +58,9 @@ class SpecialEventHandler
         @monitor.eventInitializers["#{EventTypeToGroup[event.type]}"](rEvent, event)
         @_queuedKeyEvents.push(rEvent)
         for ev in @_queuedKeyEvents
-            @socket.emit('processEvent', ev)
+            @socket.emit 'processEvent',
+                event : ev
+                specifics : @monitor.client.getSpecificValues()
         @_queuedKeyEvents = []
         if !@monitor.registeredEvents['keyup']
             @monitor.document.removeEventListener('keyup', @keyupListener, true)

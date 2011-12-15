@@ -12,6 +12,7 @@ class SocketIOClient
         @compressionEnabled = @compressor.compressionEnabled
         @socket = @connectSocket()
         @setupRPC(@socket)
+        @specifics = []
 
         # EventMonitor
         @monitor = null
@@ -20,6 +21,14 @@ class SocketIOClient
         @nodes = null
 
         @renderingPaused = false
+
+    getSpecificValues : () ->
+        vals = {}
+        for node in @specifics
+            vals[node.__nodeID] = node.value
+        console.log('Specifics:')
+        console.log(vals)
+        return vals
 
     connectSocket : () ->
         socket = null
@@ -35,7 +44,7 @@ class SocketIOClient
             # socket.io-client for node doesn't seem to emit 'connect'
             process.nextTick () =>
                 @socket.emit('auth', window.__envSessionID)
-                @monitor = new EventMonitor(@document, @socket)
+                @monitor = new EventMonitor(this)
             # If we're testing, expose a function to let the server signal when
             # a test is finished.
             socket.on 'testDone', () =>
@@ -45,13 +54,15 @@ class SocketIOClient
             socket.on 'connect', () =>
                 console.log("Socket.IO connected...")
                 socket.emit('auth', window.__envSessionID)
-                @monitor = new EventMonitor(@document, @socket)
+                @monitor = new EventMonitor(this)
         return socket
 
     setupRPC : (socket) ->
         for own name, func of RPCMethods
             do (name, func) =>
                 socket.on name, () =>
+                    console.log("Got: #{name}")
+                    console.log(arguments)
                     # We always process newSymbol because resumeRendering will
                     # be compressed if compression is enabled.
                     if name == 'newSymbol'
@@ -71,6 +82,8 @@ RPCMethods =
         console.log("newSymbol: #{original} -> #{compressed}")
         @compressor.register(original, compressed)
         @socket.on compressed, () =>
+            console.log("Got: #{original} [compressed]")
+            console.log(arguments)
             #TODO: factor this out with setupRPC above
             # This way resumeRendering actually can be called.
             if original == 'resumeRendering'
@@ -88,6 +101,8 @@ RPCMethods =
 
     setProperty : (args) ->
         target = @nodes.get(args.target)
+        if target.clientSpecific
+            return if args.property == 'value'
         target[args.property] = args.value
 
     # This function is called for partial updates AFTER the initial load.
@@ -107,13 +122,16 @@ RPCMethods =
         @nodes = new TaggedNodeCollection()
         delete @document.__nodeID
         @nodes.add(@document, 'node1')
-        deserialize(snapshot, this, @compressionEnabled)
+        @compressor = new Compressor()
         for own original, compressed of snapshot.compressionTable
             RPCMethods['newSymbol'].call(this, original, compressed)
+        deserialize(snapshot, this, @compressionEnabled)
 
     setAttr : (args) ->
         target = @nodes.get(args.target)
         name = args.name
+        if target.clientSpecific
+            return if name == 'value'
         # For HTMLOptionElement, HTMLInputELement, HTMLSelectElement
         if /^selected$|^selectedIndex$|^value$|^checked$/.test(name)
             # Calling setAttribute doesn't cause the displayed value to change,

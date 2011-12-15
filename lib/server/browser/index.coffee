@@ -19,6 +19,13 @@ class Browser extends EventEmitter
         @sharedState = sharedState
         @window = null
 
+        ###
+        oldEmit = @emit
+        @emit = (event, args...) ->
+            console.log "Emitting: #{event}"
+            oldEmit.apply(this, arguments)
+        ###
+
         @initDOM()
         
     initDOM : () ->
@@ -161,7 +168,8 @@ class Browser extends EventEmitter
             log : () ->
                 args = Array.prototype.slice.call(arguments)
                 args.push('\n')
-                self.emit('ConsoleLog', args.join(' '))
+                self.emit 'ConsoleLog',
+                    msg : args.join(' ')
 
         # Note: this loads the URL out of a virtual browser.
         ['open', 'alert'].forEach (method) =>

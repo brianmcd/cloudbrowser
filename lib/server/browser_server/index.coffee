@@ -5,7 +5,7 @@ Browser              = require('../browser')
 ResourceProxy        = require('./resource_proxy')
 Compressor           = require('../../shared/compressor')
 {serialize}          = require('./serializer')
-{eventTypeToGroup}   = require('../../shared/event_lists')
+{eventTypeToGroup, clientEvents} = require('../../shared/event_lists')
 
 # Serves 1 Browser to n clients.
 class BrowserServer
@@ -81,8 +81,16 @@ class BrowserServer
                 return target[attribute] = value
             target.setAttribute(attribute, value)
 
-    processEvent : (clientEv) =>
-        @clientProtocolLog.write("processEvent #{JSON.stringify(clientEv)}")
+    processEvent : (params) =>
+        {event, specifics} = params
+
+        for own nodeID, value of specifics
+            node = @nodes.get(nodeID) # Should cache these for the restore.
+            console.log("Setting client specific value: #{nodeID} = #{value}")
+            node.__oldValue = node.value
+            node.value = value
+
+        @clientProtocolLog.write("processEvent #{JSON.stringify(event)}")
         if !@browserLoading
             @broadcastEvent 'pauseRendering'
             # TODO
@@ -90,21 +98,27 @@ class BrowserServer
             # only really exists client side and doesn't have a nodeID (and we 
             # can't handle clicks on the server anyway).
             # Need something more elegant.
-            if !clientEv.target
+            if !event.target
                 return
 
             # Swap nodeIDs with nodes
-            clientEv = @nodes.unscrub(clientEv)
+            clientEv = @nodes.unscrub(event)
 
             # Create an event we can dispatch on the server.
-            event = @_createEvent(clientEv)
+            serverEv = @_createEvent(clientEv)
 
-            console.log("Dispatching #{event.type}\t" +
+            console.log("Dispatching #{serverEv.type}\t" +
                         "[#{eventTypeToGroup[clientEv.type]}] on " +
                         "#{clientEv.target.__nodeID} [#{clientEv.target.tagName}]")
 
-            clientEv.target.dispatchEvent(event)
+            clientEv.target.dispatchEvent(serverEv)
             @broadcastEvent 'resumeRendering'
+
+        for own nodeID, value of specifics
+            node = @nodes.get(nodeID)
+            console.log("Restoring client specific value: #{nodeID} = #{node.__oldValue}")
+            node.value = node.__oldValue
+            delete node.__oldValue
 
     # Takes a clientEv (an event generated on the client and sent over DNode)
     # and creates a corresponding event for the server's DOM.
@@ -155,7 +169,7 @@ class BrowserServer
 # match the Browser event name.  'this' is set to the Browser via apply.
 DOMEventHandlers =
     PageLoading : (event) ->
-        @nodes = new TaggedNodeCollection()
+        @nodes     = new TaggedNodeCollection()
         @resources = new ResourceProxy(event.url)
         @browserLoading = true
 
@@ -192,14 +206,12 @@ DOMEventHandlers =
     # Tag all newly created nodes.
     # This seems cleaner than having serializer do the tagging.
     DOMNodeInserted : (event) ->
-        if event.target.tagName != 'SCRIPT' &&
-           event.target.parentNode.tagName != 'SCRIPT' &&
-           !event.target.__nodeID
+        if !event.target.__nodeID
             @nodes.add(event.target)
 
     DOMNodeInsertedIntoDocument : (event) ->
         if event.target.tagName != 'SCRIPT' &&
-           event.target.parentNode.tagName != 'SCRIPT'
+           event.target.parentNode?.tagName != 'SCRIPT'
             node = event.target
             cmds = serialize(node, @resources, @compressionEnabled)
             # 'before' tells the client where to insert the top level node in
@@ -236,10 +248,14 @@ DOMEventHandlers =
                 name   : event.attrName
 
     AddEventListener : (event) ->
-        {target} = event
+        {target, type} = event
+
+        if clientEvents[type] != true
+            return
+
         instruction =
-            target      : target.__nodeID
-            type        : event.type
+            target : target.__nodeID
+            type   : type
         
         if !target.__registeredListeners
             target.__registeredListeners = [instruction]

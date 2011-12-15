@@ -8,9 +8,9 @@ EventTypeToGroup    = EventLists.eventTypeToGroup
 DefaultEvents = EventLists.defaultEvents
 
 class EventMonitor
-    constructor : (document, socket) ->
-        @document = document
-        @socket = socket
+    constructor : (@client) ->
+        @document = @client.document
+        @socket = @client.socket
         @specialEvents = new SpecialEventHandler(this)
 
         # A lookup table to see if the server has listeners for a particular event
@@ -53,7 +53,9 @@ class EventMonitor
                 @specialEvents[event.type](rEvent, event)
             else
                 console.log("Sending event: #{rEvent.type}")
-                @socket.emit('processEvent', rEvent)
+                @socket.emit 'processEvent',
+                    event : rEvent
+                    specifics : @client.getSpecificValues()
         event.stopPropagation()
         return false
 

@@ -29,6 +29,16 @@ exports.deserialize = (snapshot, client, compression) ->
             when 'element'
                 node = doc.createElement(record.name)
                 for name, value of record.attributes
+                    # TODO: would be good to factor this out somehow.
+                    if name == 'data-vt'
+                        params = value.split(',')
+                        for param in params
+                            [k, v] = param.split('=')
+                            switch k
+                                when 'client-specific'
+                                    if v == 'true'
+                                        client.specifics.push(node)
+                                        node.clientSpecific = true
                     node.setAttribute(name, value)
                 client.nodes.add(node, record.id)
                 parent.insertBefore(node, sibling)
@@ -38,7 +48,6 @@ exports.deserialize = (snapshot, client, compression) ->
                     client.nodes.add(node.contentDocument, record.docID)
                 record.events?.forEach (event) ->
                     client.monitor.addEventListener(event)
-
             when 'text', 'comment'
                 if record.type == 'text'
                     node = doc.createTextNode(record.value)
