@@ -49,7 +49,7 @@ exports.addAdvice = (dom, browser) ->
         # Note: unlike the DOM, we only emit DOMNodeInsertedIntoDocument
         # on the root of a removed subtree, meaning the handler should check
         # to see if it has children.
-        if parent._attachedToDocument
+        if parent._attachedToDocument && elem.nodeType != 11
             browser.emit 'DOMNodeInsertedIntoDocument',
                 target : elem
                 relatedNode : parent
@@ -58,10 +58,10 @@ exports.addAdvice = (dom, browser) ->
     #
     # var oldChild = node.removeChild(child);
     adviseMethod html.Node, 'removeChild', (parent, args, rv) ->
-        elem = args[0]
         # Note: Unlike DOM, we only emit DOMNodeRemovedFromDocument on the root
         # of the removed subtree.
         if parent._attachedToDocument
+            elem = args[0]
             browser.emit 'DOMNodeRemovedFromDocument',
                 target : elem
                 relatedNode : parent
@@ -200,7 +200,7 @@ exports.addAdvice = (dom, browser) ->
                 # internally, so we only want to emit instructions if there
                 # is a parent element pointer, meaning this CSSStyleDeclaration
                 # belongs to an element.
-                if this._parentElement
+                if this._parentElement && this._parentElement._attachedToDocument
                     browser.emit 'DOMStyleChanged',
                         target : this._parentElement
                         attribute : attr
