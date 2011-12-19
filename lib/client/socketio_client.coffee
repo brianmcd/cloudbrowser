@@ -127,7 +127,8 @@ RPCMethods =
 
     DOMAttrModified : (args) ->
         target = @nodes.get(args.target)
-        name = args.name
+        name = args.attrName
+        value = args.newValue
         if target.clientSpecific
             return if name == 'value'
         if args.attrChange == 'ADDITION'
@@ -135,11 +136,11 @@ RPCMethods =
             if /^selected$|^selectedIndex$|^value$|^checked$/.test(name)
                 # Calling setAttribute doesn't cause the displayed value to change,
                 # but setting it as a property does.
-                target[name] = args.value
+                target[name] = value
             else
-                target.setAttribute(args.name, args.value)
+                target.setAttribute(name, value)
         else if args.attrChange == 'REMOVAL'
-            target.removeAttribute(args.name)
+            target.removeAttribute(name)
         else
             throw new Error("Invalid attrChange: #{args.attrChange}")
 
