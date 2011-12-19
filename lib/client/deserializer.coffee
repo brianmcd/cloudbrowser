@@ -1,4 +1,4 @@
-NodeCompressor = require('./node_compressor')
+NodeCompressor = require('./shared/node_compressor')
 # snapshot:
 #   nodes - serialized node list.
 #   events - list of events to register on

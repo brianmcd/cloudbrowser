@@ -1,4 +1,4 @@
-EventTypeToGroup = require('./event_lists').eventTypeToGroup
+EventTypeToGroup = require('./shared/event_lists').eventTypeToGroup
 
 class SpecialEventHandler
     constructor : (monitor) ->

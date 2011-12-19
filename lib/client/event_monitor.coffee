@@ -1,5 +1,5 @@
 SpecialEventHandler = require('./special_event_handler')
-EventLists          = require('./event_lists')
+EventLists          = require('./shared/event_lists')
 EventTypeToGroup    = EventLists.eventTypeToGroup
 
 # These are events we listen on even if they aren't requested, because

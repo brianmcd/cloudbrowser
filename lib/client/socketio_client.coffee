@@ -1,7 +1,7 @@
-TaggedNodeCollection = require('./tagged_node_collection')
+TaggedNodeCollection = require('./shared/tagged_node_collection')
+Compressor           = require('./shared/compressor')
 EventMonitor         = require('./event_monitor')
 Components           = require('./components')
-Compressor           = require('./compressor')
 {deserialize}        = require('./deserializer')
 
 test_env = !!process?.env?.TESTS_RUNNING
