@@ -62,8 +62,8 @@ class BrowserServer
             components       : @browser.getSnapshot().components
         if @compressionEnabled
             snapshot.compressionTable = @compressor.textToSymbol
-        @serverProtocolLog.write("loadFromSnapshot #{JSON.stringify(snapshot)}\n")
-        socket.emit 'loadFromSnapshot', snapshot
+        @serverProtocolLog.write("PageLoaded #{JSON.stringify(snapshot)}\n")
+        socket.emit 'PageLoaded', snapshot
         @sockets.push(socket)
         socket.on 'processEvent', @processEvent
         socket.on 'setAttribute', @processClientSetAttribute
@@ -179,27 +179,10 @@ DOMEventHandlers =
         if @compressionEnabled
             snapshot.compressionTable = @compressor.textToSymbol
         for socket in @sockets
-            socket.emit 'loadFromSnapshot', snapshot
-
-    DOMStyleChanged : (event) ->
-        @broadcastEvent 'changeStyle',
-            target    : event.target.__nodeID
-            attribute : event.attribute
-            value     : event.value
-
-    DOMPropertyModified : (event) ->
-        @broadcastEvent 'setProperty',
-            target   : event.target.__nodeID
-            property : event.property
-            value    : event.value
+            socket.emit 'PageLoaded', snapshot
 
     DocumentCreated : (event) ->
         @nodes.add(event.target)
-
-    DOMCharacterDataModified : (event) ->
-        @broadcastEvent 'setCharacterData',
-            target : event.target.__nodeID
-            value  : event.target.nodeValue
 
     # Tag all newly created nodes.
     # This seems cleaner than having serializer do the tagging.
@@ -223,33 +206,16 @@ DOMEventHandlers =
                 cmds[0].push(before?.__nodeID)
             else
                 cmds[0].before = before?.__nodeID
-
-            @broadcastEvent 'attachSubtree', cmds
+            @broadcastEvent 'DOMNodeInsertedIntoDocument', cmds
 
     DOMNodeRemovedFromDocument : (event) ->
         if event.target.tagName != 'SCRIPT' &&
            event.relatedNode.tagName != 'SCRIPT'
-            @broadcastEvent 'removeSubtree',
-                parent : event.relatedNode.__nodeID
-                node   : event.target.__nodeID
-
-    DOMAttrModified : (event) ->
-        # Note: ADDITION can really be MODIFIED as well.
-        if event.attrChange == 'ADDITION'
-            @broadcastEvent 'setAttr',
-                target : event.target.__nodeID
-                name   : event.attrName
-                value  : event.newValue
-        else
-            @broadcastEvent 'removeAttr',
-                target : event.target.__nodeID
-                name   : event.attrName
+            @broadcastEvent 'DOMNodeRemovedFromDocument', @nodes.scrub(event)
 
     AddEventListener : (event) ->
         {target, type} = event
-
-        if clientEvents[type] != true
-            return
+        return if !clientEvents[type]
 
         instruction =
             target : target.__nodeID
@@ -261,20 +227,23 @@ DOMEventHandlers =
             target.__registeredListeners.push(instruction)
 
         if target._attachedToDocument
-            @broadcastEvent('addEventListener', instruction)
+            @broadcastEvent('AddEventListener', instruction)
 
     EnteredTimer : () -> @broadcastEvent 'pauseRendering'
 
     ExitedTimer :  () -> @broadcastEvent 'resumeRendering'
 
-    WindowMethodCalled : (event) ->
-        @broadcastEvent 'callWindowMethod',
-            method : event.method
-            args : event.args
-    
     ConsoleLog : (event) ->
         @consoleLog.write(event.msg + '\n')
         # TODO: debug flag to enable line below.
         console.log("[[[#{@browser.id}]]] #{event.msg}")
+
+['DOMStyleChanged',
+ 'DOMPropertyModified',
+ 'DOMCharacterDataModified',
+ 'DOMAttrModified',
+ 'WindowMethodCalled'].forEach (type) ->
+     DOMEventHandlers[type] = (event) ->
+         @broadcastEvent(type, @nodes.scrub(event))
         
 module.exports = BrowserServer

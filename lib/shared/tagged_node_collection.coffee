@@ -49,17 +49,19 @@ class TaggedNodeCollection
         @ids[id] = node
 
     # Substitutes DOM elements in a parameter list with their id.
-    # TODO: do this in place
+    # Updates are done in place.
     scrub : (params) ->
-        scrubbed = []
-        for param in params
-            if !param?
-                scrubbed.push null
-            else if param[@propName]?
-                scrubbed.push param[@propName]
-            else
-                scrubbed.push param
-        scrubbed
+        if params instanceof Array
+            for param, index in params
+                if param[@propName]?
+                    params[index] = param[@propName]
+        else if params instanceof Object
+            for own key, value of params
+                if value[@propName]?
+                    params[key] = value[@propName]
+        else
+            throw new Error("params must be an array or object")
+        return params
 
     # Replace nodeIDs with nodes in arrays or objects (shallow).
     # Updates are done in place.
@@ -70,11 +72,12 @@ class TaggedNodeCollection
                     params[index] = @get(param)
             return params
         else if params instanceof Object
-            for key, value of params
+            for own key, value of params
                 if (typeof value == 'string') && /^node\d+$/.test(value)
                     params[key] = @get(value)
             return params
         else
-            throw new Error "params must be an array or object"
+            throw new Error("params must be an array or object")
+        return params
 
 module.exports = TaggedNodeCollection

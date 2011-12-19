@@ -26,8 +26,6 @@ class SocketIOClient
         vals = {}
         for node in @specifics
             vals[node.__nodeID] = node.value
-        console.log('Specifics:')
-        console.log(vals)
         return vals
 
     connectSocket : () ->
@@ -95,26 +93,26 @@ RPCMethods =
             else
                 RPCMethods[original].apply(this, arguments)
 
-    changeStyle : (args) ->
+    DOMStyleChanged : (args) ->
         target = @nodes.get(args.target)
         target.style[args.attribute] = args.value
 
-    setProperty : (args) ->
+    DOMPropertyModified : (args) ->
         target = @nodes.get(args.target)
         if target.clientSpecific
             return if args.property == 'value'
         target[args.property] = args.value
 
     # This function is called for partial updates AFTER the initial load.
-    attachSubtree : (nodes) ->
+    DOMNodeInsertedIntoDocument : (nodes) ->
         deserialize({nodes : nodes}, this, @compressionEnabled)
 
-    removeSubtree : (args) ->
-        parent = @nodes.get(args.parent)
-        child = @nodes.get(args.node)
+    DOMNodeRemovedFromDocument : (args) ->
+        parent = @nodes.get(args.relatedNode)
+        child = @nodes.get(args.target)
         parent.removeChild(child)
 
-    loadFromSnapshot : (snapshot) ->
+    PageLoaded : (snapshot) ->
         console.log('loadFromSnapshot')
         console.log(snapshot)
         while @document.childNodes.length
@@ -127,26 +125,30 @@ RPCMethods =
             RPCMethods['newSymbol'].call(this, original, compressed)
         deserialize(snapshot, this, @compressionEnabled)
 
-    setAttr : (args) ->
+    DOMAttrModified : (args) ->
         target = @nodes.get(args.target)
         name = args.name
         if target.clientSpecific
             return if name == 'value'
-        # For HTMLOptionElement, HTMLInputELement, HTMLSelectElement
-        if /^selected$|^selectedIndex$|^value$|^checked$/.test(name)
-            # Calling setAttribute doesn't cause the displayed value to change,
-            # but setting it as a property does.
-            target[name] = args.value
+        if args.attrChange == 'ADDITION'
+            # For HTMLOptionElement, HTMLInputELement, HTMLSelectElement
+            if /^selected$|^selectedIndex$|^value$|^checked$/.test(name)
+                # Calling setAttribute doesn't cause the displayed value to change,
+                # but setting it as a property does.
+                target[name] = args.value
+            else
+                target.setAttribute(args.name, args.value)
+        else if args.attrChange == 'REMOVAL'
+            target.removeAttribute(args.name)
         else
-            target.setAttribute(args.name, args.value)
+            throw new Error("Invalid attrChange: #{args.attrChange}")
 
-    removeAttr : (args) ->
-        target = @nodes.get(args.target)
-        target.removeAttribute(args.name)
-
-    setCharacterData : (args) ->
+    DOMCharacterDataModified : (args) ->
         target = @nodes.get(args.target)
         target.nodeValue = args.value
+
+    WindowMethodCalled : (params) ->
+       window[params.method].apply(window, params.args)
 
     disconnect : () ->
         @socket.disconnect()
@@ -175,10 +177,10 @@ RPCMethods =
         @eventQueue = []
         @renderingPaused = false
 
-    addEventListener : (params) ->
+    AddEventListener : (params) ->
         @monitor.addEventListener(params)
         if test_env
-            @window.testClient.emit('addEventListener', params)
+            @window.testClient.emit('AddEventListener', params)
        
     # If params given, clear the document of the specified frame.
     # Otherwise, clear the global window's document.
@@ -195,8 +197,5 @@ RPCMethods =
         if doc == @document
             @nodes = new TaggedNodeCollection()
         delete doc.__nodeID
-
-    callWindowMethod : (params) ->
-       window[params.method].apply(window, params.args)
 
 module.exports = SocketIOClient
