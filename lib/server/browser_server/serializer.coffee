@@ -43,7 +43,7 @@ exports.serialize = (root, resources) ->
             when 'Element'
                 attributes = null
                 if node.attributes?.length > 0
-                    attributes = copyElementAttrs(node, document)
+                    attributes = copyElementAttrs(node, document, resources)
                 record =
                     type   : 'element'
                     id     : node.__nodeID
@@ -75,7 +75,7 @@ exports.serialize = (root, resources) ->
                     cmds.push(NodeCompressor.compress(record))
     return cmds
 
-copyElementAttrs = (node, document) ->
+copyElementAttrs = (node, document, resources) ->
     tagName = node.tagName.toLowerCase()
     attrs = {}
     if node.attributes?.length > 0
