@@ -59,8 +59,8 @@ class SocketIOClient
         for own name, func of RPCMethods
             do (name, func) =>
                 socket.on name, () =>
-                    console.log("Got: #{name}")
-                    console.log(arguments)
+                    #console.log("Got: #{name}")
+                    #console.log(arguments)
                     # We always process newSymbol because resumeRendering will
                     # be compressed if compression is enabled.
                     if name == 'newSymbol'
@@ -80,8 +80,8 @@ RPCMethods =
         console.log("newSymbol: #{original} -> #{compressed}")
         @compressor.register(original, compressed)
         @socket.on compressed, () =>
-            console.log("Got: #{original} [compressed]")
-            console.log(arguments)
+            #console.log("Got: #{original} [compressed]")
+            #console.log(arguments)
             #TODO: factor this out with setupRPC above
             # This way resumeRendering actually can be called.
             if original == 'resumeRendering'
@@ -115,11 +115,12 @@ RPCMethods =
     PageLoaded : (snapshot) ->
         console.log('loadFromSnapshot')
         console.log(snapshot)
-        while @document.childNodes.length
-            @document.removeChild(document.childNodes[0])
+        doc = @document
+        while doc.hasChildNodes()
+            doc.removeChild(doc.firstChild)
         @nodes = new TaggedNodeCollection()
-        delete @document.__nodeID
-        @nodes.add(@document, 'node1')
+        delete doc.__nodeID
+        @nodes.add(doc, 'node1')
         @compressor = new Compressor()
         for own original, compressed of snapshot.compressionTable
             RPCMethods['newSymbol'].call(this, original, compressed)
