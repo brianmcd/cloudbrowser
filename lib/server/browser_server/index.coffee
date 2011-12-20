@@ -62,8 +62,18 @@ class BrowserServer
             socket.emit(name, params)
 
     addSocket : (socket) ->
+        for own type, func of RPCMethods
+            do (type, func) =>
+                socket.on type, () =>
+                    console.log("Got #{type}")
+                    func.apply(this, arguments)
+        socket.on 'disconnect', () =>
+            @sockets       = (s for s in @sockets when s != socket)
+            @queuedSockets = (s for s in @queuedSockets when s != socket)
+
         if !@browserInitialized
             return @queuedSockets.push(socket)
+
         cmds = serialize(@browser.window.document, @resources, @compressionEnabled)
         snapshot =
             nodes      : cmds
@@ -73,12 +83,5 @@ class BrowserServer
         @serverProtocolLog.write("PageLoaded #{JSON.stringify(snapshot)}\n")
         socket.emit 'PageLoaded', snapshot
         @sockets.push(socket)
-        for own type, func of RPCMethods
-            do (type, func) =>
-                socket.on type, () =>
-                    console.log("Got #{type}")
-                    func.apply(this, arguments)
-        socket.on 'disconnect', () =>
-            @sockets = (s for s in @sockets when s != socket)
 
 module.exports = BrowserServer

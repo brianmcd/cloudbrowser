@@ -23,7 +23,6 @@ module.exports = DOMEventHandlers =
         @sockets = @sockets.concat(@queuedSockets)
         @queuedSockets = []
         for socket in @sockets
-            socket.emit 'clear'
             socket.emit 'PageLoaded', snapshot
 
     DocumentCreated : (event) ->
@@ -36,6 +35,7 @@ module.exports = DOMEventHandlers =
             @nodes.add(event.target)
 
     DOMNodeInsertedIntoDocument : (event) ->
+        return if @browserLoading
         if event.target.tagName != 'SCRIPT' &&
            event.target.parentNode?.tagName != 'SCRIPT'
             node = event.target
@@ -54,11 +54,13 @@ module.exports = DOMEventHandlers =
             @broadcastEvent 'DOMNodeInsertedIntoDocument', cmds
 
     DOMNodeRemovedFromDocument : (event) ->
+        return if @browserLoading
         if event.target.tagName != 'SCRIPT' &&
            event.relatedNode.tagName != 'SCRIPT'
             @broadcastEvent 'DOMNodeRemovedFromDocument', @nodes.scrub(event)
 
     AddEventListener : (event) ->
+        return if @browserLoading
         {target, type} = event
         return if !clientEvents[type]
 
@@ -74,9 +76,13 @@ module.exports = DOMEventHandlers =
         if target._attachedToDocument
             @broadcastEvent('AddEventListener', instruction)
 
-    EnteredTimer : () -> @broadcastEvent 'pauseRendering'
+    EnteredTimer : () ->
+        return if @browserLoading
+        @broadcastEvent 'pauseRendering'
 
-    ExitedTimer :  () -> @broadcastEvent 'resumeRendering'
+    ExitedTimer :  () ->
+        return if @browserLoading
+        @broadcastEvent 'resumeRendering'
 
     ConsoleLog : (event) ->
         @consoleLog.write(event.msg + '\n')
@@ -89,4 +95,5 @@ module.exports = DOMEventHandlers =
  'DOMAttrModified',
  'WindowMethodCalled'].forEach (type) ->
      DOMEventHandlers[type] = (event) ->
+         return if @browserLoading
          @broadcastEvent(type, @nodes.scrub(event))
