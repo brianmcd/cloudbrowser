@@ -14,22 +14,18 @@ config                 = require('../../shared/config')
 {addAdvice}            = require('./advice')
 {applyPatches}         = require('./patches')
 
-koPatchPath    = Path.resolve(__dirname,
-                              'knockout',
-                              'ko-patch.js')
-koPath         = Path.resolve(__dirname,
-                              'knockout',
-                              'knockout-1.3.0beta.debug.js')
-jQueryPath     = Path.resolve(__dirname,
-                              'knockout',
-                              'jquery-1.6.2.js')
-jQueryTmplPath = Path.resolve(__dirname,
-                              'knockout',
-                              'jquery.tmpl.js')
-koPatch      = FS.readFileSync(koPatchPath, 'utf8')
-koScript     = FS.readFileSync(koPath, 'utf8')
-jQScript     = FS.readFileSync(jQueryPath, 'utf8')
-jQTmplScript = FS.readFileSync(jQueryTmplPath, 'utf8')
+koPatch = do () ->
+    koPatchPath = Path.resolve(__dirname, 'knockout', 'ko-patch.js')
+    FS.readFileSync(koPatchPath, 'utf8')
+koScript = do () ->
+    koPath = Path.resolve(__dirname, 'knockout', 'knockout-1.3.0beta.debug.js')
+    FS.readFileSync(koPath, 'utf8')
+jQScript = do () ->
+    jQueryPath = Path.resolve(__dirname, 'knockout', 'jquery-1.6.2.js')
+    FS.readFileSync(jQueryPath, 'utf8')
+jQTmplScript = do () ->
+    jQueryTmplPath = Path.resolve(__dirname, 'knockout', 'jquery.tmpl.js')
+    FS.readFileSync(jQueryTmplPath, 'utf8')
 
 class Browser extends EventEmitter
     constructor : (browserID, sharedState, parser = 'HTML5') ->
