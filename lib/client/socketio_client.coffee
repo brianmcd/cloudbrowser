@@ -3,6 +3,7 @@ Compressor           = require('./shared/compressor')
 EventMonitor         = require('./event_monitor')
 Components           = require('./components')
 {deserialize}        = require('./deserializer')
+Config               = require('./shared/config')
 
 test_env = !!process?.env?.TESTS_RUNNING
 
@@ -76,6 +77,10 @@ class SocketIOClient
                         func.apply(this, arguments)
 
 RPCMethods =
+    SetConfig : (config) ->
+        for own key, value of config
+            Config[key] = value
+
     newSymbol : (original, compressed) ->
         console.log("newSymbol: #{original} -> #{compressed}")
         @compressor.register(original, compressed)

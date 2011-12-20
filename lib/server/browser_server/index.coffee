@@ -4,6 +4,7 @@ Browser              = require('../browser')
 Compressor           = require('../../shared/compressor')
 DOMEventHandlers     = require('./dom_event_handlers')
 RPCMethods           = require('./rpc_methods')
+Config               = require('../../shared/config')
 {serialize}          = require('./serializer')
 {eventTypeToGroup}   = require('../../shared/event_lists')
 
@@ -14,7 +15,6 @@ class BrowserServer
         @browser = new Browser(opts.id, opts.shared)
         @sockets = []
         @compressor = new Compressor()
-        @compressionEnabled = @compressor.compressionEnabled #TODO: make configurable with command line arg
         @compressor.on 'newSymbol', (args) =>
             console.log("newSymbol: #{args.original} -> #{args.compressed}")
             for socket in @sockets
@@ -52,7 +52,7 @@ class BrowserServer
         @clientProtocolLog = FS.createWriteStream(clientProtocolLogPath)
 
     broadcastEvent : (name, params) ->
-        if @compressionEnabled
+        if Config.compression
             name = @compressor.compress(name)
         if @sockets.length
             @serverProtocolLog.write("#{name}")
@@ -70,15 +70,16 @@ class BrowserServer
         socket.on 'disconnect', () =>
             @sockets       = (s for s in @sockets when s != socket)
             @queuedSockets = (s for s in @queuedSockets when s != socket)
+        socket.emit 'SetConfig', Config
 
         if !@browserInitialized
             return @queuedSockets.push(socket)
 
-        cmds = serialize(@browser.window.document, @resources, @compressionEnabled)
+        cmds = serialize(@browser.window.document, @resources)
         snapshot =
             nodes      : cmds
             components : @browser.getSnapshot().components
-        if @compressionEnabled
+        if Config.compression
             snapshot.compressionTable = @compressor.textToSymbol
         @serverProtocolLog.write("PageLoaded #{JSON.stringify(snapshot)}\n")
         socket.emit 'PageLoaded', snapshot

@@ -11,7 +11,7 @@ NodeCompressor = require('../../shared/node_compressor')
 #   [value] - Optional. Given for text and comment nodes.
 #   [attributes] - Optional. An object like:
 #       Property : value
-exports.serialize = (root, resources, compress, events) ->
+exports.serialize = (root, resources) ->
     document = root.ownerDocument || root
     if document.nodeType != 9
         throw new Error("Couldn't find document")
@@ -31,7 +31,7 @@ exports.serialize = (root, resources, compress, events) ->
             console.log("Can't create instructions for #{typeStr}")
             return
         # Each serializer pushes its command(s) onto the command stack.
-        func(node, cmds, document, resources, compress, events)
+        func(node, cmds, document, resources)
 
     return cmds
 
@@ -51,7 +51,7 @@ serializers =
         undefined
 
     # TODO: Maybe if node.tagName == '[i]frame]' pass off to a helper.
-    Element : (node, cmds, topDoc, resources, compress, events) ->
+    Element : (node, cmds, topDoc, resources) ->
         tagName = node.tagName.toLowerCase()
         attributes = null
         if node.attributes?.length > 0
@@ -81,13 +81,9 @@ serializers =
             record.docID = node.contentDocument.__nodeID
         if node.__registeredListeners?.length
             record.events = node.__registeredListeners
+        cmds.push(NodeCompressor.compress(record))
 
-        if compress
-            cmds.push(NodeCompressor.compress(record))
-        else
-            cmds.push(record)
-
-    Comment : (node, cmds, topDoc, resources, compress) ->
+    Comment : (node, cmds, topDoc, resources) ->
         record =
             type : 'comment'
             id : node.__nodeID
@@ -95,12 +91,9 @@ serializers =
             value : node.nodeValue
         if node.ownerDocument != topDoc
             record.ownerDocument = node.ownerDocument.__nodeID
-        if compress
-            cmds.push(NodeCompressor.compress(record))
-        else
-            cmds.push(record)
+        cmds.push(NodeCompressor.compress(record))
 
-    Text : (node, cmds, topDoc, resources, compress) ->
+    Text : (node, cmds, topDoc, resources) ->
         # The issue is that JSDOM gives Document 3 child nodes: the HTML
         # element and a Text element.  We get a HIERARCHY_REQUEST_ERR in the
         # client browser if we try to insert a Text node as the child of the
@@ -113,10 +106,7 @@ serializers =
                 value  : node.data
             if node.ownerDocument != topDoc
                 record.ownerDocument = node.ownerDocument.__nodeID
-            if compress
-                cmds.push(NodeCompressor.compress(record))
-            else
-                cmds.push(record)
+            cmds.push(NodeCompressor.compress(record))
 
 nodeTypeToString = [
     0

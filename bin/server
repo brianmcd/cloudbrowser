@@ -16,7 +16,6 @@ var opts = require('nomnom')
         default : false,
         help    : "Enable debug mode."})
     // TODO: debug-client and debug-server (debug above enables both in callback)
-    // Not hooked up.
     .option('compression', {
         abbr    : 'c',
         default : true,
