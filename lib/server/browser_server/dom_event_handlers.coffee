@@ -1,4 +1,5 @@
 TaggedNodeCollection = require('../../shared/tagged_node_collection')
+Config               = require('../../shared/config')
 ResourceProxy        = require('./resource_proxy')
 {serialize}          = require('./serializer')
 {clientEvents}       = require('../../shared/event_lists')
@@ -9,16 +10,17 @@ ResourceProxy        = require('./resource_proxy')
 module.exports = DOMEventHandlers =
     PageLoading : (event) ->
         @nodes     = new TaggedNodeCollection()
-        @resources = new ResourceProxy(event.url)
+        if Config.resourceProxy
+            @resources = new ResourceProxy(event.url)
         @browserLoading = true
 
     PageLoaded : () ->
         @browserInitialized = true
         @browserLoading = false
         snapshot =
-            nodes : serialize(@browser.window.document, @resources, @compressionEnabled)
+            nodes : serialize(@browser.window.document, @resources)
             components : @browser.getSnapshot().components
-        if @compressionEnabled
+        if Config.compression
             snapshot.compressionTable = @compressor.textToSymbol
         @sockets = @sockets.concat(@queuedSockets)
         @queuedSockets = []
@@ -39,7 +41,7 @@ module.exports = DOMEventHandlers =
         if event.target.tagName != 'SCRIPT' &&
            event.target.parentNode?.tagName != 'SCRIPT'
             node = event.target
-            cmds = serialize(node, @resources, @compressionEnabled)
+            cmds = serialize(node, @resources)
             # 'before' tells the client where to insert the top level node in
             # relation to its siblings.
             # We only need it for the top level node because nodes in its tree

@@ -1,3 +1,5 @@
+URL            = require('url')
+Config         = require('../../shared/config')
 NodeCompressor = require('../../shared/node_compressor')
 # Each node in the DOM is represented by an object.
 # A serialized DOM (or snapshot) is an array of these objects.
@@ -64,9 +66,13 @@ serializers =
                 lowercase = name.toLowerCase()
                 if (lowercase == 'src') || ((tagName == 'link') && (lowercase == 'href'))
                     if value
-                        console.log("Proxying src for #{tagName} [src = #{value}]")
-                        value = "#{resources.addURL(value)}"
-                        console.log(value)
+                        # If we're using the resource proxy, substitute the URL with a
+                        # ResourceProxy number.
+                        if Config.resourceProxy
+                            value = "#{resources.addURL(value)}"
+                        # Otherwise, convert it to an absolute URL.
+                        else
+                            value = URL.resolve(topDoc.location, value)
                 attributes[name] = value
         record =
             type   : 'element'

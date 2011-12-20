@@ -25,7 +25,6 @@ var opts = require('nomnom')
         default : false,
         flag    : true,
         help    : "Enable server-side knockout.js bindings."})
-    // Not hooked up.
     .option('resourceProxy', {
         abbr : 'r',
         full : 'resource-proxy',
