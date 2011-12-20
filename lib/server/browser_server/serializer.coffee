@@ -85,7 +85,7 @@ copyElementAttrs = (node, document) ->
             lowercase = name.toLowerCase()
             if (lowercase == 'src') || ((tagName == 'link') && (lowercase == 'href'))
                 # Don't send src attribute for frames or iframes
-                if /^i?frame$/.test(tagName) && (lowercase == 'src')
+                if /^i?frame$/.test(tagName)
                     continue
                 if value
                     # If we're using the resource proxy, substitute the URL with a
@@ -95,6 +95,9 @@ copyElementAttrs = (node, document) ->
                     # Otherwise, convert it to an absolute URL.
                     else
                         value = URL.resolve(document.location, value)
+            # Don't send things like data-page, data-bind, etc.
+            if /^data-/.test(lowercase)
+                continue
             attrs[name] = value
     return attrs
 
