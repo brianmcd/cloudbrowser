@@ -9,8 +9,18 @@ ImportXMLHttpRequest   = require('./XMLHttpRequest').ImportXMLHttpRequest
 LocationBuilder        = require('./location').LocationBuilder
 InBrowserAPI           = require('../../api')
 TaggedNodeCollection   = require('../../shared/tagged_node_collection')
+KO                     = require('../../api/ko').ko
 {addAdvice}            = require('./advice')
 {applyPatches}         = require('./patches')
+
+koPatchPath  = Path.resolve(__dirname,
+                            'knockout',
+                            'ko-patch.js')
+koScriptPath = Path.resolve(__dirname,
+                            'knockout',
+                            'knockout-1.3.0beta.debug.js')
+koPatch  = FS.readFileSync(koPatchPath, 'utf8')
+koScript = FS.readFileSync(koScriptPath, 'utf8')
 
 class Browser extends EventEmitter
     constructor : (browserID, sharedState, parser = 'HTML5') ->
@@ -66,9 +76,7 @@ class Browser extends EventEmitter
 
     loadApp : (app) ->
         url = "http://localhost:3001/#{app}"
-        # load callback takes a configuration function that lets us manipulate
-        # the window object before the page is fetched/loaded.
-        @loadFromURL url, (window) =>
+        preload = (window) =>
             # For now, we attach require and process.  Eventually, we will pass
             # a customized version of require that restricts its capabilities
             # based on a package.json manifest.
@@ -76,10 +84,22 @@ class Browser extends EventEmitter
             window.process = process
             window.__browser__ = this
             window.vt = new InBrowserAPI(window, @sharedState)
+        postload = (window) =>
+            # If an app needs server-side knockout, we have to monkey patch
+            # some ko functions.
+            if global.opts.knockout
+                # Inject knockout if user didn't include it.
+                if !window.ko
+                    window.run(koScript, "knockout-1.3.0beta.debug.js")
+                window.vt.ko = KO
+                @window.run(koPatch, "ko-patch.js")
+        # load callback takes a configuration function that lets us manipulate
+        # the window object before the page is fetched/loaded.
+        @loadFromURL(url, preload, postload)
 
     # Note: this function returns before the page is loaded.  Listen on the
     # window's load event if you need to.
-    loadFromURL : (url, configFunc) ->
+    loadFromURL : (url, preload, postload) ->
         console.log "Loading: #{url}"
         @emit 'PageLoading',
             url : url
@@ -90,13 +110,13 @@ class Browser extends EventEmitter
         if process.env.TESTS_RUNNING
             @window.browser = this
 
-        if configFunc?
-            configFunc(@window)
+        preload(@window) if preload?
 
         @window.location = url
         # We know the event won't fire until a later tick since it has to make
         # an http request.
         @window.addEventListener 'load', () =>
+            postload(@window) if postload?
             @emit('load') # TODO: deprecate
             @emit('PageLoaded')
             process.nextTick(() => @emit('afterload'))
