@@ -13,14 +13,22 @@ KO                     = require('../../api/ko').ko
 {addAdvice}            = require('./advice')
 {applyPatches}         = require('./patches')
 
-koPatchPath  = Path.resolve(__dirname,
-                            'knockout',
-                            'ko-patch.js')
-koScriptPath = Path.resolve(__dirname,
-                            'knockout',
-                            'knockout-1.3.0beta.debug.js')
-koPatch  = FS.readFileSync(koPatchPath, 'utf8')
-koScript = FS.readFileSync(koScriptPath, 'utf8')
+koPatchPath    = Path.resolve(__dirname,
+                              'knockout',
+                              'ko-patch.js')
+koPath         = Path.resolve(__dirname,
+                              'knockout',
+                              'knockout-1.3.0beta.debug.js')
+jQueryPath     = Path.resolve(__dirname,
+                              'knockout',
+                              'jquery-1.6.2.js')
+jQueryTmplPath = Path.resolve(__dirname,
+                              'knockout',
+                              'jquery.tmpl.js')
+koPatch      = FS.readFileSync(koPatchPath, 'utf8')
+koScript     = FS.readFileSync(koPath, 'utf8')
+jQScript     = FS.readFileSync(jQueryPath, 'utf8')
+jQTmplScript = FS.readFileSync(jQueryTmplPath, 'utf8')
 
 class Browser extends EventEmitter
     constructor : (browserID, sharedState, parser = 'HTML5') ->
@@ -76,6 +84,8 @@ class Browser extends EventEmitter
 
     loadApp : (app) ->
         url = "http://localhost:3001/#{app}"
+        # Preload gets called after window and document exist, but before the
+        # document is populated.
         preload = (window) =>
             # For now, we attach require and process.  Eventually, we will pass
             # a customized version of require that restricts its capabilities
@@ -84,18 +94,15 @@ class Browser extends EventEmitter
             window.process = process
             window.__browser__ = this
             window.vt = new InBrowserAPI(window, @sharedState)
-        postload = (window) =>
             # If an app needs server-side knockout, we have to monkey patch
             # some ko functions.
             if global.opts.knockout
-                # Inject knockout if user didn't include it.
-                if !window.ko
-                    window.run(koScript, "knockout-1.3.0beta.debug.js")
+                window.run(jQScript,     "jquery-1.6.2.js")
+                window.run(jQTmplScript, "jquery.tmpl.js")
+                window.run(koScript,     "knockout-1.3.0beta.debug.js")
                 window.vt.ko = KO
-                @window.run(koPatch, "ko-patch.js")
-        # load callback takes a configuration function that lets us manipulate
-        # the window object before the page is fetched/loaded.
-        @loadFromURL(url, preload, postload)
+                window.run(koPatch, "ko-patch.js")
+        @loadFromURL(url, preload)
 
     # Note: this function returns before the page is loaded.  Listen on the
     # window's load event if you need to.
@@ -110,9 +117,10 @@ class Browser extends EventEmitter
         if process.env.TESTS_RUNNING
             @window.browser = this
 
+        @window.location = url
+
         preload(@window) if preload?
 
-        @window.location = url
         # We know the event won't fire until a later tick since it has to make
         # an http request.
         @window.addEventListener 'load', () =>
@@ -131,14 +139,15 @@ class Browser extends EventEmitter
     # The main difference between this and loadFromURL is that this doesn't
     # destroy the window object.
     loadDOM : (url) ->
+        document = @jsdom.jsdom(false, null,
+            url : url
+            deferClose : true
+            parser : HTML5)
+        document.parentWindow = @window
+        @window.document = document
+
         Request {uri: url}, (err, response, html) =>
             throw err if err
-            document = @jsdom.jsdom(false, null,
-                url : url
-                deferClose : true
-                parser : HTML5)
-            document.parentWindow = @window
-            @window.document = document
             # Fire window load event once document is loaded.
             document.addEventListener 'load', (ev) =>
                 ev = document.createEvent('HTMLEvents')
