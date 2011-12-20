@@ -17,22 +17,22 @@ var opts = require('nomnom')
         help    : "Enable debug mode."})
     // TODO: debug-client and debug-server (debug above enables both in callback)
     .option('compression', {
-        abbr    : 'c',
+        abbr    : 'z',
         default : true,
         help    : "Enable protocol compression."})
     .option('knockout', {
-        abbr    : 'ko',
+        abbr    : 'k',
         default : false,
         flag    : true,
         help    : "Enable server-side knockout.js bindings."})
     // Not hooked up.
     .option('resourceProxy', {
-        abbr : 'rp',
+        abbr : 'r',
         full : 'resource-proxy',
         default : true,
         help : "Enable ResourceProxy."})
     .option('config', {
-        abbr : 'cfg',
+        abbr : 'c',
         help : "A file containing a server configuration function"})
     .option('app', {
         position : 0,
@@ -45,8 +45,12 @@ for (var p in opts) {
     }
 }
 
-if (opts.debug && opts.app) {
-    console.log("Loading app from: " + opts.app);
+if (opts.debug) {
+    console.log("Config:");
+    console.log(config);
+    if (opts.app) {
+        console.log("Loading app from: " + opts.app);
+    }
 }
 
 var shared = {};
