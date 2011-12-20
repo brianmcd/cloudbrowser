@@ -1,6 +1,18 @@
 URL            = require('url')
 Config         = require('../../shared/config')
 NodeCompressor = require('../../shared/node_compressor')
+
+# Depth-first search
+dfs = (node, filter, visit) ->
+    if filter(node)
+        visit(node)
+        tagName = node.tagName?.toLowerCase()
+        if tagName == 'iframe' || tagName == 'frame'
+            dfs(node.contentDocument, filter, visit)
+        else if node.hasChildNodes()
+            for child in node.childNodes
+                dfs(child, filter, visit)
+
 # Each node in the DOM is represented by an object.
 # A serialized DOM (or snapshot) is an array of these objects.
 # Sample record:
@@ -18,101 +30,73 @@ exports.serialize = (root, resources) ->
     if document.nodeType != 9
         throw new Error("Couldn't find document")
 
-    cmds = []
-
     # A filter that skips script tags.
     filter = (node) ->
         if !node? || node.tagName?.toLowerCase() == 'script'
             return false
         return true
 
+    cmds = []
     dfs root, filter, (node) ->
         typeStr = nodeTypeToString[node.nodeType]
-        func = serializers[typeStr]
-        if func == undefined
-            console.log("Can't create instructions for #{typeStr}")
-            return
-        # Each serializer pushes its command(s) onto the command stack.
-        func(node, cmds, document, resources)
+        switch typeStr
+            when 'Element'
+                attributes = null
+                if node.attributes?.length > 0
+                    attributes = copyElementAttrs(node, document)
+                record =
+                    type   : 'element'
+                    id     : node.__nodeID
+                    parent : node.parentNode.__nodeID
+                    name   : node.tagName
+                if attributes != null
+                    record.attributes = attributes
+                if node.ownerDocument != document
+                    record.ownerDocument = node.ownerDocument.__nodeID
+                if /^i?frame$/.test(node.tagName.toLowerCase())
+                    record.docID = node.contentDocument.__nodeID
+                if node.__registeredListeners?.length
+                    record.events = node.__registeredListeners
+                cmds.push(NodeCompressor.compress(record))
 
+            when 'Comment', 'Text'
+                # The issue is that JSDOM gives Document 3 child nodes: the HTML
+                # element and a Text element.  We get a HIERARCHY_REQUEST_ERR in the
+                # client browser if we try to insert a Text node as the child of the
+                # Document
+                if node.parentNode.nodeType != 9 # Document node
+                    record =
+                        type   : typeStr.toLowerCase()
+                        id     : node.__nodeID
+                        parent : node.parentNode.__nodeID
+                        value  : node.nodeValue
+                    if node.ownerDocument != document
+                        record.ownerDocument = node.ownerDocument.__nodeID
+                    cmds.push(NodeCompressor.compress(record))
     return cmds
 
-# Depth-first search
-dfs = (node, filter, visit) ->
-    if filter(node)
-        visit(node)
-        tagName = node.tagName?.toLowerCase()
-        if tagName == 'iframe' || tagName == 'frame'
-            dfs(node.contentDocument, filter, visit)
-        else if node.hasChildNodes()
-            for child in node.childNodes
-                dfs(child, filter, visit)
-
-serializers =
-    Document : () ->
-        undefined
-
-    # TODO: Maybe if node.tagName == '[i]frame]' pass off to a helper.
-    Element : (node, cmds, topDoc, resources) ->
-        tagName = node.tagName.toLowerCase()
-        attributes = null
-        if node.attributes?.length > 0
-            attributes = {}
-            for attr in node.attributes
-                {name, value} = attr
+copyElementAttrs = (node, document) ->
+    tagName = node.tagName.toLowerCase()
+    attrs = {}
+    if node.attributes?.length > 0
+        attributes = {}
+        for attr in node.attributes
+            {name, value} = attr
+            lowercase = name.toLowerCase()
+            if (lowercase == 'src') || ((tagName == 'link') && (lowercase == 'href'))
                 # Don't send src attribute for frames or iframes
-                if /^i?frame$/.test(tagName) && (name.toLowerCase() == 'src')
+                if /^i?frame$/.test(tagName) && (lowercase == 'src')
                     continue
-                lowercase = name.toLowerCase()
-                if (lowercase == 'src') || ((tagName == 'link') && (lowercase == 'href'))
-                    if value
-                        # If we're using the resource proxy, substitute the URL with a
-                        # ResourceProxy number.
-                        if Config.resourceProxy
-                            value = "#{resources.addURL(value)}"
-                        # Otherwise, convert it to an absolute URL.
-                        else
-                            value = URL.resolve(topDoc.location, value)
-                attributes[name] = value
-        record =
-            type   : 'element'
-            id     : node.__nodeID
-            parent : node.parentNode.__nodeID
-            name   : node.tagName
-        if attributes != null
-            record.attributes = attributes
-        if node.ownerDocument != topDoc
-            record.ownerDocument = node.ownerDocument.__nodeID
-        if /^i?frame$/.test(tagName)
-            record.docID = node.contentDocument.__nodeID
-        if node.__registeredListeners?.length
-            record.events = node.__registeredListeners
-        cmds.push(NodeCompressor.compress(record))
-
-    Comment : (node, cmds, topDoc, resources) ->
-        record =
-            type : 'comment'
-            id : node.__nodeID
-            parent : node.parentNode.__nodeID
-            value : node.nodeValue
-        if node.ownerDocument != topDoc
-            record.ownerDocument = node.ownerDocument.__nodeID
-        cmds.push(NodeCompressor.compress(record))
-
-    Text : (node, cmds, topDoc, resources) ->
-        # The issue is that JSDOM gives Document 3 child nodes: the HTML
-        # element and a Text element.  We get a HIERARCHY_REQUEST_ERR in the
-        # client browser if we try to insert a Text node as the child of the
-        # Document
-        if node.parentNode.nodeType != 9 # Document node
-            record =
-                type   : 'text'
-                id     : node.__nodeID
-                parent : node.parentNode.__nodeID
-                value  : node.data
-            if node.ownerDocument != topDoc
-                record.ownerDocument = node.ownerDocument.__nodeID
-            cmds.push(NodeCompressor.compress(record))
+                if value
+                    # If we're using the resource proxy, substitute the URL with a
+                    # ResourceProxy number.
+                    if Config.resourceProxy
+                        value = "#{resources.addURL(value)}"
+                    # Otherwise, convert it to an absolute URL.
+                    else
+                        value = URL.resolve(document.location, value)
+            attrs[name] = value
+    return attrs
 
 nodeTypeToString = [
     0
