@@ -12,12 +12,12 @@ DebugServer     = require('./debug')
 
 # TODO: server.listen(mainport, backgroundport, debugport)
 class Server extends EventEmitter
-    # config.appPath - the path to the default app this server is hosting.
+    # config.app - the path to the default app this server is hosting.
     # config.shared - an object that will be shared among all Browsers created
     #                 by this server.
     # config.knockout - whether or not to enable server-side knockout
     constructor : (config = {}) ->
-        @appPath = config.appPath
+        @appPath = config.app
         if !@appPath
             throw new Error("Must supply path to an app.")
         @sharedState = config.shared || {}

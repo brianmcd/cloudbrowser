@@ -6,12 +6,15 @@ var Path   = require('path'),
     Server = vt.Server,
     ko     = vt.ko;
 
+// TODO: instead of global.opts, put these in an object that can be required.
+//       better, plus then it'll work on client.
 var opts = global.opts = require('nomnom')
     .option('debug', {
         abbr    : 'd',
         flag    : true,
         default : false,
         help    : "Enable debug mode."})
+    // TODO: debug-client and debug-server (debug above enables both in callback)
     // Not hooked up.
     .option('compression', {
         abbr    : 'c',
@@ -28,38 +31,21 @@ var opts = global.opts = require('nomnom')
         full : 'resource-proxy',
         default : true,
         help : "Enable ResourceProxy."})
-    // Not hooked up.
-    .option('url', {
-        abbr : 'u',
-        help : "A URL to serve."})
     .option('config', {
         abbr : 'cfg',
         help : "A file containing a server configuration function"})
-    // TODO: this should take a url or file path.
-    .option('appEntry', {
+    .option('app', {
         position : 0,
-        callback : function (entry) {
-            if (!/\.html$/.test(entry)) {
-                return "appEntry must point to a .html file.";
-            }
-        },
+        required : true,
         help : "The entry point to the application."}).parse();
 
-if (opts.url && opts.appEntry) {
-    throw new Error("You can't supply both an appPath and a URL.");
-}
-
-if (opts.debug) {
-    if (opts.appEntry) {
-        console.log("Loading app from: " + opts.appEntry);
-    } else {
-        console.log("Loading from url: " + opts.url);
-    }
+if (opts.debug && opts.app) {
+    console.log("Loading app from: " + opts.app);
 }
 
 var shared = {};
 var s = new Server({
-    appPath : opts.appEntry,
+    app    : opts.app,
     shared : shared
 });
 
