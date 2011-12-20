@@ -13,13 +13,17 @@ module.exports = DOMEventHandlers =
         @browserLoading = true
 
     PageLoaded : () ->
+        @browserInitialized = true
         @browserLoading = false
         snapshot =
             nodes : serialize(@browser.window.document, @resources, @compressionEnabled)
             components : @browser.getSnapshot().components
         if @compressionEnabled
             snapshot.compressionTable = @compressor.textToSymbol
+        @sockets = @sockets.concat(@queuedSockets)
+        @queuedSockets = []
         for socket in @sockets
+            socket.emit 'clear'
             socket.emit 'PageLoaded', snapshot
 
     DocumentCreated : (event) ->

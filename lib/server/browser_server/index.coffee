@@ -24,6 +24,12 @@ class BrowserServer
         # If so, we don't process client events/updates.
         @browserLoading = false
 
+        # Sockets that have connected before the browser has loaded its first page.
+        @queuedSockets = []
+        
+        # Indicates whether the browser has loaded its first page.
+        @browserInitialized = false
+
         for own event, handler of DOMEventHandlers
             do (event, handler) =>
                 @browser.on event, () =>
@@ -56,6 +62,8 @@ class BrowserServer
             socket.emit(name, params)
 
     addSocket : (socket) ->
+        if !@browserInitialized
+            return @queuedSockets.push(socket)
         cmds = serialize(@browser.window.document, @resources, @compressionEnabled)
         snapshot =
             nodes      : cmds
