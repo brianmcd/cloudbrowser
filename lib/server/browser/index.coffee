@@ -125,7 +125,6 @@ class Browser extends EventEmitter
         # an http request.
         @window.addEventListener 'load', () =>
             postload(@window) if postload?
-            @emit('load') # TODO: deprecate
             @emit('PageLoaded')
             process.nextTick(() => @emit('afterload'))
 
@@ -145,11 +144,15 @@ class Browser extends EventEmitter
             parser : HTML5)
         document.parentWindow = @window
         @window.document = document
+        document.__defineGetter__ 'location', () =>
+            return @window.__location
+        document.__defineSetter__ 'location', (href) =>
+            return @window.__location = new Location(href)
 
         Request {uri: url}, (err, response, html) =>
             throw err if err
             # Fire window load event once document is loaded.
-            document.addEventListener 'load', (ev) =>
+            document.addEventListener 'DOMContentLoaded', (ev) =>
                 ev = document.createEvent('HTMLEvents')
                 ev.initEvent('load', false, false)
                 @window.dispatchEvent(ev)
