@@ -4,11 +4,12 @@ require('coffee-script');
 var Path   = require('path'),
     vt     = require('../');
     Server = vt.Server,
-    ko     = vt.ko;
+    ko     = vt.ko,
+    config = require('../lib/shared/config');
 
 // TODO: instead of global.opts, put these in an object that can be required.
 //       better, plus then it'll work on client.
-var opts = global.opts = require('nomnom')
+var opts = require('nomnom')
     .option('debug', {
         abbr    : 'd',
         flag    : true,
@@ -38,6 +39,12 @@ var opts = global.opts = require('nomnom')
         position : 0,
         required : true,
         help : "The entry point to the application."}).parse();
+
+for (var p in opts) {
+    if (opts.hasOwnProperty(p)) {
+        config[p] = opts[p];
+    }
+}
 
 if (opts.debug && opts.app) {
     console.log("Loading app from: " + opts.app);

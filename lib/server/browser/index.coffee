@@ -10,6 +10,7 @@ LocationBuilder        = require('./location').LocationBuilder
 InBrowserAPI           = require('../../api')
 TaggedNodeCollection   = require('../../shared/tagged_node_collection')
 KO                     = require('../../api/ko').ko
+config                 = require('../../shared/config')
 {addAdvice}            = require('./advice')
 {applyPatches}         = require('./patches')
 
@@ -96,7 +97,7 @@ class Browser extends EventEmitter
             window.vt = new InBrowserAPI(window, @sharedState)
             # If an app needs server-side knockout, we have to monkey patch
             # some ko functions.
-            if global.opts.knockout
+            if config.knockout
                 window.run(jQScript,     "jquery-1.6.2.js")
                 window.run(jQTmplScript, "jquery.tmpl.js")
                 window.run(koScript,     "knockout-1.3.0beta.debug.js")
