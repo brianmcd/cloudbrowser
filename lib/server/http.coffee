@@ -65,7 +65,7 @@ class HTTP extends EventEmitter
             resourceid = req.params.resourceid
             decoded = decodeURIComponent(req.params.browserid)
             bserver = @browsers.find(decoded)
-            # Note: fetch calles res.end()
+            # Note: fetch calls res.end()
             bserver?.resources.fetch(resourceid, res)
         
         return server
