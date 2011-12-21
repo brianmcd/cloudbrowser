@@ -40,6 +40,10 @@ class Browser extends EventEmitter
             console.log "Emitting: #{event}"
             oldEmit.apply(this, arguments)
         ###
+        #
+        # This gives us a Location class that is aware of our
+        # DOMWindow and Browser.
+        @Location = LocationBuilder(this)
 
         @initDOM()
         
@@ -144,7 +148,7 @@ class Browser extends EventEmitter
         document.__defineGetter__ 'location', () =>
             return @window.__location
         document.__defineSetter__ 'location', (href) =>
-            return @window.__location = new Location(href)
+            return @window.__location = new @Location(href)
 
         Request {uri: url}, (err, response, html) =>
             throw err if err
@@ -175,13 +179,10 @@ class Browser extends EventEmitter
         # the window object.
         ImportXMLHttpRequest(window)
 
-        # This gives us a Location class that is aware of our
-        # DOMWindow and Browser.
-        Location = LocationBuilder(window, this)
         window.__defineGetter__ 'location', () ->
             return @__location
         window.__defineSetter__ 'location', (href) ->
-            return @__location = new Location(href)
+            return @__location = new self.Location(href)
 
         # window.setTimeout and setInterval piggyback off of Node's functions,
         # but emit events before/after calling the supplied function.
