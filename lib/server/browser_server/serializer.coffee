@@ -75,6 +75,10 @@ exports.serialize = (root, resources) ->
                     cmds.push(NodeCompressor.compress(record))
     return cmds
 
+# Contains special cases for:
+#   iframe src attributes - ignore them.
+#   data-* attributes - ignore them
+#   other element src attributes - rewrite them
 copyElementAttrs = (node, document, resources) ->
     tagName = node.tagName.toLowerCase()
     attrs = {}
