@@ -3,7 +3,6 @@ HTTPS = require('https')
 MIME  = require('mime')
 URL   = require('url')
 
-# TODO: scan @import rules for CSS and fetch subresources.
 class ResourceProxy
     constructor : (baseURL) ->
         @urlsByIndex = []
@@ -25,6 +24,7 @@ class ResourceProxy
     # id - the resource ID to fetch
     # res - the response object to write to.
     fetch : (id, res) ->
+        self = this
         url = @urlsByIndex[id]
         if !url?
             url = URL.parse(URL.resolve(@baseURL, id))
@@ -43,13 +43,23 @@ class ResourceProxy
             if /^text/.test(type)
                 stream.setEncoding('utf8')
             res.writeHead(200, {'Content-Type' : type})
-            stream.on 'data', (data) ->
-                res.write(data)
-            stream.on 'end', () ->
-                res.end()
+            if type == 'text/css'
+                str = ''
+                stream.on 'data', (data) ->
+                    str += data
+                stream.on 'end', () ->
+                    str = str.replace /url\(\"?(.+)\"?\)/g, (matched, original) ->
+                        newURL = self.addURL(URL.resolve(url.href, original))
+                        return "url(\"#{newURL}\")"
+                    res.write(str)
+                    res.end()
+            else
+                stream.on 'data', (data) ->
+                    res.write(data)
+                stream.on 'end', () ->
+                    res.end()
         req.on 'error', (e) ->
             throw e
         console.log("Fetching resource: #{id} [type=#{type}]")
             
-
 module.exports = ResourceProxy
