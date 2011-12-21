@@ -27,9 +27,7 @@ class ResourceProxy
         self = this
         url = @urlsByIndex[id]
         if !url?
-            url = URL.parse(URL.resolve(@baseURL, id))
-            console.log("Looking up non-existant: #{url}")
-            #throw new Error("Tried to fetch invalid id: #{id}")
+            throw new Error("Tried to fetch invalid id: #{id}")
         type = MIME.lookup(url.href)
         get = null
         switch url.protocol

@@ -61,6 +61,13 @@ module.exports = DOMEventHandlers =
            event.relatedNode.tagName != 'SCRIPT'
             @broadcastEvent 'DOMNodeRemovedFromDocument', @nodes.scrub(event)
 
+    DOMAttrModified : (event) ->
+        return if @browserLoading
+        if event.attrChange == 'ADDITION' && event.attrName == 'src'
+            event.attrValue = @resources.addURL(event.attrValue)
+        @broadcastEvent 'DOMAttrModified', @nodes.scrub(event)
+
+
     AddEventListener : (event) ->
         return if @browserLoading
         {target, type} = event
@@ -94,7 +101,6 @@ module.exports = DOMEventHandlers =
 ['DOMStyleChanged',
  'DOMPropertyModified',
  'DOMCharacterDataModified',
- 'DOMAttrModified',
  'WindowMethodCalled'].forEach (type) ->
      DOMEventHandlers[type] = (event) ->
          return if @browserLoading
