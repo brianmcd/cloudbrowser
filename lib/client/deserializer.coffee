@@ -1,14 +1,11 @@
-NodeCompressor = require('./node_compressor')
+NodeCompressor = require('./shared/node_compressor')
 # snapshot:
 #   nodes - serialized node list.
 #   events - list of events to register on
 #   components - list of components to create
-# TODO: need to make sure the ORDER of children is preserved (might be
-#       what broke admin page)
-exports.deserialize = (snapshot, client, compression) ->
+exports.deserialize = (snapshot, client) ->
     for record in snapshot.nodes
-        if compression
-            record = NodeCompressor.uncompress(record)
+        record = NodeCompressor.uncompress(record)
 
         # If the node already exists, we don't need to create it.
         # This can happen if a node is removed then re-added.

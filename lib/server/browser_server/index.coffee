@@ -1,11 +1,12 @@
 Path                 = require('path')
 FS                   = require('fs')
-TaggedNodeCollection = require('../../shared/tagged_node_collection')
 Browser              = require('../browser')
-ResourceProxy        = require('./resource_proxy')
 Compressor           = require('../../shared/compressor')
+DOMEventHandlers     = require('./dom_event_handlers')
+RPCMethods           = require('./rpc_methods')
+Config               = require('../../shared/config')
 {serialize}          = require('./serializer')
-{eventTypeToGroup, clientEvents} = require('../../shared/event_lists')
+{eventTypeToGroup}   = require('../../shared/event_lists')
 
 # Serves 1 Browser to n clients.
 class BrowserServer
@@ -14,7 +15,6 @@ class BrowserServer
         @browser = new Browser(opts.id, opts.shared)
         @sockets = []
         @compressor = new Compressor()
-        @compressionEnabled = @compressor.compressionEnabled #TODO: make configurable with command line arg
         @compressor.on 'newSymbol', (args) =>
             console.log("newSymbol: #{args.original} -> #{args.compressed}")
             for socket in @sockets
@@ -23,6 +23,12 @@ class BrowserServer
         # Indicates whether @browser is currently loading a page.
         # If so, we don't process client events/updates.
         @browserLoading = false
+
+        # Sockets that have connected before the browser has loaded its first page.
+        @queuedSockets = []
+        
+        # Indicates whether the browser has loaded its first page.
+        @browserInitialized = false
 
         for own event, handler of DOMEventHandlers
             do (event, handler) =>
@@ -46,7 +52,7 @@ class BrowserServer
         @clientProtocolLog = FS.createWriteStream(clientProtocolLogPath)
 
     broadcastEvent : (name, params) ->
-        if @compressionEnabled
+        if Config.compression
             name = @compressor.compress(name)
         if @sockets.length
             @serverProtocolLog.write("#{name}")
@@ -56,225 +62,27 @@ class BrowserServer
             socket.emit(name, params)
 
     addSocket : (socket) ->
-        cmds = serialize(@browser.window.document, @resources, @compressionEnabled)
-        snapshot =
-            nodes            : cmds
-            components       : @browser.getSnapshot().components
-        if @compressionEnabled
-            snapshot.compressionTable = @compressor.textToSymbol
-        @serverProtocolLog.write("loadFromSnapshot #{JSON.stringify(snapshot)}\n")
-        socket.emit 'loadFromSnapshot', snapshot
-        @sockets.push(socket)
-        socket.on 'processEvent', @processEvent
-        socket.on 'setAttribute', @processClientSetAttribute
+        for own type, func of RPCMethods
+            do (type, func) =>
+                socket.on type, () =>
+                    console.log("Got #{type}")
+                    func.apply(this, arguments)
         socket.on 'disconnect', () =>
-            @sockets = (s for s in @sockets when s != socket)
+            @sockets       = (s for s in @sockets when s != socket)
+            @queuedSockets = (s for s in @queuedSockets when s != socket)
+        socket.emit 'SetConfig', Config
 
-    processClientSetAttribute : (args) =>
-        @clientProtocolLog.write("setAttribute #{JSON.stringify(args)}")
-        if !@browserLoading
-            target = @nodes.get(args.target)
-            {attribute, value} = args
-            if attribute == 'src'
-                return
-            if attribute == 'selectedIndex'
-                return target[attribute] = value
-            target.setAttribute(attribute, value)
+        if !@browserInitialized
+            return @queuedSockets.push(socket)
 
-    processEvent : (params) =>
-        {event, specifics} = params
-
-        for own nodeID, value of specifics
-            node = @nodes.get(nodeID) # Should cache these for the restore.
-            node.__oldValue = node.value
-            node.value = value
-
-        @clientProtocolLog.write("processEvent #{JSON.stringify(event)}")
-        if !@browserLoading
-            @broadcastEvent 'pauseRendering'
-            # TODO
-            # This bail out happens when an event fires on a component, which 
-            # only really exists client side and doesn't have a nodeID (and we 
-            # can't handle clicks on the server anyway).
-            # Need something more elegant.
-            if !event.target
-                return
-
-            # Swap nodeIDs with nodes
-            clientEv = @nodes.unscrub(event)
-
-            # Create an event we can dispatch on the server.
-            serverEv = @_createEvent(clientEv)
-
-            console.log("Dispatching #{serverEv.type}\t" +
-                        "[#{eventTypeToGroup[clientEv.type]}] on " +
-                        "#{clientEv.target.__nodeID} [#{clientEv.target.tagName}]")
-
-            clientEv.target.dispatchEvent(serverEv)
-            @broadcastEvent 'resumeRendering'
-
-        for own nodeID, value of specifics
-            node = @nodes.get(nodeID)
-            node.value = node.__oldValue
-            delete node.__oldValue
-
-    # Takes a clientEv (an event generated on the client and sent over DNode)
-    # and creates a corresponding event for the server's DOM.
-    _createEvent : (clientEv) ->
-        group = eventTypeToGroup[clientEv.type]
-        event = @browser.window.document.createEvent(group)
-        switch group
-            when 'UIEvents'
-                event.initUIEvent(clientEv.type, clientEv.bubbles,
-                                  clientEv.cancelable, @browser.window,
-                                  clientEv.detail)
-            when 'HTMLEvents'
-                event.initEvent(clientEv.type, clientEv.bubbles,
-                                clientEv.cancelable)
-            when 'MouseEvents'
-                event.initMouseEvent(clientEv.type, clientEv.bubbles,
-                                     clientEv.cancelable, @browser.window,
-                                     clientEv.detail, clientEv.screenX,
-                                     clientEv.screenY, clientEv.clientX,
-                                     clientEv.clientY, clientEv.ctrlKey,
-                                     clientEv.altKey, clientEv.shiftKey,
-                                     clientEv.metaKey, clientEv.button,
-                                     clientEv.relatedTarget)
-            # Eventually, we'll detect events from different browsers and
-            # handle them accordingly.
-            when 'KeyboardEvent'
-                # For Chrome:
-                char = String.fromCharCode(clientEv.which)
-                locale = modifiersList = ""
-                repeat = false
-                if clientEv.altGraphKey then modifiersList += "AltGraph"
-                if clientEv.altKey      then modifiersList += "Alt"
-                if clientEv.ctrlKey     then modifiersList += "Ctrl"
-                if clientEv.metaKey     then modifiersList += "Meta"
-                if clientEv.shiftKey    then modifiersList += "Shift"
-
-                # TODO: to get the "keyArg" parameter right, we'd need a lookup
-                # table for:
-                # http://www.w3.org/TR/DOM-Level-3-Events/#key-values-list
-                event.initKeyboardEvent(clientEv.type, clientEv.bubbles,
-                                        clientEv.cancelable, @browser.window,
-                                        char, char, clientEv.keyLocation,
-                                        modifiersList, repeat, locale)
-        return event
-
-# The BrowserServer constructor iterates over the properties in this object and
-# adds an event handler to the Browser for each one.  The function name must
-# match the Browser event name.  'this' is set to the Browser via apply.
-DOMEventHandlers =
-    PageLoading : (event) ->
-        @nodes     = new TaggedNodeCollection()
-        @resources = new ResourceProxy(event.url)
-        @browserLoading = true
-
-    PageLoaded : () ->
-        @browserLoading = false
+        cmds = serialize(@browser.window.document, @resources)
         snapshot =
-            nodes : serialize(@browser.window.document, @resources, @compressionEnabled)
+            nodes      : cmds
             components : @browser.getSnapshot().components
-        if @compressionEnabled
+        if Config.compression
             snapshot.compressionTable = @compressor.textToSymbol
-        for socket in @sockets
-            socket.emit 'loadFromSnapshot', snapshot
+        @serverProtocolLog.write("PageLoaded #{JSON.stringify(snapshot)}\n")
+        socket.emit 'PageLoaded', snapshot
+        @sockets.push(socket)
 
-    DOMStyleChanged : (event) ->
-        @broadcastEvent 'changeStyle',
-            target    : event.target.__nodeID
-            attribute : event.attribute
-            value     : event.value
-
-    DOMPropertyModified : (event) ->
-        @broadcastEvent 'setProperty',
-            target   : event.target.__nodeID
-            property : event.property
-            value    : event.value
-
-    DocumentCreated : (event) ->
-        @nodes.add(event.target)
-
-    DOMCharacterDataModified : (event) ->
-        @broadcastEvent 'setCharacterData',
-            target : event.target.__nodeID
-            value  : event.target.nodeValue
-
-    # Tag all newly created nodes.
-    # This seems cleaner than having serializer do the tagging.
-    DOMNodeInserted : (event) ->
-        if !event.target.__nodeID
-            @nodes.add(event.target)
-
-    DOMNodeInsertedIntoDocument : (event) ->
-        if event.target.tagName != 'SCRIPT' &&
-           event.target.parentNode?.tagName != 'SCRIPT'
-            node = event.target
-            cmds = serialize(node, @resources, @compressionEnabled)
-            # 'before' tells the client where to insert the top level node in
-            # relation to its siblings.
-            # We only need it for the top level node because nodes in its tree
-            # are serialized in order.
-            before = node.nextSibling
-            while before?.tagName?.toLowerCase() == 'script'
-                before = before.nextSibling
-            if @compressionEnabled
-                cmds[0].push(before?.__nodeID)
-            else
-                cmds[0].before = before?.__nodeID
-
-            @broadcastEvent 'attachSubtree', cmds
-
-    DOMNodeRemovedFromDocument : (event) ->
-        if event.target.tagName != 'SCRIPT' &&
-           event.relatedNode.tagName != 'SCRIPT'
-            @broadcastEvent 'removeSubtree',
-                parent : event.relatedNode.__nodeID
-                node   : event.target.__nodeID
-
-    DOMAttrModified : (event) ->
-        # Note: ADDITION can really be MODIFIED as well.
-        if event.attrChange == 'ADDITION'
-            @broadcastEvent 'setAttr',
-                target : event.target.__nodeID
-                name   : event.attrName
-                value  : event.newValue
-        else
-            @broadcastEvent 'removeAttr',
-                target : event.target.__nodeID
-                name   : event.attrName
-
-    AddEventListener : (event) ->
-        {target, type} = event
-
-        if clientEvents[type] != true
-            return
-
-        instruction =
-            target : target.__nodeID
-            type   : type
-        
-        if !target.__registeredListeners
-            target.__registeredListeners = [instruction]
-        else
-            target.__registeredListeners.push(instruction)
-
-        if target._attachedToDocument
-            @broadcastEvent('addEventListener', instruction)
-
-    EnteredTimer : () -> @broadcastEvent 'pauseRendering'
-
-    ExitedTimer :  () -> @broadcastEvent 'resumeRendering'
-
-    WindowMethodCalled : (event) ->
-        @broadcastEvent 'callWindowMethod',
-            method : event.method
-            args : event.args
-    
-    ConsoleLog : (event) ->
-        @consoleLog.write(event.msg + '\n')
-        # TODO: debug flag to enable line below.
-        console.log("[[[#{@browser.id}]]] #{event.msg}")
-        
 module.exports = BrowserServer

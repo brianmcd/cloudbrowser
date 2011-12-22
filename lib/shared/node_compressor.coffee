@@ -1,3 +1,4 @@
+Config = require('./config')
 # Record definitions:
 # 'element':
 #       type          : 0
@@ -17,6 +18,8 @@
 #       ownerDocument : node.ownerDocument.__nodeID
 class NodeCompressor
     @compress : (record) ->
+        if !Config.compression
+            return record
         compressed = null
         switch record.type
             when 'element'
@@ -41,6 +44,8 @@ class NodeCompressor
                 ]
 
     @uncompress : (compressed) ->
+        if !Config.compression
+            return compressed
         typeNum = compressed[0]
         switch typeNum
             when 0

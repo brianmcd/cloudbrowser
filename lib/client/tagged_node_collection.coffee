@@ -1,1 +1,0 @@
-../shared/tagged_node_collection.coffee

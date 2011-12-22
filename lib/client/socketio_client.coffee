@@ -1,8 +1,9 @@
-TaggedNodeCollection = require('./tagged_node_collection')
+TaggedNodeCollection = require('./shared/tagged_node_collection')
+Compressor           = require('./shared/compressor')
 EventMonitor         = require('./event_monitor')
 Components           = require('./components')
-Compressor           = require('./compressor')
 {deserialize}        = require('./deserializer')
+Config               = require('./shared/config')
 
 test_env = !!process?.env?.TESTS_RUNNING
 
@@ -26,8 +27,6 @@ class SocketIOClient
         vals = {}
         for node in @specifics
             vals[node.__nodeID] = node.value
-        console.log('Specifics:')
-        console.log(vals)
         return vals
 
     connectSocket : () ->
@@ -61,8 +60,8 @@ class SocketIOClient
         for own name, func of RPCMethods
             do (name, func) =>
                 socket.on name, () =>
-                    console.log("Got: #{name}")
-                    console.log(arguments)
+                    #console.log("Got: #{name}")
+                    #console.log(arguments)
                     # We always process newSymbol because resumeRendering will
                     # be compressed if compression is enabled.
                     if name == 'newSymbol'
@@ -78,12 +77,16 @@ class SocketIOClient
                         func.apply(this, arguments)
 
 RPCMethods =
+    SetConfig : (config) ->
+        for own key, value of config
+            Config[key] = value
+
     newSymbol : (original, compressed) ->
         console.log("newSymbol: #{original} -> #{compressed}")
         @compressor.register(original, compressed)
         @socket.on compressed, () =>
-            console.log("Got: #{original} [compressed]")
-            console.log(arguments)
+            #console.log("Got: #{original} [compressed]")
+            #console.log(arguments)
             #TODO: factor this out with setupRPC above
             # This way resumeRendering actually can be called.
             if original == 'resumeRendering'
@@ -95,58 +98,64 @@ RPCMethods =
             else
                 RPCMethods[original].apply(this, arguments)
 
-    changeStyle : (args) ->
+    DOMStyleChanged : (args) ->
         target = @nodes.get(args.target)
         target.style[args.attribute] = args.value
 
-    setProperty : (args) ->
+    DOMPropertyModified : (args) ->
         target = @nodes.get(args.target)
         if target.clientSpecific
             return if args.property == 'value'
         target[args.property] = args.value
 
     # This function is called for partial updates AFTER the initial load.
-    attachSubtree : (nodes) ->
+    DOMNodeInsertedIntoDocument : (nodes) ->
         deserialize({nodes : nodes}, this, @compressionEnabled)
 
-    removeSubtree : (args) ->
-        parent = @nodes.get(args.parent)
-        child = @nodes.get(args.node)
+    DOMNodeRemovedFromDocument : (args) ->
+        parent = @nodes.get(args.relatedNode)
+        child = @nodes.get(args.target)
         parent.removeChild(child)
 
-    loadFromSnapshot : (snapshot) ->
+    PageLoaded : (snapshot) ->
         console.log('loadFromSnapshot')
         console.log(snapshot)
-        while @document.childNodes.length
-            @document.removeChild(document.childNodes[0])
+        doc = @document
+        while doc.hasChildNodes()
+            doc.removeChild(doc.firstChild)
         @nodes = new TaggedNodeCollection()
-        delete @document.__nodeID
-        @nodes.add(@document, 'node1')
+        delete doc.__nodeID
+        @nodes.add(doc, 'node1')
         @compressor = new Compressor()
         for own original, compressed of snapshot.compressionTable
             RPCMethods['newSymbol'].call(this, original, compressed)
         deserialize(snapshot, this, @compressionEnabled)
 
-    setAttr : (args) ->
+    DOMAttrModified : (args) ->
         target = @nodes.get(args.target)
-        name = args.name
+        name = args.attrName
+        value = args.newValue
         if target.clientSpecific
             return if name == 'value'
-        # For HTMLOptionElement, HTMLInputELement, HTMLSelectElement
-        if /^selected$|^selectedIndex$|^value$|^checked$/.test(name)
-            # Calling setAttribute doesn't cause the displayed value to change,
-            # but setting it as a property does.
-            target[name] = args.value
+        if args.attrChange == 'ADDITION'
+            # For HTMLOptionElement, HTMLInputELement, HTMLSelectElement
+            if /^selected$|^selectedIndex$|^value$|^checked$/.test(name)
+                # Calling setAttribute doesn't cause the displayed value to change,
+                # but setting it as a property does.
+                target[name] = value
+            else
+                target.setAttribute(name, value)
+        else if args.attrChange == 'REMOVAL'
+            target.removeAttribute(name)
         else
-            target.setAttribute(args.name, args.value)
+            throw new Error("Invalid attrChange: #{args.attrChange}")
 
-    removeAttr : (args) ->
-        target = @nodes.get(args.target)
-        target.removeAttribute(args.name)
-
-    setCharacterData : (args) ->
+    DOMCharacterDataModified : (args) ->
         target = @nodes.get(args.target)
         target.nodeValue = args.value
+
+    WindowMethodCalled : (params) ->
+       window[params.method].apply(window, params.args)
 
     disconnect : () ->
         @socket.disconnect()
@@ -175,10 +184,10 @@ RPCMethods =
         @eventQueue = []
         @renderingPaused = false
 
-    addEventListener : (params) ->
+    AddEventListener : (params) ->
         @monitor.addEventListener(params)
         if test_env
-            @window.testClient.emit('addEventListener', params)
+            @window.testClient.emit('AddEventListener', params)
        
     # If params given, clear the document of the specified frame.
     # Otherwise, clear the global window's document.
@@ -195,8 +204,5 @@ RPCMethods =
         if doc == @document
             @nodes = new TaggedNodeCollection()
         delete doc.__nodeID
-
-    callWindowMethod : (params) ->
-       window[params.method].apply(window, params.args)
 
 module.exports = SocketIOClient

@@ -9,8 +9,7 @@ class BrowserManager
         return @browsers[id]
 
     create : (opts) ->
-        {id, url, app, shared} = opts
-        console.log("url: #{url}")
+        {id, app, shared} = opts
         console.log("app: #{app}")
         if !id
             id = Hat()
@@ -24,9 +23,8 @@ class BrowserManager
             id : id
             shared: shared
         browser = bserver.browser
-        # TODO: should load/loadApp be exposed on BrowserServer?
-        if url?
-            browser.loadFromURL(url)
+        if /^http/.test(app)
+            browser.loadFromURL(app)
         else
             browser.loadApp(app)
         return bserver

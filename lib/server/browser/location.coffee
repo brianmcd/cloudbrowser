@@ -5,7 +5,7 @@ URL = require('url')
 #   - to compare a new URL to the currently loaded one to detect changes.
 #   - to fire 'hashchange' on the window's DOM.
 #   - to cause the Browser to navigate to a new page.
-exports.LocationBuilder = (window, browser) ->
+exports.LocationBuilder = (browser) ->
     # Partial implementation of w3c Location class:
     # See: http://dev.w3.org/html5/spec/Overview.html#the-location-interface
     #
@@ -47,7 +47,7 @@ exports.LocationBuilder = (window, browser) ->
             #   - fetches the HTML from the url
             #   - creates a DOM tree (document) for it
             #   - associates the document object with the existing window object
-            if !window.location?
+            if !browser.window.location?
                 @parsed = URL.parse(url)
                 browser.loadDOM(url)
             # Otherwise, a page has been loaded so we need to see if we should
@@ -67,7 +67,7 @@ exports.LocationBuilder = (window, browser) ->
             #      window.location = url
             #   3. undefined, if this is the first time window.location has
             #      been set (initial page load)
-            oldLoc = window.location
+            oldLoc = browser.window.location
 
             # Case 1 above.  We need a copy of the POJO so we can detect
             # page change or hash change.
@@ -88,11 +88,11 @@ exports.LocationBuilder = (window, browser) ->
             #   'pagechange' - URLs are different
             switch checkChange(this, oldLoc)
                 when 'hashchange'
-                    event = window.document.createEvent('HTMLEvents')
+                    event = browser.window.document.createEvent('HTMLEvents')
                     event.initEvent("hashchange", true, false)
                     event.oldURL = oldLoc.href
                     event.newURL = this.href
-                    window.dispatchEvent(event)
+                    browser.window.dispatchEvent(event)
                 when 'pagechange'
                     browser.loadFromURL(@parsed.href)
 

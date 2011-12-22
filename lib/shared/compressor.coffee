@@ -2,7 +2,6 @@
 
 class Compressor extends EventEmitter
     constructor : () ->
-        @compressionEnabled = true
         @textToSymbol = {}
         @symbolToText = {}
         @nextID = 0

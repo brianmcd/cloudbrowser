@@ -115,6 +115,7 @@ exports.addAdvice = (dom, browser) ->
             if elem._parentNode?._attachedToDocument
                 browser.emit 'DOMCharacterDataModified',
                     target : elem
+                    value  : value
 
     # Advice for: EventTarget.addEventListener
     #

@@ -1,9 +1,67 @@
-var Path   = require('path'),
-    Server = require('../lib/server')
+#!/usr/bin/env node
 
+require('coffee-script');
+var Path   = require('path'),
+    vt     = require('../');
+    Server = vt.Server,
+    ko     = vt.ko,
+    config = require('../lib/shared/config');
+
+// TODO: instead of global.opts, put these in an object that can be required.
+//       better, plus then it'll work on client.
+var opts = require('nomnom')
+    .option('debug', {
+        abbr    : 'd',
+        flag    : true,
+        default : false,
+        help    : "Enable debug mode."})
+    // TODO: debug-client and debug-server (debug above enables both in callback)
+    .option('compression', {
+        abbr    : 'z',
+        default : true,
+        help    : "Enable protocol compression."})
+    .option('knockout', {
+        abbr    : 'k',
+        default : false,
+        flag    : true,
+        help    : "Enable server-side knockout.js bindings."})
+    .option('resourceProxy', {
+        abbr : 'r',
+        full : 'resource-proxy',
+        default : true,
+        help : "Enable ResourceProxy."})
+    .option('config', {
+        abbr : 'c',
+        help : "A file containing a server configuration function"})
+    .option('app', {
+        position : 0,
+        required : true,
+        help : "The entry point to the application."}).parse();
+
+for (var p in opts) {
+    if (opts.hasOwnProperty(p)) {
+        config[p] = opts[p];
+    }
+}
+
+if (opts.debug) {
+    console.log("Config:");
+    console.log(config);
+    if (opts.app) {
+        console.log("Loading app from: " + opts.app);
+    }
+}
+
+var shared = {};
 var s = new Server({
-    appPath : Path.join(process.cwd(), 'html', 'index.html')
+    app    : opts.app,
+    shared : shared
 });
+
+if (opts.config) {
+    var configure = require(opts.config).configure;
+    configure(shared, ko);
+}
 
 s.once('ready', function () {
     console.log('All services running, ready for clients.')
