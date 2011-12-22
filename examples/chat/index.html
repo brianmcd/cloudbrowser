@@ -10,7 +10,7 @@
                 var Path = require('path');
                 var viewModel = {
                     newRoomName  : ko.observable("New Room"),
-                    selectedRoom : ko.observable(),
+                    selectedRoom : ko.observable(vt.shared.rooms()[0]),
                     rooms        : vt.shared.rooms
                 };
                 ko.applyBindings(viewModel);
