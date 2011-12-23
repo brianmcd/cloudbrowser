@@ -59,7 +59,7 @@ var s = new Server({
 });
 
 if (opts.config) {
-    var configure = require(opts.config).configure;
+    var configure = require(Path.resolve(process.cwd(), opts.config)).configure;
     configure(shared, ko);
 }
 
