@@ -1,8 +1,19 @@
-<!-- TODO: need to use a template to bind the chat tab options to an array or object of this user's "joined" rooms -->
+<div class='container'>
 <ul style='padding: 20px 40px 0px 40px' class="tabs" data-tabs="tabs" data-bind="foreach: myChats">
-    <li><button class='btn' data-bind="text: name, attr: { class : 'btn ' + ($root.activeChat().name == name ? 'primary' : '') }"></button></li>
-    <!-- TODO: data bind on click -->
+    <li data-bind="attr: {class : ($root.activeChat().name == name ? 'active' : '')}">
+        <a data-bind="text: name, attr: { href : '#' + name }"></a>
+    </li>
     <!-- TODO: when a room as new messages, add class 'danger' -->
     <!-- TODO: active chat has primary -->
 </ul>
+<div id="chat-tabs" data-bind='foreach: myChats'>
+    <!-- TODO: Side bar for user list -->
+    <div data-bind="attr: {id : 'tab-' + name, class : 'tab-pane'}">
+        <textarea rows='20' style='width: 100%' data-bind='value: $root.chatText[name]'></textarea>
+    </div>
+</div>
+<input type='text' style='width: 100%;' size='160' data-bind='value: currentMessage'></input>
+<button class='btn' data-bind='click: postMessage'>Send</button>
+</div>
+
 <script src='pages/chats.js'></script>

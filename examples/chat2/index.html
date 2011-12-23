@@ -1,6 +1,7 @@
 <html>
     <head>
         <link rel="stylesheet" href="http://twitter.github.com/bootstrap/1.4.0/bootstrap.min.css">
+        <script src="http://twitter.github.com/bootstrap/1.4.0/bootstrap-tabs.js"></script>
         <script>
             $(function () {
                 vt.initPages(document.getElementById('main'), function (pages) {
@@ -16,8 +17,11 @@
                     });
                 });
 
-                window.local = {};
-                window.local.chats = ko.observableArray();
+                window.local = {
+                    chats : ko.observableArray(),
+                    activeRoom : ko.observable(),
+                    chatText : {}
+                };
             });
         </script>
     </head>
