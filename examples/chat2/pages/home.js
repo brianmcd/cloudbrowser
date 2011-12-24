@@ -14,9 +14,15 @@
     });
     ko.applyBindings(viewModel);
 
+    function switchToChatPage () {
+        $('.topbar li').removeClass('active');
+        $('#chats-li').addClass('active');
+        vt.pages.chats.load();
+    }
+
     $('#create-room').click(function () {
         var name = viewModel.newRoomName();
-        var room = null
+        var room = null;
         try {
             room = chats.create(name);
         } catch (e) {
@@ -24,16 +30,11 @@
             return;
         }
         user.joinRoom(room);
-        // TODO: wrap this in a reusable thing.
-        $('.topbar li').removeClass('active');
-        $('#chats-li').addClass('active');
-        vt.pages.chats.load();
+        switchToChatPage();
     });
+
     $('#join-room').click(function () {
-        var room = viewModel.selectedRoom();
-        user.joinRoom(room);
-        $('.topbar li').removeClass('active');
-        $('#chats-li').addClass('active');
-        vt.pages.chats.load();
+        user.joinRoom(viewModel.selectedRoom());
+        switchToChatPage();
     });
 })();
