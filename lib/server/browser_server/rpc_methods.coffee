@@ -92,4 +92,5 @@ module.exports = RPCMethods =
                                         clientEv.cancelable, window,
                                         char, char, clientEv.keyLocation,
                                         modifiersList, repeat, locale)
+                event.which = clientEv.which
         return event

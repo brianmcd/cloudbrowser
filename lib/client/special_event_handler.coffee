@@ -50,10 +50,12 @@ class SpecialEventHandler
         #       then we can run keydown, keypress, update value, keyup
         #       in the same event tick.
         # Technically, the value shouldn't be set until after keypress.
+        ###
         @socket.emit 'setAttribute'
             target : event.target.__nodeID
             attribute : 'value'
             value : event.target.value
+        ###
         rEvent = {}
         @monitor.eventInitializers["#{EventTypeToGroup[event.type]}"](rEvent, event)
         @_queuedKeyEvents.push(rEvent)
