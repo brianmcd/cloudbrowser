@@ -5,8 +5,8 @@ EventEmitter = require('events').EventEmitter
 
 class HTTP extends EventEmitter
     constructor : (opts) ->
-        {@browsers, @appPath, @sharedState} = opts
-        if !@browsers? || !@appPath? || !@sharedState
+        {@browsers, @appPath, @sharedState, @localState} = opts
+        if !@browsers? || !@appPath? || !@sharedState || !@localState
             throw new Error('Missing required parameter.')
         @server = @createExpressServer()
 
@@ -48,8 +48,9 @@ class HTTP extends EventEmitter
             if !id? || !@browsers.find(id)
                 # Load a Browser instance with the configured app.
                 bserver = @browsers.create
-                    app : @appPath
+                    app    : @appPath
                     shared : @sharedState
+                    local  : @localState
                 id = req.session.browserID = bserver.browser.id
             # TODO use browser.urlFor()
             res.writeHead(301, {'Location' : "/browsers/#{id}/index.html"})

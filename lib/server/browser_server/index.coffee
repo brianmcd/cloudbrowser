@@ -12,7 +12,8 @@ Config               = require('../../shared/config')
 class BrowserServer
     constructor : (opts) ->
         @id = opts.id
-        @browser = new Browser(opts.id, opts.shared)
+        console.log("BrowserServer: LOCAL: #{opts.local}")
+        @browser = new Browser(opts.id, opts.shared, opts.local)
         @sockets = []
         @compressor = new Compressor()
         @compressor.on 'newSymbol', (args) =>

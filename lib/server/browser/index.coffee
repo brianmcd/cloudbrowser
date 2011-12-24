@@ -28,10 +28,11 @@ jQTmplScript = do () ->
     FS.readFileSync(jQueryTmplPath, 'utf8')
 
 class Browser extends EventEmitter
-    constructor : (browserID, sharedState, parser = 'HTML5') ->
+    constructor : (browserID, sharedState, localState, parser = 'HTML5') ->
         @id = browserID # TODO: rename to 'name'
         @components = [] # TODO: empty this at the right time; move to BrowserServer
         @sharedState = sharedState
+        @localState = localState
         @window = null
 
         ###
@@ -94,7 +95,7 @@ class Browser extends EventEmitter
             window.require = require
             window.process = process
             window.__browser__ = this
-            window.vt = new InBrowserAPI(window, @sharedState)
+            window.vt = new InBrowserAPI(window, @sharedState, @localState)
             # If an app needs server-side knockout, we have to monkey patch
             # some ko functions.
             if config.knockout

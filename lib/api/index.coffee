@@ -21,9 +21,10 @@ class WrappedBrowser
         @id = browser.id
 
 class InBrowserAPI
-    constructor : (window, shared) ->
+    constructor : (window, shared, local) ->
         @window = window
         @shared = shared
+        @local  = new local()
     
     @Model : require('./model')
 
@@ -54,6 +55,7 @@ class InBrowserAPI
         return new WrappedBrowser(@window.__browser__, browser)
 
     initPages : (elem, callback) ->
+        console.log("Inside initPages")
         if !elem?
             throw new Error("Invalid element id passed to loadPages")
         pages = {}
@@ -84,7 +86,5 @@ class InBrowserAPI
                 for child in node.childNodes
                     dfs(child)
         dfs(elem)
-        console.log("Here are the pages we found:")
-        console.log(pages)
 
 module.exports = InBrowserAPI

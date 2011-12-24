@@ -9,7 +9,7 @@ class BrowserManager
         return @browsers[id]
 
     create : (opts) ->
-        {id, app, shared} = opts
+        {id, app, shared, local} = opts
         console.log("app: #{app}")
         if !id
             id = Hat()
@@ -21,7 +21,8 @@ class BrowserManager
             throw new Error "Tried to create an already existing BrowserInstance"
         bserver = @browsers[id] = new BrowserServer
             id : id
-            shared: shared
+            shared : shared
+            local : local
         browser = bserver.browser
         if /^http/.test(app)
             browser.loadFromURL(app)
