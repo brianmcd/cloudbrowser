@@ -59,6 +59,10 @@ if (opts.config) {
     local = configure(shared, ko);
 }
 
+if (!local) {
+    local = function () {};
+}
+
 var s = new Server({
     app    : opts.app,
     shared : shared,
