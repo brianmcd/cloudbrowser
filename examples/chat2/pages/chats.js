@@ -1,5 +1,5 @@
 (function () {
-    // BIG TODO: need to cache nodes and hide, can't run this stuff each time.
+    var user = vt.local.user;
     var activateRoom = function (oldName, room) {
         if (room) {
             if (oldName) {
@@ -9,10 +9,10 @@
             viewModel.activeChat(room);
         }
     };
+
     var viewModel = {
-        myChats : local.chats, // TODO: rename chats -> rooms
-        activeChat : local.activeRoom,
-        chatText : local.chatText,
+        myChats        : user.joinedRooms,
+        activeChat     : user.activeRoom,
         currentMessage : ko.observable(''),
         postMessage : function () {
             this.activeChat().postMessage('username', this.currentMessage());
@@ -20,23 +20,18 @@
         }
     };
     ko.applyBindings(viewModel);
+
     $('.tabs').tabs();
     $('.tabs').bind('change', function (e) {
-        // TODO: need named room lookup synced with subscribes.
-        var i,
-            rooms   = vt.shared.rooms(),
-            name    = e.target.href.split('#')[1],
-            oldName = e.relatedTarget.href.split('#')[1],
-            room    = null;
-
-        for (i = 0; i < rooms.length; i++) {
-            if (rooms[i].name == name) {
-                room = rooms[i];
-                break;
-            }
+        var name    = e.target.href.split('#')[1],
+            oldName = e.relatedTarget.href.split('#')[1];
+        var room = user.joinedRoomsByName[name];
+        if (!room) {
+            return;
         }
         activateRoom(oldName, room);
     });
+
     $('#chat-tabs div').hide();
     if (viewModel.activeChat()) {
         activateRoom(null, viewModel.activeChat());
