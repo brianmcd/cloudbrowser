@@ -21,7 +21,7 @@
     <input type='text'
            style='width: 100%;'
            size='160' 
-           data-bind='value: currentMessage'>
+           data-bind='value: currentMessage, event: {keypress: currentMessageKeyPress}'>
     </input>
     <button class='btn' data-bind='click: postMessage'>Send</button>
 </div>
