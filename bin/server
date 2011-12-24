@@ -53,15 +53,18 @@ if (opts.debug) {
 }
 
 var shared = {};
-var s = new Server({
-    app    : opts.app,
-    shared : shared
-});
-
+var local = undefined;
 if (opts.config) {
     var configure = require(Path.resolve(process.cwd(), opts.config)).configure;
-    configure(shared, ko);
+    local = configure(shared, ko);
 }
+
+var s = new Server({
+    app    : opts.app,
+    shared : shared,
+    local : local
+});
+
 
 s.once('ready', function () {
     console.log('All services running, ready for clients.')
