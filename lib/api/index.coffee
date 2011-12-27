@@ -60,11 +60,21 @@ class InBrowserAPI
             throw new Error("Invalid element id passed to loadPages")
         pages = {}
         pendingPages = 0
+        # TODO: break this up...DFS w/ callback, string parsing in its own func.
+        # TODO: put a DFS in a shared/utils.coffee file.
         dfs = (node) =>
+            docPath = node.ownerDocument.location.pathname
+            if docPath[0] == '/'
+                docPath = docPath.substring(1)
+            console.log("docPath: #{docPath}")
+            basePath = Path.dirname(Path.resolve(process.cwd(), docPath))
+            console.log("basePath: #{basePath}")
+            pagePath = null
             if node.nodeType != node.ELEMENT_NODE
                 return
             attr = node.getAttribute('data-page')
             if attr? && attr != ''
+                console.log("Found an attr")
                 page = {container : elem}
                 info = attr.split(',')
                 for piece in info
@@ -77,8 +87,14 @@ class InBrowserAPI
                 if !page['src']
                     throw new Error("Must supply a src for data-page.")
                 pendingPages++
-                @window.$.get page['src'], (html) ->
-                    page['html'] = html
+                pagePath = Path.resolve(basePath, page['src'])
+                console.log("Loading page from: #{pagePath}")
+                FS.readFile pagePath, 'utf8', (err, data) ->
+                    if err
+                        console.log(err)
+                        console.log(err.stack)
+                        throw err
+                    page['html'] = data
                     pages[page['id']] = new Page(page)
                     if --pendingPages == 0
                         if callback then callback(pages)
