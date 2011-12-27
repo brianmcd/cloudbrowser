@@ -201,11 +201,27 @@ exports.addAdvice = (dom, browser) ->
                 # internally, so we only want to emit instructions if there
                 # is a parent element pointer, meaning this CSSStyleDeclaration
                 # belongs to an element.
-                if this._parentElement && this._parentElement._attachedToDocument
+                parent = this._parentElement
+                prop = "_#{attr}"
+
+                # To explain this if statement, see cssom's
+                #    CSSStyleDeclaration.js.
+                # CSSStyleDeclaration treats itself like an array, with each
+                # index containing a string for a property that has been set
+                # on the object.  See CSSStyleDeclaration#setProperty.
+                # The array indices are used by the cssText getter to iterate
+                # over the CSS properties that have been set, so not doing this
+                # was causing cssText to miss properties, and therefore our
+                # serializer to miss CSS attributes (due to JSDOM's StyleAttr
+                # object, which uses cssText internally).
+                if !this[prop]
+                    this[this.length++] = attr
+                rv = this[prop] = val
+                if parent?._attachedToDocument
                     browser.emit 'DOMStyleChanged',
-                        target : this._parentElement
+                        target    : parent
                         attribute : attr
-                        value : val
-                return @["_#{attr}"] = val
+                        value     : val
+                return rv
             proto.__defineGetter__ attr, () ->
                 return @["_#{attr}"]
