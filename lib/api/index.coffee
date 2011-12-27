@@ -1,6 +1,7 @@
 FS    = require('fs')
 Path  = require('path')
 {dfs} = require('../shared/utils')
+{ko}  = require('./ko')
 
 # Caches HTML fetched from disk for a given page.
 # This is an application-global cache.  Each Browser instance parses the
@@ -13,15 +14,11 @@ PageHTMLCache = {}
 
 class Page
     constructor : (options) ->
-        {@id, @html, @src, @container} = options
+        {@id, @html, @src, @container, @pages} = options
+        @container.innerHTML = @html
 
     load : () ->
-        div = @container._ownerDocument.createElement('div')
-        div.innerHTML = @html
-        while @container.childNodes.length
-            @container.removeChild(@container.childNodes[0])
-        while div.childNodes.length
-            @container.appendChild(div.removeChild(div.childNodes[0]))
+        @pages.activePage(@id)
 
 class WrappedBrowser
     constructor : (parent, browser) ->
@@ -88,7 +85,11 @@ class InBrowserAPI
             return info
 
         pendingPages = 0
-        pages = {}
+        # Setting pages.activePage(string) changes which page is displayed
+        # in the parent elem.
+        pages =
+            activePage : ko.observable('')
+
         dfs elem, filter, (node) ->
             docPath = node.ownerDocument.location.pathname
             if docPath[0] == '/'
@@ -99,15 +100,20 @@ class InBrowserAPI
             if page?
                 if !page['id'] || !page['src']
                     throw new Error("Missing id or src for data-page")
-                page['container'] = elem
+
+                node.setAttribute('data-bind', "visible: activePage() === '#{page['id']}'")
+
+                page['parent'] = elem
+                page['container'] = node
                 pagePath = Path.resolve(basePath, page['src'])
-                console.log("Loading page from: #{pagePath}")
 
                 pendingPages++
                 handlePageData = (data) ->
                     page['html'] = data
+                    page['pages'] = pages
                     pages[page['id']] = new Page(page)
-                    if (--pendingPages == 0) && callback? then callback(pages)
+                    if --pendingPages == 0
+                        callback(pages) if callback?
 
                 if PageHTMLCache[pagePath]
                     # Need to do this on nextTick or else pendingPages will
@@ -119,5 +125,7 @@ class InBrowserAPI
                         if err then throw err
                         PageHTMLCache[pagePath] = data
                         handlePageData(data)
+
+        elem._ownerDocument._parentWindow.ko.applyBindings(pages, elem)
 
 module.exports = InBrowserAPI

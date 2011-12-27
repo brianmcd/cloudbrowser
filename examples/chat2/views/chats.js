@@ -14,7 +14,7 @@
             }
         }
     };
-    ko.applyBindings(viewModel);
+    ko.applyBindings(viewModel, document.getElementById('chatsContainer'));
     
     $('.tabs').bind('change', function (e) {
         var name = e.target.href.split('#')[1];

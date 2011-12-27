@@ -12,7 +12,7 @@
             viewModel.selectedRoom(val[0]);
         }
     });
-    ko.applyBindings(viewModel);
+    ko.applyBindings(viewModel, document.getElementById('homeContainer'));
 
     function switchToChatPage () {
         $('.topbar li').removeClass('active');
