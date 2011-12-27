@@ -1,24 +1,7 @@
-FS    = require('fs')
-Path  = require('path')
-{dfs} = require('../shared/utils')
-{ko}  = require('./ko')
-
-# Caches HTML fetched from disk for a given page.
-# This is an application-global cache.  Each Browser instance parses the
-# HTML to create its own nodes from the cached HTML, but we only read from
-# disk once.
-#
-# key   - page path
-# value - html
-PageHTMLCache = {}
-
-class Page
-    constructor : (options) ->
-        {@id, @html, @src, @container, @pages} = options
-        @container.innerHTML = @html
-
-    load : () ->
-        @pages.activePage(@id)
+Path     = require('path')
+{dfs}    = require('../shared/utils')
+{ko}     = require('./ko')
+DataPage = require('./data_page')
 
 class WrappedBrowser
     constructor : (parent, browser) ->
@@ -64,6 +47,11 @@ class InBrowserAPI
         if !elem?
             throw new Error("Invalid element id passed to loadPages")
 
+        # Setting pages.activePage(string) changes which page is displayed
+        # in the parent elem.
+        pages =
+            activePage : ko.observable('')
+
         # Filter out non-nodes
         filter = (node) ->
             # If we check if node.nodeType == node.ELEMENT_NODE, then it passes
@@ -71,24 +59,7 @@ class InBrowserAPI
             # getting nodes, but might as well be careful.
             return node.nodeType == 1 # ELEMENT_NODE
 
-        # Split a data-page attribute into its key-value parts
-        splitAttr = (str) ->
-            if !str || str == '' then return null
-            info = {}
-            array = str.split(',')
-            for piece in array
-                piece = piece.trim()
-                [key, val] = piece.split(':')
-                key = key.trim()
-                val = val.trim()
-                info[key] = val
-            return info
-
         pendingPages = 0
-        # Setting pages.activePage(string) changes which page is displayed
-        # in the parent elem.
-        pages =
-            activePage : ko.observable('')
 
         dfs elem, filter, (node) ->
             docPath = node.ownerDocument.location.pathname
@@ -96,35 +67,12 @@ class InBrowserAPI
                 docPath = docPath.substring(1)
             basePath = Path.dirname(Path.resolve(process.cwd(), docPath))
             attr = node.getAttribute('data-page')
-            page = splitAttr(attr)
-            if page?
-                if !page['id'] || !page['src']
-                    throw new Error("Missing id or src for data-page")
-
-                node.setAttribute('data-bind', "visible: activePage() === '#{page['id']}'")
-
-                page['parent'] = elem
-                page['container'] = node
-                pagePath = Path.resolve(basePath, page['src'])
-
+            if attr && attr != ''
+                page = new DataPage(node, attr, basePath)
+                pages[page.id] = page
                 pendingPages++
-                handlePageData = (data) ->
-                    page['html'] = data
-                    page['pages'] = pages
-                    pages[page['id']] = new Page(page)
-                    if --pendingPages == 0
-                        callback(pages) if callback?
-
-                if PageHTMLCache[pagePath]
-                    # Need to do this on nextTick or else pendingPages will
-                    # re-zero immediately.
-                    process.nextTick () ->
-                        handlePageData(PageHTMLCache[pagePath])
-                else
-                    FS.readFile pagePath, 'utf8', (err, data) ->
-                        if err then throw err
-                        PageHTMLCache[pagePath] = data
-                        handlePageData(data)
+                page.once 'load', () ->
+                    callback(pages) if (--pendingPages == 0) and callback?
 
         elem._ownerDocument._parentWindow.ko.applyBindings(pages, elem)
 
