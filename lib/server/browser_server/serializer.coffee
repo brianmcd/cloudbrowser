@@ -1,17 +1,7 @@
 URL            = require('url')
 Config         = require('../../shared/config')
 NodeCompressor = require('../../shared/node_compressor')
-
-# Depth-first search
-dfs = (node, filter, visit) ->
-    if filter(node)
-        visit(node)
-        tagName = node.tagName?.toLowerCase()
-        if tagName == 'iframe' || tagName == 'frame'
-            dfs(node.contentDocument, filter, visit)
-        else if node.hasChildNodes()
-            for child in node.childNodes
-                dfs(child, filter, visit)
+{dfs}          = require('../../shared/utils.coffee')
 
 # Each node in the DOM is represented by an object.
 # A serialized DOM (or snapshot) is an array of these objects.
