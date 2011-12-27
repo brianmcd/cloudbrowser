@@ -14,15 +14,9 @@
     });
     ko.applyBindings(viewModel, document.getElementById('homeContainer'));
 
-    function switchToChatPage () {
-        $('.topbar li').removeClass('active');
-        $('#chats-li').addClass('active');
-        vt.pages.chats.load();
-    }
-
     $('#create-room').click(function () {
         var name = viewModel.newRoomName();
-        var room = null;
+        var room;
         try {
             room = chats.create(name);
         } catch (e) {
@@ -30,11 +24,11 @@
             return;
         }
         user.joinRoom(room);
-        switchToChatPage();
+        vt.pages.activePage('chats')
     });
 
     $('#join-room').click(function () {
         user.joinRoom(viewModel.selectedRoom());
-        switchToChatPage();
+        vt.pages.activePage('chats')
     });
 })();
