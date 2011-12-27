@@ -2,6 +2,15 @@ FS    = require('fs')
 Path  = require('path')
 {dfs} = require('../shared/utils')
 
+# Caches HTML fetched from disk for a given page.
+# This is an application-global cache.  Each Browser instance parses the
+# HTML to create its own nodes from the cached HTML, but we only read from
+# disk once.
+#
+# key   - page path
+# value - html
+PageHTMLCache = {}
+
 class Page
     constructor : (options) ->
         {@id, @html, @src, @container} = options
@@ -90,17 +99,25 @@ class InBrowserAPI
             if page?
                 if !page['id'] || !page['src']
                     throw new Error("Missing id or src for data-page")
-                pendingPages++
+                page['container'] = elem
                 pagePath = Path.resolve(basePath, page['src'])
                 console.log("Loading page from: #{pagePath}")
-                # TODO: check an application-global cache for the html from
-                #       this pagePath.
-                FS.readFile pagePath, 'utf8', (err, data) ->
-                    if err then throw err
+
+                pendingPages++
+                handlePageData = (data) ->
                     page['html'] = data
-                    page['container'] = elem
                     pages[page['id']] = new Page(page)
-                    if --pendingPages == 0
-                        if callback then callback(pages)
+                    if (--pendingPages == 0) && callback? then callback(pages)
+
+                if PageHTMLCache[pagePath]
+                    # Need to do this on nextTick or else pendingPages will
+                    # re-zero immediately.
+                    process.nextTick () ->
+                        handlePageData(PageHTMLCache[pagePath])
+                else
+                    FS.readFile pagePath, 'utf8', (err, data) ->
+                        if err then throw err
+                        PageHTMLCache[pagePath] = data
+                        handlePageData(data)
 
 module.exports = InBrowserAPI
