@@ -1,7 +1,7 @@
-FS   = require('fs')
-Path = require('path')
+FS    = require('fs')
+Path  = require('path')
+{dfs} = require('../shared/utils')
 
-# TODO: cache nodes after they've been created once.
 class Page
     constructor : (options) ->
         {@id, @html, @src, @container} = options
@@ -55,52 +55,52 @@ class InBrowserAPI
         return new WrappedBrowser(@window.__browser__, browser)
 
     initPages : (elem, callback) ->
-        console.log("Inside initPages")
         if !elem?
             throw new Error("Invalid element id passed to loadPages")
-        pages = {}
+
+        # Filter out non-nodes
+        filter = (node) ->
+            # If we check if node.nodeType == node.ELEMENT_NODE, then it passes
+            # for non-nodes (since both are undefined).  We should only be
+            # getting nodes, but might as well be careful.
+            return node.nodeType == 1 # ELEMENT_NODE
+
+        # Split a data-page attribute into its key-value parts
+        splitAttr = (str) ->
+            if !str || str == '' then return null
+            info = {}
+            array = str.split(',')
+            for piece in array
+                piece = piece.trim()
+                [key, val] = piece.split(':')
+                key = key.trim()
+                val = val.trim()
+                info[key] = val
+            return info
+
         pendingPages = 0
-        # TODO: break this up...DFS w/ callback, string parsing in its own func.
-        # TODO: put a DFS in a shared/utils.coffee file.
-        dfs = (node) =>
+        pages = {}
+        dfs elem, filter, (node) ->
             docPath = node.ownerDocument.location.pathname
             if docPath[0] == '/'
                 docPath = docPath.substring(1)
-            console.log("docPath: #{docPath}")
             basePath = Path.dirname(Path.resolve(process.cwd(), docPath))
-            console.log("basePath: #{basePath}")
-            pagePath = null
-            if node.nodeType != node.ELEMENT_NODE
-                return
             attr = node.getAttribute('data-page')
-            if attr? && attr != ''
-                console.log("Found an attr")
-                page = {container : elem}
-                info = attr.split(',')
-                for piece in info
-                    piece = piece.trim()
-                    [key, val] = piece.split(':')
-                    val = val.trim()
-                    page[key] = val
-                if !page['id']
-                    throw new Error("Must supply an id for data-page.")
-                if !page['src']
-                    throw new Error("Must supply a src for data-page.")
+            page = splitAttr(attr)
+            if page?
+                if !page['id'] || !page['src']
+                    throw new Error("Missing id or src for data-page")
                 pendingPages++
                 pagePath = Path.resolve(basePath, page['src'])
                 console.log("Loading page from: #{pagePath}")
+                # TODO: check an application-global cache for the html from
+                #       this pagePath.
                 FS.readFile pagePath, 'utf8', (err, data) ->
-                    if err
-                        console.log(err)
-                        console.log(err.stack)
-                        throw err
+                    if err then throw err
                     page['html'] = data
+                    page['container'] = elem
                     pages[page['id']] = new Page(page)
                     if --pendingPages == 0
                         if callback then callback(pages)
-            else
-                for child in node.childNodes
-                    dfs(child)
-        dfs(elem)
 
 module.exports = InBrowserAPI
