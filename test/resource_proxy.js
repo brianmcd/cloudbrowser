@@ -1,8 +1,8 @@
 require('coffee-script');
 var Path          = require('path'),
     FS            = require('fs'),
-    Server        = require('../../../lib/server'),
-    ResourceProxy = require('../../../lib/server/browser_server/resource_proxy');
+    Server        = require('server'),
+    ResourceProxy = require('server/browser_server/resource_proxy');
 
 exports['test basic'] = function (test, assert) {
     var proxy = new ResourceProxy('http://www.google.com');
@@ -50,7 +50,7 @@ exports['test relative urls'] = function (test, assert) {
 };
 
 exports['test fetch'] = function (test, assert) {
-    var filesPath = Path.join(__dirname, '..', '..', 'files');
+    var filesPath = Path.join(__dirname, 'files');
     var server = new Server({
         app : '/',
         staticDir : filesPath
@@ -80,7 +80,7 @@ exports['test fetch'] = function (test, assert) {
     assert.equal(idx, 0);
     assert.equal(proxy.urlsByIndex[idx].href,
                'http://localhost:3001/xhr-target.html');
-    var targetPath = Path.join(__dirname, '..', '..', 'files', 'xhr-target.html');
+    var targetPath = Path.join(__dirname, 'files', 'xhr-target.html');
     var targetSource = FS.readFileSync(targetPath, 'utf8');
     var res = new Response(targetSource);
 
@@ -88,5 +88,3 @@ exports['test fetch'] = function (test, assert) {
         proxy.fetch(idx, res);
     });
 };
-
-

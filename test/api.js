@@ -1,14 +1,14 @@
 require('coffee-script');
 var FS    = require('fs'),
     Path  = require('path'),
-    Model = require('../../lib/api/model');
+    Model = require('api/model');
 
 exports['test basic'] = function (test, assert) { 
     var userModel = new Model({
         username : String,
         password : String
     }, {
-        folder : Path.resolve(__dirname, '..', 'fixtures', 'db'),
+        folder : Path.resolve(__dirname, 'fixtures', 'db'),
         filename : 'username'
     });
     var x = new userModel();
@@ -18,7 +18,7 @@ exports['test basic'] = function (test, assert) {
 };
 
 exports['test persist'] = function (test, assert) {
-    var folder = Path.resolve(__dirname, '..', 'fixtures', 'db');
+    var folder = Path.resolve(__dirname, 'fixtures', 'db');
     var userModel = new Model({
         username : String,
         password : String
@@ -40,7 +40,7 @@ exports['test persist'] = function (test, assert) {
 };
 
 exports['test load'] = function (test, assert) {
-    var folder = Path.resolve(__dirname, '..', 'fixtures', 'db');
+    var folder = Path.resolve(__dirname, 'fixtures', 'db');
     var userModel = new Model({
         username : String,
         password : String

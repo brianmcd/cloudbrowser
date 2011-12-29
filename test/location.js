@@ -1,6 +1,6 @@
 require('coffee-script');
 var URL             = require('url'),
-    LocationBuilder = require('../../../../lib/server/browser/location').LocationBuilder;
+    LocationBuilder = require('server/browser/location').LocationBuilder;
 
 var lastEvent = null;
 
@@ -9,9 +9,7 @@ var MockBrowser = {
         location : {},
         document : {
             createEvent : function () {
-                return {
-                    initEvent : function () {}
-                };
+                return { initEvent : function () {} };
             }
         },
         dispatchEvent : function () {
