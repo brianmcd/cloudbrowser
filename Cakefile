@@ -74,7 +74,7 @@ task "setup", "Install development dependencies", ->
                         process.chdir('..')
                         runTests()
 
-## Building ##
+## linkFiles  ##
 linkFiles = (callback) ->
     count = 0
     fs.mkdirSync('lib/server/browser/knockout')
@@ -89,7 +89,7 @@ linkFiles = (callback) ->
             if (++count == LINKS.length) and callback?
                 callback()
 
-## Building ##
+## Build ##
 build = (callback) ->
     log "Compiling CoffeeScript to JavaScript...", green
     exec "rm -rf lib/ && coffee -c -l -b -o lib/ src/", (err, stdout) ->
@@ -99,14 +99,16 @@ build = (callback) ->
         linkFiles(callback)
 task "build", "Compile CoffeeScript to JavaScript", -> build()
 
+## Watch ##
 task "watch", "Continously compile CoffeeScript to JavaScript", ->
     build ->
         cmd = spawn("coffee", ["-cwb", "-o", "lib", "src"])
         cmd.stdout.on "data", (data)-> process.stdout.write green + data + reset
         cmd.on "error", onerror
 
+## Clean ##
 task "clean", "Remove temporary files and such", ->
-    exec "rm -rf lib/", onerror
+    exec "rm -rf lib/ && rm -rf lib-cov/", onerror
 
 ## Testing ##
 runTests = (callback) ->
