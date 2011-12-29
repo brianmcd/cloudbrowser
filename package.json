@@ -27,7 +27,8 @@
         "hat"           : "0.0.3"
     },
     "devDependencies" : {
-        "nodeunit"          : ">=0.5.x",
-        "socket.io-client"  : "0.8.7"
+        "nodeunit"         : ">=0.5.x",
+        "socket.io-client" : "0.8.7",
+        "whiskey"          : "0.6.3"
     }
 }
