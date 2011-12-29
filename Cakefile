@@ -23,6 +23,28 @@ onerror = (err)->
     process.stdout.write "#{red}#{err.stack}#{reset}\n"
     process.exit -1
 
+LINKS = []
+LINKS.push
+    src  : 'src/server/browser/XMLHttpRequest.js'
+    dest : 'lib/server/browser/XMLHttpRequest.js'
+LINKS.push
+    src  : 'lib/shared/tagged_node_collection.js'
+    dest : 'lib/client/tagged_node_collection.js'
+LINKS.push
+    src  : 'lib/shared/event_lists.js'
+    dest : 'lib/client/event_lists.js'
+LINKS.push
+    src  : 'src/server/browser/event_patches.js'
+    dest : 'lib/server/browser/event_patches.js'
+LINKS.push
+    src  : 'deps/knockout-node/build/output/knockout-node.debug.js'
+    dest : 'lib/api/ko.js'
+
+for file in fs.readdirSync('src/server/browser/knockout')
+    LINKS.push
+        src  : "src/server/browser/knockout/#{file}"
+        dest : "lib/server/browser/knockout/#{file}"
+
 ## Setup ##
 task "setup", "Install development dependencies", ->
     log "Installing required npm packages (this could take some time)...", green
@@ -53,39 +75,46 @@ task "setup", "Install development dependencies", ->
                         runTests()
 
 ## Building ##
-build = (callback) ->
-    log "Compiling CoffeeScript to JavaScript...", green
-    exec "rm -rf compiled/ && coffee -c -l -b -o compiled/ lib/", (err, stdout) ->
-        onerror err
-        if stdout != ""
-            log stdout, green
-        log "Building tests...", green
-        exec "rm -rf compiled-test/ && coffee -c -l -b -o compiled-test/ test/", (err, stdout) ->
+linkFiles = (callback) ->
+    count = 0
+    fs.mkdirSync('lib/server/browser/knockout')
+    for file in LINKS
+        #log "Linking #{file.src} to #{file.dest}...", green
+        src = path.resolve(__dirname, file.src)
+        dest = path.resolve(__dirname, file.dest)
+        exec "ln -s #{src} #{dest}", (err, stdout) ->
             onerror err
             if stdout != ""
                 log stdout, green
+            if (++count == LINKS.length) and callback?
+                callback()
+
+## Building ##
+build = (callback) ->
+    log "Compiling CoffeeScript to JavaScript...", green
+    exec "rm -rf lib/ && coffee -c -l -b -o lib/ src/", (err, stdout) ->
+        onerror err
+        if stdout != ""
+            log stdout, green
+        linkFiles(callback)
 task "build", "Compile CoffeeScript to JavaScript", -> build()
 
 task "watch", "Continously compile CoffeeScript to JavaScript", ->
     build ->
-        cmd = spawn("coffee", ["-cwb", "-o", "compiled", "lib"])
+        cmd = spawn("coffee", ["-cwb", "-o", "lib", "src"])
         cmd.stdout.on "data", (data)-> process.stdout.write green + data + reset
         cmd.on "error", onerror
 
-        testcmd = spawn("coffee", ["-cwb", "-o", "compiled-test", "test"])
-        testcmd.stdout.on "data", (data)-> process.stdout.write green + data + reset
-        testcmd.on "error", onerror
-
 task "clean", "Remove temporary files and such", ->
-    exec "rm -rf compiled/ && rm -rf compiled-test/", onerror
+    exec "rm -rf lib/", onerror
 
 ## Testing ##
 runTests = (callback) ->
   log "Running test suite ...", green
-  nodeunit = spawn("node", ["run_tests.js"])
-  nodeunit.stdout.on "data", (data) -> process.stdout.write data
-  nodeunit.on 'error', onerror
-  nodeunit.on 'exit', () ->
+  whiskey = spawn("node", ["run_tests.js"])
+  whiskey.stdout.on "data", (data) -> process.stdout.write data
+  whiskey.on 'error', onerror
+  whiskey.on 'exit', () ->
       if callback
           callback()
 
