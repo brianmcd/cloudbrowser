@@ -1,10 +1,8 @@
 compiled/
 compiled-test/
-.lock-wscript
-build/
-doc/
 TODO
 *.swp
 *.swo
 node_modules/
 logs/*
+lib-cov/
