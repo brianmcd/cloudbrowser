@@ -6,3 +6,4 @@ TODO
 node_modules/
 logs/*
 lib-cov/
+coverage/
