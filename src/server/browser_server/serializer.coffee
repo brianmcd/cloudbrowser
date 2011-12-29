@@ -1,7 +1,7 @@
 URL            = require('url')
 Config         = require('../../shared/config')
 NodeCompressor = require('../../shared/node_compressor')
-{dfs}          = require('../../shared/utils.coffee')
+{dfs}          = require('../../shared/utils')
 
 # Each node in the DOM is represented by an object.
 # A serialized DOM (or snapshot) is an array of these objects.
