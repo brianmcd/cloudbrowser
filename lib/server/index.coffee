@@ -21,7 +21,7 @@ class Server extends EventEmitter
         if !@appPath
             throw new Error("Must supply path to an app.")
         @sharedState = config.shared || {}
-        @localState  = config.local
+        @localState  = config.local || () ->
         @staticDir   = config.staticDir || process.cwd()
         
         # We only allow 1 server and 1 BrowserManager per process.
