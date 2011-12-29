@@ -3,6 +3,7 @@ Path     = require('path')
 {ko}     = require('./ko')
 DataPage = require('./data_page')
 
+# This is intended to be the "Browser" object that applications interact with.
 class WrappedBrowser
     constructor : (parent, browser) ->
         @launch = () ->
@@ -20,6 +21,8 @@ class InBrowserAPI
     # This should load the browser in a target iframe.
     embed : (browser) ->
 
+    # TODO: pass Browser to constructor, return WrappedBrowser here instead
+    #       of always attaching the raw Browser.
     currentBrowser : () ->
         # TODO: this gives the window access to the whole Browser
         #       implementation, which we really don't want.
@@ -43,6 +46,7 @@ class InBrowserAPI
             throw new Error("Must specify an app or url for browser creation")
         return new WrappedBrowser(@window.__browser__, browser)
 
+    # TODO: need a new name for this.
     initPages : (elem, callback) ->
         if !elem?
             throw new Error("Invalid element id passed to loadPages")
