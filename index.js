@@ -1,6 +1,6 @@
 require('coffee-script');
-exports.Server         = require('./lib/server');
-exports.BrowserManager = require('./lib/server/browser_manager');
-exports.Browser        = require('./lib/server/browser');
-exports.Model          = require('./lib/api/model')
-exports.ko             = require('./lib/api/ko').ko
+exports.Server         = require('./src/server');
+exports.BrowserManager = require('./src/server/browser_manager');
+exports.Browser        = require('./src/server/browser');
+exports.Model          = require('./src/api/model')
+exports.ko             = require('./src/api/ko').ko
