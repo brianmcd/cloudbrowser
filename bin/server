@@ -5,7 +5,7 @@ var Path   = require('path'),
     vt     = require('../');
     Server = vt.Server,
     ko     = vt.ko,
-    config = require('../lib/shared/config');
+    config = require('../src/shared/config');
 
 // TODO: instead of global.opts, put these in an object that can be required.
 //       better, plus then it'll work on client.
