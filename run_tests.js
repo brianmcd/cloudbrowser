@@ -3,20 +3,24 @@
  *   0 - cov for coverage
  *   1 - html for html coverage reporter, blank for cli
  */
-var cp    = require('child_process'),
+var fs    = require('fs'),
+    cp    = require('child_process'),
     spawn = cp.spawn,
     exec  = cp.exec;
 
 process.env.TESTS_RUNNING = true;
 process.env.PATH = "node_modules/.bin:deps/node-jscoverage:" + process.env.PATH;
-process.env.NODE_PATH = "lib-cov/:src/";
+process.env.NODE_PATH = "lib-cov/:lib/";
 
-var testStr = [
-    'test/event_monitor.js',
-    'test/api.js',
-    'test/resource_proxy.js',
-    'test/location.js'
-].join(' ');
+var testFiles = [];
+fs.readdirSync('test')
+    .filter(function (elem) {
+        return /\.js$/.test(elem);
+    })
+    .forEach(function (elem) {
+        testFiles.push("test/" + elem);
+    });
+var testStr = testFiles.join(' ');
 
 var args = ['--quiet',
             '--tests', testStr];
@@ -30,7 +34,9 @@ if (runCov) {
     }
 }
 
-function runTests () {
+exec("cake build", function (err, stdout) {
+    if (err) throw err;
+    process.stdout.write(stdout);
     var whiskey = spawn('whiskey', args);
     whiskey.stdout.on("data", function (data) {
         process.stdout.write(data);
@@ -41,25 +47,14 @@ function runTests () {
     whiskey.on('error', function (err) {
         throw err;
     });
-    if (runCov) {
-        whiskey.on('exit', function () {
-            exec("rm -rf lib-cov/", function (err, stdout) {
+    whiskey.on('exit', function (code) {
+        if (code == 0) {
+            exec("cake clean", function (err, stdout) {
                 process.stdout.write(stdout);
-                exec("cake clean", function (err, stdout) {
-                    if (err) throw err;
-                    process.stdout.write(stdout);
-                });
+                if (err) throw err;
             });
-        });
-    }
-}
-
-if (runCov) {
-    exec("cake build", function (err, stdout) {
-        if (err) throw err;
-        process.stdout.write(stdout);
-        runTests();
+        } else {
+            console.log("Tests failed...leaving compiled JavaScript in place.");
+        }
     });
-} else {
-    runTests();
-}
+});
