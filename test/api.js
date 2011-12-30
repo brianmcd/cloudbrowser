@@ -1,4 +1,3 @@
-require('coffee-script');
 var FS    = require('fs'),
     Path  = require('path'),
     Model = require('api/model');

@@ -1,4 +1,3 @@
-require('coffee-script');
 var EventMonitor = require('client/event_monitor'),
     EventEmitter = require('events').EventEmitter;
 

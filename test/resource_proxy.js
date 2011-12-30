@@ -2,7 +2,7 @@ require('coffee-script');
 var Path          = require('path'),
     FS            = require('fs'),
     Server        = require('server'),
-    ResourceProxy = require('server/browser_server/resource_proxy');
+    ResourceProxy = require('server/resource_proxy');
 
 exports['test basic'] = function (test, assert) {
     var proxy = new ResourceProxy('http://www.google.com');

@@ -1,6 +1,5 @@
-require('coffee-script');
 var URL             = require('url'),
-    LocationBuilder = require('server/browser/location').LocationBuilder;
+    LocationBuilder = require('server/location').LocationBuilder;
 
 var lastEvent = null;
 
