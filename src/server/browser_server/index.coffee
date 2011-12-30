@@ -68,7 +68,7 @@ class BrowserServer
                     console.log("Got #{type}")
                     func.apply(this, arguments)
         socket.on 'disconnect', () =>
-            @sockets       = (s for s in @sockets when s != socket)
+            @sockets       = (s for s in @sockets       when s != socket)
             @queuedSockets = (s for s in @queuedSockets when s != socket)
         socket.emit 'SetConfig', Config
 

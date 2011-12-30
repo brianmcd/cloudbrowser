@@ -1,10 +1,22 @@
 URL = require('url')
 
-# This method creates a Location class for the given window and browser objects.
-# There are some places where Location needs to access these objects:
-#   - to compare a new URL to the currently loaded one to detect changes.
-#   - to fire 'hashchange' on the window's DOM.
-#   - to cause the Browser to navigate to a new page.
+# Keep this out of the object so we don't expose it to pages.
+# checkChange compares the new and current URLs and returns one of:
+#    undefined   - URLs are the same
+#   'hashchange' - URLs are the same except for hash
+#   'pagechange' - URLs are different
+checkChange = (newloc, oldloc) ->
+    if (newloc.protocol != oldloc.protocol) ||
+       (newloc.host     != oldloc.host)     ||
+       (newloc.hostname != oldloc.hostname) ||
+       (newloc.port     != oldloc.port)     ||
+       (newloc.pathname != oldloc.pathname) ||
+       (newloc.search   != oldloc.search)
+        return 'pagechange'
+    if newloc.hash != oldloc.hash
+        return 'hashchange'
+    return undefined
+
 exports.LocationBuilder = (browser) ->
     # Partial implementation of w3c Location class:
     # See: http://dev.w3.org/html5/spec/Overview.html#the-location-interface
@@ -17,8 +29,6 @@ exports.LocationBuilder = (browser) ->
     #       - cause the Browser to load a new page.
     class Location
         # url can be absolute or relative
-        # The constructor sets up getters/setters, then calls assign to handle
-        # the url.
         constructor : (url) ->
             # The POJO that holds location info as properties.
             @parsed = {}
@@ -43,7 +53,7 @@ exports.LocationBuilder = (browser) ->
             @__defineSetter__ 'href', (href) -> @assign(href)
 
             # Special case: if there isn't a currently loaded page, then we
-            # need to use dom.loadPage, which:
+            # need to use browser.loadDOM, which:
             #   - fetches the HTML from the url
             #   - creates a DOM tree (document) for it
             #   - associates the document object with the existing window object
@@ -82,10 +92,6 @@ exports.LocationBuilder = (browser) ->
             # Set up our POJO for the new URL.
             @parsed = URL.parse(url)
 
-            # checkChange compares the new and current URLs and returns one of:
-            #    undefined   - URLs are the same
-            #   'hashchange' - URLs are the same except for hash
-            #   'pagechange' - URLs are different
             switch checkChange(this, oldLoc)
                 when 'hashchange'
                     event = browser.window.document.createEvent('HTMLEvents')
@@ -105,19 +111,6 @@ exports.LocationBuilder = (browser) ->
             throw new Error("Not yet implemented")
 
         toString : () -> URL.format(@parsed)
-
-    # Keep this out of the object so we don't expose it to pages.
-    checkChange = (newloc, oldloc) ->
-        if (newloc.protocol != oldloc.protocol) ||
-           (newloc.host     != oldloc.host)     ||
-           (newloc.hostname != oldloc.hostname) ||
-           (newloc.port     != oldloc.port)     ||
-           (newloc.pathname != oldloc.pathname) ||
-           (newloc.search   != oldloc.search)
-            return 'pagechange'
-        if newloc.hash != oldloc.hash
-            return 'hashchange'
-        return undefined
 
     return Location
 

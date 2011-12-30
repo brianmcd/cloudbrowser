@@ -23,7 +23,7 @@ adviseProperty = (obj, name, args) ->
 
 # Adds advice to a number of DOM methods so we can emit events when the DOM
 # changes.
-exports.addAdvice = (dom, browser) ->
+exports.addAdvice = (dom, emitter) ->
     {html, events} = dom
 
     # Advice for: HTMLDocument constructor
@@ -34,7 +34,7 @@ exports.addAdvice = (dom, browser) ->
         oldDoc = html.HTMLDocument
         html.HTMLDocument = () ->
             oldDoc.apply(this, arguments)
-            browser.emit 'DocumentCreated',
+            emitter.emit 'DocumentCreated',
                 target : this
         html.HTMLDocument.prototype = oldDoc.prototype
 
@@ -43,14 +43,14 @@ exports.addAdvice = (dom, browser) ->
     # var insertedNode = parentNode.insertBefore(newNode, referenceNode);
     adviseMethod html.Node, 'insertBefore', (parent, args, rv) ->
         elem = args[0]
-        browser.emit 'DOMNodeInserted',
+        emitter.emit 'DOMNodeInserted',
             target : elem
             relatedNode : parent
         # Note: unlike the DOM, we only emit DOMNodeInsertedIntoDocument
         # on the root of a removed subtree, meaning the handler should check
         # to see if it has children.
         if parent._attachedToDocument && elem.nodeType != 11
-            browser.emit 'DOMNodeInsertedIntoDocument',
+            emitter.emit 'DOMNodeInsertedIntoDocument',
                 target : elem
                 relatedNode : parent
 
@@ -62,7 +62,7 @@ exports.addAdvice = (dom, browser) ->
         # of the removed subtree.
         if parent._attachedToDocument
             elem = args[0]
-            browser.emit 'DOMNodeRemovedFromDocument',
+            emitter.emit 'DOMNodeRemovedFromDocument',
                 target : elem
                 relatedNode : parent
     
@@ -81,7 +81,7 @@ exports.addAdvice = (dom, browser) ->
 
                 target = map._parentNode
                 if target._attachedToDocument
-                    browser.emit 'DOMAttrModified',
+                    emitter.emit 'DOMAttrModified',
                         target : target
                         attrName : attr.name
                         newValue : attr.value
@@ -102,7 +102,7 @@ exports.addAdvice = (dom, browser) ->
     adviseProperty html.HTMLOptionElement, 'selected',
         setter : (elem, value) ->
             if elem._attachedToDocument
-                browser.emit 'DOMPropertyModified',
+                emitter.emit 'DOMPropertyModified',
                     target   : elem
                     property : 'selected'
                     value    : value
@@ -113,7 +113,7 @@ exports.addAdvice = (dom, browser) ->
     adviseProperty html.CharacterData, '_nodeValue',
         setter : (elem, value) ->
             if elem._parentNode?._attachedToDocument
-                browser.emit 'DOMCharacterDataModified',
+                emitter.emit 'DOMCharacterDataModified',
                     target : elem
                     value  : value
 
@@ -123,7 +123,7 @@ exports.addAdvice = (dom, browser) ->
     # client.
     # TODO: wrap removeEventListener.
     adviseMethod events.EventTarget, 'addEventListener', (elem, args, rv) ->
-        browser.emit 'AddEventListener',
+        emitter.emit 'AddEventListener',
             target      : elem
             type        : args[0]
 
@@ -140,7 +140,7 @@ exports.addAdvice = (dom, browser) ->
                 name = "on#{type}"
                 # TODO: remove listener if this is set to something not a function
                 html.HTMLElement.prototype.__defineSetter__ name, (func) ->
-                    browser.emit 'AddEventListener',
+                    emitter.emit 'AddEventListener',
                         target      : this
                         type        : type
                     return this["__#{name}"] = func
@@ -218,7 +218,7 @@ exports.addAdvice = (dom, browser) ->
                     this[this.length++] = attr
                 rv = this[prop] = val
                 if parent?._attachedToDocument
-                    browser.emit 'DOMStyleChanged',
+                    emitter.emit 'DOMStyleChanged',
                         target    : parent
                         attribute : attr
                         value     : val

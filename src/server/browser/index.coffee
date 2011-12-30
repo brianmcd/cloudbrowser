@@ -35,13 +35,6 @@ class Browser extends EventEmitter
         @localState = localState
         @window = null
 
-        ###
-        oldEmit = @emit
-        @emit = (event, args...) ->
-            console.log "Emitting: #{event}"
-            oldEmit.apply(this, arguments)
-        ###
-        #
         # This gives us a Location class that is aware of our
         # DOMWindow and Browser.
         @Location = LocationBuilder(this)

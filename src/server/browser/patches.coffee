@@ -33,8 +33,7 @@ patchScriptTag = (level3) ->
 
     html.languageProcessors =
         javascript : (element, code, filename) ->
-            doc = element.ownerDocument
-            window = doc?.parentWindow
+            window = element.ownerDocument?.parentWindow
             if window?
                 try
                     window.run(code, filename)
