@@ -31,26 +31,32 @@ class Server extends EventEmitter
         @socketIOServer = @createSocketIOServer(@httpServer)
         @internalServer = @createInternalServer(@staticDir)
 
-        @debugServer = new DebugServer
-            browsers : @browsers
-        @debugServer.once('listen', @registerServer)
-        @debugServer.listen(3002)
+        @debugServerEnabled = !!config.debugServer
+        if @debugServerEnabled
+            @numServers = 3
+            @debugServer = new DebugServer
+                browsers : @browsers
+            @debugServer.once('listen', @registerServer)
+            @debugServer.listen(3002)
+        else
+            @numServers = 2
 
     close : () ->
         @browsers.close()
         closed = 0
         closeServer = () =>
-            if ++closed == 3
+            if ++closed == @numServers
                 @listeningCount = 0
                 @emit('close')
         for server in [@httpServer, @internalServer, @debugServer]
-            server.once('close', closeServer)
-            server.close()
+            if server
+                server.once('close', closeServer)
+                server.close()
 
     registerServer : () =>
         if !@listeningCount
             @listeningCount = 1
-        else if ++@listeningCount == 3
+        else if ++@listeningCount == @numServers
             @emit('ready')
 
     createHTTPServer : () ->

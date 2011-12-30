@@ -15,7 +15,11 @@ var opts = require('nomnom')
         flag    : true,
         default : false,
         help    : "Enable debug mode."})
-    // TODO: debug-client and debug-server (debug above enables both in callback)
+    .option('debugServer', {
+        full    : 'debug-server',
+        flag    : true,
+        default : false,
+        help    : "Enable the debug server."})
     .option('compression', {
         abbr    : 'z',
         default : true,
@@ -26,13 +30,13 @@ var opts = require('nomnom')
         flag    : true,
         help    : "Enable server-side knockout.js bindings."})
     .option('resourceProxy', {
-        abbr : 'r',
-        full : 'resource-proxy',
+        abbr    : 'r',
+        full    : 'resource-proxy',
         default : true,
-        help : "Enable ResourceProxy."})
+        help    : "Enable ResourceProxy."})
     .option('config', {
-        abbr : 'c',
-        help : "A file containing a server configuration function"})
+        abbr    : 'c',
+        help    : "A file containing a server configuration function"})
     .option('app', {
         position : 0,
         required : true,
@@ -64,9 +68,10 @@ if (!local) {
 }
 
 var s = new Server({
-    app    : opts.app,
-    shared : shared,
-    local : local
+    app         : opts.app,
+    shared      : shared,
+    local       : local,
+    debugServer : opts.debugServer
 });
 
 
