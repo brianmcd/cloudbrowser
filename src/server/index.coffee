@@ -1,5 +1,3 @@
-#!/usr/bin/env node
-require('coffee-script')
 Path            = require('path')
 FS              = require('fs')
 express         = require('express')
