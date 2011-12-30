@@ -7,12 +7,12 @@ HTML5                  = require('html5')
 TestClient             = require('./test_client')
 ImportXMLHttpRequest   = require('./XMLHttpRequest').ImportXMLHttpRequest
 LocationBuilder        = require('./location').LocationBuilder
-InBrowserAPI           = require('../../api')
-TaggedNodeCollection   = require('../../shared/tagged_node_collection')
-KO                     = require('../../api/ko').ko
-config                 = require('../../shared/config')
+InBrowserAPI           = require('../api')
+TaggedNodeCollection   = require('../shared/tagged_node_collection')
+KO                     = require('../api/ko').ko
+config                 = require('../shared/config')
 {addAdvice}            = require('./advice')
-{applyPatches}         = require('./patches')
+{applyPatches}         = require('./jsdom_patches')
 
 koPatch = do () ->
     koPatchPath = Path.resolve(__dirname, 'knockout', 'ko-patch.js')

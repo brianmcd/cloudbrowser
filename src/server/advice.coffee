@@ -1,3 +1,5 @@
+{ClientEvents} = require('../shared/event_lists')
+
 adviseMethod = (obj, name, func) ->
     originalMethod = obj.prototype[name]
     obj.prototype[name] = () ->
@@ -134,7 +136,6 @@ exports.addAdvice = (dom, emitter) ->
     # TODO: really, this should emit on all event types and shouldn't know
     #       about ClientEvents.
     do () ->
-        {ClientEvents} = require('../../shared/event_lists')
         for type of ClientEvents
             do (type) ->
                 name = "on#{type}"

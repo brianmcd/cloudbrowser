@@ -1,8 +1,6 @@
-patchEvents = require('./event_patches').patchEvents
-
 exports.applyPatches = (level3, browser) ->
     addDefaultHandlers(level3.html)
-    patchEvents(level3)
+    addKeyboardEvents(level3)
     patchScriptTag(level3, browser)
 
 patchScriptTag = (level3) ->
@@ -87,3 +85,86 @@ addDefaultHandlers = (html) ->
                 form.dispatchEvent(ev)
                 form.reset()
 
+# Note: the actual KeyboardEvent implementation in browsers seems to vary
+# widely, so part of our job will be to convert from the events coming in
+# to this level 3 event implementation.
+#
+# http://dev.w3.org/2006/webapi/DOM-Level-3-Events/html/DOM3-Events.html
+addKeyboardEvents = (level3) ->
+    {core, events} = level3
+
+    events.KeyboardEvent = (eventType) ->
+        events.UIEvent.call(this, eventType)
+        # KeyLocationCode
+        @DOM_KEY_LOCATION_STANDARD = 0
+        @DOM_KEY_LOCATION_LEFT     = 1
+        @DOM_KEY_LOCATION_RIGHT    = 2
+        @DOM_KEY_LOCATION_NUMPAD   = 3
+        @DOM_KEY_LOCATION_MOBILE   = 4
+        @DOM_KEY_LOCATION_JOYSTICK = 5
+
+        @char     = null
+        @key      = null
+        @location = null
+        @repeat   = null
+        @locale   = null
+
+        # Set up getters/setters for keys that are properties.
+        ['ctrlKey', 'shiftKey', 'altKey', 'metaKey'].forEach (key) ->
+            prop = "_#{key}"
+            this[prop] = false
+            # TODO: put these on proto
+            this.__defineSetter__ key, (val) ->
+                return this[prop] = val
+            this.__defineGetter__ key, () ->
+                return this[prop]
+
+        # Set up hidden properties for keys that are queryable via getModifierState,
+        # but are not public properties.
+        for key in ['_altgraphKey', '_capslockKey', '_fnKey', '_numlockKey',
+                    '_scrollKey', '_symbollockKey', '_winKey']
+            this[key] = false
+
+        return undefined
+
+    events.KeyboardEvent.prototype =
+        initKeyboardEvent : (typeArg, canBubbleArg, cancelableArg, viewArg
+                            , charArg, keyArg, locationArg, modifiersListArg
+                            , repeat, localeArg) ->
+            @initUIEvent(typeArg, canBubbleArg, cancelableArg, viewArg)
+            @char     = charArg
+            @key      = keyArg
+            @location = locationArg
+            @repeat   = repeat
+            @locale   = localeArg
+
+            if modifiersListArg
+                modifiers = modifiersListArg.split(' ')
+                current = null
+                while current = modifiers.pop()
+                    current = current.toLowerCase()
+                    prop = "_#{current}Key"
+                    if this[prop] != undefined
+                        this[prop] = true
+
+        getModifierState : (keyIdentifierArg) ->
+            lookupStr = "_#{keyIdentifierArg}Key"
+            if this[lookupStr] != undefined
+                return this[lookupStr]
+            return false
+        # TODO: initKeyboardEventNS
+    events.KeyboardEvent.prototype.__proto__ = events.UIEvent.prototype
+
+    core.Document.prototype.createEvent = (eventType) ->
+        switch eventType
+            when "MutationEvents", "MutationEvent"
+                return new events.MutationEvent(eventType)
+            when "UIEvents", "UIEvent"
+                return new events.UIEvent(eventType)
+            when "MouseEvents", "MouseEvent"
+                return new events.MouseEvent(eventType)
+            when "HTMLEvents", "HTMLEvent"
+                return new events.HTMLEvent(eventType)
+            when "KeyboardEvents", "KeyboardEvent"
+                return new events.KeyboardEvent(eventType)
+        return new events.Event(eventType)

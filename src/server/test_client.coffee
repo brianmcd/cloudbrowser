@@ -1,5 +1,5 @@
 EventEmitter   = require('events').EventEmitter
-SocketIOClient = require('../../client/socketio_client')
+SocketIOClient = require('../client/socketio_client')
 
 class TestClient extends EventEmitter
     constructor : (browser) ->

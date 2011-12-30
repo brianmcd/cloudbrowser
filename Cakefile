@@ -25,8 +25,8 @@ onerror = (err)->
 
 LINKS = []
 LINKS.push
-    src  : 'src/server/browser/XMLHttpRequest.js'
-    dest : 'lib/server/browser/XMLHttpRequest.js'
+    src  : 'src/server/XMLHttpRequest.js'
+    dest : 'lib/server/XMLHttpRequest.js'
 LINKS.push
     src  : 'lib/shared/tagged_node_collection.js'
     dest : 'lib/client/tagged_node_collection.js'
@@ -34,16 +34,13 @@ LINKS.push
     src  : 'lib/shared/event_lists.js'
     dest : 'lib/client/event_lists.js'
 LINKS.push
-    src  : 'src/server/browser/event_patches.js'
-    dest : 'lib/server/browser/event_patches.js'
-LINKS.push
     src  : 'deps/knockout-node/build/output/knockout-node.debug.js'
     dest : 'lib/api/ko.js'
 
-for file in fs.readdirSync('src/server/browser/knockout')
+for file in fs.readdirSync('src/server/knockout')
     LINKS.push
-        src  : "src/server/browser/knockout/#{file}"
-        dest : "lib/server/browser/knockout/#{file}"
+        src  : "src/server/knockout/#{file}"
+        dest : "lib/server/knockout/#{file}"
 
 ## Setup ##
 task "setup", "Install development dependencies", ->
@@ -77,7 +74,7 @@ task "setup", "Install development dependencies", ->
 ## linkFiles  ##
 linkFiles = (callback) ->
     count = 0
-    fs.mkdirSync('lib/server/browser/knockout')
+    fs.mkdirSync('lib/server/knockout')
     for file in LINKS
         #log "Linking #{file.src} to #{file.dest}...", green
         src = path.resolve(__dirname, file.src)
