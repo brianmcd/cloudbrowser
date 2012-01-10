@@ -5,6 +5,7 @@ Compressor           = require('../shared/compressor')
 ResourceProxy        = require('./resource_proxy')
 TaggedNodeCollection = require('../shared/tagged_node_collection')
 Config               = require('../shared/config')
+DebugClient          = require('./debug_client')
 {serialize}          = require('./serializer')
 
 {eventTypeToGroup, clientEvents} = require('../shared/event_lists')
@@ -39,30 +40,21 @@ class BrowserServer
         @initLogs()
 
     initLogs : () ->
-        logDir = Path.resolve(__dirname, '..', '..', 'logs')
-
+        logDir         = Path.resolve(__dirname, '..', '..', 'logs')
         consoleLogPath = Path.resolve(logDir, "#{@browser.id}.log")
-        @consoleLog = FS.createWriteStream(consoleLogPath)
+        @consoleLog    = FS.createWriteStream(consoleLogPath)
         @consoleLog.write("Log opened: #{Date()}\n")
         @consoleLog.write("BrowserID: #{@browser.id}\n")
-
-        serverProtocolLogPath = Path.resolve(logDir, "#{@browser.id}.server-protocol.log")
-        @serverProtocolLog = FS.createWriteStream(serverProtocolLogPath)
-
-        clientProtocolLogPath = Path.resolve(logDir, "#{@browser.id}.client-protocol.log")
-        @clientProtocolLog = FS.createWriteStream(clientProtocolLogPath)
 
     broadcastEvent : (name, params) ->
         if Config.compression
             name = @compressor.compress(name)
-        if @sockets.length
-            @serverProtocolLog.write("#{name}")
-            if params
-                @serverProtocolLog.write(" #{JSON.stringify(params)}\n")
         for socket in @sockets
             socket.emit(name, params)
 
     addSocket : (socket) ->
+        if config.monitorTraffic
+            socket = new DebugClient(socket)
         for own type, func of RPCMethods
             do (type, func) =>
                 socket.on type, () =>
@@ -82,7 +74,6 @@ class BrowserServer
             components : @browser.getSnapshot().components
         if Config.compression
             snapshot.compressionTable = @compressor.textToSymbol
-        @serverProtocolLog.write("PageLoaded #{JSON.stringify(snapshot)}\n")
         socket.emit 'PageLoaded', snapshot
         @sockets.push(socket)
 
@@ -190,7 +181,6 @@ DOMEventHandlers =
 
 RPCMethods =
     setAttribute : (args) ->
-        @clientProtocolLog.write("setAttribute #{JSON.stringify(args)}")
         if !@browserLoading
             target = @nodes.get(args.target)
             {attribute, value} = args
@@ -209,7 +199,6 @@ RPCMethods =
             node.__oldValue = node.value
             node.value = value
 
-        @clientProtocolLog.write("processEvent #{JSON.stringify(event)}")
         if !@browserLoading
             @broadcastEvent 'pauseRendering'
             # TODO

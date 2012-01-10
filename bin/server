@@ -11,7 +11,6 @@ var Path   = require('path'),
 //       better, plus then it'll work on client.
 var opts = require('nomnom')
     .option('debug', {
-        abbr    : 'd',
         flag    : true,
         default : false,
         help    : "Enable debug mode."})
@@ -21,22 +20,27 @@ var opts = require('nomnom')
         default : false,
         help    : "Enable the debug server."})
     .option('compression', {
-        abbr    : 'z',
         default : true,
         help    : "Enable protocol compression."})
     .option('knockout', {
-        abbr    : 'k',
         default : false,
         flag    : true,
         help    : "Enable server-side knockout.js bindings."})
     .option('resourceProxy', {
-        abbr    : 'r',
         full    : 'resource-proxy',
         default : true,
         help    : "Enable ResourceProxy."})
+    .option('monitorTraffic', {
+        full    : 'monitor-traffic',
+        default : false,
+        help    : "Monitor/log traffic to/from socket.io clients."})
     .option('config', {
-        abbr    : 'c',
         help    : "A file containing a server configuration function"})
+    .option('evalMode', {
+        abbr    : 'e',
+        full    : 'eval-mode',
+        default : false,
+        help    : "Enable evaluation mode for performance measuring."})
     .option('app', {
         position : 0,
         required : true,
