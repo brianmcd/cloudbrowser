@@ -1,14 +1,13 @@
 #!/usr/bin/env node
 
 require('coffee-script');
-var Path   = require('path'),
-    vt     = require('../');
-    Server = vt.Server,
-    ko     = vt.ko,
-    config = require('../src/shared/config');
+var Path        = require('path'),
+    vt          = require('../');
+    Server      = vt.Server,
+    ko          = vt.ko,
+    Application = require('../src/server/application'),
+    config      = require('../src/shared/config');
 
-// TODO: instead of global.opts, put these in an object that can be required.
-//       better, plus then it'll work on client.
 var opts = require('nomnom')
     .option('debug', {
         flag    : true,
@@ -34,6 +33,8 @@ var opts = require('nomnom')
         full    : 'monitor-traffic',
         default : false,
         help    : "Monitor/log traffic to/from socket.io clients."})
+    // TODO: make this a json file with the actual server config
+    //       app config is with app parameter now.
     .option('config', {
         help    : "A file containing a server configuration function"})
     .option('evalMode', {
@@ -44,7 +45,8 @@ var opts = require('nomnom')
     .option('app', {
         position : 0,
         required : true,
-        help : "The entry point to the application."}).parse();
+        help : "The configuration function for the default application."}).parse();
+
 
 for (var p in opts) {
     if (opts.hasOwnProperty(p)) {
@@ -55,29 +57,26 @@ for (var p in opts) {
 if (opts.debug) {
     console.log("Config:");
     console.log(config);
-    if (opts.app) {
-        console.log("Loading app from: " + opts.app);
-    }
 }
 
-var shared = {};
-var local = undefined;
-if (opts.config) {
-    var configure = require(Path.resolve(process.cwd(), opts.config)).configure;
-    local = configure(shared, ko);
-}
-
-if (!local) {
-    local = function () {};
+var defaultApp = null;
+// We support passing a URL instead of an application config file for quick
+// testing.
+if (/^http/.test(opts.app)) {
+    defaultApp = new Application({
+        entryPoint : app,
+        mountPoint : '/'
+    });
+} else {
+    var appConfigPath = Path.resolve(process.cwd(), opts.app);
+    var appOpts = require(appConfigPath).app;
+    defaultApp = new Application(appOpts);
 }
 
 var s = new Server({
-    app         : opts.app,
-    shared      : shared,
-    local       : local,
+    defaultApp  : defaultApp,
     debugServer : opts.debugServer
 });
-
 
 s.once('ready', function () {
     console.log('All services running, ready for clients.')
