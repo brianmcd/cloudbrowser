@@ -2,24 +2,20 @@ Path            = require('path')
 FS              = require('fs')
 express         = require('express')
 sio             = require('socket.io')
+Browserify      = require('browserify')
 {EventEmitter}  = require('events')
 BrowserManager  = require('./browser_manager')
 DebugServer     = require('./debug_server')
-Browserify      = require('browserify')
+Application     = require('./application')
 {ko}            = require('../api/ko')
 
+# TODO: this should be a proper singleton
 class Server extends EventEmitter
-    # config.app - the path to the default app this server is hosting.
-    # config.shared - an object that will be shared among all Browsers created
-    #                 by this server.
-    # config.knockout - whether or not to enable server-side knockout
-    constructor : (config = {}) ->
-        @appPath = config.app
-        if !@appPath
-            throw new Error("Must supply path to an app.")
-        @sharedState = config.shared || {}
-        @localState  = config.local || () ->
-        @staticDir   = config.staticDir || process.cwd()
+    # config.app - an Application instance, which is the default app.
+    constructor : (config) ->
+        {@defaultApp, @debugServer} = config
+        if !@defaultApp
+            throw new Error("Must specify a default application")
         
         # We only allow 1 server and 1 BrowserManager per process.
         global.browsers = @browsers = new BrowserManager()
@@ -27,7 +23,7 @@ class Server extends EventEmitter
 
         @httpServer     = @createHTTPServer()
         @socketIOServer = @createSocketIOServer(@httpServer)
-        @internalServer = @createInternalServer(@staticDir)
+        @internalServer = @createInternalServer()
 
         @debugServerEnabled = !!config.debugServer
         if @debugServerEnabled
@@ -38,6 +34,8 @@ class Server extends EventEmitter
             @debugServer.listen(3002)
         else
             @numServers = 2
+
+        @defaultApp.mount(this)
 
     close : () ->
         @browsers.close()
@@ -72,18 +70,6 @@ class Server extends EventEmitter
             server.set('views', Path.join(__dirname, '..', '..', 'views'))
             server.set('view options', {layout: false})
 
-        server.get '/', (req, res) =>
-            id = req.session.browserID
-            if !id? || !@browsers.find(id)
-                # Load a Browser instance with the configured app.
-                bserver = @browsers.create
-                    app    : @appPath
-                    shared : @sharedState
-                    local  : @localState
-                id = req.session.browserID = bserver.browser.id
-            res.writeHead(301, {'Location' : "/browsers/#{id}/index.html"})
-            res.end()
-
         server.get '/browsers/:browserid/index.html', (req, res) ->
             id = decodeURIComponent(req.params.browserid)
             console.log "Joining: #{id}"
@@ -111,10 +97,10 @@ class Server extends EventEmitter
                 bserver?.addSocket(socket)
         return io
 
-    createInternalServer : (staticDir) ->
+    createInternalServer : () ->
         server = express.createServer()
         server.configure () =>
-            server.use(express.static(staticDir))
+            server.use(express.static(process.cwd()))
         server.listen(3001, @registerServer)
         return server
 

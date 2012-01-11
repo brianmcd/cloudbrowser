@@ -13,8 +13,10 @@ DebugClient          = require('./debug_client')
 # Serves 1 Browser to n clients.
 class BrowserServer
     constructor : (opts) ->
-        @id = opts.id
-        @browser = new Browser(opts.id, opts.shared, opts.local)
+        {@id, @app} = opts
+        if !@id? || !@app?
+            throw new Error("Missing required parameter")
+        @browser = new Browser(@id, @app)
         @sockets = []
         @compressor = new Compressor()
         @compressor.on 'newSymbol', (args) =>
@@ -82,7 +84,7 @@ class BrowserServer
 # match the Browser event name.  'this' is set to the Browser via apply.
 DOMEventHandlers =
     PageLoading : (event) ->
-        @nodes     = new TaggedNodeCollection()
+        @nodes = new TaggedNodeCollection()
         if Config.resourceProxy
             @resources = new ResourceProxy(event.url)
         @browserLoading = true

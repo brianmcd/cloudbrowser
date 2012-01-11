@@ -8,26 +8,17 @@ class BrowserManager
     find : (id) ->
         return @browsers[id]
 
-    create : (opts) ->
-        {id, app, shared, local} = opts
-        console.log("app: #{app}")
+    create : (app, id) ->
+        if !app
+            throw new Error("Must pass an Application to BrowserManager#create")
         if !id
             id = Hat()
-            # Since we allow use supplied ids, there's a very very small chance
-            # that a user supplied the same id that we got back from Hat().
-            while browsers[id]
+            while @browsers[id]
                 id = Hat()
-        if @browsers[id]?
-            throw new Error "Tried to create an already existing BrowserInstance"
         bserver = @browsers[id] = new BrowserServer
-            id : id
-            shared : shared
-            local : local
+            id : id,
+            app : app
         browser = bserver.browser
-        if /^http/.test(app)
-            browser.loadFromURL(app)
-        else
-            browser.loadApp(app)
         return bserver
 
     # Close all browsers

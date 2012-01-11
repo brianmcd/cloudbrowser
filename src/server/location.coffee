@@ -52,14 +52,11 @@ exports.LocationBuilder = (browser) ->
             # href setter can cause navigation or hashchange.
             @__defineSetter__ 'href', (href) -> @assign(href)
 
-            # Special case: if there isn't a currently loaded page, then we
-            # need to use browser.loadDOM, which:
-            #   - fetches the HTML from the url
-            #   - creates a DOM tree (document) for it
-            #   - associates the document object with the existing window object
+            # If there isn't currently a page loaded, then we return, since
+            # it means Location is being set before the initial page request.
             if !browser.window.location?
                 @parsed = URL.parse(url)
-                browser.loadDOM(url)
+                return
             # Otherwise, a page has been loaded so we need to see if we should
             # navigate or fire a hashchange.  If we navigate, we use
             # Browser#load, which causes a new window object to be created,

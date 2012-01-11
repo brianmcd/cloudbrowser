@@ -4,9 +4,8 @@ Path           = require('path')
 
 # Emits 'load' once the container node has been populated with DOM nodes.
 class DataPage extends EventEmitter
-    constructor : (node, attr, basePath) ->
+    constructor : (node, attr) ->
         @container = node
-
         {@id, @src} = @_splitAttr(attr)
         if !@id || !@src
             throw new Error("Missing id or src for data-page")
@@ -14,7 +13,8 @@ class DataPage extends EventEmitter
         @container.setAttribute('data-bind',
                                 "visible: activePage() === '#{@id}'")
 
-        @path = Path.resolve(basePath, @src)
+        @path = @_getPath(@src)
+        console.log("DATA PAGE GETTING: #{@path}")
         if DataPage.HTMLCache[@path]
             process.nextTick () =>
                 @container.innerHTML = DataPage.HTMLCache[@path]
@@ -24,6 +24,13 @@ class DataPage extends EventEmitter
                 if err then throw err
                 @container.innerHTML = DataPage.HTMLCache[@path] = data
                 @emit('load')
+
+    _getPath : (src) ->
+        docPath = @container.ownerDocument.location.pathname
+        if docPath[0] == '/'
+            docPath = docPath.substring(1)
+        basePath = Path.dirname(Path.resolve(process.cwd(), docPath))
+        @path = Path.resolve(basePath, @src)
 
     # Caches HTML fetched from disk for a given page.
     # This is an application-global cache.  Each Browser instance parses the

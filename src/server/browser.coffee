@@ -7,10 +7,10 @@ HTML5                  = require('html5')
 TestClient             = require('./test_client')
 ImportXMLHttpRequest   = require('./XMLHttpRequest').ImportXMLHttpRequest
 LocationBuilder        = require('./location').LocationBuilder
-InBrowserAPI           = require('../api')
+EmbedAPI               = require('../api')
 TaggedNodeCollection   = require('../shared/tagged_node_collection')
 KO                     = require('../api/ko').ko
-config                 = require('../shared/config')
+Config                 = require('../shared/config')
 {addAdvice}            = require('./advice')
 {applyPatches}         = require('./jsdom_patches')
 
@@ -28,11 +28,8 @@ jQTmplScript = do () ->
     FS.readFileSync(jQueryTmplPath, 'utf8')
 
 class Browser extends EventEmitter
-    constructor : (browserID, sharedState, localState, parser = 'HTML5') ->
-        @id = browserID # TODO: rename to 'name'
+    constructor : (@id, @app) ->
         @components = [] # TODO: empty this at the right time; move to BrowserServer
-        @sharedState = sharedState
-        @localState = localState
         @window = null
 
         # This gives us a Location class that is aware of our
@@ -40,6 +37,8 @@ class Browser extends EventEmitter
         @Location = LocationBuilder(this)
 
         @initDOM()
+        process.nextTick () =>
+            @load()
         
     initDOM : () ->
         @jsdom = @getFreshJSDOM()
@@ -77,82 +76,75 @@ class Browser extends EventEmitter
         @emit('BrowserClose')
         @window.close()
 
-    loadApp : (app) ->
-        url = "http://localhost:3001/#{app}"
-        # Preload gets called after window and document exist, but before the
-        # document is populated.
-        preload = (window) =>
-            # For now, we attach require and process.  Eventually, we will pass
-            # a customized version of require that restricts its capabilities
-            # based on a package.json manifest.
-            window.require = require
-            window.process = process
-            window.__browser__ = this
-            window.vt = new InBrowserAPI(window, @sharedState, @localState)
-            # If an app needs server-side knockout, we have to monkey patch
-            # some ko functions.
-            if config.knockout
-                window.run(jQScript,     "jquery-1.6.2.js")
-                window.run(jQTmplScript, "jquery.tmpl.js")
-                window.run(koScript,     "knockout-1.3.0beta.debug.js")
-                window.vt.ko = KO
-                window.run(koPatch, "ko-patch.js")
-        @loadFromURL(url, preload)
-
-    # Note: this function returns before the page is loaded.  Listen on the
-    # window's load event if you need to.
-    loadFromURL : (url, preload, postload) ->
+    # Loads the application @app
+    load : () ->
+        # Check if we're browsing a remote URL.
+        url = if @app.remoteBrowsing
+                  @app.entryPoint
+              else
+                  "http://localhost:3001/#{@app.entryPoint}"
         console.log "Loading: #{url}"
         @emit 'PageLoading',
             url : url
-        @window.close if @window?
-        @window = @jsdom.createWindow(@jsdom.dom.level3.html)
-        @augmentWindow(@window)
 
-        if process.env.TESTS_RUNNING
-            @window.browser = this
+        @initializeWindow(url)
+        @initializeApplication(@window) if !@app.remoteBrowsing
 
-        @window.location = url
 
-        preload(@window) if preload?
-
-        # We know the event won't fire until a later tick since it has to make
-        # an http request.
         @window.addEventListener 'load', () =>
-            postload(@window) if postload?
             @emit('PageLoaded')
             process.nextTick(() => @emit('afterload'))
-
-    # Fetches the HTML from URL and creates a document for it.
-    # Sets the @currentWindow.document to the new one.
-    #
-    # This is only intended to be called from the Location class for
-    # initial page loads.
-    # Other uses should set window.location to navigate.
-    #
-    # The main difference between this and loadFromURL is that this doesn't
-    # destroy the window object.
-    loadDOM : (url) ->
-        document = @jsdom.jsdom(false, null,
-            url : url
-            deferClose : true
-            parser : HTML5)
-        document.parentWindow = @window
-        @window.document = document
-        document.__defineGetter__ 'location', () =>
-            return @window.__location
-        document.__defineSetter__ 'location', (href) =>
-            return @window.__location = new @Location(href)
 
         Request {uri: url}, (err, response, html) =>
             throw err if err
             # Fire window load event once document is loaded.
-            document.addEventListener 'DOMContentLoaded', (ev) =>
-                ev = document.createEvent('HTMLEvents')
+            @document.addEventListener 'DOMContentLoaded', (ev) =>
+                ev = @document.createEvent('HTMLEvents')
                 ev.initEvent('load', false, false)
                 @window.dispatchEvent(ev)
-            document.innerHTML = html
-            document.close()
+            @document.innerHTML = html
+            @document.close()
+
+    initializeWindow : (url) ->
+        # Setup DOMWindow
+        @window.close if @window?
+        @window = @jsdom.createWindow(@jsdom.dom.level3.html)
+        @augmentWindow(@window)
+        @window.location = url
+        if process.env.TESTS_RUNNING
+            @window.browser = this
+
+        # Setup Document
+        @document = @jsdom.jsdom(false, null,
+            url : url
+            deferClose : true
+            parser : HTML5)
+        @document.parentWindow = @window
+        @window.document = @document
+        @document.__defineGetter__ 'location', () =>
+            return @window.__location
+        @document.__defineSetter__ 'location', (href) =>
+            return @window.__location = new @Location(href)
+    
+    initializeApplication : (window) ->
+        # For now, we attach require and process.  Eventually, we will pass
+        # a customized version of require that restricts its capabilities
+        # based on a package.json manifest.
+        window.require = require
+        window.process = process
+        EmbedAPI(this)
+        # If an app needs server-side knockout, we have to monkey patch
+        # some ko functions.
+        if Config.knockout
+            console.log("EMBEDDING KNOCKOUT")
+            window.run(jQScript,     "jquery-1.6.2.js")
+            window.run(jQTmplScript, "jquery.tmpl.js")
+            window.run(koScript,     "knockout-1.3.0beta.debug.js")
+            window.vt.ko = KO
+            window.run(koPatch, "ko-patch.js")
+
+        window.vt.shared = @app.sharedState || {}
+        window.vt.local = if @app.localState then new @app.localState() else {}
 
     augmentWindow : (window) ->
         self = this
@@ -188,7 +180,7 @@ class Browser extends EventEmitter
                     self.emit('ExitedTimer')
                 , interval
 
-        @window.console =
+        window.console =
             log : () ->
                 args = Array.prototype.slice.call(arguments)
                 args.push('\n')
@@ -203,9 +195,7 @@ class Browser extends EventEmitter
                     args : Array.prototype.slice.call(arguments)
 
     getSnapshot : () ->
-        return {
-            components : @components
-        }
+        return {components : @components}
 
     # For testing purposes, return an emulated client for this browser.
     createTestClient : () ->
