@@ -32,18 +32,18 @@ appList.forEach(function (appDir) {
     var opts   = null;
     var config = null;
     var app    = null;
+    var p      = null;
 
     var files = fs.readdirSync(path.resolve(__dirname, 'db', 'apps', appDir));
     var i     = files.indexOf('app.js');
 
     if (i != -1) {
-        opts = require(path.join('db', 'apps', appDir, files[i])).app;
+        p = './' + path.join('db', 'apps', appDir, files[i]);
+        opts = require(p).app;
         if (opts.mountPoint == '/') {
             opts.mountPoint = '/' + opts.name;
         }
         opts.entryPoint = path.join('db', 'apps', appDir, opts.entryPoint);
-        console.log("OPTS:");
-        console.log(opts);
         app  = new Application(opts);
     } else {
         app = new Application({
