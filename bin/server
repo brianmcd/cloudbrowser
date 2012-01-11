@@ -64,7 +64,7 @@ var defaultApp = null;
 // testing.
 if (/^http/.test(opts.app)) {
     defaultApp = new Application({
-        entryPoint : app,
+        entryPoint : opts.app,
         mountPoint : '/'
     });
 } else {
