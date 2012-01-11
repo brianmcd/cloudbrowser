@@ -1,6 +1,6 @@
 var path        = require('path'),
     fs          = require('fs'),
-    vt          = require('vt-node-lib')
+    vt          = require('vt-node-lib'),
     ko          = vt.ko,
     Application = vt.Application,
     models      = require('./models');
