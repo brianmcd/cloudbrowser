@@ -30,3 +30,24 @@
 .tabs a {
     text-decoration: none;
 }
+
+h1 {
+    text-align: center;
+}
+label {
+    display: block;
+    text-align: right;
+    float: left;
+    padding-top: 4px;
+    margin-right: 4px;
+}
+#browser-load-box {
+    border: 1px solid;
+}
+#browser-load-box > span {
+    text-align: center;
+}
+input[type='radio'] {
+    display: block;
+    float: left;
+}

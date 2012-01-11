@@ -1,19 +1,26 @@
 $(function () {
+    var shared = vt.shared;
+    var local = vt.local;
     var viewModel = {};
     viewModel.username = ko.dependentObservable({
-        read : window.currentUser().username,
-        write : function (value) {
-            if (vt.shared.users[value] == undefined) {
-                delete vt.shared.users[window.currentUser().username];
-                window.currentUser().destroy();
+        read  : function () {
+            if (local.user()) {
+                return local.user().username();
+            }
+            return undefined;
+        },
+        write : function (name) {
+            if (shared.users[name] == undefined) {
+                delete shared.users[local.user().username];
+                local.user().destroy();
                 // This causes persistence of the new user record.
-                window.currentUser().username(value);
-                vt.shared.users[value] = window.currentUser();
+                local.user().username(name);
+                shared.users[name] = local.user();
             } else {
-                $('#usernameInput').val(this._username());
+                $('#usernameInput').val(local.user().username());
             }
         },
         owner: viewModel
     });
-    ko.applyBindings(viewModel);
+    ko.applyBindings(viewModel, document.getElementById('usercpContainer'));
 });

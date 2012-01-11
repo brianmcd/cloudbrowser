@@ -1,47 +1,83 @@
-var path   = require('path'),
-    fs     = require('fs'),
-    ko     = require('../../').ko,
-    models = require('./models');
+var path        = require('path'),
+    fs          = require('fs'),
+    vt          = require('vt-node-lib')
+    ko          = vt.ko,
+    Application = vt.Application,
+    models      = require('./models');
 
-exports.configure = function (shared, ko) {
-    shared.models = models;
-
-    // A list of all the users in the system.  This observable can be bound inside
-    // browsers.
-    shared.users = models.UserModel.load();
-
-    // TODO: we could make this the main list of users, and have a subscriber that
-    // adds users to the object hash when one is pushed to the array.
-    shared.usersArray = ko.observableArray();
-    Object.keys(shared.users).forEach(function(val) {
-        shared.usersArray.push(shared.users[val]);
-    });
-
-    // A list of all of the apps in the system.
-    shared.apps = ko.observableArray(fs.readdirSync(path.resolve(__dirname, 'db', 'apps')));
-
-    // System statistics
-    shared.systemStats = {
+var shared = {
+    models : models,
+    // An object
+    users : models.UserModel.load(),
+    usersArray : ko.observableArray(),
+    // A list of all of the Applications in the system.
+    apps : ko.observableArray(),
+    systemStats : {
         rss : ko.observable(),
         heapTotal : ko.observable(),
         heapUsed : ko.observable(),
         numBrowsers : ko.observable()
-    };
+    },
+    browsers : ko.observableArray()
+};
 
-    shared.browsers = ko.observableArray();
+Object.keys(shared.users).forEach(function(val) {
+    shared.usersArray.push(shared.users[val]);
+});
 
-    var digits = 2;
-    setInterval(function () {
-        var usage = process.memoryUsage();
-        shared.systemStats.rss((usage.rss/(1024*1024)).toFixed(digits));
-        shared.systemStats.heapTotal((usage.heapTotal/(1024*1024)).toFixed(digits));
-        shared.systemStats.heapUsed((usage.heapUsed/(1024*1024)).toFixed(digits));
-        // TODO: browsermanager should track a numBrowsers, and close should rm from manager.
-        var oldnum = shared.systemStats.numBrowsers();
-        shared.systemStats.numBrowsers(Object.keys(global.browsers.browsers).length);
-        shared.browsers([]);
-        Object.keys(global.browsers.browsers).forEach(function (k) {
-            shared.browsers.push(global.browsers.browsers[k].browser);
+// Go through the directories in db/apps, and for each one, create an
+// Application instance.
+appList = fs.readdirSync(path.resolve(__dirname, 'db', 'apps'));
+appList.forEach(function (appDir) {
+    var opts   = null;
+    var config = null;
+    var app    = null;
+
+    var files = fs.readdirSync(path.resolve(__dirname, 'db', 'apps', appDir));
+    var i     = files.indexOf('app.js');
+
+    if (i != -1) {
+        opts = require(path.join('db', 'apps', appDir, files[i])).app;
+        if (opts.mountPoint == '/') {
+            opts.mountPoint = '/' + opts.name;
+        }
+        opts.entryPoint = path.join('db', 'apps', appDir, opts.entryPoint);
+        console.log("OPTS:");
+        console.log(opts);
+        app  = new Application(opts);
+    } else {
+        app = new Application({
+            entryPoint : path.join('db', 'apps', appDir, 'index.html'),
+            mountPoint : '/' + appDir,
+            name       : appDir
         });
-    }, 5000);
-}
+    }
+    // TODO: more direct way of mounting before server is set.
+    process.nextTick(function () {
+        app.mount(global.server)
+    });
+    shared.apps.push(app);
+});
+
+// Update the system stats every 5 seconds.
+var digits = 2;
+setInterval(function () {
+    var usage = process.memoryUsage();
+    shared.systemStats.rss((usage.rss/(1024*1024)).toFixed(digits));
+    shared.systemStats.heapTotal((usage.heapTotal/(1024*1024)).toFixed(digits));
+    shared.systemStats.heapUsed((usage.heapUsed/(1024*1024)).toFixed(digits));
+    shared.systemStats.numBrowsers(Object.keys(global.browsers.browsers).length);
+    shared.browsers([]);
+    Object.keys(global.browsers.browsers).forEach(function (k) {
+        shared.browsers.push(global.browsers.browsers[k].browser);
+    });
+}, 5000);
+
+exports.app = {
+    entryPoint  : 'index.html',
+    mountPoint  : '/',
+    sharedState : shared,
+    localState  : function () {
+        this.user = ko.observable(null);
+    }
+};

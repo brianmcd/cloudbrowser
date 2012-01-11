@@ -1,106 +1,79 @@
-// Set up the models.
-(function () {
-    window.pages = window.pages || {};
-    window.pages.browsers = window.pages.browsers || {};
-    var shared = vt.shared;
-    var username = window.currentUser().username();
-    var defaultApp = shared.apps()[0];
-    var model = window.pages.browsers.model = {
-        username : username,
-        // An array of actual Browser objects that this user has access to.
-        browsers : shared.users[username].browsers,
-        // List of all users in the system.
-        users : shared.usersArray,
-        // List of all applications in the system
-        appList : shared.apps,
-        // The currently selected app to load.
-        selectedApp : ko.observable(defaultApp),
-        // The list of people with whom to share a newly created Browser.
-        currentShareList : ko.observableArray(),
-        // Whether we're loading an 'app' or a 'url'
-        selectedLoadType : ko.observable(),
-        // The current value of the create browser "name" field.
-        newBrowserName : ko.observable('NewBrowser'),
-        // The current value for the URL input box.
-        newBrowserUrl : ko.observable(),
-        // The current value of the "launch browser" drop down.
-        browserToLaunch : ko.observable()
-    };
-
-    // Sync up the browsers model with browserToLaunch.
-    if (model.browsers().length > 0) {
-        model.browserToLaunch(model.browsers()[0]);
-    } else {
-        // If the browsers model is empty, then we initialize browserToLaunch
-        // once browsers has something.  This is especially important since
-        // browsers could be populated by another Browser when someone gives us
-        // access to a Browser, and its our first.
-        model.browsers.subscribe(function (val) {
-            if (val.length == 1) {
-                model.browserToLaunch(val[0]);
-            }
-        });
-    }
-
-    ko.applyBindings(model);
-})();
-
-// Set up the behavior.
 (function () {
     var Path = require('path');
-    var model = window.pages.browsers.model;
-
-    $('#create-browser-button').click(function () {
-        var name = model.newBrowserName();
-        if (!name) {
-            return;
-        }
-        var browser = null;
-        // Not sure why jQuery returns an array instead of the element...
-        if ($('#url-load-type')[0].checked == true) {
-            var url = model.newBrowserUrl();
-            console.log("Creating browser: " + name + "    " + url);
-            browser = vt.createBrowser({
-                id : name,
-                url : url
-            });
-        } else if ($('#app-load-type')[0].checked == true) {
-            browser = vt.createBrowser({
-                id : name,
-                app : Path.join('db', 'apps', model.selectedApp(), 'index.html')
-            });
-        }
-        if (browser == null) {
-            return;
-        }
-        model.browsers.push(browser);
-        if (model.currentShareList().length) {
-            model.currentShareList().forEach(function (user) {
+    var shared = vt.shared;
+    var local  = vt.local;
+    var viewModel = {
+        user             : local.user,
+        users            : shared.usersArray,
+        appList          : shared.apps,
+        selectedApp      : ko.observable(shared.apps()[0]), 
+        currentShareList : ko.observableArray([]),
+        selectedLoadType : ko.observable(),
+        selectedApp      : ko.observable(),
+        newBrowserName   : ko.observable('NewBrowser'),
+        newBrowserUrl    : ko.observable(),
+        browserToLaunch  : ko.observable(),
+        createBrowser    : function () {
+            var name = this.newBrowserName();
+            if (!name) {
+                return;
+            }
+            var browser = null;
+            if ($('#url-load-type')[0].checked == true) {
+                var url = model.newBrowserUrl();
+                throw new Error("TODO");
+            } else if ($('#app-load-type')[0].checked == true) {
+                browser = vt.createBrowser(this.selectedApp(), name);
+            } else {
+                return;
+            }
+            this.user().browsers.push(browser);
+            this.currentShareList().forEach(function (user) {
                 user.browsers.push(browser);
             });
-            browser.shareList = model.currentShareList();
-            model.currentShareList([]);
-        } else {
-            browser.shareList = [];
+            browser.shareList = this.currentShareList();
+            this.currentShareList([]);
+            this.newBrowserName('');
+            this.newBrowserUrl('');
+        },
+        launchBrowser : function () {
+            if (this.browserToLaunch()) {
+                this.browserToLaunch().launch();
+            }
+        },
+        closeBrowser : function () {
+            var browser = this.browserToLaunch();
+            if (browser) {
+                this.user().browsers.remove(browser);
+                browser.shareList.forEach(function (user) {
+                   user.browsers.remove(browser)
+                });
+                browser.close();
+            }
         }
-        model.newBrowserName('');
-        model.newBrowserUrl('');
-    });
-    
-    $('#launch-browser-button').click(function () {
-        if (model.browserToLaunch()) {
-            model.browserToLaunch().launch();
-        }
-    });
+    };
 
-    $('#close-browser-button').click(function () {
-        var browser = model.browserToLaunch(); // TODO rename
-        if (browser) {
-            model.browsers.remove(browser);
-            browser.shareList.forEach(function (user) {
-               user.browsers.remove(browser)
+    function initBrowserMenu () {
+        if (viewModel.user().browsers().length > 0) {
+            viewModel.browserToLaunch(viewModel.user().browsers()[0]);
+        } else {
+            viewModel.user().browsers.subscribe(function (val) {
+                if (val.length == 1) {
+                    viewModel.browserToLaunch(val[0]);
+                }
             });
-            browser.close();
         }
-    });
+    }
+
+    if (viewModel.user() == null) {
+        viewModel.user.subscribe(function (newUser) {
+            if (typeof newUser == 'object') {
+                initBrowserMenu();
+                ko.applyBindings(viewModel, document.getElementById('browsersContainer'));
+            }
+        });
+    } else {
+        initBrowserMenu();
+        ko.applyBindings(viewModel, document.getElementById('browsersContainer'));
+    }
 }());

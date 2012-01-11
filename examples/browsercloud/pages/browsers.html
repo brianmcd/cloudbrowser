@@ -1,84 +1,64 @@
-<style type='text/css'>
-    h1 {
-        text-align: center;
-    }
-    label {
-        display: block;
-        text-align: right;
-        float: left;
-        padding-top: 4px;
-        margin-right: 4px;
-    }
-    #browser-load-box {
-        border: 1px solid;
-    }
-    #browser-load-box > span {
-        text-align: center;
-    }
-    input[type='radio'] {
-        display: block;
-        float: left;
-    }
-</style>
-
-<!-- Header info -->
-<div class='prepend-20 span-4 last'>
-    You are logged in as: <span data-bind='text: username'></span>
-</div>
-
-<!-- Title -->
-<h1 class='span-24'>Manage Your Virtual Browsers</h1>
-
-<!-- TODO: It would be good to be able to split Create Browser Form and Browser List
-     code (both html and js) up -->
-<!-- Create Browser Form -->
-<div class='span-10 border'>
-    <h1 class='last'>Create a New Browser</h1>
-    <div class='span-8 last'>
-        <label>Browser Name: </label>
-        <input type='text' data-bind='value: newBrowserName' /> <!-- TODO: data bind -->
+<div id='browsersContainer'>
+    <!-- Header info -->
+    <div class='prepend-20 span-4 last'>
+        You are logged in as: <span data-bind='text: user().username'></span>
     </div>
-    <div id='browser-load-box' class='span-8 last'>
-        <div class='span-8 last'>
-            <input type='radio'
-                   value='url'
-                   id='url-load-type' />
-                   <!-- data-bind='checked: selectedLoadType' /> -->
-            <label>Load From URL: </label>
-            <input type='text' data-bind='value: newBrowserUrl' />
-        </div>
-        <span class='span-8 last'>or</span>
-        <div class='span-8 last'>
-            <input type='radio'
-                   value='app'
-                   id='app-load-type' />
-                   <!-- data-bind='checked: selectedLoadType' /> -->
-            <label>Load Application: </label>
-            <select data-bind='options: appList, value: selectedApp'></select>
-        </div>
-    </div>
-    <div class='span-8 last'>
-        <span class='span-8 last'>Who else should have access to the browser?</span>
-        <select multiple='multiple' data-bind="options: users, optionsText: 'username', selectedOptions: currentShareList"></select>
-        <div class='span-8 last'>
-            Currently Selected: <span id='thespan' data-bind='text: currentShareList'></span>
-        </div>
-    </div>
-    <button id='create-browser-button' class='span-8 last'>Create Browser</button>
-</div>
 
-<!-- Browser List -->
-<div class='prepend-4 span-10 last'>
-    <h1 class='last'>Launch an Existing Browser</h1>
-    <h4 class='last' data-bind="text: browsers().length == 0 ? 'No Browsers Available' : ' '"></h4>
-    <div class='span-10 last' data-bind='visible: browsers().length > 0'>
-        <select class='span-10 last' data-bind="options: browsers, optionsText: 'id', value: browserToLaunch"></select>
-        <button id='launch-browser-button' 
-                class='span-10 last' 
-                data-bind='enable: browsers().length > 0'>Launch Browser</button>
-        <button id='close-browser-button' 
-                class='span-10 last' 
-                data-bind='enable: browsers().length > 0'>Close Browser</button>
+    <!-- Title -->
+    <h1 class='span-24'>Manage Your Virtual Browsers</h1>
+
+    <!-- Create Browser Form -->
+    <div class='span-10 border'>
+        <h1 class='last'>Create a New Browser</h1>
+        <div class='span-8 last'>
+            <label>Browser Name: </label>
+            <input type='text' data-bind='value: newBrowserName' ></input>
+        </div>
+        <div id='browser-load-box' class='span-8 last'>
+            <div class='span-8 last'>
+                <input type='radio'
+                       value='url'
+                       id='url-load-type'></input>
+                       <!-- data-bind='checked: selectedLoadType' /> -->
+                <label>Load From URL: </label>
+                <input type='text' data-bind='value: newBrowserUrl' />
+            </div>
+            <span class='span-8 last'>or</span>
+            <div class='span-8 last'>
+                <input type='radio'
+                       value='app'
+                       id='app-load-type'></input>
+                       <!-- data-bind='checked: selectedLoadType' /> -->
+                <label>Load Application: </label>
+                <select data-bind="options: appList,
+                                   optionsText: 'name',
+                                   value: selectedApp"></select>
+            </div>
+        </div>
+        <div class='span-8 last'>
+            <span class='span-8 last'>Who else should have access to the browser?</span>
+            <select multiple='multiple' data-bind="options: users, optionsText: 'username', selectedOptions: currentShareList"></select>
+            <div class='span-8 last'>
+                Currently Selected: <span id='thespan' data-bind='text: currentShareList'></span>
+            </div>
+        </div>
+        <button data-bind="event : { click : function () { createBrowser(); } }"
+                class='span-8 last'>Create Browser</button>
+    </div>
+
+    <!-- Browser List -->
+    <div class='prepend-4 span-10 last'>
+        <h1 class='last'>Launch an Existing Browser</h1>
+        <h4 class='last' data-bind="text: user().browsers().length == 0 ? 'No Browsers Available' : ' '"></h4>
+        <div class='span-10 last' data-bind='visible: user().browsers().length > 0'>
+            <select class='span-10 last' data-bind="options: user().browsers, optionsText: 'id', value: browserToLaunch"></select>
+            <button class='span-10 last' 
+                    data-bind='event : { click : function () { launchBrowser(); } },
+                               enable: user().browsers().length > 0'>Launch Browser</button>
+            <button class='span-10 last' 
+                    data-bind='event : { click : function () { closeBrowser(); } },
+                               enable: user().browsers().length > 0'>Close Browser</button>
+        </div>
     </div>
 </div>
 

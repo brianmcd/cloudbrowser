@@ -1,16 +1,17 @@
-<div id='header' style='text-align: center;' class='span-24'>
-    Welcome!  Please create an account or log in.
+<div id='loginContainer'>
+    <div id='header' style='text-align: center;' class='span-24'>
+        Welcome!  Please create an account or log in.
+    </div>
+    <div id='loginBox' style='text-align: center;' class='span-24'>
+        <div class='span-24'>
+            Username: <input type='text' data-bind='value: username' />
+        </div>
+        <div class='span-24'>
+            Password: <input type='password' data-bind='value: password' />
+        </div>
+        <div class='span-24'>
+            <button data-bind='event : { click : loginClick }'>Login</button> or <button data-bind='event : { click : registerClick }'>Register</button>
+        </div>
+    </div>
 </div>
-<div id='loginBox' style='text-align: center;' class='span-24'>
-    <div class='span-24'>
-        Username: <input type='text' data-bind='value: username' />
-    </div>
-    <div class='span-24'>
-        Password: <input type='password' data-bind='value: password' />
-    </div>
-    <div class='span-24'>
-        <button id='loginButton'>Login</button> or <button id='registerButton'>Register</button>
-    </div>
-</div>
-
 <script src='pages/login.js'></script>

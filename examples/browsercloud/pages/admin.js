@@ -1,35 +1,29 @@
 (function () {
+    var shared = vt.shared;
     var viewModel = {
-        users : vt.shared.usersArray,
-        browsers : vt.shared.browsers,
-        systemStats : vt.shared.systemStats,
-        hookupDelete : function (elements) {
-            var adminButton = $('.toggle-admin', elements[0]);
-            var username = adminButton.attr('data-username');
-            var user = vt.shared.users[username];
-            adminButton.click(function () {
-                user.isAdmin(!(user.isAdmin()));
-            });
-            $('.delete-user').click(function () {
-                user.destroy(function () {
-                    vt.shared.usersArray.remove(user);
-                    delete vt.shared.users[username];
-                    user.browsers().forEach(function (browser) {
-                        browser.shareList.forEach(function (user) {
-                           user.browsers.remove(browser);
-                        });
-                        browser.close();
+        users       : shared.usersArray,
+        browsers    : shared.browsers,
+        systemStats : shared.systemStats,
+        toggleAdmin : function (user) {
+            user.isAdmin(!(user.isAdmin()));
+        },
+        deleteUser : function (user) {
+            user.destroy(function () {
+                shared.usersArray.remove(user);
+                delete shared.users[username];
+                user.browsers().forEach(function (browser) {
+                    browser.shareList.forEach(function (user) {
+                       user.browsers.remove(browser);
                     });
-                    user.browsers([])
-                    var primaryBrowser = user.primaryBrowser();
-                    if (primaryBrowser != null) {
-                        // TODO: loadPage should be part of a browser API
-                        primaryBrowser.window.currentUser(null);
-                        primaryBrowser.window.pages.login.load();
-                    }
+                    browser.close();
                 });
+                user.browsers([])
+                var primaryBrowser = user.primaryBrowser();
+                if (primaryBrowser != null) {
+                    primaryBrowser.close();
+                }
             });
         }
     };
-    ko.applyBindings(viewModel);
+    ko.applyBindings(viewModel, document.getElementById('adminContainer'));
 })();

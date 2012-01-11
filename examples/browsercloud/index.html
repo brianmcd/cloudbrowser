@@ -2,48 +2,39 @@
     <head>
         <link rel='stylesheet' type='text/css' href='css/blueprint/screen.css' />
         <link rel='stylesheet' type='text/css' href='css/app.css' />
+        <script>
+            $(function () {
+                // Similar to ko.applyBindings.
+                vt.initPages(document.getElementById('main'), function (pages) {
+                    window.pages = pages;
+                    pages.activePage('login');
+                    ko.applyBindings({
+                        currentUser : vt.local.user,
+                        activePage : pages.activePage
+                    }, document.getElementById('nav'));
+                });
+
+            });
+        </script>
     </head>
     <body>
-        <div id='nav' data-bind="visible: currentUser != null">
+        <div id='nav' data-bind="visible: currentUser() != null">
             <ul class='tabs'>
-                <li id='goHome'><a>Home</a></li>
-                <li id='goBrowsers'><a>Browsers</a></li>
-                <li id='goUserCP'><a>Account Settings</a></li>
-                <li id='goAdmin'
-                    data-bind='visible: currentUser() != null && currentUser().isAdmin() === true'><a>Admin</a></li>
+                <li data-bind="event : { click : function () { activePage('home'); } }"><a>Home</a></li>
+                <li data-bind="event : { click : function () { activePage('browsers'); } }"><a>Browsers</a></li>
+                <li data-bind="event : { click : function () { activePage('usercp'); } }"><a>Account Settings</a></li>
+                <li data-bind="visible : (currentUser() != null) && currentUser().isAdmin(),
+                               event   : { click : function () { activePage('admin'); } }"><a>Admin</a></li>
             </ul>
         </div>
         <div id='main' class='container'>
-            <!-- TODO: rename access.html to login.html -->
-            <div id='loginPage'    data-page="id: login,    src: pages/login.html"></div>
-            <div id='homePage'     data-page="id: home,     src: pages/home.html"></div>
-            <div id='browsersPage' data-page="id: browsers, src: pages/browsers.html"></div>
-            <div id='usercp'       data-page="id: usercp,   src: pages/usercp.html"></div>
-            <div id='adminPage'    data-page="id: admin,    src: pages/admin.html"></div>
+            <div data-page="id: login,    src: pages/login.html"></div>
+            <div data-page="id: home,     src: pages/home.html"></div>
+            <div data-page="id: browsers, src: pages/browsers.html"></div>
+            <div data-page="id: usercp,   src: pages/usercp.html"></div>
+            <div data-page="id: admin,    src: pages/admin.html"></div>
         </div>
         <script>
-            // Similar to ko.applyBindings.
-            vt.initPages(document.getElementById('main'), function (pages) {
-                window.pages = pages;
-                pages.login.load();
-                $('#goHome').click(function () {
-                    pages.home.load();
-                });
-                $('#goBrowsers').click(function () {
-                    pages.browsers.load();
-                });
-                $('#goUserCP').click(function () {
-                    pages.usercp.load();
-                });
-                $("#goAdmin").click(function () {
-                    pages.admin.load();
-                });
-            });
-
-            window.currentUser = ko.observable();
-            ko.applyBindings({
-                currentUser : window.currentUser
-            }, document.getElementById('nav'));
         </script>
     </body>
 </html>

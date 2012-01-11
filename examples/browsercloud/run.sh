@@ -1,1 +1,1 @@
-node ../../bin/server --config=config.js --knockout --debug index.html
+node ../../bin/server --knockout --debug app.js
