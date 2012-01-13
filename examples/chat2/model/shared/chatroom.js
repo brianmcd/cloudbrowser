@@ -1,5 +1,4 @@
-var EventEmitter = require('events').EventEmitter,
-    ko           = require('vt-node-lib').ko;
+var ko = require('vt-node-lib').ko;
 
 function ChatRoom (name) {
     this.name = name;
@@ -12,7 +11,6 @@ function ChatRoom (name) {
 
 ChatRoom.prototype = {
     postMessage : function (username, message) {
-        this.emit('newMessage', username, message);
         this.messages.push('[' + username + '] ' + message);
     },
 
@@ -24,6 +22,5 @@ ChatRoom.prototype = {
         this.users.remove(user);
     }
 };
-ChatRoom.prototype.__proto__ = new EventEmitter();
 
 module.exports = ChatRoom;

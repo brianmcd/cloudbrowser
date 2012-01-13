@@ -1,6 +1,5 @@
-var EventEmitter = require('events').EventEmitter,
-    ko           = require('vt-node-lib').ko;
-    ChatRoom     = require('./chatroom');
+var ko       = require('vt-node-lib').ko,
+    ChatRoom = require('./chatroom');
 
 function ChatManager () {
     this.rooms = ko.observableArray();
@@ -10,7 +9,6 @@ function ChatManager () {
 ChatManager.prototype = {
     create : function (name) {
         if (this.roomsByName[name]) {
-            // TODO: use the exception message in a bootstrap alert.
             throw new Error("Room already exists");
         }
         var room = new ChatRoom(name);
