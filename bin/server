@@ -25,6 +25,10 @@ var opts = require('nomnom')
         default : false,
         flag    : true,
         help    : "Enable server-side knockout.js bindings."})
+    .option('strict', {
+        default : false,
+        flag    : true,
+        help    : "Enable strict mode - uncaught exceptions exit the program."})
     .option('resourceProxy', {
         full    : 'resource-proxy',
         default : true,
@@ -57,6 +61,13 @@ for (var p in opts) {
 if (opts.debug) {
     console.log("Config:");
     console.log(config);
+}
+
+if (!opts.strict) {
+    process.on('uncaughtException', function (err) {
+        console.log("Uncaught Exception:");
+        console.log(err);
+    });
 }
 
 var defaultApp = null;
