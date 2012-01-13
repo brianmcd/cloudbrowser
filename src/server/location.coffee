@@ -97,7 +97,8 @@ exports.LocationBuilder = (browser) ->
                     event.newURL = this.href
                     browser.window.dispatchEvent(event)
                 when 'pagechange'
-                    browser.loadFromURL(@parsed.href)
+                    browser.app.entryPoint = @parsed.href
+                    browser.load()
 
         replace : (url) ->
             console.log("Location#replace not yet implemented")

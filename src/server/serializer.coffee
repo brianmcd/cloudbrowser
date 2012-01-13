@@ -13,6 +13,7 @@ NodeCompressor = require('../shared/node_compressor')
 #   [parent] - Optional (but given for everything but document)
 #   [name] - Optional. Given for element nodes
 #   [value] - Optional. Given for text and comment nodes.
+#   [events] - Optional. Given for element nodes with listeners.
 #   [attributes] - Optional. An object like:
 #       Property : value
 exports.serialize = (root, resources) ->

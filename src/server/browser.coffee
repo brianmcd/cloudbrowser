@@ -28,7 +28,8 @@ jQTmplScript = do () ->
     FS.readFileSync(jQueryTmplPath, 'utf8')
 
 class Browser extends EventEmitter
-    constructor : (@id, @app) ->
+    constructor : (@id, app) ->
+        @app = Object.create(app)
         @components = [] # TODO: empty this at the right time; move to BrowserServer
         @window = null
 
@@ -89,7 +90,6 @@ class Browser extends EventEmitter
 
         @initializeWindow(url)
         @initializeApplication(@window) if !@app.remoteBrowsing
-
 
         @window.addEventListener 'load', () =>
             @emit('PageLoaded')
@@ -156,10 +156,12 @@ class Browser extends EventEmitter
             img = new self.jsdom
                           .dom
                           .level3
-                          .core.HTMLImageElement(window.document)
+                          .html.HTMLImageElement(window.document)
             img.width = width
             img.height = height
             img
+
+        window.navigator.language = 'en-US'
 
         # This sets window.XMLHttpRequest, and gives the XHR code access to
         # the window object.
