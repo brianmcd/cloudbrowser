@@ -19,7 +19,7 @@
         "express"       : "2.4.4",
         "jade"          : "0.10.7",
         "coffee-script" : "1.2.0",
-        "request"       : "1.9.0",
+        "request"       : "2.9.3",
         "html5"         : "0.3.5",
         "eco"           : "*",
         "mime"          : "*",
