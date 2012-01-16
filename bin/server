@@ -73,7 +73,7 @@ if (!opts.strict) {
 var defaultApp = null;
 // We support passing a URL instead of an application config file for quick
 // testing.
-if (/^http/.test(opts.app)) {
+if (/^http/.test(opts.app) || /\.html$/.test(opts.app)) {
     defaultApp = new Application({
         entryPoint : opts.app,
         mountPoint : '/'
