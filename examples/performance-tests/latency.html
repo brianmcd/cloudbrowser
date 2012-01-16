@@ -1,0 +1,60 @@
+<html>
+    <head>
+        <script>
+            window.addEventListener('load', function () {
+                // Set up the remote test.
+                var testButton = document.getElementById('remoteTestButton');
+                testButton.addEventListener('click', function () {
+                    vt.tracer();
+                });
+                var startRemote = document.getElementById('startRemote');
+                startRemote.addEventListener('click', function () {
+                    vt.runOnClient(function () {
+                        var start, stop;
+                        console.log("Running remote test.");
+                        var testButton = document.getElementById('remoteTestButton');
+                        var output     = document.getElementById('remoteTestOutput');
+                        __client.socket.once('Tracer', function () {
+                            stop = Date.now();
+                            output.appendChild(document.createTextNode((stop - start) + ' ms.\n'));
+                        });
+                        start = Date.now();
+                        testButton.click();
+                    });
+                });
+
+                // Set up the local test.
+                var startLocal = document.getElementById('startLocal');
+                startLocal.addEventListener('click', function () {
+                    // Set up the local test.
+                    vt.runOnClient(function () {
+                        var start, stop;
+                        var capturingHandler = window.__client.monitor._handler;
+                        document.removeEventListener('click', capturingHandler, true);
+                        var testButton = document.getElementById('localTestButton');
+                        var output = document.getElementById('localTestOutput');
+                        var listener = function () {
+                            stop = Date.now();
+                            output.appendChild(document.createTextNode((stop - start) + ' ms.\n'));
+                            document.addEventListener('click', capturingHandler, true);
+                            testButton.removeEventListener('click', listener);
+                        };
+                        testButton.addEventListener('click', listener);
+                        start = Date.now();
+                        testButton.click();
+                    });
+                });
+            });
+        </script>
+    </head>
+    <body>
+        <button id='startLocal'>Start Local Test</button><br />
+        <button id='startRemote'>Start Remote Test</button>
+        <br />
+        <button id='remoteTestButton' style='display: none;'></button><br />
+        <div    id='remoteTestOutput'></div>
+        <br />
+        <button id='localTestButton' style='display: none;'></button><br />
+        <div    id='localTestOutput'></div>
+    </body>
+</script>
