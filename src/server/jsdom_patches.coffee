@@ -85,6 +85,14 @@ addDefaultHandlers = (html) ->
                 form.dispatchEvent(ev)
                 form.reset()
 
+    html.HTMLButtonElement.prototype.click = () ->
+        console.log("Inside BUTTON overridden click() method")
+        ev = @_ownerDocument.createEvent('HTMLEvents')
+        ev.initEvent('click', true, true)
+        @dispatchEvent(ev)
+        
+
+
 # Note: the actual KeyboardEvent implementation in browsers seems to vary
 # widely, so part of our job will be to convert from the events coming in
 # to this level 3 event implementation.
