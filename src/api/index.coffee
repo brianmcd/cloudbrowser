@@ -42,6 +42,13 @@ module.exports = EmbedAPI = (browser) ->
             return app
         throw new Error("Invalid parameter: #{opts}")
 
+    window.vt.tracer = () ->
+        browser.tracer()
+
+    window.vt.runOnClient = (func) ->
+        str = func.toString()
+        browser.runOnClient(str)
+
     window.vt.currentBrowser = () ->
         return new WrappedBrowser(null, browser)
 

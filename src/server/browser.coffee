@@ -73,6 +73,12 @@ class Browser extends EventEmitter
         event.info = params.event
         node.dispatchEvent(event)
 
+    runOnClient : (str) ->
+        @emit 'RunOnClient', str
+
+    tracer : () ->
+        @emit 'Tracer'
+
     close : () ->
         @emit('BrowserClose')
         @window.close()

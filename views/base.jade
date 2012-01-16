@@ -8,5 +8,5 @@ html
     script
         $(function () {
             var SocketIOClient = require('/socketio_client');
-            var client = new SocketIOClient(window, document);
+            window.__client = new SocketIOClient(window, document);
         });

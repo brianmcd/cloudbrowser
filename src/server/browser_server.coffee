@@ -173,6 +173,15 @@ DOMEventHandlers =
         # TODO: debug flag to enable line below.
         console.log("[[[#{@browser.id}]]] #{event.msg}")
 
+    RunOnClient : (string) ->
+        throw Error if @browserLoading
+        @broadcastEvent 'RunOnClient', string
+
+    Tracer : () ->
+        # Bypassing compression table.
+        for socket in @sockets
+            socket.emit('Tracer')
+
 ['DOMStyleChanged',
  'DOMPropertyModified',
  'DOMCharacterDataModified',
