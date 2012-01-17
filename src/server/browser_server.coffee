@@ -49,8 +49,9 @@ class BrowserServer
         @consoleLog.write("Log opened: #{Date()}\n")
         @consoleLog.write("BrowserID: #{@browser.id}\n")
 
-        rpcLogPath = Path.resolve(logDir, "#{@browser.id}-rpc.log")
-        @rpcLog     = FS.createWriteStream(rpcLogPath)
+        if Config.traceProtocol
+            rpcLogPath = Path.resolve(logDir, "#{@browser.id}-rpc.log")
+            @rpcLog     = FS.createWriteStream(rpcLogPath)
 
     logRPCMethod : (name, params) ->
         @rpcLog.write("#{name}(")
@@ -71,7 +72,8 @@ class BrowserServer
                 @rpcLog.write(', ')
 
     broadcastEvent : (name, args...) ->
-        @logRPCMethod(name, args)
+        if Config.traceProtocol
+            @logRPCMethod(name, args)
         if Config.compression
             name = @compressor.compress(name)
         args.unshift(name)
@@ -84,7 +86,8 @@ class BrowserServer
         for own type, func of RPCMethods
             do (type, func) =>
                 socket.on type, () =>
-                    @logRPCMethod(type, arguments)
+                    if Config.traceProtocol
+                        @logRPCMethod(type, arguments)
                     console.log("Got #{type}")
                     func.apply(this, arguments)
         socket.on 'disconnect', () =>
@@ -123,10 +126,8 @@ DOMEventHandlers =
             compressionTable = @compressor.textToSymbol
         @sockets = @sockets.concat(@queuedSockets)
         @queuedSockets = []
-        #@rpcLog.write("PageLoaded(")
-        #@rpcLog.write(Util.inspect(nodes))
-        #@rpcLog.write(")\n")
-        @logRPCMethod('PageLoaded', [nodes, components, compressionTable])
+        if Config.traceProtocol
+            @logRPCMethod('PageLoaded', [nodes, components, compressionTable])
         for socket in @sockets
             socket.emit('PageLoaded', nodes, components, compressionTable)
 
@@ -244,7 +245,8 @@ DOMEventHandlers =
 
 RPCMethods =
     setAttribute : (targetId, attribute, value) ->
-        @logRPCMethod('setAttribute', [targetId, attribute, value])
+        if Config.traceProtocol
+            @logRPCMethod('setAttribute', [targetId, attribute, value])
         if !@browserLoading
             target = @nodes.get(targetId)
             if attribute == 'src'
@@ -254,7 +256,8 @@ RPCMethods =
             target.setAttribute(attribute, value)
 
     processEvent : (event, specifics) ->
-        @logRPCMethod('processEvent', [event, specifics])
+        if Config.traceProtocol
+            @logRPCMethod('processEvent', [event, specifics])
         for own nodeID, value of specifics
             node = @nodes.get(nodeID) # Should cache these for the restore.
             node.__oldValue = node.value

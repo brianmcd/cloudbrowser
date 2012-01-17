@@ -37,10 +37,10 @@ var opts = require('nomnom')
         full    : 'monitor-traffic',
         default : false,
         help    : "Monitor/log traffic to/from socket.io clients."})
-    // TODO: make this a json file with the actual server config
-    //       app config is with app parameter now.
-    .option('config', {
-        help    : "A file containing a server configuration function"})
+    .option('traceProtocol', {
+        full    : 'trace-protocol',
+        default : false,
+        help    : "Log protocol messages to browserid-rpc.log."})
     .option('evalMode', {
         abbr    : 'e',
         full    : 'eval-mode',
