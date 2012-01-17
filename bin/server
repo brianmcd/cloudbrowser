@@ -42,7 +42,6 @@ var opts = require('nomnom')
         default : false,
         help    : "Log protocol messages to browserid-rpc.log."})
     .option('evalMode', {
-        abbr    : 'e',
         full    : 'eval-mode',
         default : false,
         help    : "Enable evaluation mode for performance measuring."})
