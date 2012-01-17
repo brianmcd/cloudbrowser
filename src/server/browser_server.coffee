@@ -60,10 +60,10 @@ class BrowserServer
         lastIdx = params.length - 1
         for param, idx in params
             if name == 'PageLoaded'
-                str = Util.inspect(param).replace /[^\}],\n/g, (str) ->
+                str = Util.inspect(param, false, null).replace /[^\}],\n/g, (str) ->
                     str[0]
             else
-                str = Util.inspect(param).replace(/[\n\t]/g, '')
+                str = Util.inspect(param, false, null).replace(/[\n\t]/g, '')
                 #str = Util.inspect(param)
             @rpcLog.write(str)
             if idx == lastIdx
@@ -181,7 +181,6 @@ DOMEventHandlers =
 
 
     AddEventListener : (event) ->
-        return if @browserLoading
         {target, type} = event
         return if !clientEvents[type]
 
@@ -192,7 +191,7 @@ DOMEventHandlers =
         else
             target.__registeredListeners.push([targetId, type])
 
-        if target._attachedToDocument
+        if !@browserLoading && target._attachedToDocument
             @broadcastEvent('AddEventListener', targetId, type)
 
     EnteredTimer : () ->
