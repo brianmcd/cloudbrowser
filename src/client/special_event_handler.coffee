@@ -10,9 +10,9 @@ class SpecialEventHandler
 
     click : (remoteEvent, clientEvent) ->
         clientEvent.preventDefault()
-        @socket.emit 'processEvent',
-            event : remoteEvent
-            specifics : @monitor.client.getSpecificValues()
+        @socket.emit('processEvent',
+                     remoteEvent,
+                     @monitor.client.getSpecificValues())
 
     # Valid targets:
     #   input, select, textarea
@@ -25,23 +25,23 @@ class SpecialEventHandler
         if target.tagName.toLowerCase() == 'select'
             if target.multiple == true
                 for option in target.options
-                    @socket.emit 'setAttribute',
-                        target : option.__nodeID
-                        attribute : 'selected'
-                        value : option.selected
+                    @socket.emit('setAttribute',
+                                 option.__nodeID,
+                                 'selected',
+                                 option.selected)
             else
-                @socket.emit 'setAttribute',
-                    target : clientEvent.target.__nodeID
-                    attribute : 'selectedIndex'
-                    value : clientEvent.target.selectedIndex
+                @socket.emit('setAttribute',
+                             clientEvent.target.__nodeID,
+                             'selectedIndex',
+                             clientEvent.target.selectedIndex)
         else # input or textarea
-            @socket.emit 'setAttribute',
-                target : clientEvent.target.__nodeID
-                attribute : 'value'
-                value : clientEvent.target.value
-        @socket.emit 'processEvent',
-            event : remoteEvent
-            specifics : @monitor.client.getSpecificValues()
+            @socket.emit('setAttribute',
+                         clientEvent.target.__nodeID,
+                         'value',
+                         clientEvent.target.value)
+        @socket.emit('processEvent',
+                     remoteEvent,
+                     @monitor.client.getSpecificValues())
 
 
     _keyupListener : (event) =>
@@ -60,9 +60,9 @@ class SpecialEventHandler
         @monitor.eventInitializers["#{EventTypeToGroup[event.type]}"](rEvent, event)
         @_queuedKeyEvents.push(rEvent)
         for ev in @_queuedKeyEvents
-            @socket.emit 'processEvent',
-                event : ev
-                specifics : @monitor.client.getSpecificValues()
+            @socket.emit('processEvent',
+                         ev,
+                         @monitor.client.getSpecificValues())
         @_queuedKeyEvents = []
         if !@monitor.registeredEvents['keyup']
             @monitor.document.removeEventListener('keyup', @keyupListener, true)

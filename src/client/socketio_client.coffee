@@ -10,7 +10,6 @@ test_env = !!process?.env?.TESTS_RUNNING
 class SocketIOClient
     constructor : (@window, @document) ->
         @compressor = new Compressor()
-        @compressionEnabled = @compressor.compressionEnabled
         @socket = @connectSocket()
         @setupRPC(@socket)
         @specifics = []
@@ -98,28 +97,28 @@ RPCMethods =
             else
                 RPCMethods[original].apply(this, arguments)
 
-    DOMStyleChanged : (args) ->
-        target = @nodes.get(args.target)
-        target.style[args.attribute] = args.value
+    DOMStyleChanged : (targetId, attribute, value) ->
+        target = @nodes.get(targetId)
+        target.style[attribute] = value
 
-    DOMPropertyModified : (args) ->
-        target = @nodes.get(args.target)
+    DOMPropertyModified : (targetId, property, value) ->
+        target = @nodes.get(targetId)
         if target.clientSpecific
-            return if args.property == 'value'
-        target[args.property] = args.value
+            return if property == 'value'
+        target[property] = value
 
     # This function is called for partial updates AFTER the initial load.
     DOMNodeInsertedIntoDocument : (nodes) ->
-        deserialize({nodes : nodes}, this, @compressionEnabled)
+        deserialize(nodes, null, this)
 
-    DOMNodeRemovedFromDocument : (args) ->
-        parent = @nodes.get(args.relatedNode)
-        child = @nodes.get(args.target)
+    DOMNodeRemovedFromDocument : (parentId, childId) ->
+        parent = @nodes.get(parentId)
+        child  = @nodes.get(childId)
         parent.removeChild(child)
 
-    PageLoaded : (snapshot) ->
+    PageLoaded : (nodes, components, compressionTable) ->
         console.log('loadFromSnapshot')
-        console.log(snapshot)
+        console.log(arguments)
         doc = @document
         while doc.hasChildNodes()
             doc.removeChild(doc.firstChild)
@@ -127,17 +126,14 @@ RPCMethods =
         delete doc.__nodeID
         @nodes.add(doc, 'node1')
         @compressor = new Compressor()
-        for own original, compressed of snapshot.compressionTable
+        for own original, compressed of compressionTable
             RPCMethods['newSymbol'].call(this, original, compressed)
-        deserialize(snapshot, this, @compressionEnabled)
+        deserialize(nodes, components, this)
 
-    DOMAttrModified : (args) ->
-        target = @nodes.get(args.target)
-        name = args.attrName
-        value = args.newValue
-        if target.clientSpecific
-            return if name == 'value'
-        if args.attrChange == 'ADDITION'
+    DOMAttrModified : (targetId, name, value, attrChange) ->
+        target = @nodes.get(targetId)
+        return if target.clientSpecific && name == 'value'
+        if attrChange == 'ADDITION'
             # For HTMLOptionElement, HTMLInputELement, HTMLSelectElement
             if /^selected$|^selectedIndex$|^value$|^checked$/.test(name)
                 # Calling setAttribute doesn't cause the displayed value to change,
@@ -145,17 +141,23 @@ RPCMethods =
                 target[name] = value
             else
                 target.setAttribute(name, value)
-        else if args.attrChange == 'REMOVAL'
+        else if attrChange == 'REMOVAL'
             target.removeAttribute(name)
         else
-            throw new Error("Invalid attrChange: #{args.attrChange}")
+            throw new Error("Invalid attrChange: #{attrChange}")
 
-    DOMCharacterDataModified : (args) ->
-        target = @nodes.get(args.target)
-        target.nodeValue = args.value
+    DOMCharacterDataModified : (targetId, value) ->
+        target = @nodes.get(targetId)
+        target.nodeValue = value
 
-    WindowMethodCalled : (params) ->
-       window[params.method].apply(window, params.args)
+    WindowMethodCalled : (method, args) ->
+       window[method].apply(window, args)
+
+    AddEventListener : (targetId, type) ->
+        @monitor.addEventListener(targetId, type)
+        if test_env
+            @window.testClient.emit('AddEventListener', targetId, type)
+       
 
     disconnect : () ->
         @socket.disconnect()
@@ -184,11 +186,6 @@ RPCMethods =
         @eventQueue = []
         @renderingPaused = false
 
-    AddEventListener : (params) ->
-        @monitor.addEventListener(params)
-        if test_env
-            @window.testClient.emit('AddEventListener', params)
-       
     # If params given, clear the document of the specified frame.
     # Otherwise, clear the global window's document.
     clear : (params) ->

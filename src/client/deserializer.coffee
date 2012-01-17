@@ -1,10 +1,6 @@
 NodeCompressor = require('./shared/node_compressor')
-# snapshot:
-#   nodes - serialized node list.
-#   events - list of events to register on
-#   components - list of components to create
-exports.deserialize = (snapshot, client) ->
-    for record in snapshot.nodes
+exports.deserialize = (nodes, components, client) ->
+    for record in nodes
         record = NodeCompressor.uncompress(record)
 
         # If the node already exists, we don't need to create it.
@@ -44,7 +40,7 @@ exports.deserialize = (snapshot, client) ->
                 if /i?frame/.test(record.name.toLowerCase())
                     client.nodes.add(node.contentDocument, record.docID)
                 record.events?.forEach (event) ->
-                    client.monitor.addEventListener(event)
+                    client.monitor.addEventListener(event[0], event[1])
             when 'text', 'comment'
                 if record.type == 'text'
                     node = doc.createTextNode(record.value)
@@ -52,8 +48,8 @@ exports.deserialize = (snapshot, client) ->
                     node = doc.createComment(record.value)
                 client.nodes.add(node, record.id)
                 parent.insertBefore(node, sibling)
-    if snapshot.components?.length > 0
-        for component in snapshot.components
+    if components?.length > 0
+        for component in components
             client.createComponent(component)
     if process?.env?.TESTS_RUNNING
-        client.window.testClient.emit('loadFromSnapshot', snapshot)
+        client.window.testClient.emit('loadFromSnapshot', nodes)

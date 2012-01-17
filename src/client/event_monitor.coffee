@@ -28,12 +28,11 @@ class EventMonitor
             @registeredEvents[type] = true
             @document.addEventListener(type, @_handler, true)
 
-    addEventListener : (params) ->
-        {target, type} = params
-        console.log("Client adding listener for: #{type} on #{target}")
-        if !@activeEvents[target]
-            @activeEvents[target] = {}
-        @activeEvents[target][type] = true
+    addEventListener : (targetId, type) ->
+        console.log("Client adding listener for: #{type} on #{targetId}")
+        if !@activeEvents[targetId]
+            @activeEvents[targetId] = {}
+        @activeEvents[targetId][type] = true
         if !@registeredEvents[type]
             if type == 'keyup'
                 @document.addEventListener(type,
@@ -53,9 +52,7 @@ class EventMonitor
                 @specialEvents[event.type](rEvent, event)
             else
                 console.log("Sending event: #{rEvent.type}")
-                @socket.emit 'processEvent',
-                    event : rEvent
-                    specifics : @client.getSpecificValues()
+                @socket.emit('processEvent', rEvent, @client.getSpecificValues())
         event.stopPropagation()
         return false
 
