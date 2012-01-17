@@ -1,0 +1,19 @@
+<html>
+  <head>
+  </head>
+  <body>
+    <input type='text'></input>
+    <br />
+    <span></span>
+    <script>
+      var input = document.getElementsByTagName('input')[0];
+      var span  = document.getElementsByTagName('span')[0];
+      input.addEventListener('focus', function () {
+        span.innerHTML = 'input has focus';
+      });
+      input.addEventListener('blur', function () {
+        span.innerHTML = 'input lost focus';
+      });
+    </script>
+  </body>
+</body>
