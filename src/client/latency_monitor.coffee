@@ -27,5 +27,6 @@ class LatencyMonitor
         delete @pendingEvents[id]
 
     sync : () ->
+        @client.socket.emit('latencyInfo', @finishedEvents)
 
 module.exports = LatencyMonitor

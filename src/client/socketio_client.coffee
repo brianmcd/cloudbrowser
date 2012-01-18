@@ -17,6 +17,9 @@ class SocketIOClient
 
         @eventMonitor = null
         @latencyMonitor = new LatencyMonitor(this)
+        setInterval () =>
+            @latencyMonitor.sync()
+        , 10000
 
         # TaggedNodeCollection
         @nodes = null
