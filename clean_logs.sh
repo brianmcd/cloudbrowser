@@ -1,2 +1,2 @@
 #!/bin/bash
-rm logs/*
+rm -f logs/*
