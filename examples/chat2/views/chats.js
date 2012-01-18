@@ -8,7 +8,7 @@
             this.activeRoom().postMessage('username', this.currentMessage());
             this.currentMessage('');
         },
-        currentMessageKeyPress : function (e) {
+        currentMessageKeyUp : function (e) {
             if (e.which == 13) {
                 this.postMessage();
             }
