@@ -83,11 +83,18 @@ exports.addAdvice = (dom, emitter) ->
 
                 target = map._parentNode
                 if target._attachedToDocument
-                    emitter.emit 'DOMAttrModified',
-                        target : target
-                        attrName : attr.name
-                        newValue : attr.value
-                        attrChange : type
+                    if !emitter.DONT_EMIT
+                        emitter.emit 'DOMAttrModified',
+                            target : target
+                            attrName : attr.name
+                            newValue : attr.value
+                            attrChange : type
+                    if /input|textarea|select/.test(target.tagName?.toLowerCase())
+                        process.nextTick () ->
+                            doc = target._ownerDocument
+                            ev = doc.createEvent('HTMLEvents')
+                            ev.initEvent('change', false, false)
+                            target.dispatchEvent(ev)
         # setNamedItem(node)
         adviseMethod html.AttrNodeMap,
                           'setNamedItem',

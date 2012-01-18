@@ -2,8 +2,9 @@
 # the server needs to know about them no matter what.  They may also be
 # here to prevent the default action of the client's browser.
 exports.defaultEvents =
-    'click' : true
+    'click'  : true
     'change' : true
+    'keyup'  : true
 
 # These are events that are eligible for listening on the client.  We need
 # this because we need to know which events we should ignore inside our

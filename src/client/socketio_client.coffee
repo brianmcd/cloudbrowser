@@ -17,6 +17,9 @@ class SocketIOClient
         # EventMonitor
         @monitor = null
 
+        # For latency testing.
+        @eventTimers = {}
+
         # TaggedNodeCollection
         @nodes = null
 
@@ -180,11 +183,20 @@ RPCMethods =
         @eventQueue = []
         @renderingPaused = true
 
-    resumeRendering : () ->
+    resumeRendering : (id) ->
+        #TODO: rename eventQueue to methodQueue
         for event in @eventQueue
             event.func.apply(this, event.args)
         @eventQueue = []
         @renderingPaused = false
+
+        if id?
+            # Latency testing.
+            stop = Date.now()
+            info = @eventTimers[id]
+            delete @eventTimers[id]
+            elapsed = stop - info.start
+            console.log("[#{id}] #{info.type}: #{elapsed} ms")
 
     # If params given, clear the document of the specified frame.
     # Otherwise, clear the global window's document.

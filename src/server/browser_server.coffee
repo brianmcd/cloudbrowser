@@ -250,9 +250,16 @@ RPCMethods =
                 return
             if attribute == 'selectedIndex'
                 return target[attribute] = value
+            # TODO: make this nicer.
+            @browser.DONT_EMIT = true
             target.setAttribute(attribute, value)
+            @browser.DONT_EMIT = false
 
-    processEvent : (event, specifics) ->
+    processEvent : (event, specifics, id) ->
+        console.log("Processing event: #{id}")
+        if id == undefined
+            console.log(event)
+            throw new Error("Undefined id")
         for own nodeID, value of specifics
             node = @nodes.get(nodeID) # Should cache these for the restore.
             node.__oldValue = node.value
@@ -279,12 +286,13 @@ RPCMethods =
                         "#{clientEv.target.__nodeID} [#{clientEv.target.tagName}]")
 
             clientEv.target.dispatchEvent(serverEv)
-            @broadcastEvent 'resumeRendering'
+            @broadcastEvent 'resumeRendering', id
 
         for own nodeID, value of specifics
             node = @nodes.get(nodeID)
             node.value = node.__oldValue
             delete node.__oldValue
+        console.log("Finished processing event: #{id}")
 
     # Takes a clientEv (an event generated on the client and sent over DNode)
     # and creates a corresponding event for the server's DOM.

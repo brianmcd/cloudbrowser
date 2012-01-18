@@ -13,6 +13,8 @@ class EventMonitor
         @socket = @client.socket
         @specialEvents = new SpecialEventHandler(this)
 
+        @nextEventID = 0
+
         # A lookup table to see if the server has listeners for a particular event
         # on a particular node.
         # e.g. { 'nodeID' : {'event1' : true}}
@@ -34,25 +36,30 @@ class EventMonitor
             @activeEvents[targetId] = {}
         @activeEvents[targetId][type] = true
         if !@registeredEvents[type]
-            if type == 'keyup'
-                @document.addEventListener(type,
-                                           @specialEvents.keyupListener,
-                                           true)
-            else
                 @document.addEventListener(type, @_handler, true)
             @registeredEvents[type] = true
 
     _handler : (event) =>
+        id = ++@nextEventID
+        ###
+        if event.which == 13
+            console.log("_handler: #{id} [#{event.type}] [ENTER KEY]")
+        else
+            console.log("_handler: #{id} [#{event.type}]")
+        ###
+        @client.eventTimers[id] =
+            start : Date.now()
+            type  : event.type
         if DefaultEvents[event.type] || @activeEvents[event.target.__nodeID]?[event.type]
             rEvent = {}
             group = EventTypeToGroup[event.type]
             @eventInitializers[group](rEvent, event)
             if @specialEvents[event.type]
-                console.log("Calling special handler for: #{rEvent.type}")
-                @specialEvents[event.type](rEvent, event)
+                #console.log("Calling special handler for: #{rEvent.type}")
+                @specialEvents[event.type](rEvent, event, id)
             else
-                console.log("Sending event: #{rEvent.type}")
-                @socket.emit('processEvent', rEvent, @client.getSpecificValues())
+                console.log("Sending event: #{rEvent.type} - #{id}")
+                @socket.emit('processEvent', rEvent, @client.getSpecificValues(), id)
         event.stopPropagation()
         return false
 

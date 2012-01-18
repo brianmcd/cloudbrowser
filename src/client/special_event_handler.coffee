@@ -6,18 +6,18 @@ class SpecialEventHandler
         @socket = monitor.socket
         @_pendingKeyup = false
         @_queuedKeyEvents = []
-        @keyupListener = @_keyupListener.bind(this)
 
-    click : (remoteEvent, clientEvent) ->
+    click : (remoteEvent, clientEvent, id) ->
         clientEvent.preventDefault()
         @socket.emit('processEvent',
                      remoteEvent,
-                     @monitor.client.getSpecificValues())
+                     @monitor.client.getSpecificValues(),
+                     id)
 
     # Valid targets:
     #   input, select, textarea
     #
-    change : (remoteEvent, clientEvent) ->
+    change : (remoteEvent, clientEvent, id) ->
         target = clientEvent.target
         if target.clientSpecific
             return
@@ -39,55 +39,21 @@ class SpecialEventHandler
                          clientEvent.target.__nodeID,
                          'value',
                          clientEvent.target.value)
-        @socket.emit('processEvent',
-                     remoteEvent,
-                     @monitor.client.getSpecificValues())
 
-
-    _keyupListener : (event) =>
-        @_pendingKeyup = false
-        # TODO: need batch processing method.
-        #       then we can run keydown, keypress, update value, keyup
-        #       in the same event tick.
-        # Technically, the value shouldn't be set until after keypress.
-        ###
-        @socket.emit 'setAttribute'
-            target : event.target.__nodeID
-            attribute : 'value'
-            value : event.target.value
-        ###
-        rEvent = {}
-        @monitor.eventInitializers["#{EventTypeToGroup[event.type]}"](rEvent, event)
-        @_queuedKeyEvents.push(rEvent)
-        for ev in @_queuedKeyEvents
+    keyup : (rEvent, event, id) =>
+        {target} = event
+        #console.log("Keyup, setting value to : #{target.value}")
+        @socket.emit('setAttribute',
+                     target.__nodeID,
+                     'value',
+                     target.value)
+        if @monitor.activeEvents[event.target.__nodeID]?['keyup']
+            #console.log("Sending special event: #{rEvent.type} - #{id}")
             @socket.emit('processEvent',
-                         ev,
-                         @monitor.client.getSpecificValues())
-        @_queuedKeyEvents = []
-        if !@monitor.registeredEvents['keyup']
-            @monitor.document.removeEventListener('keyup', @keyupListener, true)
-
-    # We defer the event until keyup has fired.  The order for
-    # keyboard events is: 'keydown', 'keypress', 'keyup'.
-    # The default action fires between 'keypress' and 'keyup'.
-    # Before sending the event, we send the latest value of the
-    # target, to simulate the default action on the server.
-    #
-    # NOTE: these actually need to be batched to get the right
-    # semantics.  Knockout expects that calling setTimeout(fn, 0)
-    # inside an event handler for keydown or keypress will result in
-    # fn being called after default action has occured.
-    # TODO: test this
-    keydown : (remoteEvent, clientEvent) ->
-        if !@_pendingKeyup && !@monitor.registeredEvents['keyup']
-            @_pendingKeyup = true
-            @monitor.document.addEventListener('keyup', @keyupListener, true)
-        @_queuedKeyEvents.push(remoteEvent)
-
-    keypress : (remoteEvent, clientEvent) ->
-        if !@_pendingKeyup && !@monitor.registeredEvents['keyup']
-            @_pendingKeyup = true
-            @monitor.document.addEventListener('keyup', @keyupListener.bind(this), true)
-        @_queuedKeyEvents.push(remoteEvent)
+                         rEvent,
+                         @monitor.client.getSpecificValues(),
+                         id)
+        else
+            delete @monitor.client.eventTimers[id]
 
 module.exports = SpecialEventHandler
