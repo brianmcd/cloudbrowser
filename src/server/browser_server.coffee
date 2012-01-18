@@ -72,13 +72,26 @@ class BrowserServer
                 @rpcLog.write(', ')
 
     broadcastEvent : (name, args...) ->
+        @_broadcastHelper(null, name, args)
+
+    broadcastEventExcept : (socket, name, args...) ->
+        @_broadcastHelper(socket, name, args)
+
+    _broadcastHelper : (except, name, args) ->
         if Config.traceProtocol
             @logRPCMethod(name, args)
         if Config.compression
             name = @compressor.compress(name)
         args.unshift(name)
-        for socket in @sockets
-            socket.emit.apply(socket, args)
+        if except?
+            for socket in @sockets
+                if socket != except
+                    socket.emit.apply(socket, args)
+        else
+            for socket in @sockets
+                socket.emit.apply(socket, args)
+
+
 
     addSocket : (socket) ->
         if config.monitorTraffic
@@ -89,7 +102,9 @@ class BrowserServer
                     if Config.traceProtocol
                         @logRPCMethod(type, arguments)
                     console.log("Got #{type}")
-                    func.apply(this, arguments)
+                    args = Array.prototype.slice.call(arguments)
+                    args.push(socket)
+                    func.apply(this, args)
         socket.on 'disconnect', () =>
             @sockets       = (s for s in @sockets       when s != socket)
             @queuedSockets = (s for s in @queuedSockets when s != socket)
@@ -173,12 +188,19 @@ DOMEventHandlers =
         if event.attrChange == 'ADDITION' && event.attrName == 'src'
             event.attrValue = @resources.addURL(event.attrValue)
         event = @nodes.scrub(event)
-        @broadcastEvent('DOMAttrModified',
-                        event.target,
-                        event.attrName,
-                        event.newValue,
-                        event.attrChange)
-
+        if @setByClient
+            @broadcastEventExcept(@setByClient,
+                                  'DOMAttrModified',
+                                  event.target,
+                                  event.attrName,
+                                  event.newValue,
+                                  event.attrChange)
+        else
+            @broadcastEvent('DOMAttrModified',
+                            event.target,
+                            event.attrName,
+                            event.newValue,
+                            event.attrChange)
 
     AddEventListener : (event) ->
         {target, type} = event
@@ -243,17 +265,16 @@ DOMEventHandlers =
                         event.args)
 
 RPCMethods =
-    setAttribute : (targetId, attribute, value) ->
+    setAttribute : (targetId, attribute, value, socket) ->
         if !@browserLoading
             target = @nodes.get(targetId)
             if attribute == 'src'
                 return
             if attribute == 'selectedIndex'
                 return target[attribute] = value
-            # TODO: make this nicer.
-            @browser.DONT_EMIT = true
+            @setByClient = socket
             target.setAttribute(attribute, value)
-            @browser.DONT_EMIT = false
+            @setByClient = null
 
     processEvent : (event, specifics, id) ->
         console.log("Processing event: #{id}")

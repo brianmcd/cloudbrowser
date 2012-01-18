@@ -83,12 +83,11 @@ exports.addAdvice = (dom, emitter) ->
 
                 target = map._parentNode
                 if target._attachedToDocument
-                    if !emitter.DONT_EMIT
-                        emitter.emit 'DOMAttrModified',
-                            target : target
-                            attrName : attr.name
-                            newValue : attr.value
-                            attrChange : type
+                    emitter.emit 'DOMAttrModified',
+                        target : target
+                        attrName : attr.name
+                        newValue : attr.value
+                        attrChange : type
                     if /input|textarea|select/.test(target.tagName?.toLowerCase())
                         process.nextTick () ->
                             doc = target._ownerDocument
