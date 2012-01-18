@@ -40,16 +40,17 @@ class DebugServer extends EventEmitter
 
     handleSocket : (socket) =>
         socket.on 'attach', (browserID) =>
-            browser = @browsers.find(browserID).browser
+            bserver = @browsers.find(browserID)
+            browser = bserver.browser
             if browser
                 # Send the existing log file contents.
-                FS.readFile browser.consoleLogPath, 'utf8', (err, data) ->
+                FS.readFile bserver.consoleLogPath, 'utf8', (err, data) ->
                     if !err
                         socket.emit('browserLog', data)
 
                 logListener = (msg) ->
                     socket.emit('browserLog', msg)
-                browser.on 'log', logListener
+                browser.on 'ConsoleLog', logListener
 
                 socket.on 'evaluate', (cmd) =>
                     try

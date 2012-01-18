@@ -104,7 +104,7 @@ class Browser extends EventEmitter
         Request {uri: url}, (err, response, html) =>
             throw err if err
             # Fire window load event once document is loaded.
-            @document.addEventListener 'DOMContentLoaded', (ev) =>
+            @document.addEventListener 'load', (ev) =>
                 ev = @document.createEvent('HTMLEvents')
                 ev.initEvent('load', false, false)
                 @window.dispatchEvent(ev)
@@ -142,7 +142,6 @@ class Browser extends EventEmitter
         # If an app needs server-side knockout, we have to monkey patch
         # some ko functions.
         if Config.knockout
-            console.log("EMBEDDING KNOCKOUT")
             window.run(jQScript,     "jquery-1.6.2.js")
             window.run(jQTmplScript, "jquery.tmpl.js")
             window.run(koScript,     "knockout-1.3.0beta.debug.js")

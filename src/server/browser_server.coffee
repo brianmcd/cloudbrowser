@@ -44,8 +44,8 @@ class BrowserServer
 
     initLogs : () ->
         logDir         = Path.resolve(__dirname, '..', '..', 'logs')
-        consoleLogPath = Path.resolve(logDir, "#{@browser.id}.log")
-        @consoleLog    = FS.createWriteStream(consoleLogPath)
+        @consoleLogPath = Path.resolve(logDir, "#{@browser.id}.log")
+        @consoleLog    = FS.createWriteStream(@consoleLogPath)
         @consoleLog.write("Log opened: #{Date()}\n")
         @consoleLog.write("BrowserID: #{@browser.id}\n")
 
