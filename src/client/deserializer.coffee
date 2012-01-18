@@ -40,7 +40,7 @@ exports.deserialize = (nodes, components, client) ->
                 if /i?frame/.test(record.name.toLowerCase())
                     client.nodes.add(node.contentDocument, record.docID)
                 record.events?.forEach (event) ->
-                    client.monitor.addEventListener(event[0], event[1])
+                    client.eventMonitor.addEventListener(event[0], event[1])
             when 'text', 'comment'
                 if record.type == 'text'
                     node = doc.createTextNode(record.value)

@@ -54,6 +54,6 @@ class SpecialEventHandler
                          @monitor.client.getSpecificValues(),
                          id)
         else
-            delete @monitor.client.eventTimers[id]
+            @monitor.client.latencyMonitor.cancel(id)
 
 module.exports = SpecialEventHandler

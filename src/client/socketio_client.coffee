@@ -1,6 +1,7 @@
 TaggedNodeCollection = require('./shared/tagged_node_collection')
 Compressor           = require('./shared/compressor')
 EventMonitor         = require('./event_monitor')
+LatencyMonitor       = require('./latency_monitor')
 Components           = require('./components')
 {deserialize}        = require('./deserializer')
 Config               = require('./shared/config')
@@ -14,11 +15,8 @@ class SocketIOClient
         @setupRPC(@socket)
         @specifics = []
 
-        # EventMonitor
-        @monitor = null
-
-        # For latency testing.
-        @eventTimers = {}
+        @eventMonitor = null
+        @latencyMonitor = new LatencyMonitor(this)
 
         # TaggedNodeCollection
         @nodes = null
@@ -45,7 +43,7 @@ class SocketIOClient
             # socket.io-client for node doesn't seem to emit 'connect'
             process.nextTick () =>
                 @socket.emit('auth', window.__envSessionID)
-                @monitor = new EventMonitor(this)
+                @eventMonitor   = new EventMonitor(this)
             # If we're testing, expose a function to let the server signal when
             # a test is finished.
             socket.on 'testDone', () =>
@@ -55,7 +53,7 @@ class SocketIOClient
             socket.on 'connect', () =>
                 console.log("Socket.IO connected...")
                 socket.emit('auth', window.__envSessionID)
-                @monitor = new EventMonitor(this)
+                @eventMonitor = new EventMonitor(this)
         return socket
 
     setupRPC : (socket) ->
@@ -157,7 +155,7 @@ RPCMethods =
        window[method].apply(window, args)
 
     AddEventListener : (targetId, type) ->
-        @monitor.addEventListener(targetId, type)
+        @eventMonitor.addEventListener(targetId, type)
         if test_env
             @window.testClient.emit('AddEventListener', targetId, type)
        
@@ -191,12 +189,11 @@ RPCMethods =
         @renderingPaused = false
 
         if id?
-            # Latency testing.
-            stop = Date.now()
-            info = @eventTimers[id]
-            delete @eventTimers[id]
-            elapsed = stop - info.start
-            console.log("[#{id}] #{info.type}: #{elapsed} ms")
+            info = @latencyMonitor.stop(id)
+            if !info?
+                console.log("LatencyMonitor ignoring event from other client.")
+            else
+                console.log("[#{id}] #{info.type}: #{info.elapsed} ms")
 
     # If params given, clear the document of the specified frame.
     # Otherwise, clear the global window's document.

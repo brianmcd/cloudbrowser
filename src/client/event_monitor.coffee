@@ -13,8 +13,6 @@ class EventMonitor
         @socket = @client.socket
         @specialEvents = new SpecialEventHandler(this)
 
-        @nextEventID = 0
-
         # A lookup table to see if the server has listeners for a particular event
         # on a particular node.
         # e.g. { 'nodeID' : {'event1' : true}}
@@ -40,16 +38,13 @@ class EventMonitor
             @registeredEvents[type] = true
 
     _handler : (event) =>
-        id = ++@nextEventID
+        id = @client.latencyMonitor.start(event.type)
         ###
         if event.which == 13
             console.log("_handler: #{id} [#{event.type}] [ENTER KEY]")
         else
             console.log("_handler: #{id} [#{event.type}]")
         ###
-        @client.eventTimers[id] =
-            start : Date.now()
-            type  : event.type
         if DefaultEvents[event.type] || @activeEvents[event.target.__nodeID]?[event.type]
             rEvent = {}
             group = EventTypeToGroup[event.type]
