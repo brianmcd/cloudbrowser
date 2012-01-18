@@ -70,6 +70,7 @@ if (!opts.strict) {
     process.on('uncaughtException', function (err) {
         console.log("Uncaught Exception:");
         console.log(err);
+        console.log(err.stack)
     });
 }
 
