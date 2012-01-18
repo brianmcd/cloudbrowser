@@ -244,8 +244,6 @@ DOMEventHandlers =
 
 RPCMethods =
     setAttribute : (targetId, attribute, value) ->
-        if Config.traceProtocol
-            @logRPCMethod('setAttribute', [targetId, attribute, value])
         if !@browserLoading
             target = @nodes.get(targetId)
             if attribute == 'src'
@@ -255,8 +253,6 @@ RPCMethods =
             target.setAttribute(attribute, value)
 
     processEvent : (event, specifics) ->
-        if Config.traceProtocol
-            @logRPCMethod('processEvent', [event, specifics])
         for own nodeID, value of specifics
             node = @nodes.get(nodeID) # Should cache these for the restore.
             node.__oldValue = node.value
