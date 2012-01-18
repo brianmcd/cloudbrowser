@@ -51,7 +51,7 @@ class BrowserServer
 
         if Config.traceProtocol
             rpcLogPath = Path.resolve(logDir, "#{@browser.id}-rpc.log")
-            @rpcLog     = FS.createWriteStream(rpcLogPath)
+            @rpcLog    = FS.createWriteStream(rpcLogPath)
 
     logRPCMethod : (name, params) ->
         @rpcLog.write("#{name}(")
@@ -82,7 +82,7 @@ class BrowserServer
 
     addSocket : (socket) ->
         if config.monitorTraffic
-            socket = new DebugClient(socket)
+            socket = new DebugClient(socket, this.id)
         for own type, func of RPCMethods
             do (type, func) =>
                 socket.on type, () =>
