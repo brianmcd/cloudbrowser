@@ -1,5 +1,6 @@
 SpecialEventHandler = require('./special_event_handler')
 EventLists          = require('./shared/event_lists')
+Config              = require('./shared/config')
 EventTypeToGroup    = EventLists.eventTypeToGroup
 
 # These are events we listen on even if they aren't requested, because
@@ -38,7 +39,9 @@ class EventMonitor
             @registeredEvents[type] = true
 
     _handler : (event) =>
-        id = @client.latencyMonitor.start(event.type)
+        id = undefined
+        if Config.monitorLatency
+            id = @client.latencyMonitor.start(event.type)
         ###
         if event.which == 13
             console.log("_handler: #{id} [#{event.type}] [ENTER KEY]")

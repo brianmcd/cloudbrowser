@@ -16,10 +16,7 @@ class SocketIOClient
         @specifics = []
 
         @eventMonitor = null
-        @latencyMonitor = new LatencyMonitor(this)
-        setInterval () =>
-            @latencyMonitor.sync()
-        , 10000
+        @latencyMonitor = null
 
         # TaggedNodeCollection
         @nodes = null
@@ -83,6 +80,11 @@ RPCMethods =
     SetConfig : (config) ->
         for own key, value of config
             Config[key] = value
+        if Config.monitorLatency
+            @latencyMonitor = new LatencyMonitor(this)
+            setInterval () =>
+                @latencyMonitor.sync()
+            , 10000
 
     newSymbol : (original, compressed) ->
         console.log("newSymbol: #{original} -> #{compressed}")
@@ -191,7 +193,7 @@ RPCMethods =
         @eventQueue = []
         @renderingPaused = false
 
-        if id?
+        if Config.monitorLatency && id?
             info = @latencyMonitor.stop(id)
             if !info?
                 console.log("LatencyMonitor ignoring event from other client.")

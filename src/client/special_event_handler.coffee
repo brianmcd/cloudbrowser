@@ -1,4 +1,5 @@
 EventTypeToGroup = require('./shared/event_lists').eventTypeToGroup
+Config           = require('./shared/config')
 
 class SpecialEventHandler
     constructor : (monitor) ->
@@ -53,7 +54,7 @@ class SpecialEventHandler
                          rEvent,
                          @monitor.client.getSpecificValues(),
                          id)
-        else
+        else if Config.monitorLatency
             @monitor.client.latencyMonitor.cancel(id)
 
 module.exports = SpecialEventHandler
