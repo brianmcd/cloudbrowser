@@ -42,19 +42,39 @@ class SpecialEventHandler
                          clientEvent.target.value)
 
     keyup : (rEvent, event, id) =>
+        @_pendingKeyup = false
+        # Called directly as an event listener.
+        if arguments.length != 3
+            if Config.monitorLatency
+                id = @monitor.client.latencyMonitor.start('keyup')
+            event = rEvent
+            rEvent = {}
+            @monitor.eventInitializers[EventTypeToGroup[event.type]](rEvent, event)
         {target} = event
-        #console.log("Keyup, setting value to : #{target.value}")
         @socket.emit('setAttribute',
                      target.__nodeID,
                      'value',
                      target.value)
-        if @monitor.activeEvents[event.target.__nodeID]?['keyup']
-            #console.log("Sending special event: #{rEvent.type} - #{id}")
+        @_queuedKeyEvents.push([rEvent, id])
+        for ev in @_queuedKeyEvents
             @socket.emit('processEvent',
-                         rEvent,
+                         ev[0], # event
                          @monitor.client.getSpecificValues(),
-                         id)
-        else if Config.monitorLatency
-            @monitor.client.latencyMonitor.cancel(id)
+                         ev[1]) # id
+        @_queuedKeyEvents = []
+        if !@monitor.registeredEvents['keyup']
+            @monitor.document.removeEventListener('keyup', @keyup, true)
+
+    keydown : (remoteEvent, clientEvent, id) ->
+        @_keyHelper(remoteEvent, id)
+
+    keypress : (remoteEvent, clientEvent, id) ->
+        @_keyHelper(remoteEvent, id)
+
+    _keyHelper : (remoteEvent, id) ->
+        if !@_pendingKeyup && !@monitor.registeredEvents['keyup']
+            @_pendingKeyup = true
+            @monitor.document.addEventListener('keyup', @keyup, true)
+        @_queuedKeyEvents.push([remoteEvent, id])
 
 module.exports = SpecialEventHandler

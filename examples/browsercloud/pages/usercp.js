@@ -1,4 +1,4 @@
-$(function () {
+(function () {
     var shared = vt.shared;
     var local = vt.local;
     var viewModel = {};
@@ -23,4 +23,4 @@ $(function () {
         owner: viewModel
     });
     ko.applyBindings(viewModel, document.getElementById('usercpContainer'));
-});
+})();

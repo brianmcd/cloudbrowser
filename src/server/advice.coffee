@@ -88,12 +88,12 @@ exports.addAdvice = (dom, emitter) ->
                         attrName : attr.name
                         newValue : attr.value
                         attrChange : type
-                    if /input|textarea|select/.test(target.tagName?.toLowerCase())
-                        process.nextTick () ->
-                            doc = target._ownerDocument
-                            ev = doc.createEvent('HTMLEvents')
-                            ev.initEvent('change', false, false)
-                            target.dispatchEvent(ev)
+                if /input|textarea|select/.test(target.tagName?.toLowerCase())
+                    process.nextTick () ->
+                        doc = target._ownerDocument
+                        ev = doc.createEvent('HTMLEvents')
+                        ev.initEvent('change', false, false)
+                        target.dispatchEvent(ev)
         # setNamedItem(node)
         adviseMethod html.AttrNodeMap,
                           'setNamedItem',
@@ -109,6 +109,11 @@ exports.addAdvice = (dom, emitter) ->
     # selection won't actually be changed.
     adviseProperty html.HTMLOptionElement, 'selected',
         setter : (elem, value) ->
+            process.nextTick () ->
+                doc = elem._ownerDocument
+                ev = doc.createEvent('HTMLEvents')
+                ev.initEvent('change', false, false)
+                elem.dispatchEvent(ev)
             if elem._attachedToDocument
                 emitter.emit 'DOMPropertyModified',
                     target   : elem

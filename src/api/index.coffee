@@ -60,6 +60,12 @@ module.exports = EmbedAPI = (browser) ->
         # in the parent elem.
         pages = {activePage : ko.observable('')}
 
+        pages.activePage.subscribe (val) ->
+            page = pages[val]
+            return if !page || page.loaded
+            page.container.innerHTML = page.html
+            page.loaded = true
+
         # Filter out non-nodes
         filter = (node) ->
             return node.nodeType == 1 # ELEMENT_NODE

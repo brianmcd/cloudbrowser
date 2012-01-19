@@ -57,7 +57,7 @@ class DebugServer extends EventEmitter
                         rv = browser.window.run(cmd, 'remote-debug')
                         socket.emit('evalRV', rv)
                     catch e
-                        browser.consoleLogStream.write(e.stack + '\n')
+                        bserver.consoleLog.write(e.stack + '\n')
                         socket.emit('browserLog', e.stack + '\n')
                         socket.emit('evalRV', e.stack)
 
