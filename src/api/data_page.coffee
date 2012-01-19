@@ -24,17 +24,6 @@ class DataPage extends EventEmitter
             @html = DataPage.HTMLCache[@path]
             process.nextTick () =>
                 @emit('load')
-        ###
-        if DataPage.HTMLCache[@path]
-            process.nextTick () =>
-                @container.innerHTML = DataPage.HTMLCache[@path]
-                @emit('load')
-        else
-            FS.readFile @path, 'utf8', (err, data) =>
-                if err then throw err
-                @container.innerHTML = DataPage.HTMLCache[@path] = data
-                @emit('load')
-        ###
 
     _getPath : (src) ->
         docPath = @container.ownerDocument.location.pathname
