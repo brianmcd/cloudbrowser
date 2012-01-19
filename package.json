@@ -24,7 +24,9 @@
         "eco"           : "*",
         "mime"          : "*",
         "nomnom"        : "1.5.1",
-        "hat"           : "0.0.3"
+        "hat"           : "0.0.3",
+        "gzip"          : "0.1.0",
+        "uglify-js"     : "1.2.5"
     },
     "devDependencies" : {
         "socket.io-client" : "0.8.7",

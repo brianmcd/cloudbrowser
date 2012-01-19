@@ -21,6 +21,10 @@ var opts = require('nomnom')
     .option('compression', {
         default : true,
         help    : "Enable protocol compression."})
+    .option('compressJS', {
+        full : 'compress-js',
+        default : false,
+        help : "Pass socket.io and client engine through uglify and gzip."})
     .option('knockout', {
         default : false,
         flag    : true,

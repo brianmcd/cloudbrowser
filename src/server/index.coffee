@@ -1,12 +1,15 @@
 Path            = require('path')
+{EventEmitter}  = require('events')
 FS              = require('fs')
 express         = require('express')
 sio             = require('socket.io')
+Uglify          = require('uglify-js')
+GZip            = require('gzip')
 Browserify      = require('browserify')
-{EventEmitter}  = require('events')
 BrowserManager  = require('./browser_manager')
 DebugServer     = require('./debug_server')
 Application     = require('./application')
+Config          = require('../shared/config')
 {ko}            = require('../api/ko')
 
 # TODO: this should be a proper singleton
@@ -59,11 +62,6 @@ class Server extends EventEmitter
         server = express.createServer()
         server.configure () =>
             server.use(express.logger())
-            server.use(Browserify(
-                mount : '/socketio_client.js',
-                require : [Path.resolve(__dirname, '..', 'client', 'socketio_client')]
-                ignore : ['socket.io-client']
-            ))
             server.use(express.bodyParser())
             server.use(express.cookieParser())
             server.use(express.session({secret: 'change me please'}))
@@ -83,12 +81,42 @@ class Server extends EventEmitter
             # Note: fetch calls res.end()
             bserver?.resources.fetch(resourceid, res)
 
-        server.listen(3000, @registerServer)
+        server.get '/clientEngine.js', (req, res) =>
+            res.statusCode = 200
+            res.setHeader('Last-Modified', @clientEngineModified)
+            res.setHeader('Content-Type', 'text/javascript')
+            if Config.compressJS
+                res.setHeader('Content-Encoding', 'gzip')
+            res.end(@clientEngineJS)
+
+        @clientEngineModified = new Date().toString()
+        b = Browserify
+            require : [Path.resolve(__dirname, '..', 'client', 'socketio_client')]
+            ignore : ['socket.io-client']
+            filter : (src) ->
+                if Config.compressJS
+                    ugly = Uglify(src)
+                else
+                    src
+        src = b.bundle()
+
+        if Config.compressJS
+            GZip src, (err, data) =>
+                throw err if err
+                @clientEngineJS = data
+                server.listen(3000, @registerServer)
+        else
+            @clientEngineJS = src
+            server.listen(3000, @registerServer)
+
         return server
 
     createSocketIOServer : (http) ->
         io = sio.listen(http)
         io.configure () =>
+            if Config.compressJS
+                io.set('browser client minification', true)
+                io.set('browser client gzip', true)
             io.set('log level', 1)
         io.sockets.on 'connection', (socket) =>
             socket.on 'auth', (browserID) =>
