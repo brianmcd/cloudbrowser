@@ -13,8 +13,18 @@ class DataPage extends EventEmitter
         @container.setAttribute('data-bind',
                                 "visible: activePage() === '#{@id}'")
 
+        @loaded = false
         @path = @_getPath(@src)
-        console.log("DATA PAGE GETTING: #{@path}")
+        if !DataPage.HTMLCache[@path]
+            FS.readFile @path, 'utf8', (err, data) =>
+                if err then throw err
+                @html = DataPage.HTMLCache[@path] = data
+                @emit('load')
+        else
+            @html = DataPage.HTMLCache[@path]
+            process.nextTick () =>
+                @emit('load')
+        ###
         if DataPage.HTMLCache[@path]
             process.nextTick () =>
                 @container.innerHTML = DataPage.HTMLCache[@path]
@@ -24,6 +34,7 @@ class DataPage extends EventEmitter
                 if err then throw err
                 @container.innerHTML = DataPage.HTMLCache[@path] = data
                 @emit('load')
+        ###
 
     _getPath : (src) ->
         docPath = @container.ownerDocument.location.pathname
