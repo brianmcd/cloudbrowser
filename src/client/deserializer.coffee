@@ -50,6 +50,6 @@ exports.deserialize = (nodes, components, client) ->
                 parent.insertBefore(node, sibling)
     if components?.length > 0
         for component in components
-            client.createComponent(component)
+            client.RPCMethods.createComponent.call(client, component)
     if process?.env?.TESTS_RUNNING
         client.window.testClient.emit('loadFromSnapshot', nodes)

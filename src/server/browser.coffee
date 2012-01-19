@@ -14,23 +14,9 @@ Config                 = require('../shared/config')
 {addAdvice}            = require('./advice')
 {applyPatches}         = require('./jsdom_patches')
 
-koPatch = do () ->
-    koPatchPath = Path.resolve(__dirname, 'knockout', 'ko-patch.js')
-    FS.readFileSync(koPatchPath, 'utf8')
-koScript = do () ->
-    koPath = Path.resolve(__dirname, 'knockout', 'knockout-1.3.0beta.debug.js')
-    FS.readFileSync(koPath, 'utf8')
-jQScript = do () ->
-    jQueryPath = Path.resolve(__dirname, 'knockout', 'jquery-1.6.2.js')
-    FS.readFileSync(jQueryPath, 'utf8')
-jQTmplScript = do () ->
-    jQueryTmplPath = Path.resolve(__dirname, 'knockout', 'jquery.tmpl.js')
-    FS.readFileSync(jQueryTmplPath, 'utf8')
-
 class Browser extends EventEmitter
     constructor : (@id, app) ->
         @app = Object.create(app)
-        @components = [] # TODO: empty this at the right time; move to BrowserServer
         @window = null
 
         # This gives us a Location class that is aware of our
@@ -63,15 +49,6 @@ class Browser extends EventEmitter
             if /jsdom/.test(entry)
                 delete reqCache[entry]
         return require('jsdom')
-
-    processComponentEvent : (params) ->
-        node = @dom.nodes.get(params.nodeID)
-        if !node
-            throw new Error("Invalid component nodeID: #{params.nodeID}")
-        event = @window.document.createEvent('HTMLEvents')
-        event.initEvent(params.event.type, false, false)
-        event.info = params.event
-        node.dispatchEvent(event)
 
     runOnClient : (str) ->
         @emit 'RunOnClient', str
@@ -203,9 +180,6 @@ class Browser extends EventEmitter
                     method : method
                     args : Array.prototype.slice.call(arguments)
 
-    getSnapshot : () ->
-        return {components : @components}
-
     # For testing purposes, return an emulated client for this browser.
     createTestClient : () ->
         if !process.env.TESTS_RUNNING
@@ -220,3 +194,16 @@ class Browser extends EventEmitter
         @emit 'TestDone'
 
 module.exports = Browser
+
+koPatch = do () ->
+    koPatchPath = Path.resolve(__dirname, 'knockout', 'ko-patch.js')
+    FS.readFileSync(koPatchPath, 'utf8')
+koScript = do () ->
+    koPath = Path.resolve(__dirname, 'knockout', 'knockout-1.3.0beta.debug.js')
+    FS.readFileSync(koPath, 'utf8')
+jQScript = do () ->
+    jQueryPath = Path.resolve(__dirname, 'knockout', 'jquery-1.6.2.js')
+    FS.readFileSync(jQueryPath, 'utf8')
+jQTmplScript = do () ->
+    jQueryTmplPath = Path.resolve(__dirname, 'knockout', 'jquery.tmpl.js')
+    FS.readFileSync(jQueryTmplPath, 'utf8')

@@ -16,7 +16,7 @@ NodeCompressor = require('../shared/node_compressor')
 #   [events] - Optional. Given for element nodes with listeners.
 #   [attributes] - Optional. An object like:
 #       Property : value
-exports.serialize = (root, resources) ->
+exports.serialize = (root, resources, bserver) ->
     document = root.ownerDocument || root
     if document.nodeType != 9
         throw new Error("Couldn't find document")
@@ -34,7 +34,7 @@ exports.serialize = (root, resources) ->
             when 'Element'
                 attributes = null
                 if node.attributes?.length > 0
-                    attributes = copyElementAttrs(node, document, resources)
+                    attributes = copyElementAttrs(node, document, resources, bserver)
                 record =
                     type   : 'element'
                     id     : node.__nodeID
@@ -70,7 +70,7 @@ exports.serialize = (root, resources) ->
 #   iframe src attributes - ignore them.
 #   data-* attributes - ignore them
 #   other element src attributes - rewrite them
-copyElementAttrs = (node, document, resources) ->
+copyElementAttrs = (node, document, resources, bserver) ->
     tagName = node.tagName.toLowerCase()
     attrs = {}
     if node.attributes?.length > 0
@@ -92,6 +92,8 @@ copyElementAttrs = (node, document, resources) ->
                         value = URL.resolve(document.location, value)
             # Don't send things like data-page, data-bind, etc.
             if /^data-/.test(lowercase)
+                if /data-component/.test(lowercase)
+                    bserver.createComponent(node.__nodeID, value)
                 continue
             attrs[name] = value
     return attrs

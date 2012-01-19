@@ -18,6 +18,8 @@ class SocketIOClient
         @eventMonitor = null
         @latencyMonitor = null
 
+        @RPCMethods = RPCMethods
+
         # TaggedNodeCollection
         @nodes = null
 
@@ -60,8 +62,6 @@ class SocketIOClient
         for own name, func of RPCMethods
             do (name, func) =>
                 socket.on name, () =>
-                    #console.log("Got: #{name}")
-                    #console.log(arguments)
                     # We always process newSymbol because resumeRendering will
                     # be compressed if compression is enabled.
                     if name == 'newSymbol'

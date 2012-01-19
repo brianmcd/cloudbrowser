@@ -19,6 +19,7 @@ class BrowserServer
             throw new Error("Missing required parameter")
         @browser = new Browser(@id, @app)
         @sockets = []
+        @components = [] # TODO: when should this be flushed?
         @compressor = new Compressor()
         @compressor.on 'newSymbol', (args) =>
             console.log("newSymbol: #{args.original} -> #{args.compressed}")
@@ -43,9 +44,9 @@ class BrowserServer
         @initLogs()
 
     initLogs : () ->
-        logDir         = Path.resolve(__dirname, '..', '..', 'logs')
+        logDir          = Path.resolve(__dirname, '..', '..', 'logs')
         @consoleLogPath = Path.resolve(logDir, "#{@browser.id}.log")
-        @consoleLog    = FS.createWriteStream(@consoleLogPath)
+        @consoleLog     = FS.createWriteStream(@consoleLogPath)
         @consoleLog.write("Log opened: #{Date()}\n")
         @consoleLog.write("BrowserID: #{@browser.id}\n")
 
@@ -71,6 +72,29 @@ class BrowserServer
             else
                 @rpcLog.write(', ')
 
+    createComponent : (targetID, str) ->
+        # Don't create multiple components on 1 container.
+        for comp in @components
+            if comp.nodeID == targetID
+                return
+        params =
+            nodeID : targetID
+            componentName : null # TODO: rename to "name"
+            opts : {}
+        pairs = str.split(',')
+        for pair in pairs
+            [key, val] = pair.split(':')
+            key = key.trim()
+            val = val.trim()
+            if key == 'name'
+                params.componentName = val
+            else
+                params.opts[key] = val
+        console.log('Component:')
+        console.log(params)
+        @components.push(params)
+        return params
+
     broadcastEvent : (name, args...) ->
         @_broadcastHelper(null, name, args)
 
@@ -91,8 +115,6 @@ class BrowserServer
             for socket in @sockets
                 socket.emit.apply(socket, args)
 
-
-
     addSocket : (socket) ->
         if config.monitorTraffic
             socket = new DebugClient(socket, this.id)
@@ -101,7 +123,6 @@ class BrowserServer
                 socket.on type, () =>
                     if Config.traceProtocol
                         @logRPCMethod(type, arguments)
-                    console.log("Got #{type}")
                     args = Array.prototype.slice.call(arguments)
                     args.push(socket)
                     func.apply(this, args)
@@ -113,12 +134,11 @@ class BrowserServer
         if !@browserInitialized
             return @queuedSockets.push(socket)
 
-        nodes = serialize(@browser.window.document, @resources)
-        components = @browser.getSnapshot().components
+        nodes = serialize(@browser.window.document, @resources, this)
         compressionTable = undefined
         if Config.compression
             compressionTable = @compressor.textToSymbol
-        socket.emit 'PageLoaded', nodes, components, compressionTable
+        socket.emit 'PageLoaded', nodes, @components, compressionTable
         @sockets.push(socket)
 
 # The BrowserServer constructor iterates over the properties in this object and
@@ -134,17 +154,16 @@ DOMEventHandlers =
     PageLoaded : () ->
         @browserInitialized = true
         @browserLoading = false
-        nodes = serialize(@browser.window.document, @resources)
-        components = @browser.getSnapshot().components
+        nodes = serialize(@browser.window.document, @resources, this)
         compressionTable = undefined
         if Config.compression
             compressionTable = @compressor.textToSymbol
         @sockets = @sockets.concat(@queuedSockets)
         @queuedSockets = []
         if Config.traceProtocol
-            @logRPCMethod('PageLoaded', [nodes, components, compressionTable])
+            @logRPCMethod('PageLoaded', [nodes, @components, compressionTable])
         for socket in @sockets
-            socket.emit('PageLoaded', nodes, components, compressionTable)
+            socket.emit('PageLoaded', nodes, @components, compressionTable)
 
     DocumentCreated : (event) ->
         @nodes.add(event.target)
@@ -160,7 +179,7 @@ DOMEventHandlers =
         if event.target.tagName != 'SCRIPT' &&
            event.target.parentNode?.tagName != 'SCRIPT'
             node = event.target
-            nodes = serialize(node, @resources)
+            nodes = serialize(node, @resources, this)
             # 'before' tells the client where to insert the top level node in
             # relation to its siblings.
             # We only need it for the top level node because nodes in its tree
@@ -184,23 +203,31 @@ DOMEventHandlers =
                             event.target)
 
     DOMAttrModified : (event) ->
-        return if @browserLoading
-        if event.attrChange == 'ADDITION' && event.attrName == 'src'
-            event.attrValue = @resources.addURL(event.attrValue)
-        event = @nodes.scrub(event)
+        {attrName, newValue, attrChange, target} = event
+        isAddition = (attrChange == 'ADDITION')
+        if isAddition
+            if attrName == 'src'
+                attrValue = @resources.addURL(newValue)
+            else if /data-component/.test(attrName)
+                component = @createComponent(target.__nodeID, newValue)
+                if !@browserLoading
+                    @broadcastEvent('createComponent', component)
+                return
+        if @browserLoading
+            return
         if @setByClient
             @broadcastEventExcept(@setByClient,
                                   'DOMAttrModified',
-                                  event.target,
-                                  event.attrName,
-                                  event.newValue,
-                                  event.attrChange)
+                                  target.__nodeID,
+                                  attrName,
+                                  newValue,
+                                  attrChange)
         else
             @broadcastEvent('DOMAttrModified',
-                            event.target,
-                            event.attrName,
-                            event.newValue,
-                            event.attrChange)
+                            target.__nodeID,
+                            attrName,
+                            newValue,
+                            attrChange)
 
     AddEventListener : (event) ->
         {target, type} = event
@@ -277,17 +304,12 @@ RPCMethods =
             @setByClient = null
 
     processEvent : (event, specifics, id) ->
-        console.log("Processing event: #{id}")
-        if id == undefined
-            console.log(event)
-            throw new Error("Undefined id")
         for own nodeID, value of specifics
             node = @nodes.get(nodeID) # Should cache these for the restore.
             node.__oldValue = node.value
             node.value = value
 
         if !@browserLoading
-            @broadcastEvent 'pauseRendering'
             # TODO
             # This bail out happens when an event fires on a component, which 
             # only really exists client side and doesn't have a nodeID (and we 
@@ -295,6 +317,8 @@ RPCMethods =
             # Need something more elegant.
             if !event.target
                 return
+
+            @broadcastEvent 'pauseRendering'
 
             # Swap nodeIDs with nodes
             clientEv = @nodes.unscrub(event)
@@ -359,6 +383,17 @@ RPCMethods =
                                         modifiersList, repeat, locale)
                 event.which = clientEv.which
         return event
+
+    componentEvent : (params) ->
+        node = @nodes.get(params.nodeID)
+        if !node
+            throw new Error("Invalid component nodeID: #{params.nodeID}")
+        @broadcastEvent 'pauseRendering'
+        event = @browser.window.document.createEvent('HTMLEvents')
+        event.initEvent(params.event.type, false, false)
+        event.info = params.event
+        node.dispatchEvent(event)
+        @broadcastEvent 'resumeRendering'
 
     latencyInfo : (finishedEvents) ->
         logPath = Path.resolve(__dirname, '..', '..',
