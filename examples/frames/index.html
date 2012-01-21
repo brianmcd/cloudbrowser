@@ -1,0 +1,18 @@
+<html>
+    <head>
+        <script>
+            window.onload = function () {
+                setTimeout(function () {
+                    var frame = document.getElementsByTagName('iframe')[0];
+                    frame.src = 'iframe2.html';
+                    setTimeout(function () {
+                        frame.src = "http://news.ycombinator.com";
+                    }, 1000);
+                }, 1000);
+            };
+        </script>
+    </head>
+    <body>
+        <iframe src='iframe1.html'></iframe>
+    </body>
+</html>
