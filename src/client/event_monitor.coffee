@@ -39,7 +39,6 @@ class EventMonitor
             @registeredEvents[type] = true
 
     _handler : (event) =>
-        console.log("Handler caught: #{event}")
         targetID = event.target.__nodeID
         # Doing this for components...we don't want to intercept/block events
         # on them.
