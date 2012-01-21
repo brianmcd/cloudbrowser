@@ -1,0 +1,28 @@
+<html>
+  <head>
+    <script src='jquery-1.6.1.js'></script>
+  </head>
+  <body style="font-family: Arial">
+    First name: <input id='fname' type='text' />
+    <br />
+    Last name: <input id='lname' type='text' />
+    <br /><br />
+    Hello <span id='output'></span>!
+    <br /><br />
+    Current time is
+    <span id='time'></span>
+    <script>
+      $('#fname,#lname').change(function () {
+        $('#output').text($('#fname').val() 
+                  + ' ' + $('#lname').val());
+      });
+      var proc = require('child_process');
+      setInterval(function () {
+        proc.exec('date "+%F %r"', 
+          function (e, out) {
+            $('#time').text(out);
+          });
+      }, 1000);
+    </script>
+  </body>
+</html>
