@@ -60,7 +60,14 @@ exports.ImportXMLHttpRequest = function (window) {
 
         // Result & response
         this.responseText = "";
-        this.responseXML = "";
+        this.__defineGetter__('responseXML', function () {
+            var ct = this.getResponseHeader('content-type');
+            if (!/text\/xml/.test(ct)) {
+                return undefined;
+            }
+            var parser = new window.DOMParser();
+            return parser.parseFromString(this.responseText, 'text/xml');
+        });
         this.status = null;
         this.statusText = null;
             
@@ -251,7 +258,6 @@ exports.ImportXMLHttpRequest = function (window) {
             headers = defaultHeaders;
             this.readyState = this.UNSENT;
             this.responseText = "";
-            this.responseXML = "";
         };
         
         /**

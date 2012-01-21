@@ -183,6 +183,19 @@ class Browser extends EventEmitter
                     method : method
                     args : Array.prototype.slice.call(arguments)
 
+        window.DOMParser = class DOMParser
+            parseFromString : (str, type) ->
+                jsdom = self.getFreshJSDOM()
+                xmldoc = jsdom.jsdom str, jsdom.level(2),
+                    FetchExternalResources   : false
+                    ProcessExternalResources : false
+                    MutationEvents           : true
+                    QuerySelector            : false
+                # TODO: jsdom should do this
+                xmldoc._documentElement = xmldoc.childNodes[0]
+                return xmldoc
+
+
     # For testing purposes, return an emulated client for this browser.
     createTestClient : () ->
         if !process.env.TESTS_RUNNING
