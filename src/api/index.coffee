@@ -53,22 +53,22 @@ module.exports = EmbedAPI = (browser) ->
 
     window.vt.createComponent = (name, target, options) ->
         targetID = target.__nodeID
-        # Don't create multiple components on 1 container.
-        for comp in browser.components
-            if comp.nodeID == targetID
-                return
-        params =
-            nodeID : targetID
-            componentName : name # TODO: rename to "name"
-            opts : options
-        Components[params.componentName].forEach (method) =>
-            target[method] = () ->
-                browser.emit 'ComponentMethod',
-                    target : target
-                    method : method
-                    args   : Array.prototype.slice.call(arguments)
-        browser.components.push(params)
-        browser.emit('CreateComponent', params)
+        if browser.components[targetID]
+            throw new Error("Can't create 2 components on the same target.")
+        Ctor = Components[name]
+        if !Ctor then throw new Error("Invalid component name: #{name}")
+
+        rpcMethod = (method, args) ->
+            browser.emit 'ComponentMethod',
+                target : target
+                method : method
+                args   : args
+
+        comp = browser.components[targetID] = new Ctor(options, rpcMethod, target)
+        clientComponent = [name, targetID, comp.getRemoteOptions()]
+        browser.clientComponents.push(clientComponent)
+
+        browser.emit('CreateComponent', clientComponent)
         return target
 
 

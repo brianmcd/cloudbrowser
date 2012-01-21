@@ -7,7 +7,6 @@ ResourceProxy        = require('./resource_proxy')
 TaggedNodeCollection = require('../shared/tagged_node_collection')
 Config               = require('../shared/config')
 DebugClient          = require('./debug_client')
-Components           = require('./components')
 {serialize}          = require('./serializer')
 
 {eventTypeToGroup, clientEvents} = require('../shared/event_lists')
@@ -20,7 +19,6 @@ class BrowserServer
             throw new Error("Missing required parameter")
         @browser = new Browser(@id, @app, this)
         @sockets = []
-        @components = [] # TODO: when should this be flushed?
         @compressor = new Compressor()
         @compressor.on 'newSymbol', (args) =>
             console.log("newSymbol: #{args.original} -> #{args.compressed}")
@@ -119,7 +117,10 @@ class BrowserServer
         compressionTable = undefined
         if Config.compression
             compressionTable = @compressor.textToSymbol
-        socket.emit 'PageLoaded', nodes, @browser.components, compressionTable
+        socket.emit('PageLoaded',
+                    nodes,
+                    @browser.clientComponents,
+                    compressionTable)
         @sockets.push(socket)
 
 # The BrowserServer constructor iterates over the properties in this object and
@@ -145,9 +146,12 @@ DOMEventHandlers =
         @sockets = @sockets.concat(@queuedSockets)
         @queuedSockets = []
         if Config.traceProtocol
-            @logRPCMethod('PageLoaded', [nodes, @browser.components, compressionTable])
+            @logRPCMethod('PageLoaded', [nodes, @browser.clientComponents, compressionTable])
         for socket in @sockets
-            socket.emit('PageLoaded', nodes, @browser.components, compressionTable)
+            socket.emit('PageLoaded',
+                        nodes,
+                        @browser.clientComponents,
+                        compressionTable)
 
     DocumentCreated : (event) ->
         @nodes.add(event.target)
@@ -300,8 +304,10 @@ DOMEventHandlers =
                         event.args)
 
     CreateComponent : (component) ->
+        console.log("Inside createComponent: #{@browserLoading}")
         return if @browserLoading
-        @broadcastEvent('CreateComponent', component)
+        {target, name, options} = component
+        @broadcastEvent('CreateComponent', name, target.id, options)
 
     ComponentMethod : (event) ->
         return if @browserLoading
@@ -402,9 +408,15 @@ RPCMethods =
         return event
 
     componentEvent : (params) ->
-        node = @nodes.get(params.nodeID)
+        {nodeID} = params
+        node = @nodes.get(nodeID)
         if !node
-            throw new Error("Invalid component nodeID: #{params.nodeID}")
+            throw new Error("Invalid component nodeID: #{nodeID}")
+        component = @browser.components[nodeID]
+        if !component
+            throw new Error("No component on node: #{nodeID}")
+        for own key, val of params.attrs
+            component.attrs?[key] = val
         @broadcastEvent 'pauseRendering'
         event = @browser.window.document.createEvent('HTMLEvents')
         event.initEvent(params.event.type, false, false)

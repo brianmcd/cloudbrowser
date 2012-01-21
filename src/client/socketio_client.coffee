@@ -18,6 +18,8 @@ class SocketIOClient
         @eventMonitor = null
         @latencyMonitor = null
 
+        @components = {}
+
         @RPCMethods = RPCMethods
 
         # TaggedNodeCollection
@@ -179,19 +181,21 @@ RPCMethods =
     ComponentMethod : (targetID, method, args) ->
         console.log(args)
         console.log("Got ComponentMethod: #{method}")
-        node = @nodes.get(targetID)
-        if !node
+        component = @components[targetID]
+        if !component
             throw new Error("Invalid targetID: #{targetID}")
-        component = node.__component
         component[method].apply(component, args)
 
-
-    CreateComponent : (params) ->
-        node = @nodes.get(params.nodeID)
-        Constructor = Components[params.componentName]
+    # args is an array: [name, targetID, options]
+    CreateComponent : (args) ->
+        [name, targetID, options] = args
+        console.log("CreateComponent")
+        console.log(arguments)
+        node = @nodes.get(targetID)
+        Constructor = Components[name]
         if !Constructor
-            throw new Error("Invalid component: #{params.componentName}")
-        node.__component = new Constructor(@socket, node, params.opts)
+            throw new Error("Invalid component: #{name}")
+        @components[targetID] = new Constructor(@socket, node, options)
 
     close : () ->
         document.write("

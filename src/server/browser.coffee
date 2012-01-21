@@ -23,7 +23,8 @@ class Browser extends EventEmitter
         # DOMWindow and Browser.
         @Location = LocationBuilder(this)
 
-        @components = []
+        @components = {}
+        @clientComponents = []
 
         @initDOM()
         process.nextTick () =>
