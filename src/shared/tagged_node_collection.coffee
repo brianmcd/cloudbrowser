@@ -48,6 +48,11 @@ class TaggedNodeCollection
         node[@propName] = id
         @ids[id] = node
 
+    reTag : (node, newID) ->
+        delete @ids[node.__nodeID]
+        node.__nodeID = newID
+        return @ids[newID] = node
+
     # Substitutes DOM elements in a parameter list with their id.
     # Updates are done in place.
     scrub : (params) ->

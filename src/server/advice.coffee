@@ -51,7 +51,7 @@ exports.addAdvice = (dom, emitter) ->
         # Note: unlike the DOM, we only emit DOMNodeInsertedIntoDocument
         # on the root of a removed subtree, meaning the handler should check
         # to see if it has children.
-        if parent._attachedToDocument && elem.nodeType != 11
+        if (parent._attachedToDocument || parent.nodeType == 9) && elem.nodeType != 11
             emitter.emit 'DOMNodeInsertedIntoDocument',
                 target : elem
                 relatedNode : parent
@@ -62,7 +62,7 @@ exports.addAdvice = (dom, emitter) ->
     adviseMethod html.Node, 'removeChild', (parent, args, rv) ->
         # Note: Unlike DOM, we only emit DOMNodeRemovedFromDocument on the root
         # of the removed subtree.
-        if parent._attachedToDocument
+        if parent._attachedToDocument || parent.nodeType == 9
             elem = args[0]
             emitter.emit 'DOMNodeRemovedFromDocument',
                 target : elem
@@ -82,7 +82,7 @@ exports.addAdvice = (dom, emitter) ->
                 if !attr then return
 
                 target = map._parentNode
-                if target._attachedToDocument
+                if target._attachedToDocument || target.parentNode?.nodeType == 9
                     emitter.emit 'DOMAttrModified',
                         target : target
                         attrName : attr.name
@@ -158,6 +158,24 @@ exports.addAdvice = (dom, emitter) ->
                     return this["__#{name}"] = func
                 html.HTMLElement.prototype.__defineGetter__ name, () ->
                     return this["__#{name}"]
+
+    createFrameAttrHandler = (namespace) ->
+        return (elem, args, rv) ->
+            # If this isn't attached to the document, the DOMNodeInsertedIntoDocument
+            # listener we register in BrowserServer#DOMNodeInserted will emit
+            # ResetFrame.  If this is attached, then the HTMLFrameElement
+            # setAttribute will have already deleted the old document and made a new
+            # one, so we can emit ResetFrame here.
+            return if !elem._attachedToDocument
+            attr = if namespace
+                args[1].toLowerCase()
+            else
+                args[0].toLowerCase()
+            if attr == 'src'
+                emitter.emit 'ResetFrame',
+                    target : elem
+    adviseMethod html.HTMLFrameElement, 'setAttribute', createFrameAttrHandler(false)
+    adviseMethod html.HTMLFrameElement, 'setAttributeNS', createFrameAttrHandler(true)
 
     # Advice for: HTMLElement.style
     #

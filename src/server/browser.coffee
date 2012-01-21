@@ -15,13 +15,15 @@ Config                 = require('../shared/config')
 {applyPatches}         = require('./jsdom_patches')
 
 class Browser extends EventEmitter
-    constructor : (@id, app) ->
+    constructor : (@id, app, @bserver) ->
         @app = Object.create(app)
         @window = null
 
         # This gives us a Location class that is aware of our
         # DOMWindow and Browser.
         @Location = LocationBuilder(this)
+
+        @components = []
 
         @initDOM()
         process.nextTick () =>
@@ -115,7 +117,7 @@ class Browser extends EventEmitter
         # based on a package.json manifest.
         window.require = require
         window.process = process
-        EmbedAPI(this)
+        EmbedAPI(this, @bserver)
         # If an app needs server-side knockout, we have to monkey patch
         # some ko functions.
         if Config.knockout

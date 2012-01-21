@@ -7,16 +7,22 @@ class Slider
         $(node).addClass('yui3-skin-sam')
         @socket = socket
         @node = node
+        @slider = null
         self = this
         @injectYUI () ->
             YUI().use 'slider', (Y) ->
                 console.log("slider opts:")
                 console.log(opts)
-                slider = new Y.Slider(opts)
-                # TODO: can I register on '*'?
-                #       I don't think so, but I can pass multiple event names.
-                slider.on 'valueChange', self.forwardEvent
+                slider = self.slider = new Y.Slider(opts)
+                for event in ['valueChange', 'slideStart', 'thumbMove',
+                              'slideEnd', 'railMouseDown']
+                    slider.on event, self.forwardEvent
                 slider.render(node)
+
+    setValue : (val) ->
+        console.log("setValue: #{val}")
+        @slider.setValue(val)
+        console.log("value: #{@slider.getValue()}")
 
     forwardEvent : (event) =>
         sanitized = {}

@@ -4,9 +4,9 @@ Hat         = require('hat')
 {ko}        = require('./ko')
 DataPage    = require('./data_page')
 Application = require('../server/application')
+Components  = require('../server/components')
 
 # This is intended to be the "Browser" object that applications interact with.
-# # TODO: this exposes the parent browser in its entirety, need to only expose it as Wrapped (embed this in EmbedAPI)
 class WrappedBrowser
     # TODO: WrappedBrowser#embed(iframe) - launch into iframe
     constructor : (parent, browser) ->
@@ -15,8 +15,7 @@ class WrappedBrowser
         @id = browser.id
 
 module.exports = EmbedAPI = (browser) ->
-    window = browser.window
-    app = browser.app
+    {window, app} = browser
 
     window.vt = {}
 
@@ -51,6 +50,27 @@ module.exports = EmbedAPI = (browser) ->
 
     window.vt.currentBrowser = () ->
         return new WrappedBrowser(null, browser)
+
+    window.vt.createComponent = (name, target, options) ->
+        targetID = target.__nodeID
+        # Don't create multiple components on 1 container.
+        for comp in browser.components
+            if comp.nodeID == targetID
+                return
+        params =
+            nodeID : targetID
+            componentName : name # TODO: rename to "name"
+            opts : options
+        Components[params.componentName].forEach (method) =>
+            target[method] = () ->
+                browser.emit 'ComponentMethod',
+                    target : target
+                    method : method
+                    args   : Array.prototype.slice.call(arguments)
+        browser.components.push(params)
+        browser.emit('CreateComponent', params)
+        return target
+
 
     window.vt.initPages = (elem, callback) ->
         if !elem?

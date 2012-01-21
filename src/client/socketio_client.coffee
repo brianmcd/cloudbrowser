@@ -122,6 +122,14 @@ RPCMethods =
         child  = @nodes.get(childId)
         parent.removeChild(child)
 
+    ResetFrame : (frameID, newDocID) ->
+        frame = @nodes.get(frameID)
+        doc = frame.contentDocument
+        while doc.hasChildNodes()
+            doc.removeChild(doc.firstChild)
+        # TODO: this is bad, should be going through TaggedNodeCollection.
+        @nodes.reTag(doc, newDocID)
+
     PageLoaded : (nodes, components, compressionTable) ->
         console.log('loadFromSnapshot')
         console.log(arguments)
@@ -168,12 +176,22 @@ RPCMethods =
     disconnect : () ->
         @socket.disconnect()
 
-    createComponent : (params) ->
+    ComponentMethod : (targetID, method, args) ->
+        console.log(args)
+        console.log("Got ComponentMethod: #{method}")
+        node = @nodes.get(targetID)
+        if !node
+            throw new Error("Invalid targetID: #{targetID}")
+        component = node.__component
+        component[method].apply(component, args)
+
+
+    CreateComponent : (params) ->
         node = @nodes.get(params.nodeID)
         Constructor = Components[params.componentName]
         if !Constructor
             throw new Error("Invalid component: #{params.componentName}")
-        component = new Constructor(@socket, node, params.opts)
+        node.__component = new Constructor(@socket, node, params.opts)
 
     close : () ->
         document.write("

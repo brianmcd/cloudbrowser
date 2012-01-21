@@ -7,6 +7,7 @@ ResourceProxy        = require('./resource_proxy')
 TaggedNodeCollection = require('../shared/tagged_node_collection')
 Config               = require('../shared/config')
 DebugClient          = require('./debug_client')
+Components           = require('./components')
 {serialize}          = require('./serializer')
 
 {eventTypeToGroup, clientEvents} = require('../shared/event_lists')
@@ -17,7 +18,7 @@ class BrowserServer
         {@id, @app} = opts
         if !@id? || !@app?
             throw new Error("Missing required parameter")
-        @browser = new Browser(@id, @app)
+        @browser = new Browser(@id, @app, this)
         @sockets = []
         @components = [] # TODO: when should this be flushed?
         @compressor = new Compressor()
@@ -72,29 +73,6 @@ class BrowserServer
             else
                 @rpcLog.write(', ')
 
-    createComponent : (targetID, str) ->
-        # Don't create multiple components on 1 container.
-        for comp in @components
-            if comp.nodeID == targetID
-                return
-        params =
-            nodeID : targetID
-            componentName : null # TODO: rename to "name"
-            opts : {}
-        pairs = str.split(',')
-        for pair in pairs
-            [key, val] = pair.split(':')
-            key = key.trim()
-            val = val.trim()
-            if key == 'name'
-                params.componentName = val
-            else
-                params.opts[key] = val
-        console.log('Component:')
-        console.log(params)
-        @components.push(params)
-        return params
-
     broadcastEvent : (name, args...) ->
         @_broadcastHelper(null, name, args)
 
@@ -134,11 +112,14 @@ class BrowserServer
         if !@browserInitialized
             return @queuedSockets.push(socket)
 
-        nodes = serialize(@browser.window.document, @resources, this)
+        nodes = serialize(@browser.window.document,
+                          @resources,
+                          this,
+                          @browser.window.document)
         compressionTable = undefined
         if Config.compression
             compressionTable = @compressor.textToSymbol
-        socket.emit 'PageLoaded', nodes, @components, compressionTable
+        socket.emit 'PageLoaded', nodes, @browser.components, compressionTable
         @sockets.push(socket)
 
 # The BrowserServer constructor iterates over the properties in this object and
@@ -154,32 +135,62 @@ DOMEventHandlers =
     PageLoaded : () ->
         @browserInitialized = true
         @browserLoading = false
-        nodes = serialize(@browser.window.document, @resources, this)
+        nodes = serialize(@browser.window.document,
+                          @resources,
+                          this,
+                          @browser.window.document)
         compressionTable = undefined
         if Config.compression
             compressionTable = @compressor.textToSymbol
         @sockets = @sockets.concat(@queuedSockets)
         @queuedSockets = []
         if Config.traceProtocol
-            @logRPCMethod('PageLoaded', [nodes, @components, compressionTable])
+            @logRPCMethod('PageLoaded', [nodes, @browser.components, compressionTable])
         for socket in @sockets
-            socket.emit('PageLoaded', nodes, @components, compressionTable)
+            socket.emit('PageLoaded', nodes, @browser.components, compressionTable)
 
     DocumentCreated : (event) ->
         @nodes.add(event.target)
 
+    FrameLoaded : (event) ->
+        {target} = event
+        targetID = target.__nodeID
+        @broadcastEvent('clear', targetID)
+        @broadcastEvent('TagDocument',
+                        targetID,
+                        target.contentDocument.__nodeID)
+
     # Tag all newly created nodes.
     # This seems cleaner than having serializer do the tagging.
     DOMNodeInserted : (event) ->
-        if !event.target.__nodeID
-            @nodes.add(event.target)
+        {target} = event
+        if !target.__nodeID
+            @nodes.add(target)
+        if /[i]?frame/.test(target.tagName?.toLowerCase())
+            # TODO: This is a temp hack, we shouldn't rely on JSDOM's
+            #       MutationEvents.
+            listener = target.addEventListener 'DOMNodeInsertedIntoDocument', () =>
+                target.removeEventListener('DOMNodeInsertedIntoDocument', listener)
+                @broadcastEvent('ResetFrame',
+                                target.__nodeID,
+                                target.contentDocument.__nodeID)
+
+    ResetFrame : (event) ->
+        return if @browserLoading
+        {target} = event
+        @broadcastEvent('ResetFrame',
+                        target.__nodeID,
+                        target.contentDocument.__nodeID)
 
     DOMNodeInsertedIntoDocument : (event) ->
         return if @browserLoading
         if event.target.tagName != 'SCRIPT' &&
            event.target.parentNode?.tagName != 'SCRIPT'
             node = event.target
-            nodes = serialize(node, @resources, this)
+            nodes = serialize(node,
+                              @resources,
+                              this,
+                              @browser.window.document)
             # 'before' tells the client where to insert the top level node in
             # relation to its siblings.
             # We only need it for the top level node because nodes in its tree
@@ -204,15 +215,12 @@ DOMEventHandlers =
 
     DOMAttrModified : (event) ->
         {attrName, newValue, attrChange, target} = event
+        tagName = target.tagName?.toLowerCase()
+        if /[i]?frame|script/.test(tagName)
+            return
         isAddition = (attrChange == 'ADDITION')
-        if isAddition
-            if attrName == 'src'
-                attrValue = @resources.addURL(newValue)
-            else if /data-component/.test(attrName)
-                component = @createComponent(target.__nodeID, newValue)
-                if !@browserLoading
-                    @broadcastEvent('createComponent', component)
-                return
+        if isAddition && attrName == 'src'
+            attrValue = @resources.addURL(newValue)
         if @browserLoading
             return
         if @setByClient
@@ -290,6 +298,15 @@ DOMEventHandlers =
         @broadcastEvent('WindowMethodCalled',
                         event.method,
                         event.args)
+
+    CreateComponent : (component) ->
+        return if @browserLoading
+        @broadcastEvent('CreateComponent', component)
+
+    ComponentMethod : (event) ->
+        return if @browserLoading
+        {target, method, args} = event
+        @broadcastEvent('ComponentMethod', target.__nodeID, method, args)
 
 RPCMethods =
     setAttribute : (targetId, attribute, value, socket) ->
