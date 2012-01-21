@@ -1,0 +1,28 @@
+<html>
+    <head>
+        <script>
+            window.addEventListener('load', function () {
+                var vm = {
+                    selectedDate : ko.observable()
+                };
+                ko.applyBindings(vm);
+                var pickerDiv = document.getElementById('datePicker');
+                var picker = vt.createComponent('calendar', pickerDiv, {
+                    height : '200px',
+                    width : '600px',
+                    showPrevMonth : true,
+                    showNextMonth : true
+                });
+                // Or maybe "selectionChange", which has info.newSelection
+                picker.addEventListener('Calendar:dateClick', function (e) {
+                    vm.selectedDate(e.info.date);
+                });
+            });
+        </script>
+    </head>
+    <body>
+        <div id='datePicker'></div>
+        <div data-bind='text: selectedDate'></div>
+    </body>
+</html>
+

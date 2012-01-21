@@ -4,12 +4,9 @@
             window.addEventListener('load', function () {
                 var vm = {
                     xSliderVal : ko.observable(),
-                    ySliderVal : ko.observable(),
-                    selectedDate : ko.observable()
+                    ySliderVal : ko.observable()
                 };
                 ko.applyBindings(vm);
-
-                // Sliders
                 var xSliderDiv = document.getElementById('xSlider');
                 var xSlider = vt.createComponent('slider', xSliderDiv)
                 xSlider.addEventListener('slider:valueChange', function (e) {
@@ -22,19 +19,14 @@
                 ySlider.addEventListener('slider:valueChange', function (e) {
                     vm.ySliderVal(e.info.newVal);
                 });
+                setTimeout(function () {
+                    xSlider.setValue(50);
+                    ySlider.setValue(75);
+                }, 1000);
 
-                // DatePicker
-                var pickerDiv = document.getElementById('datePicker');
-                var picker = vt.createComponent('calendar', pickerDiv, {
-                    height : '200px',
-                    width : '600px',
-                    showPrevMonth : true,
-                    showNextMonth : true
-                });
-                // Or maybe "selectionChange", which has info.newSelection
-                picker.addEventListener('Calendar:dateClick', function (e) {
-                    vm.selectedDate(e.info.date);
-                });
+                setInterval(function () {
+                    console.log("xSlider.get('value'): " + xSlider.get('value'));
+                }, 100);
             });
         </script>
     </head>
@@ -43,7 +35,5 @@
         <div id='xSlider'></div>
         <input data-bind='value: ySliderVal'></input>
         <div id='ySlider'></div>
-        <div id='datePicker'></div>
-        <div data-bind='text: selectedDate'></div>
     </body>
 </html>
