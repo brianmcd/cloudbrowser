@@ -13,6 +13,7 @@
         <br />
         <button data-bind="event: { click : newClick  }">New</button>
         <button data-bind="event: { click : saveClick }">Save</button>
+        <button data-bind="event: { click : deleteClick }">Delete</button>
         <script>
             var phoneBook = vt.local;
             ko.applyBindings({
@@ -20,7 +21,8 @@
                 nextClick    : phoneBook.getNextEntry.bind(phoneBook),
                 prevClick    : phoneBook.getPreviousEntry.bind(phoneBook),
                 saveClick    : phoneBook.saveCurrent.bind(phoneBook),
-                newClick     : phoneBook.newEntry.bind(phoneBook)
+                newClick     : phoneBook.newEntry.bind(phoneBook),
+                deleteClick  : phoneBook.deleteCurrent.bind(phoneBook)
             });
         </script>
     </body>

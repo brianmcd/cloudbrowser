@@ -34,6 +34,12 @@ PhoneBook.prototype = {
     saveCurrent : function () {
         this.currentEntry().save();
     },
+    deleteCurrent : function () {
+        var entry = this.currentEntry();
+        var id = entry.id;
+        entry.destroy();
+        this._setAsCurrent(id - 1);
+    },
     getNextEntry : function () {
         this._getEntry('next');
     },
