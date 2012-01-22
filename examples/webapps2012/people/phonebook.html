@@ -14,7 +14,7 @@
             <td data-bind="text: lname" /></td>
             <td data-bind="text: phoneNumber" /></td>
           <td>
-            <button data-bind="event: { click: $parent.startEditing }">Edit</button>
+              <button data-bind="click: function() { $data.editable(true); }">Edit</button>
           </td>
         </tr>
         <tr data-bind="visible: editable">
@@ -22,23 +22,35 @@
           <td><input data-bind="value: realentry.lname" /></td>
           <td><input data-bind="value: realentry.phoneNumber" /></td>
           <td>
-             <button data-bind="event: { click: save }">Save</button>
-             <button data-bind="event: { click: $parent.cancelEditing }">Cancel</button>
+              <button data-bind="click: save">Save</button>
+              <button data-bind="click: function() { $data.editable(false); }">Cancel</button>
           </td>
         </tr>
       </tbody>
     </table>
     <script>
       var phoneBook = vt.local;
-      phoneBook.getEntries(function (_entries) {
+      phoneBook.getEntries(function (entries) {
+        var obsEntries = [];
+        for (var i = 0; i < entries.length; i++) {
+           obsEntries.push({
+              editable : ko.observable(false),
+              fname : ko.observable(entries[i].fname),
+              lname : ko.observable(entries[i].lname),
+              phoneNumber : ko.observable(entries[i].phoneNumber),
+              realentry : entries[i],
+              save : function () {
+                  var self = this;
+                  ["fname", "lname", "phoneNumber"].forEach(function (p) {
+                     self[p](self.realentry[p]);
+                  });
+                  this.realentry.save();
+                  this.editable(false);
+              }
+           });
+        }
         ko.applyBindings({
-          entries : ko.observableArray(_entries),
-          startEditing : function () {
-              this.editable(true);
-          },
-          cancelEditing : function () {
-              this.editable(false);
-          }
+          entries : ko.observableArray(obsEntries),
         });
       });
     </script>

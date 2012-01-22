@@ -25,25 +25,7 @@ module.exports = PhoneBook;
 PhoneBook.prototype = {
   getEntries : function (cb) {
       Person.findAll().success(function (entries) { 
-          var obsEntries = [];
-          for (var i = 0; i < entries.length; i++) {
-              obsEntries.push({
-                  editable : ko.observable(false),
-                  fname : ko.observable(entries[i].fname),
-                  lname : ko.observable(entries[i].lname),
-                  phoneNumber : ko.observable(entries[i].phoneNumber),
-                  realentry : entries[i],
-                  save : function () {
-                      var self = this;
-                      ["fname", "lname", "phoneNumber"].forEach(function (p) {
-                          self[p](self.realentry[p]);
-                      });
-                      this.realentry.save();
-                      this.editable(false);
-                  }
-              });
-          }
-          cb(obsEntries); 
+          cb(entries); 
       });
   }
 };
