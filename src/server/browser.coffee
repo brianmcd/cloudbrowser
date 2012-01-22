@@ -134,8 +134,6 @@ class Browser extends EventEmitter
     augmentWindow : (window) ->
         self = this
 
-        window.JSON = JSON
-
         # Thanks Zombie for Image code 
         window.Image = (width, height) ->
             img = new self.jsdom
