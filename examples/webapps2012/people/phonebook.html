@@ -1,0 +1,46 @@
+<html>
+  <body>
+    <table>
+      <thead>
+        <tr>
+          <th>First Name</th>
+          <th>Last Name</th>
+          <th>Phone Number</th>
+        </tr>
+      </thead>
+      <tbody data-bind="foreach: entries">
+        <tr data-bind="visible: !editable()">
+            <td data-bind="text: fname" /></td>
+            <td data-bind="text: lname" /></td>
+            <td data-bind="text: phoneNumber" /></td>
+          <td>
+            <button data-bind="event: { click: $parent.startEditing }">Edit</button>
+          </td>
+        </tr>
+        <tr data-bind="visible: editable">
+          <td><input data-bind="value: realentry.fname" /></td>
+          <td><input data-bind="value: realentry.lname" /></td>
+          <td><input data-bind="value: realentry.phoneNumber" /></td>
+          <td>
+             <button data-bind="event: { click: save }">Save</button>
+             <button data-bind="event: { click: $parent.cancelEditing }">Cancel</button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <script>
+      var phoneBook = vt.local;
+      phoneBook.getEntries(function (_entries) {
+        ko.applyBindings({
+          entries : ko.observableArray(_entries),
+          startEditing : function () {
+              this.editable(true);
+          },
+          cancelEditing : function () {
+              this.editable(false);
+          }
+        });
+      });
+    </script>
+  </body>
+</html>

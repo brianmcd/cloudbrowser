@@ -1,1 +1,1 @@
-../../../bin/server --knockout app.js
+../../../bin/server --knockout phonebookapp.js
