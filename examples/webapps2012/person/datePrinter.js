@@ -1,12 +1,10 @@
-(function () {
-  var exec = require('child_process').exec;
-  var thetime = document.getElementById('thetime');
 
-  setInterval(function () {
-    exec('date', function (err, stdout) {
-      if (!err) {
-        thetime.innerHTML = stdout;
-      }
-    });
-  }, 1000);
-})();
+// datePrinter.js
+var proc = require('child_process');
+setInterval(function () {
+  proc.exec('date "+%F %r"', function (e, out) {
+    document.getElementById('thetime')
+            .innerHTML = out;
+  });
+}, 1000);
+
