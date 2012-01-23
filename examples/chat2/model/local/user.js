@@ -2,7 +2,7 @@ var EventEmitter = require('events').EventEmitter,
     ko           = require('vt-node-lib').ko;
 
 function User() {
-    // TODO: username
+    this.username = ko.observable("New User");
     this.activeRoom = ko.observable();
     this.joinedRooms = ko.observableArray();
     this.joinedRoomsByName = {};

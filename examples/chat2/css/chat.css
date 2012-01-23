@@ -1,0 +1,7 @@
+#chatsContainer ul {
+    padding: 20px 40px 0px 40px;
+}
+
+#chatsContainer textarea, #chatsContainer input {
+    width: 100%;
+}

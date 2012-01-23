@@ -5,7 +5,7 @@
         activeRoom     : user.activeRoom,
         currentMessage : ko.observable(''),
         postMessage : function () {
-            this.activeRoom().postMessage('username', this.currentMessage());
+            this.activeRoom().postMessage(user.username(), this.currentMessage());
             this.currentMessage('');
         },
         currentMessageKeyUp : function (e) {

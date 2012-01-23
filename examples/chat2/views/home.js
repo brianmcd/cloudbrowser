@@ -4,9 +4,13 @@
 
     var viewModel = {
         rooms        : chats.rooms,
+        username     : ko.observable(user.username()),
         newRoomName  : ko.observable('NewRoom'),
         selectedRoom : ko.observable(vt.shared.chats.rooms()[0])
     };
+    viewModel.username.subscribe(function (val) {
+        user.username(val);
+    });
     viewModel.rooms.subscribe(function (val) {
         if (val.length == 1) {
             viewModel.selectedRoom(val[0]);

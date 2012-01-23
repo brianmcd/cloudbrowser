@@ -1,26 +1,16 @@
 <div id='chatsContainer' class='container'>
-    <ul style='padding: 20px 40px 0px 40px'
-        class="tabs"
-        data-tabs="tabs"
-        data-bind="foreach: myChats">
-        <li data-bind="attr: {
-            class : ($root.activeRoom().name == name ? 'active' : '')}">
+    <ul class="tabs" data-tabs="tabs" data-bind="foreach: myChats">
+        <li data-bind="css: { active: $root.activeRoom().name === name}">
             <a data-bind="text: name, attr: { href : '#' + name }"></a>
         </li>
-        <!-- TODO: when a room as new messages, add class 'danger' -->
-        <!-- TODO: active chat has primary -->
     </ul>
     <div id="chat-tabs" data-bind='foreach: myChats'>
-        <div data-bind="visible: ($root.activeRoom() === $data),
-                        attr: {
-                            id : 'tab-' + name,
-                            class : 'tab-pane'}">
-            <textarea rows='20' style='width: 100%' data-bind='value: messages'></textarea>
+        <div class='tab-pane' data-bind="visible: ($root.activeRoom() === $data),
+                        attr: {id : 'tab-' + name}">
+            <textarea rows='20' data-bind='value: messages'></textarea>
         </div>
     </div>
-    <input type='text'
-           style='width: 100%;'
-           size='160' 
+    <input type='text' size='160' 
            data-bind='value: currentMessage, event: {keyup: currentMessageKeyUp}'>
     </input>
     <button class='btn' data-bind='click: postMessage'>Send</button>
