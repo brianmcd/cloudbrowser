@@ -1,1 +1,1 @@
-../../bin/server --knockout --compression=false --debug index.html
+../../bin/server --knockout --compression=false --debug smallCalendar.html
