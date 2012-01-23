@@ -1,5 +1,5 @@
 <html>
-  <body>
+  <body style="font-family: Arial">
     <table>
       <thead>
         <tr>
@@ -16,14 +16,13 @@
         </tr>
       </tbody>
     </table>
-    <br />
-    <button data-bind='click: create'>New</button>
+    <button data-bind='click: create'>Add Entry</button>
     <div data-bind="with: currentEntry">
-      <br /><br />
-      First Name: <input data-bind='value: fname' /><br />
-      Last Name: <input data-bind='value: lname' /><br />
-      Phone Number: <input data-bind='value: phoneNumber' /><br />
-      <br />
+      <table>
+        <tr><td>First Name: </td><td><input data-bind='value: fname' /></td></tr>
+        <tr><td>Last Name: </td><td><input data-bind='value: lname' /></td></tr>
+        <tr><td>Phone Number: </td><td><input data-bind='value: phoneNumber' /></td></tr>
+      </table>
       <button data-bind='click: $parent.save'>Save</button>
       <button data-bind='click: $parent.remove'>Delete</button>
     </div>
