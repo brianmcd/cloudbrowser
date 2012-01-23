@@ -17,7 +17,7 @@
       </tbody>
     </table>
     <script>
-      var phoneBook = vt.local;
+      var phoneBook = vt.shared;
       phoneBook.getEntries(function (entries) {
         ko.applyBindings({
           entries : ko.observableArray(entries),

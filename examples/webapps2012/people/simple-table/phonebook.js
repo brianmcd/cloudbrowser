@@ -9,18 +9,9 @@ var Person = sequelize.define('Person', {
   lname       : Sequelize.STRING,
   phoneNumber : Sequelize.STRING
 });
+Person.sync();
 
-Person.sync().success(function () {
-  console.log("Person synced");
-}).error(function (e) {
-  console.log("Error synching person");
-  throw e;
-});
-
-function PhoneBook () {
-}
-
-module.exports = PhoneBook;
+function PhoneBook () {}
 
 PhoneBook.prototype = {
   getEntries : function (cb) {
@@ -29,3 +20,5 @@ PhoneBook.prototype = {
       });
   }
 };
+
+module.exports = PhoneBook;
