@@ -6,7 +6,7 @@ NodeCompressor = require('../shared/node_compressor')
 # Each node in the DOM is represented by an object.
 # A serialized DOM (or snapshot) is an array of these objects.
 # Sample record:
-#   type - 'text' || 'element' || 'comment'
+#   type - 'text' || 'element' || 'comment' || 'doctype'
 #   id
 #   [ownerDocument] - If null, then window.document.  If in a frame, then
 #                     this will be supplied.
@@ -41,6 +41,10 @@ exports.serialize = (root, resources, bserver, topDoc) ->
                 if node.ownerDocument != topDoc
                     record.ownerDocument = node.ownerDocument.__nodeID
                 if /^i?frame$/.test(node.tagName.toLowerCase())
+                    printRecords = true
+                    if node.__nodeID == 'node1653'
+                        targetiframe = true
+
                     record.docID = node.contentDocument.__nodeID
                 if node.__registeredListeners?.length
                     record.events = node.__registeredListeners
@@ -60,6 +64,15 @@ exports.serialize = (root, resources, bserver, topDoc) ->
                     if node.ownerDocument != topDoc
                         record.ownerDocument = node.ownerDocument.__nodeID
                     cmds.push(NodeCompressor.compress(record))
+
+            when 'Document_Type'
+                record =
+                    type   : 'doctype'
+                    id     : node.__nodeID
+                    name   : node.name
+                    pid    : node.publicId
+                    sid    : node.systemId
+                cmds.push(NodeCompressor.compress(record))
     return cmds
 
 # Contains special cases for:

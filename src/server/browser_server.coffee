@@ -8,6 +8,7 @@ TaggedNodeCollection = require('../shared/tagged_node_collection')
 Config               = require('../shared/config')
 DebugClient          = require('./debug_client')
 {serialize}          = require('./serializer')
+{isVisibleOnClient}  = require('../shared/utils')
 
 {eventTypeToGroup, clientEvents} = require('../shared/event_lists')
 
@@ -175,9 +176,10 @@ DOMEventHandlers =
             #       MutationEvents.
             listener = target.addEventListener 'DOMNodeInsertedIntoDocument', () =>
                 target.removeEventListener('DOMNodeInsertedIntoDocument', listener)
-                @broadcastEvent('ResetFrame',
-                                target.__nodeID,
-                                target.contentDocument.__nodeID)
+                if isVisibleOnClient(target, @browser)
+                    @broadcastEvent('ResetFrame',
+                                    target.__nodeID,
+                                    target.contentDocument.__nodeID)
 
     ResetFrame : (event) ->
         return if @browserLoading
@@ -186,6 +188,7 @@ DOMEventHandlers =
                         target.__nodeID,
                         target.contentDocument.__nodeID)
 
+    # TODO: consider doctypes.
     DOMNodeInsertedIntoDocument : (event) ->
         return if @browserLoading
         if event.target.tagName != 'SCRIPT' &&

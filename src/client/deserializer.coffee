@@ -30,13 +30,7 @@ exports.deserialize = (nodes, components, client) ->
                 for name, value of record.attributes
                     node.setAttribute(name, value)
                 client.nodes.add(node, record.id)
-                try
-                    parent.insertBefore(node, sibling)
-                catch e
-                    console.log(record)
-                    console.log(parent)
-                    console.log("ERROR INSERTING: #{record.type}")
-                    throw e
+                parent.insertBefore(node, sibling)
                 # For [i]frames, we need to tag the contentDocument.
                 # The server sends a docID attached to the record.
                 if /i?frame/.test(record.name.toLowerCase())
@@ -58,11 +52,12 @@ exports.deserialize = (nodes, components, client) ->
                     else
                         node = doc.createComment(record.value)
                     client.nodes.add(node, record.id)
-                try
-                    parent.insertBefore(node, sibling)
-                catch e
-                    console.log("ERROR INSERTING #{record.type}")
-                    throw e
+                parent.insertBefore(node, sibling)
+
+            when 'doctype'
+                node = doc.implementation.createDocumentType(record.name, record.pid, record.sid)
+                client.nodes.add(node, record.id)
+                doc.doctype = node
 
     if components?.length > 0
         for component in components

@@ -1,4 +1,5 @@
-{ClientEvents} = require('../shared/event_lists')
+{ClientEvents}      = require('../shared/event_lists')
+{isVisibleOnClient} = require('../shared/utils')
 
 adviseMethod = (obj, name, func) ->
     originalMethod = obj.prototype[name]
@@ -51,7 +52,7 @@ exports.addAdvice = (dom, emitter) ->
         # Note: unlike the DOM, we only emit DOMNodeInsertedIntoDocument
         # on the root of a removed subtree, meaning the handler should check
         # to see if it has children.
-        if (parent._attachedToDocument || parent.nodeType == 9) && elem.nodeType != 11
+        if isVisibleOnClient(parent, emitter)
             emitter.emit 'DOMNodeInsertedIntoDocument',
                 target : elem
                 relatedNode : parent
@@ -62,7 +63,7 @@ exports.addAdvice = (dom, emitter) ->
     adviseMethod html.Node, 'removeChild', (parent, args, rv) ->
         # Note: Unlike DOM, we only emit DOMNodeRemovedFromDocument on the root
         # of the removed subtree.
-        if parent._attachedToDocument || parent.nodeType == 9
+        if isVisibleOnClient(parent, emitter)
             elem = args[0]
             emitter.emit 'DOMNodeRemovedFromDocument',
                 target : elem
@@ -82,7 +83,7 @@ exports.addAdvice = (dom, emitter) ->
                 if !attr then return
 
                 target = map._parentNode
-                if target._attachedToDocument || target.parentNode?.nodeType == 9
+                if isVisibleOnClient(target, emitter)
                     emitter.emit 'DOMAttrModified',
                         target : target
                         attrName : attr.name
@@ -114,7 +115,7 @@ exports.addAdvice = (dom, emitter) ->
                 ev = doc.createEvent('HTMLEvents')
                 ev.initEvent('change', false, false)
                 elem.dispatchEvent(ev)
-            if elem._attachedToDocument
+            if isVisibleOnClient(elem, emitter)
                 emitter.emit 'DOMPropertyModified',
                     target   : elem
                     property : 'selected'
@@ -125,7 +126,7 @@ exports.addAdvice = (dom, emitter) ->
     # This is the only way to detect changes to the text contained in a node.
     adviseProperty html.CharacterData, '_nodeValue',
         setter : (elem, value) ->
-            if elem._parentNode?._attachedToDocument
+            if elem._parentNode? && isVisibleOnClient(elem._parentNode, emitter)
                 emitter.emit 'DOMCharacterDataModified',
                     target : elem
                     value  : value
@@ -171,7 +172,7 @@ exports.addAdvice = (dom, emitter) ->
                 args[1].toLowerCase()
             else
                 args[0].toLowerCase()
-            if attr == 'src'
+            if attr == 'src' && isVisibleOnClient(elem)
                 emitter.emit 'ResetFrame',
                     target : elem
     adviseMethod html.HTMLFrameElement, 'setAttribute', createFrameAttrHandler(false)
@@ -247,7 +248,7 @@ exports.addAdvice = (dom, emitter) ->
                 if !this[prop]
                     this[this.length++] = attr
                 rv = this[prop] = val
-                if parent?._attachedToDocument
+                if isVisibleOnClient(parent, emitter)
                     emitter.emit 'DOMStyleChanged',
                         target    : parent
                         attribute : attr
