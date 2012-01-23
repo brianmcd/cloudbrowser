@@ -4,3 +4,6 @@
 [submodule "deps/knockout-node"]
 	path = deps/knockout-node
 	url = git@theta.cs.vt.edu:knockout-node.git
+[submodule "deps/html5"]
+	path = deps/html5
+	url = https://github.com/aredridel/html5.git
