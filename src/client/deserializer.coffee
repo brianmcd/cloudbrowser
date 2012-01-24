@@ -11,10 +11,16 @@ exports.deserialize = (nodes, components, client) ->
             # to re-add to DOM at the right place, don't we?
             #continue
             node = client.nodes.get(record.id)
-            if node.parentNode != null
-                throw new Error("Trying to add a node that already has a parent node.")
+            #if node.parentNode != null
+            #    throw new Error("Trying to add a node that already has a parent node.")
 
-        parent = client.nodes.get(record.parent)
+        try
+            parent = client.nodes.get(record.parent)
+        catch e
+            console.log e
+            console.log e.stack
+            console.log record
+            console.log nodes
         # Note: If record.before is null, then the TaggedNodeCollection
         #       returns null.
         # TODO: we always use appendChild here after 1st node ultimately anyway...optimize for it.
