@@ -1,4 +1,4 @@
-var ko       = require('vt-node-lib').ko,
+var ko       = require('../../../../src/api/ko').ko,
     ChatRoom = require('./chatroom');
 
 function ChatManager () {

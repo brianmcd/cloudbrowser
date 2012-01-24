@@ -1,5 +1,5 @@
 var EventEmitter = require('events').EventEmitter,
-    ko           = require('vt-node-lib').ko;
+    ko           = require('../../../../src/api/ko').ko;
 
 function User() {
     this.username = ko.observable("New User");
