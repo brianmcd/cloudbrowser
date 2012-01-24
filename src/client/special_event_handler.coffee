@@ -40,6 +40,7 @@ class SpecialEventHandler
                          clientEvent.target.__nodeID,
                          'value',
                          clientEvent.target.value)
+        @socket.emit('processEvent', remoteEvent, @monitor.client.getSpecificValues(), id)
 
     keyup : (rEvent, event, id) =>
         @_pendingKeyup = false
