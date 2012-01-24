@@ -5,12 +5,12 @@
         activeRoom     : user.activeRoom,
         currentMessage : ko.observable(''),
         postMessage : function () {
-            this.activeRoom().postMessage(user.username(), this.currentMessage());
-            this.currentMessage('');
+            viewModel.activeRoom().postMessage(user.username(), viewModel.currentMessage());
+            viewModel.currentMessage('');
         },
         currentMessageKeyUp : function (e) {
             if (e.which == 13) {
-                this.postMessage();
+                viewModel.postMessage();
             }
         }
     };
