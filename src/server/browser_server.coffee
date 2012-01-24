@@ -198,6 +198,7 @@ DOMEventHandlers =
                               @resources,
                               this,
                               @browser.window.document)
+            return if nodes.length == 0
             # 'before' tells the client where to insert the top level node in
             # relation to its siblings.
             # We only need it for the top level node because nodes in its tree
