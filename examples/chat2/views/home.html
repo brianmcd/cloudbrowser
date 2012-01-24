@@ -1,65 +1,65 @@
 <div id='homeContainer' class='container'>
-    <div class='row'>
-        <div class='offset2 span8'>
-            <h1 style='text-align: center'>Welcome</h1>
-        </div>
+  <div class='row'>
+    <div class='offset2 span8'>
+      <h1 style='text-align: center'>Welcome</h1>
     </div>
-    <div class='row'>
-        <div class='offset2 span10'>
-            <h2>About</h2>
-            <p>This is an example of using the Cloud Browser framework. You are currently viewing this on a virtual browser. This application is developed using jQuery, Knockout.js, and Twitter Bootstrap.</p>
+</div>
+<div class='row'>
+  <div class='offset2 span10'>
+    <h2>About</h2>
+    <p>This is an example of using the Cloud Browser framework. You are currently viewing this on a virtual browser. This application is developed using jQuery, Knockout.js, and Twitter Bootstrap.</p>
+  </div>
+</div>
+<br />
+<br />
+<div class='row'>
+    <div class='span6'>
+      <div id='create-room-form' class='clearfix'>
+        <form>
+          <fieldset>
+            <div class='clearfix'>
+              <label for='usernameInput'>Username</label>
+              <div class='input'>
+              <input id='usernameInput' type='text' data-bind='value: username' />
+              </div>
+            </div>
+            <br />
+            <div class='clearfix'>
+              <label for='roomNameInput'>New Room Name</label>
+              <div class='input'>
+                <input id='roomNameInput' type='text' data-bind='value: newRoomName'></input>
+              </div>
+            </div>
+          </fieldset>
+        </form>
+      </div>
+      <div class='row'>
+        <div class='offset2 span4'>
+          <button id='create-room' class='btn large primary'>Create a New Room</button>
         </div>
+      </div>
     </div>
-    <br />
-    <br />
-    <div class='row'>
-        <div class='span6'>
-            <div id='create-room-form' class='clearfix'>
-                <form>
-                    <fieldset>
-                        <div class='clearfix'>
-                            <label for='usernameInput'>Username</label>
-                            <div class='input'>
-                            <input id='usernameInput' type='text' data-bind='value: username' />
-                            </div>
-                        </div>
-                        <br />
-                        <div class='clearfix'>
-                            <label for='roomNameInput'>New Room Name</label>
-                            <div class='input'>
-                                <input id='roomNameInput' type='text' data-bind='value: newRoomName'></input>
-                            </div>
-                        </div>
-                    </fieldset>
-                </form>
+    <div class='offset2 span6'>
+      <div id='join-room-form' class='clearfix'>
+        <form>
+          <fieldset>
+            <div class='clearfix'>
+              <label>Room To Join</label>
+              <div class='input'>
+                <select data-bind='options: rooms, value: selectedRoom, optionsText: "name"'>
+                </select>
+              </div>
             </div>
-            <div class='row'>
-                <div class='offset2 span4'>
-                    <button id='create-room' class='btn large primary'>Create a New Room</button>
-                </div>
-            </div>
+          </fieldset>
+        </form>
+      </div>
+      <div class='row'>
+        <div class='offset2 span4'>
+          <button id='join-room' class='btn large primary'>Join a Room</button>
         </div>
-        <div class='offset2 span6'>
-            <div id='join-room-form' class='clearfix'>
-                <form>
-                    <fieldset>
-                        <div class='clearfix'>
-                            <label>Room To Join</label>
-                            <div class='input'>
-                                <select data-bind='options: rooms, value: selectedRoom, optionsText: "name"'>
-                                </select>
-                            </div>
-                        </div>
-                    </fieldset>
-                </form>
-            </div>
-            <div class='row'>
-                <div class='offset2 span4'>
-                    <button id='join-room' class='btn large primary'>Join a Room</button>
-                </div>
-            </div>
-        </div>
+      </div>
     </div>
+  </div>
 </div>
 <!-- TODO: data-page (or partial) should take a name, and look in views/name.html and viewscripts/name.js automatically -->
 <script src='views/home.js'></script>

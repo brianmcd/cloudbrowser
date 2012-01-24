@@ -1,49 +1,49 @@
 <html>
-    <head>
-        <link rel="stylesheet" href="css/bootstrap.min.css">
-        <link rel="stylesheet" href="css/chat.css">
-        <script src="js/bootstrap-tabs.js"></script>
-        <script>
-            $(function () {
-                vt.initPages(document.getElementById('main'), function (pages) {
-                    window.vt.pages = pages;
-                    pages.activePage('home');
-                    ko.applyBindings(pages, document.getElementById('navbar'));
-                });
-            });
-        </script>
-    </head>
-    <body style='padding-top: 40px'>
-        <div class="topbar" data-dropdown="dropdown">
-            <div class="fill">
-                <div id='navbar' class="container">
-                    <h3><a href="#">Cloud Browser Chat</a></h3>
-                    <ul>
-                        <li data-bind=
-                            "attr: {
-                                class : (activePage() == 'home' ? 'active' : '')
-                             },
-                             event : {
-                                 click: function () { activePage('home'); }
-                             }">
-                             <a href='#'>Home</a>
-                         </li>
-                         <li data-bind=
-                            "attr: {
-                                class : (activePage() == 'chats' ? 'active' : '')
-                             },
-                             event : {
-                                 click : function () { activePage('chats'); }
-                             }">
-                             <a href="#">Chats</a>
-                         </li>
-                    </ul>
-                </div>
-            </div>
+  <head>
+    <link rel="stylesheet" href="css/bootstrap.min.css">
+    <link rel="stylesheet" href="css/chat.css">
+    <script src="js/bootstrap-tabs.js"></script>
+    <script>
+      $(function () {
+        vt.initPages(document.getElementById('main'), function (pages) {
+          window.vt.pages = pages;
+          pages.activePage('home');
+          ko.applyBindings(pages, document.getElementById('navbar'));
+        });
+      });
+    </script>
+  </head>
+  <body style='padding-top: 40px'>
+    <div class="topbar" data-dropdown="dropdown">
+      <div class="fill">
+        <div id='navbar' class="container">
+          <h3><a href="#">Cloud Browser Chat</a></h3>
+          <ul>
+            <li data-bind=
+                "attr: {
+                    class : (activePage() == 'home' ? 'active' : '')
+                 },
+                 event : {
+                     click: function () { activePage('home'); }
+                 }">
+                 <a href='#'>Home</a>
+             </li>
+             <li data-bind=
+                "attr: {
+                    class : (activePage() == 'chats' ? 'active' : '')
+                 },
+                 event : {
+                     click : function () { activePage('chats'); }
+                 }">
+                 <a href="#">Chats</a>
+             </li>
+          </ul>
         </div>
-        <div id='main' style='padding-top: 10px'>
-            <div data-page="id: home,  src: views/home.html"></div>
-            <div data-page="id: chats, src: views/chats.html"></div>
-        </div>
-    </body>
+      </div>
+    </div>
+    <div id='main' style='padding-top: 10px'>
+      <div data-page="id: home,  src: views/home.html"></div>
+      <div data-page="id: chats, src: views/chats.html"></div>
+    </div>
+  </body>
 </html>
