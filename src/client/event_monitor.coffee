@@ -31,12 +31,19 @@ class EventMonitor
 
     addEventListener : (targetId, type) ->
         console.log("Client adding listener for: #{type} on #{targetId}")
+        if !@activeEvents[type]
+            @activeEvents[type] = true
+        if !@registeredEvents[type]
+                @document.addEventListener(type, @_handler, true)
+            @registeredEvents[type] = true
+        ###
         if !@activeEvents[targetId]
             @activeEvents[targetId] = {}
         @activeEvents[targetId][type] = true
         if !@registeredEvents[type]
                 @document.addEventListener(type, @_handler, true)
             @registeredEvents[type] = true
+        ###
 
     _handler : (event) =>
         targetID = event.target.__nodeID
@@ -53,7 +60,8 @@ class EventMonitor
         else
             console.log("_handler: #{id} [#{event.type}]")
         ###
-        if DefaultEvents[event.type] || @activeEvents[event.target.__nodeID]?[event.type]
+        if DefaultEvents[event.type] || @activeEvents[event.type]
+            #@activeEvents[event.target.__nodeID]?[event.type]
             rEvent = {}
             group = EventTypeToGroup[event.type]
             @eventInitializers[group](rEvent, event)
