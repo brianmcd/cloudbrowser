@@ -13,13 +13,16 @@ process.env.PATH = "node_modules/.bin:deps/node-jscoverage:" + process.env.PATH;
 process.env.NODE_PATH = "lib-cov/:lib/";
 
 var testFiles = [];
-fs.readdirSync('test')
-    .filter(function (elem) {
-        return /\.js$/.test(elem);
-    })
-    .forEach(function (elem) {
-        testFiles.push("test/" + elem);
-    });
+['test/', 'test/client/', 'test/server/',
+ 'test/shared/', 'test/api/'].forEach(function (dir) {
+    fs.readdirSync(dir)
+        .filter(function (elem) {
+            return /\.js$/.test(elem);
+        })
+        .forEach(function (elem) {
+            testFiles.push(dir + elem);
+        });
+});
 var testStr = testFiles.join(' ');
 
 var args = ['--quiet',
