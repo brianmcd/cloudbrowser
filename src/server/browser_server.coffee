@@ -93,7 +93,7 @@ class BrowserServer
                 socket.emit.apply(socket, args)
 
     addSocket : (socket) ->
-        if config.monitorTraffic
+        if Config.monitorTraffic
             socket = new DebugClient(socket, this.id)
         for own type, func of RPCMethods
             do (type, func) =>

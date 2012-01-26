@@ -7,3 +7,6 @@
 [submodule "deps/html5"]
 	path = deps/html5
 	url = https://github.com/aredridel/html5.git
+[submodule "deps/jquery-cloudbrowser"]
+	path = deps/jquery-cloudbrowser
+	url = git@theta.cs.vt.edu:jquery-cloudbrowser.git

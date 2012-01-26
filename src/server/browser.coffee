@@ -14,6 +14,12 @@ Config                 = require('../shared/config')
 {addAdvice}            = require('./advice')
 {applyPatches}         = require('./jsdom_patches')
 
+TESTS_RUNNING = process.env.TESTS_RUNNING
+if TESTS_RUNNING
+    QUnit = require('./qunit')
+    # TODO: move this to bin/server
+    console.log = () ->
+
 class Browser extends EventEmitter
     constructor : (@id, app, @bserver) ->
         @app = Object.create(app)
@@ -29,6 +35,8 @@ class Browser extends EventEmitter
         @initDOM()
         process.nextTick () =>
             @load()
+
+        @initTestEnv() if TESTS_RUNNING
         
     initDOM : () ->
         @jsdom = @getFreshJSDOM()
@@ -52,6 +60,9 @@ class Browser extends EventEmitter
             if /jsdom/.test(entry)
                 delete reqCache[entry]
         return require('jsdom')
+
+    initTestEnv : () ->
+        @QUnit = new QUnit()
 
     runOnClient : (str) ->
         @emit 'RunOnClient', str
@@ -169,6 +180,7 @@ class Browser extends EventEmitter
 
         window.console =
             log : () ->
+                return if TESTS_RUNNING
                 args = Array.prototype.slice.call(arguments)
                 args.push('\n')
                 self.emit 'ConsoleLog',

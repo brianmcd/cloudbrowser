@@ -61,7 +61,8 @@ class Server extends EventEmitter
     createHTTPServer : () ->
         server = express.createServer()
         server.configure () =>
-            server.use(express.logger())
+            if !process.env.TESTS_RUNNING
+                server.use(express.logger())
             server.use(express.bodyParser())
             server.use(express.cookieParser())
             server.use(express.session({secret: 'change me please'}))

@@ -1,0 +1,61 @@
+#!/usr/bin/env node
+require('coffee-script')
+process.env.TESTS_RUNNING = true;
+
+// Grab log since it gets disabled with TESTS_RUNNING.
+log = console.log.bind(console);
+
+var terminal    = require('terminal'),
+    Path        = require('path'),
+    spawn       = require('child_process').spawn,
+    Server      = require('../src/server'),
+    Config      = require('../src/shared/config'),
+    Application = require('../src/server/application');
+
+Config.compression    = true;
+Config.compressJS     = true;
+Config.resourceProxy  = true;
+Config.monitorTraffic = false;
+Config.monitorLatency = false;
+Config.traceProtocol  = false;
+Config.testsRunning   = true;
+
+var url = process.argv[3] || 'http://localhost/jquery-cloudbrowser/test/';
+
+var filter = process.argv[2];
+if (filter && filter != 'all') {
+    console.log("FILTER: " + filter);
+    filter = "?filter=" + filter;
+    url = url + filter;
+}
+
+log("Starting server pointed at: " + url);
+var s = new Server({
+    defaultApp : new Application({
+        entryPoint: url,
+        mountPoint: '/'
+    })
+});
+
+var phantom;
+s.once('ready', function () {
+    log("Server is ready, starting tests.");
+    var p = Path.resolve(__dirname, 'jquery.coffee')
+    phantom = spawn('phantomjs', [p])
+    phantom.stdout.setEncoding('utf8');
+    phantom.stdout.on('data', function (data) {
+        terminal.puts("[red]CLIENT SIDE ERROR[/red]")
+        var split = data.split('\n');
+        split.forEach(function (msg) {
+            terminal.puts("[red]" + msg + "[/red]");
+        });
+    });
+    var cleanup = function () {
+        phantom.kill();
+    };
+    process.on('exit', cleanup);
+    process.on('SIGINT', function () {
+        cleanup();
+        process.exit(0);
+    });
+});
