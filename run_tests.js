@@ -10,11 +10,14 @@ var fs    = require('fs'),
 
 process.env.TESTS_RUNNING = true;
 process.env.PATH = "node_modules/.bin:deps/node-jscoverage:" + process.env.PATH;
-process.env.NODE_PATH = "lib-cov/:lib/";
+process.env.NODE_PATH = "lib-cov/:src/";
 
 var testFiles = [];
-['test/', 'test/client/', 'test/server/',
- 'test/shared/', 'test/api/'].forEach(function (dir) {
+['test/',
+ 'test/client/',
+ 'test/server/',
+ 'test/shared/',
+ 'test/api/'].forEach(function (dir) {
     fs.readdirSync(dir)
         .filter(function (elem) {
             return /\.js$/.test(elem);
@@ -40,7 +43,9 @@ if (runCov) {
 exec("cake build", function (err, stdout) {
     if (err) throw err;
     process.stdout.write(stdout);
-    var whiskey = spawn('whiskey', args);
+    var whiskey = spawn('whiskey', args, {
+        TESTS_RUNNING : true
+    });
     whiskey.stdout.on("data", function (data) {
         process.stdout.write(data);
     });
