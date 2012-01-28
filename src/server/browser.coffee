@@ -17,8 +17,6 @@ Config                 = require('../shared/config')
 TESTS_RUNNING = process.env.TESTS_RUNNING
 if TESTS_RUNNING
     QUnit = require('./qunit')
-    # TODO: move this to bin/server
-    console.log = () ->
 
 class Browser extends EventEmitter
     constructor : (@id, app, @bserver) ->
