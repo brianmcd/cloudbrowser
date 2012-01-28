@@ -1,4 +1,4 @@
-{ClientEvents}      = require('../shared/event_lists')
+ClientEvents      = require('../shared/event_lists').clientEvents
 {isVisibleOnClient} = require('../shared/utils')
 
 adviseMethod = (obj, name, func) ->
@@ -155,10 +155,11 @@ exports.addAdvice = (dom, emitter) ->
                 name = "on#{type}"
                 # TODO: remove listener if this is set to something not a function
                 html.HTMLElement.prototype.__defineSetter__ name, (func) ->
+                    rv = this["__#{name}"] = func
                     emitter.emit 'AddEventListener',
                         target      : this
                         type        : type
-                    return this["__#{name}"] = func
+                    return rv
                 html.HTMLElement.prototype.__defineGetter__ name, () ->
                     return this["__#{name}"]
 

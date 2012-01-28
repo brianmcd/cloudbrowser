@@ -178,11 +178,12 @@ class Browser extends EventEmitter
 
         window.console =
             log : () ->
-                return if TESTS_RUNNING
                 args = Array.prototype.slice.call(arguments)
                 args.push('\n')
                 self.emit 'ConsoleLog',
                     msg : args.join(' ')
+                if TESTS_RUNNING
+                    console.log(args.join(' '))
 
         # Note: this loads the URL out of a virtual browser.
         ['open', 'alert'].forEach (method) =>

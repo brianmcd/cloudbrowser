@@ -23,11 +23,9 @@ exports['test basic XHR'] = (test) ->
         window.targetSource = targetSource
         window.run "
             var xhr = new XMLHttpRequest();
-            console.log('just created an xhr');
             xhr.open('GET', 'xhr-target.html');
             xhr.onreadystatechange = function () {
                 if (xhr.readyState == 4) {
-                    console.log('TEST FINISHED');
                     test.equal(xhr.responseText, targetSource);
                     test.done();
                 }

@@ -2,19 +2,18 @@
     <head>
         <script>
             window.onload = function () {
-                console.log('inside onload');
                 // Attach element instances to the window so we don't have to
                 // look it up again in the test.
-                window.div = document.getElementById('div1');
+                window.div   = document.getElementById('div1');
                 window.input = document.getElementById('input1');
-                window.p = document.getElementById('p1');
+                window.p     = document.getElementById('p1');
                 // Attach count to window so we can check it after firing
                 // events.
                 window.count = 0;
-                div.onclick = function () { count++; };
-                input.onchange = function () { count++; }
-                p.onmouseover = function () { count++; };
-                div.onfocus = function () { count++; };
+                div.onfocus    = function () {count++;};
+                div.onclick    = function () {count++;};
+                input.onchange = function () {count++;};
+                p.onmouseover  = function () {count++;};
             };
         </script>
     </head>

@@ -36,6 +36,7 @@ s.once('ready', function () {
     Reporter.run([
         'test/server/location.coffee',
         'test/server/resource_proxy.coffee',
-        'test/server/XMLHttpRequest.coffee'
+        'test/server/XMLHttpRequest.coffee',
+        'test/server/event_processor.coffee'
     ]);
 });
