@@ -175,7 +175,7 @@ exports.addAdvice = (dom, emitter) ->
                 args[1].toLowerCase()
             else
                 args[0].toLowerCase()
-            if attr == 'src' && isVisibleOnClient(elem)
+            if attr == 'src' && isVisibleOnClient(elem, emitter)
                 emitter.emit 'ResetFrame',
                     target : elem
     adviseMethod html.HTMLFrameElement, 'setAttribute', createFrameAttrHandler(false)
