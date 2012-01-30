@@ -34,9 +34,11 @@ NodeUnit.once('done', function () {
 s.once('ready', function () {
     log("Server ready, running tests...");
     Reporter.run([
+        'test/shared/tagged_node_collection.coffee',
+        'test/server/advice.coffee',
+        'test/server/browser.coffee',
         'test/server/location.coffee',
         'test/server/resource_proxy.coffee',
         'test/server/XMLHttpRequest.coffee',
-        'test/server/event_processor.coffee'
     ]);
 });

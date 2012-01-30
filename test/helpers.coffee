@@ -18,3 +18,10 @@ exports.fireEvent = (browser, type, node) ->
         group = group.substring(0, group.length - 1)
     ev[ctor](type, false, true)
     node.dispatchEvent(ev)
+
+exports.getFreshJSDOM = () ->
+    reqCache = require.cache
+    for entry of reqCache
+        if /jsdom/.test(entry)
+            delete reqCache[entry]
+    return require('jsdom')

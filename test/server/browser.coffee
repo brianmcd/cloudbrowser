@@ -1,8 +1,39 @@
-Browser     = require('../../src/server/browser')
-Path        = require('path')
+Browser        = require('../../src/server/browser')
+{EventEmitter} = require('events')
 {fireEvent} = require('../helpers')
 
-server = null
+exports['basic test'] = (test) ->
+    b = new Browser('browser1', global.defaultApp, null)
+    b.on 'PageLoaded', () ->
+        test.done()
+
+exports['initDOM'] = (test) ->
+    b = new Browser('browser1', global.defaultApp, null)
+    b2 = new Browser('browser2', global.defaultApp, null)
+    test.notStrictEqual(b.jsdom, b2.jsdom)
+    test.done()
+
+exports['load app'] = (test) ->
+    b = new Browser('browser1', global.defaultApp, new EventEmitter())
+    b.once 'PageLoaded', () ->
+        test.notEqual(b.window, null)
+        test.notEqual(b.window.vt, null)
+        test.notEqual(b.window.document, null)
+        test.done()
+
+exports['test remote browsing'] = (test) ->
+    b = new Browser 'browser1',
+        entryPoint : 'http://localhost:3001/test/files/basic.html'
+        remoteBrowsing : true
+    b.once 'PageLoaded', () ->
+        test.notEqual(b.window, null)
+        doc = b.window.document
+        test.notEqual(doc, null)
+        test.notEqual(doc.body, null)
+        div = doc.getElementsByTagName('div')[0]
+        test.notEqual(div, null)
+        test.equal(div.textContent, 'Testing')
+        test.done()
 
 exports['test addEventListener advice'] = (test) ->
     browser = new Browser 'browser',
