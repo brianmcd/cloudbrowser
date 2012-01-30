@@ -15,7 +15,10 @@ exports.isVisibleOnClient = (node, browser) ->
     return false if !node || !topDoc
     doc = node._ownerDocument
     if !doc
-        throw new Error("Missing ownerDocument")
+        if node.nodeType == 9
+            doc = node
+        else
+            return false
     if (!node._attachedToDocument && node.nodeType != 9) ||
          node.nodeType == 11
         return false
