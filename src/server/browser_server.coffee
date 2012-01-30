@@ -54,6 +54,11 @@ class BrowserServer
             rpcLogPath = Path.resolve(logDir, "#{@browser.id}-rpc.log")
             @rpcLog    = FS.createWriteStream(rpcLogPath)
 
+    close : () ->
+        for socket in @sockets
+            socket.disconnect()
+        @browser.close()
+
     logRPCMethod : (name, params) ->
         @rpcLog.write("#{name}(")
         if params.length == 0

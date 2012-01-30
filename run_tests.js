@@ -29,7 +29,7 @@ var s = global.server = new Server({
 
 NodeUnit.once('done', function () {
     console.log("Done running tests.");
-    // TODO: stop server/kill browsers/disconnect clients.
+    s.close()
 });
 
 var tests = [ 
