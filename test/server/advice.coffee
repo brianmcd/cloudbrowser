@@ -144,3 +144,74 @@ exports['HTMLOptionElement.selected'] = (test) ->
         test.done()
     opt.addEventListener 'change', changeListener
     opt.selected = true
+
+exports['AddEventListener'] = (test) ->
+    test.expect(6)
+    [doc, ee] = getAdvisedDoc()
+    div = doc.createElement('div')
+
+    # Make sure we don't add listeners for elements not visible on the client.
+    ee.once 'AddEventListener', () ->
+        test.ok(false)
+    div.addEventListener('click', () ->)
+    ee.removeAllListeners('AddEventListener')
+
+    doc.body.appendChild(div)
+    events = ['click', 'change', 'keypress']
+    count = 0
+    ee.on 'AddEventListener', (event) ->
+        test.equal(event.type, events[count])
+        test.equal(event.target, div)
+        if ++count == events.length
+            test.done()
+    div.addEventListener('click', () ->)
+    div.addEventListener('change', () ->)
+    div.addEventListener('keypress', () ->)
+
+exports['Attribute Listeners'] = (test) ->
+    test.expect(8)
+    [doc, ee] = getAdvisedDoc()
+    div = doc.createElement('div')
+
+    ee.once 'AddEventListener', () ->
+        test.ok(false)
+    div.onclick = (() ->)
+    ee.removeAllListeners('AddEventListener')
+    
+    doc.body.appendChild(div)
+    events = ['click', 'focus', 'change', 'blur']
+    count = 0
+    ee.on 'AddEventListener', (event) ->
+        test.equal(event.type, events[count])
+        test.equal(event.target, div)
+        if ++count == events.length
+            test.done()
+    div.onclick = (() ->)
+    div.onload = (() ->) # Not a ClientEvent
+    div.onfocus = (() ->)
+    div.onchange = (() ->)
+    div.onblur = (() ->)
+
+exports['DOMStyleChanged'] = (test) ->
+    test.expect(9)
+    [doc, ee] = getAdvisedDoc()
+    div = doc.createElement('div')
+
+    ee.once 'DOMStyleChanged', () ->
+        test.ok(false)
+    div.style.display = 'block'
+    ee.removeAllListeners('DOMStyleChanged')
+
+    doc.body.appendChild(div)
+    styles = [['display', 'none'], ['textAlign', 'center'], ['fontFamily', 'Arial']]
+    count = 0
+    ee.on 'DOMStyleChanged', (event) ->
+        style = styles[count]
+        test.equal(event.target, div)
+        test.equal(event.attribute, style[0])
+        test.equal(event.value, style[1])
+        if ++count == styles.length
+            test.done()
+    div.style.display = 'none'
+    div.style.textAlign = 'center'
+    div.style.fontFamily = 'Arial'
