@@ -31,14 +31,25 @@ NodeUnit.once('done', function () {
     console.log("Done running tests.");
     // TODO: stop server/kill browsers/disconnect clients.
 });
+
+var tests = [ 
+    'test/shared/tagged_node_collection.coffee',
+    'test/server/advice.coffee',
+    'test/server/browser.coffee',
+    'test/server/location.coffee',
+    'test/server/resource_proxy.coffee',
+    'test/server/XMLHttpRequest.coffee',
+];
+
+var filter = process.argv[2];
+if (filter) {
+    var reg = new RegExp(filter);
+    tests = tests.filter(function (elem) {
+       return reg.test(elem);
+    });
+}
+
 s.once('ready', function () {
     log("Server ready, running tests...");
-    Reporter.run([
-        'test/shared/tagged_node_collection.coffee',
-        'test/server/advice.coffee',
-        'test/server/browser.coffee',
-        'test/server/location.coffee',
-        'test/server/resource_proxy.coffee',
-        'test/server/XMLHttpRequest.coffee',
-    ]);
+    Reporter.run(tests);
 });
