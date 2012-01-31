@@ -34,6 +34,7 @@ NodeUnit.once('done', function () {
 
 var tests = [ 
     'test/shared/tagged_node_collection.coffee',
+    'test/server/serializer.coffee',
     'test/server/advice.coffee',
     'test/server/browser.coffee',
     'test/server/location.coffee',
