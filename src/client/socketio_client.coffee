@@ -5,6 +5,7 @@ LatencyMonitor       = require('./latency_monitor')
 Components           = require('./components')
 {deserialize}        = require('./deserializer')
 Config               = require('./shared/config')
+{noCacheRequire}     = require('./shared/utils')
 
 test_env = !!process?.env?.TESTS_RUNNING
 
@@ -13,52 +14,42 @@ class SocketIOClient
         @compressor = new Compressor()
         @socket = @connectSocket()
         @setupRPC(@socket)
-        @specifics = []
 
         @eventMonitor = null
         @latencyMonitor = null
 
         @components = {}
 
-        @RPCMethods = RPCMethods
-
         # TaggedNodeCollection
         @nodes = null
 
         @renderingPaused = false
-
-    getSpecificValues : () ->
-        vals = {}
-        for node in @specifics
-            vals[node.__nodeID] = node.value
-        return vals
 
     connectSocket : () ->
         socket = null
         if test_env
             # We need to clear out the require cache so that each TestClient
             # gets its own Socket.IO client
-            reqCache = require.cache
-            for entry of reqCache
-                if /socket\.io-client/.test(entry)
-                    delete reqCache[entry]
-            io = require('socket.io-client')
+            io = noCacheRequire('socket.io-client', /socket\.io-client/)
             socket = io.connect('http://localhost:3000')
             # socket.io-client for node doesn't seem to emit 'connect'
             process.nextTick () =>
-                @socket.emit('auth', window.__envSessionID)
-                @eventMonitor   = new EventMonitor(this)
+                @socket.emit('auth', @window.__envSessionID)
+                @eventMonitor = new EventMonitor(this)
             # If we're testing, expose a function to let the server signal when
             # a test is finished.
-            socket.on 'testDone', () =>
-                @window.testClient.emit('testDone')
+            socket.on 'TestDone', () =>
+                @window.testClient.emit('TestDone')
         else
-            socket = window.io.connect()
+            socket = @window.io.connect()
             socket.on 'connect', () =>
                 console.log("Socket.IO connected...")
-                socket.emit('auth', window.__envSessionID)
+                socket.emit('auth', @window.__envSessionID)
                 @eventMonitor = new EventMonitor(this)
         return socket
+
+    disconnect : () ->
+        RPCMethods.disconnect.call(this)
 
     setupRPC : (socket) ->
         for own name, func of RPCMethods
@@ -77,6 +68,7 @@ class SocketIOClient
                             args : arguments
                     else
                         func.apply(this, arguments)
+                        @window.testClient.emit(name, arguments)
 
 RPCMethods =
     SetConfig : (config) ->
@@ -133,8 +125,9 @@ RPCMethods =
         @nodes.reTag(doc, newDocID)
 
     PageLoaded : (nodes, components, compressionTable) ->
-        console.log('loadFromSnapshot')
-        console.log(arguments)
+        if !test_env
+            console.log('PageLoaded')
+            console.log(arguments)
         doc = @document
         while doc.hasChildNodes()
             doc.removeChild(doc.firstChild)
@@ -174,7 +167,6 @@ RPCMethods =
         if test_env
             @window.testClient.emit('AddEventListener', targetId, type)
        
-
     disconnect : () ->
         @socket.disconnect()
 

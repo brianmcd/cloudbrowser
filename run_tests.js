@@ -1,14 +1,22 @@
 #!/usr/bin/env node
 require('coffee-script');
+
+// XXX: It's important to set this before requiring file since they check it.
 process.env.TESTS_RUNNING = true;
-
-log = console.log.bind(console);
-
 var Path        = require('path'),
     Application = require('./src/server/application'),
     Server      = require('./src/server'),
     NodeUnit    = require('nodeunit'),
     Reporter    = NodeUnit.reporters.default;
+
+dontClose = (process.argv[3] == 'dontclose')
+log = console.log.bind(console);
+
+process.on('uncaughtException', function (err) {
+    console.log("__Uncaught Exception__");
+    console.log(err.stack);
+});
+    
 
 // TODO: Test that not setting static dir works with nested entry points
 //       re: resources.
@@ -29,11 +37,17 @@ var s = global.server = new Server({
 
 NodeUnit.once('done', function () {
     console.log("Done running tests.");
-    s.close()
+    if (!dontClose) {
+        s.close();
+        process.nextTick(function () {
+            process.exit(0);
+        });
+    }
 });
 
 var tests = [ 
     'test/shared/tagged_node_collection.coffee',
+    'test/integration.coffee',
     'test/server/serializer.coffee',
     'test/server/advice.coffee',
     'test/server/browser.coffee',

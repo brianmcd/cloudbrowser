@@ -1,12 +1,13 @@
-EventEmitter   = require('events').EventEmitter
-SocketIOClient = require('../client/socketio_client')
+{EventEmitter}  = require('events')
+SocketIOClient  = require('../client/socketio_client')
+{noCacheRequire} = require('../shared/utils')
 
 class TestClient extends EventEmitter
-    constructor : (browser) ->
-        @id = browser.id
+    constructor : (id) ->
+        @id = id
         # Make sure we get a fresh JSDOM, not one that has been augmented with
         # advice.
-        @jsdom = browser.getFreshJSDOM()
+        @jsdom = noCacheRequire('jsdom')
         @document = @jsdom.jsdom()
         @window = @document.parentWindow
         # Attach this testClient to the window, so that the client code can

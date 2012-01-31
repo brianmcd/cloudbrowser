@@ -7,6 +7,7 @@ ResourceProxy        = require('./resource_proxy')
 TaggedNodeCollection = require('../shared/tagged_node_collection')
 Config               = require('../shared/config')
 DebugClient          = require('./debug_client')
+TestClient           = require('./test_client')
 {serialize}          = require('./serializer')
 {isVisibleOnClient}  = require('../shared/utils')
 
@@ -42,6 +43,12 @@ class BrowserServer
                     handler.apply(this, arguments)
 
         @initLogs()
+
+    # For testing purposes, return an emulated client for this browser.
+    createTestClient : () ->
+        if !process.env.TESTS_RUNNING
+            throw new Error('Called createTestClient but not running tests.')
+        return new TestClient(@id)
 
     initLogs : () ->
         logDir          = Path.resolve(__dirname, '..', '..', 'logs')
@@ -309,6 +316,11 @@ DOMEventHandlers =
         return if @browserLoading
         {target, method, args} = event
         @broadcastEvent('ComponentMethod', target.__nodeID, method, args)
+
+    TestDone : () ->
+        throw new Error() if @browserLoading
+        @broadcastEvent('TestDone')
+
 
 RPCMethods =
     setAttribute : (targetId, attribute, value, socket) ->

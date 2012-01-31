@@ -4,7 +4,6 @@ FS                     = require('fs')
 URL                    = require('url')
 Request                = require('request')
 HTML5                  = require('html5')
-TestClient             = require('./test_client')
 ImportXMLHttpRequest   = require('./XMLHttpRequest').ImportXMLHttpRequest
 LocationBuilder        = require('./location').LocationBuilder
 EmbedAPI               = require('../api')
@@ -13,6 +12,7 @@ KO                     = require('../api/ko').ko
 Config                 = require('../shared/config')
 {addAdvice}            = require('./advice')
 {applyPatches}         = require('./jsdom_patches')
+{noCacheRequire}       = require('../shared/utils')
 
 TESTS_RUNNING = process.env.TESTS_RUNNING
 if TESTS_RUNNING
@@ -37,7 +37,7 @@ class Browser extends EventEmitter
         @initTestEnv() if TESTS_RUNNING
         
     initDOM : () ->
-        @jsdom = @getFreshJSDOM()
+        @jsdom = noCacheRequire('jsdom')
         @jsdom.defaultDocumentFeatures =
             FetchExternalResources : ['script', 'img', 'css', 'frame', 'link', 'iframe']
             ProcessExternalResources : ['script', 'frame', 'iframe', 'css']
@@ -45,19 +45,6 @@ class Browser extends EventEmitter
             QuerySelector : false
         addAdvice(@jsdom.dom.level3, this)
         applyPatches(@jsdom.dom.level3, this)
-
-    # Clear JSDOM out of the require cache.  We have to do this because
-    # we modify JSDOM's internal data structures with per-BrowserInstance
-    # specifiy information, so we need to get a whole new JSDOM instance
-    # for each BrowserInstance.  require() caches the objects it returns,
-    # so we need to remove those objects from the cache to force require
-    # to give us a new object each time.
-    getFreshJSDOM : () ->
-        reqCache = require.cache
-        for entry of reqCache
-            if /jsdom/.test(entry)
-                delete reqCache[entry]
-        return require('jsdom')
 
     initTestEnv : () ->
         @QUnit = new QUnit()
@@ -188,7 +175,7 @@ class Browser extends EventEmitter
 
         window.DOMParser = class DOMParser
             parseFromString : (str, type) ->
-                jsdom = self.getFreshJSDOM()
+                jsdom = noCacheRequire('jsdom')
                 xmldoc = jsdom.jsdom str, jsdom.level(2),
                     FetchExternalResources   : false
                     ProcessExternalResources : false
@@ -197,13 +184,6 @@ class Browser extends EventEmitter
                 # TODO: jsdom should do this
                 xmldoc._documentElement = xmldoc.childNodes[0]
                 return xmldoc
-
-
-    # For testing purposes, return an emulated client for this browser.
-    createTestClient : () ->
-        if !process.env.TESTS_RUNNING
-            throw new Error('Called createTestClient but not running tests.')
-        return new TestClient(this)
 
     # When TESTS_RUNNING, clients expose a testDone method via DNode.
     # testDone triggers the client to emit 'testDone' on its TestClient,
