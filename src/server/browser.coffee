@@ -60,7 +60,7 @@ class Browser extends EventEmitter
                   @app.entryPoint
               else
                   "http://localhost:3001/#{@app.entryPoint}"
-        console.log "Loading: #{url}"
+        #console.log "Loading: #{url}"
         @emit 'PageLoading',
             url : url
 

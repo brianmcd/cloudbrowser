@@ -25,7 +25,8 @@ class EventMonitor
         # we demultiplex in the handler itself.
         @registeredEvents = {}
         for type, bool of DefaultEvents
-            console.log("Adding capturing listener for: #{type}")
+            if !process?.env?.TESTS_RUNNING
+                console.log("Adding capturing listener for: #{type}")
             @registeredEvents[type] = true
             @document.addEventListener(type, @_handler, true)
 
