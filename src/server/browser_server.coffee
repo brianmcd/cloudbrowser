@@ -70,7 +70,6 @@ class BrowserServer
                     str[0]
             else
                 str = Util.inspect(param, false, null).replace(/[\n\t]/g, '')
-                #str = Util.inspect(param)
             @rpcLog.write(str)
             if idx == lastIdx
                 @rpcLog.write(')\n')
@@ -118,7 +117,6 @@ class BrowserServer
 
         nodes = serialize(@browser.window.document,
                           @resources,
-                          this,
                           @browser.window.document)
         compressionTable = undefined
         if Config.compression
@@ -144,7 +142,6 @@ DOMEventHandlers =
         @browserLoading = false
         nodes = serialize(@browser.window.document,
                           @resources,
-                          this,
                           @browser.window.document)
         compressionTable = undefined
         if Config.compression
@@ -201,7 +198,6 @@ DOMEventHandlers =
             node = event.target
             nodes = serialize(node,
                               @resources,
-                              this,
                               @browser.window.document)
             return if nodes.length == 0
             # 'before' tells the client where to insert the top level node in
@@ -276,15 +272,6 @@ DOMEventHandlers =
         @consoleLog.write(event.msg + '\n')
         # TODO: debug flag to enable line below.
         console.log("[[[#{@browser.id}]]] #{event.msg}")
-
-    RunOnClient : (string) ->
-        throw Error if @browserLoading
-        @broadcastEvent 'RunOnClient', string
-
-    Tracer : () ->
-        # Bypassing compression table.
-        for socket in @sockets
-            socket.emit('Tracer')
 
     DOMStyleChanged : (event) ->
         return if @browserLoading

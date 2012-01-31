@@ -62,12 +62,6 @@ class Browser extends EventEmitter
     initTestEnv : () ->
         @QUnit = new QUnit()
 
-    runOnClient : (str) ->
-        @emit 'RunOnClient', str
-
-    tracer : () ->
-        @emit 'Tracer'
-
     close : () ->
         @emit('BrowserClose')
         @window.close()

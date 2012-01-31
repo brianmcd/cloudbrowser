@@ -16,7 +16,7 @@ NodeCompressor = require('../shared/node_compressor')
 #   [events] - Optional. Given for element nodes with listeners.
 #   [attributes] - Optional. An object like:
 #       Property : value
-exports.serialize = (root, resources, bserver, topDoc) ->
+exports.serialize = (root, resources, topDoc) ->
     # A filter that skips script tags.
     filter = (node) ->
         if !node? || node.tagName?.toLowerCase() == 'script'
@@ -30,7 +30,7 @@ exports.serialize = (root, resources, bserver, topDoc) ->
             when 'Element'
                 attributes = null
                 if node.attributes?.length > 0
-                    attributes = copyElementAttrs(node, resources, bserver)
+                    attributes = copyElementAttrs(node, resources)
                 record =
                     type   : 'element'
                     id     : node.__nodeID
@@ -41,10 +41,6 @@ exports.serialize = (root, resources, bserver, topDoc) ->
                 if node.ownerDocument != topDoc
                     record.ownerDocument = node.ownerDocument.__nodeID
                 if /^i?frame$/.test(node.tagName.toLowerCase())
-                    printRecords = true
-                    if node.__nodeID == 'node1653'
-                        targetiframe = true
-
                     record.docID = node.contentDocument.__nodeID
                 if node.__registeredListeners?.length
                     record.events = node.__registeredListeners
@@ -79,7 +75,7 @@ exports.serialize = (root, resources, bserver, topDoc) ->
 #   iframe src attributes - ignore them.
 #   data-* attributes - ignore them
 #   other element src attributes - rewrite them
-copyElementAttrs = (node, resources, bserver) ->
+copyElementAttrs = (node, resources) ->
     tagName = node.tagName.toLowerCase()
     attrs = {}
     if node.attributes?.length > 0
