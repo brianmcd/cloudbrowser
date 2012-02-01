@@ -49,19 +49,22 @@ task "setup", "Install development dependencies", () ->
 
     installSubmodules = (callback) ->
         log('Installing git submodules into node_modules.', green)
+        depsPath = path.resolve(__dirname, 'deps')
+        deps = fs.readdirSync('deps').filter (dep) ->
+            pjsonPath = path.resolve(depsPath, dep, 'package.json')
+            return path.existsSync(pjsonPath)
+        
+        # Install dependencies sequentially.
         count = 0
-        checkIfDone = () ->
-            if ++count == deps.length
+        installDeps = () ->
+            if count != deps.length
+                dep = deps[count++]
+                log("Installing #{dep}", green)
+                npmInstall(installDeps, "./deps/#{dep}")
+            else
                 console.log('Done installing git submodules.', green)
                 callback()
-        deps = fs.readdirSync('deps')
-        for dep in deps
-            depsPath = path.resolve(__dirname, 'deps', dep)
-            if path.existsSync(path.resolve(depsPath, 'package.json'))
-                log("Installing npm modules for #{dep}")
-                npmInstall(checkIfDone, "./deps/#{dep}")
-            else
-                checkIfDone()
+        installDeps()
 
     fs.mkdirSync('node_modules') if !path.existsSync('node_modules')
     updateSubmodules () ->
@@ -71,7 +74,7 @@ task "setup", "Install development dependencies", () ->
                 log('Done installing top level node_modules.', green)
                 log("You should probably run 'cake test' to make sure everything works.", green)
 
-task 'update', "Update the project (update submodules and node_modules).", () ->
+task 'update', "Update the project (update submodules and node_modules)", () ->
     invoke('setup')
 
 ## Build ##
