@@ -10,3 +10,6 @@
 [submodule "deps/jquery-cloudbrowser"]
 	path = deps/jquery-cloudbrowser
 	url = git@theta.cs.vt.edu:jquery-cloudbrowser.git
+[submodule "deps/socket.io-client"]
+	path = deps/socket.io-client
+	url = https://github.com/LearnBoost/socket.io-client.git
