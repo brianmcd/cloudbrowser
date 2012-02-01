@@ -15,76 +15,64 @@ reset = "\033[0m"
 
 # Log a message with a color.
 log = (message, color, explanation) ->
-  console.log color + message + reset + ' ' + (explanation or '')
+  if color
+      console.log color + message + reset + ' ' + (explanation or '')
+  else
+      process.stdout.write(message.toString().trim() + '\n')
 
 # Handle error and kill the process.
 onerror = (err)->
   if err
-    process.stdout.write "#{red}#{err.stack}#{reset}\n"
-    process.exit -1
-
-LINKS = []
-LINKS.push
-    src  : 'src/server/XMLHttpRequest.js'
-    dest : 'lib/server/XMLHttpRequest.js'
-LINKS.push
-    src  : 'lib/shared/tagged_node_collection.js'
-    dest : 'lib/client/tagged_node_collection.js'
-LINKS.push
-    src  : 'lib/shared/event_lists.js'
-    dest : 'lib/client/event_lists.js'
-LINKS.push
-    src  : 'deps/knockout-node/build/output/knockout-node.debug.js'
-    dest : 'lib/api/ko.js'
-
-for file in fs.readdirSync('src/server/knockout')
-    LINKS.push
-        src  : "src/server/knockout/#{file}"
-        dest : "lib/server/knockout/#{file}"
+    process.stdout.write("#{red}#{err.stack}#{reset}\n")
+    process.exit(-1)
 
 ## Setup ##
-task "setup", "Install development dependencies", ->
-    log "Installing required npm packages (this could take some time)...", green
-    npm = spawn "npm", ["install", "--dev"]
-    npm.stdout.on 'data', (data) -> process.stdout.write data + reset
-    npm.on 'error', (err) -> onerror err
-    npm.on 'exit', ->
-        log "Pulling required git submodules into deps/", green
-        git = spawn "git", ['submodule', 'update', '--init']
-        git.stdout.on 'data', (data) -> process.stdout.write data + reset
-        git.on 'error', (err) -> onerror err
-        git.on 'exit', ->
-            count = 0
-            deps = fs.readdirSync('deps')
-            process.chdir('deps')
-            deps.forEach (dep) ->
-                log "Linking #{dep}", green
-                exec "ln -s ../deps/#{dep} ../node_modules/", (err, stdout) ->
-                    onerror err
-                    process.chdir(dep)
-                    log "Installing npm packages for #{dep}", green
-                    depnpm = spawn "npm", ['install']
-                    depnpm.stdout.on 'data', (data) -> process.stdout.write data + reset
-                    depnpm.on 'error', (err) -> onerror err
-                    process.chdir('..')
-                    if ++count == deps.length
-                        process.chdir('..')
-                        runTests()
+task "setup", "Install development dependencies", () ->
+    npmInstall = (callback, target) ->
+        args = ['install']
+        if target?
+            args.push(target)
+        npm = spawn('npm', args)
+        npm.stdout.on('data', log)
+        npm.stderr.on('data', log)
+        npm.on('error', onerror)
+        npm.on('exit', callback) if callback?
 
-## linkFiles  ##
-linkFiles = (callback) ->
-    count = 0
-    fs.mkdirSync('lib/server/knockout')
-    for file in LINKS
-        #log "Linking #{file.src} to #{file.dest}...", green
-        src = path.resolve(__dirname, file.src)
-        dest = path.resolve(__dirname, file.dest)
-        exec "ln -s #{src} #{dest}", (err, stdout) ->
-            onerror err
-            if stdout != ""
-                log stdout, green
-            if (++count == LINKS.length) and callback?
+    updateSubmodules = (callback) ->
+        log('Updating git submodules.', green)
+        git = spawn('git', ['submodule', 'update', '--init'])
+        git.stdout.on('data', log)
+        git.stderr.on('data', log)
+        git.on 'exit', () ->
+            log('Done updating git submodules', green)
+            callback()
+
+    installSubmodules = (callback) ->
+        log('Installing git submodules into node_modules.', green)
+        count = 0
+        checkIfDone = () ->
+            if ++count == deps.length
+                console.log('Done installing git submodules.', green)
                 callback()
+        deps = fs.readdirSync('deps')
+        for dep in deps
+            depsPath = path.resolve(__dirname, 'deps', dep)
+            if path.existsSync(path.resolve(depsPath, 'package.json'))
+                log("Installing npm modules for #{dep}")
+                npmInstall(checkIfDone, "./deps/#{dep}")
+            else
+                checkIfDone()
+
+    fs.mkdirSync('node_modules') if !path.existsSync('node_modules')
+    updateSubmodules () ->
+        installSubmodules () ->
+            log('Installing top level node_modules from package.json.', green)
+            npmInstall () ->
+                log('Done installing top level node_modules.', green)
+                log("You should probably run 'cake test' to make sure everything works.", green)
+
+task 'update', "Update the project (update submodules and node_modules).", () ->
+    invoke('setup')
 
 ## Build ##
 build = (callback) ->
@@ -105,17 +93,14 @@ task "watch", "Continously compile CoffeeScript to JavaScript", ->
 
 ## Clean ##
 task "clean", "Remove temporary files and such", ->
-    exec "rm -rf lib/ && rm -rf lib-cov/", onerror
+    exec "rm -rf lib/", onerror
 
 ## Testing ##
 runTests = (callback) ->
   log "Running test suite ...", green
-  whiskey = spawn("node", ["run_tests.js"])
-  whiskey.stdout.on "data", (data) -> process.stdout.write data
-  whiskey.on 'error', onerror
-  whiskey.on 'exit', () ->
-      if callback
-          callback()
+  nodeunit = spawn(path.resolve(__dirname, 'run_tests.js'))
+  nodeunit.stdout.on 'data', (data) ->
+      process.stdout.write(data)
 
 task "test", "Run all tests", ->
   runTests()
