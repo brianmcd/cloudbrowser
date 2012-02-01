@@ -68,7 +68,7 @@ class SocketIOClient
                             args : arguments
                     else
                         func.apply(this, arguments)
-                        @window.testClient.emit(name, arguments)
+                        @window.testClient?.emit(name, arguments)
 
 RPCMethods =
     SetConfig : (config) ->

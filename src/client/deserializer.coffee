@@ -69,4 +69,4 @@ exports.deserialize = (nodes, components, client) ->
         for component in components
             client.RPCMethods.CreateComponent.call(client, component)
     if process?.env?.TESTS_RUNNING
-        client.window.testClient.emit('loadFromSnapshot', nodes)
+        client.window.testClient?.emit('loadFromSnapshot', nodes)
