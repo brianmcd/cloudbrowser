@@ -164,8 +164,6 @@ RPCMethods =
 
     AddEventListener : (targetId, type) ->
         @eventMonitor.addEventListener(targetId, type)
-        if test_env
-            @window.testClient.emit('AddEventListener', targetId, type)
        
     disconnect : () ->
         @socket.disconnect()

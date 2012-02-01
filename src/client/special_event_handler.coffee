@@ -12,7 +12,6 @@ class SpecialEventHandler
         clientEvent.preventDefault()
         @socket.emit('processEvent',
                      remoteEvent,
-                     @monitor.client.getSpecificValues(),
                      id)
 
     # Valid targets:
@@ -20,8 +19,6 @@ class SpecialEventHandler
     #
     change : (remoteEvent, clientEvent, id) ->
         target = clientEvent.target
-        if target.clientSpecific
-            return
         # TODO: use batch mechanism once it exists...this is inefficient.
         if target.tagName.toLowerCase() == 'select'
             if target.multiple == true
@@ -40,7 +37,7 @@ class SpecialEventHandler
                          clientEvent.target.__nodeID,
                          'value',
                          clientEvent.target.value)
-        @socket.emit('processEvent', remoteEvent, @monitor.client.getSpecificValues(), id)
+        @socket.emit('processEvent', remoteEvent, id)
 
     keyup : (rEvent, event, id) =>
         @_pendingKeyup = false
@@ -60,7 +57,6 @@ class SpecialEventHandler
         for ev in @_queuedKeyEvents
             @socket.emit('processEvent',
                          ev[0], # event
-                         @monitor.client.getSpecificValues(),
                          ev[1]) # id
         @_queuedKeyEvents = []
         if !@monitor.registeredEvents['keyup']

@@ -71,7 +71,7 @@ class EventMonitor
                 @specialEvents[event.type](rEvent, event, id)
             else
                 console.log("Sending event: #{rEvent.type} - #{id}")
-                @socket.emit('processEvent', rEvent, @client.getSpecificValues(), id)
+                @socket.emit('processEvent', rEvent, id)
         event.stopPropagation()
         return false
 

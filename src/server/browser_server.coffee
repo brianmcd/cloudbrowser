@@ -334,12 +334,7 @@ RPCMethods =
             target.setAttribute(attribute, value)
             @setByClient = null
 
-    processEvent : (event, specifics, id) ->
-        for own nodeID, value of specifics
-            node = @nodes.get(nodeID) # Should cache these for the restore.
-            node.__oldValue = node.value
-            node.value = value
-
+    processEvent : (event, id) ->
         if !@browserLoading
             # TODO
             # This bail out happens when an event fires on a component, which 
@@ -349,7 +344,7 @@ RPCMethods =
             if !event.target
                 return
 
-            @broadcastEvent 'pauseRendering'
+            @broadcastEvent('pauseRendering')
 
             # Swap nodeIDs with nodes
             clientEv = @nodes.unscrub(event)
@@ -362,12 +357,7 @@ RPCMethods =
                         "#{clientEv.target.__nodeID} [#{clientEv.target.tagName}]")
 
             clientEv.target.dispatchEvent(serverEv)
-            @broadcastEvent 'resumeRendering', id
-
-        for own nodeID, value of specifics
-            node = @nodes.get(nodeID)
-            node.value = node.__oldValue
-            delete node.__oldValue
+            @broadcastEvent('resumeRendering', id)
         console.log("Finished processing event: #{id}")
 
     # Takes a clientEv (an event generated on the client and sent over DNode)
