@@ -76,16 +76,18 @@ exports['iframe test1'] = (test) ->
             test.equal(iframeDiv.innerHTML, 'Set from outside')
             client.disconnect()
             test.done()
-###
-'event inference via advice' : (test) ->
-    browser = browsers.create
-        id : 'browser4'
-        url : 'http://localhost:3001/event_inference_advice.html'
-    client = browser.createTestClient()
-    browser.window.testClient = client
-    test.notEqual(browser, null)
-    test.notEqual(client, null)
-    client.once 'loadFromSnapshot', () ->
+
+exports['event inference via advice'] = (test) ->
+    b = browsers.create({
+            entryPoint : 'http://localhost:3001/test/files/event_inference_advice.html'
+            remoteBrowsing : true
+        }, 'browser4')
+    client = b.createTestClient()
+    browser = b.browser
+    client.once 'PageLoaded', () ->
+        # Remember, we automatically set this in the CLIENT'S DOM, but we need
+        # access to it server-side, so need to set it explicitly.
+        browser.window.testClient = client
         browser.window.test = test
         # Register 3 event listeners in the server's DOM. After the client
         # receives the signal from the server an registers on an event, we
@@ -113,8 +115,7 @@ exports['iframe test1'] = (test) ->
                 test.equal(count, 3);
                 testClient.disconnect();
                 test.done();
-            });
-        ")
+            });")
         # Once the client registers the event listener for a particular
         # event, we fire it on the client, which should cause it to be
         # sent to the server.
@@ -136,22 +137,23 @@ exports['iframe test1'] = (test) ->
                 change.initEvent('change', false, true)
                 textarea.dispatchEvent(change)
 
-        client.on 'addEventListener', (params) ->
-            eventFirers[params.type]()
+        client.on 'AddEventListener', (args) ->
+            [targetID, type] = args
+            eventFirers[type]()
 
 # This test is similar to the one above, except that we make sure the
 # listeners are registered before the client is sent its snapshot. We do
 # this by putting the script inline at the bottom of the body.  When the
 # client fires 'loadFromSnapshot', the listeners should be installed.
-'event inference via snapshot' : (test) ->
-    browser = browsers.create
-        id : 'browser5'
-        url : 'http://localhost:3001/event_inference_snapshot.html'
-    client = browser.createTestClient()
-    browser.window.testClient = client
-    test.notEqual(browser, null)
-    test.notEqual(client, null)
-    client.once 'loadFromSnapshot', () ->
+exports['event inference via snapshot'] = (test) ->
+    b = browsers.create({
+            entryPoint : 'http://localhost:3001/test/files/event_inference_snapshot.html'
+            remoteBrowsing : true
+        }, 'browser5')
+    client = b.createTestClient()
+    browser = b.browser
+    client.once 'PageLoaded', () ->
+        browser.window.testClient = client
         # NOTE: The code in the script running on the server DOM will end
         # the test once all 3 events have been received.
         browser.window.test = test
@@ -172,4 +174,3 @@ exports['iframe test1'] = (test) ->
         change = doc.createEvent('HTMLEvents')
         change.initEvent('change', false, true)
         textarea.dispatchEvent(change)
-###
