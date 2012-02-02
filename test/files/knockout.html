@@ -1,0 +1,21 @@
+<html>
+    <head>
+        <script src='knockout-1.2.1.debug.js'></script>
+        <script>
+            window.onload = function () {
+                window.vm = {
+                    stringValue : ko.observable('Hello'),
+                    booleanValue : ko.observable(true)
+                };
+                ko.applyBindings(vm);
+            };
+        </script>
+    </head>
+    <body>
+        <div id='stringOutput' data-bind='text: stringValue'></div>
+        <input id='stringInput' data-bind='value: stringValue' />
+        <div id='boolOutput' data-bind="text: booleanValue() ? 'true' : 'false'"></div>
+        <input id='boolInput' type='checkbox' data-bind='checked: booleanValue' />
+        <input id='keydownInput' data-bind="value: stringValue, valueUpdate: 'afterkeydown'" />
+    </body>
+</html>
