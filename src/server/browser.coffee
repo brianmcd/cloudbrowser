@@ -134,6 +134,7 @@ class Browser extends EventEmitter
             img.height = height
             img
 
+        window.navigator.javaEnabled = false
         window.navigator.language = 'en-US'
         # Taken from Chrome 16 request headers
         window.navigator.userAgent = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/535.7 (KHTML, like Gecko) Chrome/16.0.912.75 Safari/535.7'
