@@ -17,15 +17,30 @@ Person.sync().success(function () {
   throw e;
 });
 
-function PhoneBook () {
-}
+function PhoneBook () {}
 
 module.exports = PhoneBook;
 
 PhoneBook.prototype = {
   getEntries : function (cb) {
-      Person.findAll().success(function (entries) { 
-          cb(entries); 
+    Person.findAll().success(function (entries) { 
+      var observables = [];
+      entries.forEach(function (entry) {
+        observables.push({
+          fname       : ko.observable(entry.fname),
+          lname       : ko.observable(entry.lname),
+          phoneNumber : ko.observable(entry.phoneNumber),
+          editable    : ko.observable(false),
+          save : function () {
+            entry.fname = this.fname();
+            entry.lname = this.lname();
+            entry.phoneNumber = this.phoneNumber();
+            entry.save();
+            this.editable(false);
+          }
+        });
       });
+      cb(observables); 
+    });
   }
 };
