@@ -4,13 +4,28 @@ if (ko) {
     // created in the browser, so the original test fails with valid
     // observables.
     ko.isObservable = function (instance) {
-        if ((instance === null) || (instance === undefined) || (instance.__ko_proto__ === undefined)) return false;
-        if (instance.__ko_proto__ === ko.observable ||
-            instance.__ko_proto__ === vt.ko.observable) {
+        if ((instance === null) || (instance === undefined) || (instance.__ko_proto__ === undefined)) {
+            return false;
+        }
+        if (instance.__ko_proto__ === ko.observable || instance.__ko_proto__ === vt.ko.observable) {
             return true;
         }
         return ko.isObservable(instance.__ko_proto__); // Walk the prototype chain
     };
+
+    ko.isWriteableObservable = function (instance) {
+        var proto = instance.__ko_proto__;
+        // Observable
+        if (typeof instance == "function") {
+            if ((proto === ko.observable) || (proto === vt.ko.observable))
+                return true;
+            // Writeable dependent observable
+            if (((proto === ko.dependentObservable) || (proto === vt.ko.dependentObservable)) && instance.hasWriteFunction)
+                return true;
+        }
+        // Anything else
+        return false;
+    }
 
     // The dependencyDetection object needs to be the same among all ko
     // instances, or dependency tracking doesn't work.  Observables call
