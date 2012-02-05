@@ -10,18 +10,12 @@
     },
     currentMessageKeyUp : function (e) {
       if (e.which == 13) {
-          viewModel.postMessage();
+        viewModel.postMessage();
       }
+    },
+    changeRoom : function (room) {
+      viewModel.activeRoom(room);
     }
   };
   ko.applyBindings(viewModel, document.getElementById('chatsContainer'));
-  
-  $('.tabs').bind('change', function (e) {
-    var name = e.target.href.split('#')[1];
-    var room = user.joinedRoomsByName[name];
-    if (room) {
-        viewModel.activeRoom(room);
-    }
-  })
-  .tabs(); // Activate Bootstrap tabs plugin.
 })();
