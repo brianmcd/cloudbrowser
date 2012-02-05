@@ -1,4 +1,5 @@
 NodeCompressor = require('./shared/node_compressor')
+
 exports.deserialize = (nodes, sibling, client) ->
     first = true
     if sibling != null
@@ -51,7 +52,11 @@ exports.deserialize = (nodes, sibling, client) ->
                     else
                         node = doc.createComment(record.value)
                     client.nodes.add(node, record.id)
-                parent.insertBefore(node, sibling)
+                if first
+                    first = false
+                    parent.insertBefore(node, sibling)
+                else
+                    parent.appendChild(node)
 
             when 'doctype'
                 node = doc.implementation.createDocumentType(record.name, record.pid, record.sid)
