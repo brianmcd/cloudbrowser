@@ -1,8 +1,9 @@
 NodeCompressor = require('./shared/node_compressor')
-exports.deserialize = (nodes, sibling, components, client) ->
+exports.deserialize = (nodes, sibling, client) ->
     first = true
     if sibling != null
         sibling = client.nodes.get(sibling)
+
     for record in nodes
         record = NodeCompressor.uncompress(record)
         node = null
@@ -56,10 +57,6 @@ exports.deserialize = (nodes, sibling, components, client) ->
                 node = doc.implementation.createDocumentType(record.name, record.pid, record.sid)
                 client.nodes.add(node, record.id)
                 doc.doctype = node
-
-    if components?.length > 0
-        for component in components
-            client.RPCMethods.CreateComponent.call(client, component)
 
     if process?.env?.TESTS_RUNNING
         client.window.testClient?.emit('loadFromSnapshot', nodes)

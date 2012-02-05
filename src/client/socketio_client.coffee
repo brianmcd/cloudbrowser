@@ -108,8 +108,8 @@ RPCMethods =
         target[property] = value
 
     # This function is called for partial updates AFTER the initial load.
-    DOMNodeInsertedIntoDocument : (before, nodes) ->
-        child = deserialize(nodes, before, null, this)
+    DOMNodeInsertedIntoDocument : (sibling, nodes) ->
+        child = deserialize(nodes, sibling, this)
 
     DOMNodeRemovedFromDocument : (parentId, childId) ->
         parent = @nodes.get(parentId)
@@ -139,7 +139,12 @@ RPCMethods =
         @compressor = new Compressor()
         for own original, compressed of compressionTable
             RPCMethods['newSymbol'].call(this, original, compressed)
-        deserialize(nodes, null, components, this)
+
+        deserialize(nodes, null, this)
+
+        if components?.length > 0
+            for component in components
+                @RPCMethods.CreateComponent(component)
 
     DOMAttrModified : (targetId, name, value, attrChange) ->
         target = @nodes.get(targetId)
