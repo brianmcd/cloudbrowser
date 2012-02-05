@@ -51,6 +51,11 @@ class SocketIOClient
     disconnect : () ->
         RPCMethods.disconnect.call(this)
 
+    clearDocument : (doc) ->
+        while doc.hasChildNodes()
+            doc.removeChild(doc.firstChild)
+        delete doc.__nodeID
+
     setupRPC : (socket) ->
         for own name, func of RPCMethods
             do (name, func) =>
@@ -108,7 +113,7 @@ RPCMethods =
         target[property] = value
 
     # This function is called for partial updates AFTER the initial load.
-    DOMNodeInsertedIntoDocument : (sibling, nodes) ->
+    DOMNodeInsertedIntoDocument : (nodes, sibling) ->
         child = deserialize(nodes, sibling, this)
 
     DOMNodeRemovedFromDocument : (parentId, childId) ->
@@ -119,10 +124,8 @@ RPCMethods =
     ResetFrame : (frameID, newDocID) ->
         frame = @nodes.get(frameID)
         doc = frame.contentDocument
-        while doc.hasChildNodes()
-            doc.removeChild(doc.firstChild)
-        # TODO: this is bad, should be going through TaggedNodeCollection.
-        @nodes.reTag(doc, newDocID)
+        @clearDocument(doc)
+        @nodes.add(doc, newDocID)
 
     # TODO: components should be inited here, not in deserializer.
     # That should just do DOM.
@@ -131,12 +134,11 @@ RPCMethods =
             console.log('PageLoaded')
             console.log(arguments)
         doc = @document
-        while doc.hasChildNodes()
-            doc.removeChild(doc.firstChild)
+        @clearDocument(doc)
         @nodes = new TaggedNodeCollection()
-        delete doc.__nodeID
         @nodes.add(doc, 'node1')
         @compressor = new Compressor()
+
         for own original, compressed of compressionTable
             RPCMethods['newSymbol'].call(this, original, compressed)
 

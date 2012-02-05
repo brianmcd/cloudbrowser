@@ -61,14 +61,16 @@ exports.serialize = (root, resources, topDoc) ->
                         record.ownerDocument = node.ownerDocument.__nodeID
                     cmds.push(NodeCompressor.compress(record))
 
-            when 'Document_Type'
-                record =
-                    type   : 'doctype'
-                    id     : node.__nodeID
-                    name   : node.name
-                    pid    : node.publicId
-                    sid    : node.systemId
-                cmds.push(NodeCompressor.compress(record))
+    ###
+    when 'Document_Type'
+        record =
+            type   : 'doctype'
+            id     : node.__nodeID
+            name   : node.name
+            pid    : node.publicId
+            sid    : node.systemId
+        cmds.push(NodeCompressor.compress(record))
+    ###
     return cmds
 
 # Contains special cases for:

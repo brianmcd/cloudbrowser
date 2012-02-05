@@ -205,14 +205,14 @@ DOMEventHandlers =
                           @resources,
                           @browser.window.document)
         return if nodes.length == 0
-        # 'before' tells the client where to insert the top level node in
+        # 'sibling' tells the client where to insert the top level node in
         # relation to its siblings.
         # We only need it for the top level node because nodes in its tree
         # are serialized in order.
-        before = target.nextSibling
-        while before?.tagName == 'SCRIPT'
-            before = before.nextSibling
-        @broadcastEvent('DOMNodeInsertedIntoDocument', before?.__nodeID, nodes)
+        sibling = target.nextSibling
+        while sibling?.tagName == 'SCRIPT'
+            sibling = sibling.nextSibling
+        @broadcastEvent('DOMNodeInsertedIntoDocument', nodes, sibling?.__nodeID)
 
     DOMNodeRemovedFromDocument : (event) ->
         return if @browserLoading

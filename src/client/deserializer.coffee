@@ -58,10 +58,12 @@ exports.deserialize = (nodes, sibling, client) ->
                 else
                     parent.appendChild(node)
 
-            when 'doctype'
-                node = doc.implementation.createDocumentType(record.name, record.pid, record.sid)
-                client.nodes.add(node, record.id)
-                doc.doctype = node
-
     if process?.env?.TESTS_RUNNING
         client.window.testClient?.emit('loadFromSnapshot', nodes)
+
+    ###
+    when 'doctype'
+        node = doc.implementation.createDocumentType(record.name, record.pid, record.sid)
+        client.nodes.add(node, record.id)
+        doc.doctype = node
+    ###
