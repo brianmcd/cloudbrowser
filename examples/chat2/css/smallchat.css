@@ -1,0 +1,14 @@
+#chatsContainer ul {
+    padding: 20px 40px 0px 40px;
+}
+
+#chatsContainer textarea {
+    width: 25%;
+    height: 25%;
+    margin-left: 15px;
+}
+
+#chatsContainer input {
+    width: 35%;
+    margin-left: 15px;
+}
