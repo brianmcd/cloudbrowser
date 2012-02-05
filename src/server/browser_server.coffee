@@ -200,34 +200,30 @@ DOMEventHandlers =
     # TODO: consider doctypes.
     DOMNodeInsertedIntoDocument : (event) ->
         return if @browserLoading
-        if event.target.tagName != 'SCRIPT' &&
-           event.target.parentNode?.tagName != 'SCRIPT'
-            node = event.target
-            nodes = serialize(node,
-                              @resources,
-                              @browser.window.document)
-            return if nodes.length == 0
-            # 'before' tells the client where to insert the top level node in
-            # relation to its siblings.
-            # We only need it for the top level node because nodes in its tree
-            # are serialized in order.
-            before = node.nextSibling
-            while before?.tagName?.toLowerCase() == 'script'
-                before = before.nextSibling
-            if @compressionEnabled
-                nodes[0].push(before?.__nodeID)
-            else
-                nodes[0].before = before?.__nodeID
-            @broadcastEvent('DOMNodeInsertedIntoDocument', nodes)
+        {target} = event
+        nodes = serialize(target,
+                          @resources,
+                          @browser.window.document)
+        return if nodes.length == 0
+        # 'before' tells the client where to insert the top level node in
+        # relation to its siblings.
+        # We only need it for the top level node because nodes in its tree
+        # are serialized in order.
+        before = target.nextSibling
+        while before?.tagName?.toLowerCase() == 'script'
+            before = before.nextSibling
+        if @compressionEnabled
+            nodes[0].push(before?.__nodeID)
+        else
+            nodes[0].before = before?.__nodeID
+        @broadcastEvent('DOMNodeInsertedIntoDocument', nodes)
 
     DOMNodeRemovedFromDocument : (event) ->
         return if @browserLoading
-        if event.target.tagName != 'SCRIPT' &&
-           event.relatedNode.tagName != 'SCRIPT'
-            event = @nodes.scrub(event)
-            @broadcastEvent('DOMNodeRemovedFromDocument',
-                            event.relatedNode,
-                            event.target)
+        event = @nodes.scrub(event)
+        @broadcastEvent('DOMNodeRemovedFromDocument',
+                        event.relatedNode,
+                        event.target)
 
     DOMAttrModified : (event) ->
         {attrName, newValue, attrChange, target} = event

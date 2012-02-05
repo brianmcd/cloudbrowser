@@ -11,25 +11,28 @@ exports.dfs = dfs = (node, filter, visit) ->
 # Usually you want to pass the PARENT to this function to see if the
 # node being added should be visible on the client or not.
 exports.isVisibleOnClient = (node, browser) ->
-    topDoc = browser.window?.document
-    return false if !node || !topDoc
-    doc = node._ownerDocument
-    if !doc
-        if node.nodeType == 9
-            doc = node
-        else
-            return false
-    if (!node._attachedToDocument && node.nodeType != 9) ||
-         node.nodeType == 11
+    # Some preliminary checks.
+    return false if !node
+    if node.tagName == 'SCRIPT' || node.parentNode?.tagName == 'SCRIPT'
         return false
-    if node.parentNode == topDoc
-        return true
-    while doc
-        if doc == topDoc
-            return true
-        frame = doc.__enclosingFrame
-        if !frame?._attachedToDocument
+    topDoc = browser.window?.document
+    return false if !topDoc
+
+    # Grab the current node's document.
+    if node.nodeType == 9 # DOCUMENT_NODE
+        doc = node
+    else
+        doc = node._ownerDocument
+        if !doc || !node._attachedToDocument || node.nodeType == 11
             return false
+
+    # Chase up the frames to see if the node is part of a document
+    # that's visible in the top level document.
+    while doc
+        return true if doc == topDoc
+        # Our fork of JSDOM adds __enclosingFrame to HTMLDocuments.
+        frame = doc.__enclosingFrame
+        return false if !frame?._attachedToDocument
         doc = doc.__enclosingFrame?._ownerDocument
     return false
 
