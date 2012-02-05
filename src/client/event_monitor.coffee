@@ -55,12 +55,6 @@ class EventMonitor
         id = undefined
         if Config.monitorLatency
             id = @client.latencyMonitor.start(event.type)
-        ###
-        if event.which == 13
-            console.log("_handler: #{id} [#{event.type}] [ENTER KEY]")
-        else
-            console.log("_handler: #{id} [#{event.type}]")
-        ###
         if DefaultEvents[event.type] || @activeEvents[event.type]
             #@activeEvents[event.target.__nodeID]?[event.type]
             rEvent = {}

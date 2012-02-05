@@ -224,7 +224,7 @@ DOMEventHandlers =
     DOMAttrModified : (event) ->
         {attrName, newValue, attrChange, target} = event
         tagName = target.tagName?.toLowerCase()
-        if /[i]?frame|script/.test(tagName)
+        if /i?frame|script/.test(tagName)
             return
         isAddition = (attrChange == 'ADDITION')
         if isAddition && attrName == 'src'
