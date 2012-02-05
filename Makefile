@@ -1,8 +1,8 @@
-NPMDEPS = contextify jsdom html5 socket.io-client
+NPMDEPS = contextify jsdom html5
 
 ALL: setup
 
-.PHONY: submodules setup test jquery $(NPMDEPS)
+.PHONY: submodules setup test jquery socket.io-client $(NPMDEPS)
 
 submodules:
 	git submodule update --init
@@ -14,7 +14,10 @@ $(NPMDEPS):
 jquery: submodules
 	cd deps/jquery-cloudbrowser && make update_submodules jquery min
 
-setup: submodules $(NPMDEPS) jquery
+socket.io-client: submodules
+	cd deps/socket.io-client && npm installi --production true
+
+setup: submodules $(NPMDEPS) jquery socket.io-client
 	npm install
 
 test:

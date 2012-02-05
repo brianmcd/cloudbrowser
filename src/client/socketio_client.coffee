@@ -30,7 +30,7 @@ class SocketIOClient
         if test_env
             # We need to clear out the require cache so that each TestClient
             # gets its own Socket.IO client
-            io = noCacheRequire('socket.io-client', /socket\.io-client/)
+            io = noCacheRequire('../../deps/socket.io-client', /socket\.io-client/)
             socket = io.connect('http://localhost:3000')
             # socket.io-client for node doesn't seem to emit 'connect'
             process.nextTick () =>
