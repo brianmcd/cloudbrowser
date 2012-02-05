@@ -58,7 +58,6 @@ class NodeCompressor
                     docID         : compressed[5]
                     attributes    : compressed[6]
                     events        : compressed[7]
-                    before        : compressed[8]
                 }
             when 1,2
                 return {

@@ -1,5 +1,8 @@
 NodeCompressor = require('./shared/node_compressor')
-exports.deserialize = (nodes, components, client) ->
+exports.deserialize = (nodes, sibling, components, client) ->
+    first = true
+    if sibling != null
+        sibling = client.nodes.get(sibling)
     for record in nodes
         record = NodeCompressor.uncompress(record)
         node = null
@@ -7,24 +10,9 @@ exports.deserialize = (nodes, components, client) ->
         # If the node already exists, we don't need to create it.
         # This can happen if a node is removed then re-added.
         if client.nodes.exists(record.id)
-            # TODO: is this right?  we just don't want to retag, but we need
-            # to re-add to DOM at the right place, don't we?
-            #continue
             node = client.nodes.get(record.id)
-            #if node.parentNode != null
-            #    throw new Error("Trying to add a node that already has a parent node.")
 
-        try
-            parent = client.nodes.get(record.parent)
-        catch e
-            console.log e
-            console.log e.stack
-            console.log record
-            console.log nodes
-        # Note: If record.before is null, then the TaggedNodeCollection
-        #       returns null.
-        # TODO: we always use appendChild here after 1st node ultimately anyway...optimize for it.
-        sibling = client.nodes.get(record.before)
+        parent = client.nodes.get(record.parent)
         doc = client.document
         if record.ownerDocument
             doc = client.nodes.get(record.ownerDocument)
@@ -36,7 +24,11 @@ exports.deserialize = (nodes, components, client) ->
                 for name, value of record.attributes
                     node.setAttribute(name, value)
                 client.nodes.add(node, record.id)
-                parent.insertBefore(node, sibling)
+                if first
+                    first = false
+                    parent.insertBefore(node, sibling)
+                else
+                    parent.appendChild(node)
                 # For [i]frames, we need to tag the contentDocument.
                 # The server sends a docID attached to the record.
                 if /i?frame/.test(record.name.toLowerCase())
@@ -68,5 +60,6 @@ exports.deserialize = (nodes, components, client) ->
     if components?.length > 0
         for component in components
             client.RPCMethods.CreateComponent.call(client, component)
+
     if process?.env?.TESTS_RUNNING
         client.window.testClient?.emit('loadFromSnapshot', nodes)

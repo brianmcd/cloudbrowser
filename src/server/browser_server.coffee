@@ -210,13 +210,9 @@ DOMEventHandlers =
         # We only need it for the top level node because nodes in its tree
         # are serialized in order.
         before = target.nextSibling
-        while before?.tagName?.toLowerCase() == 'script'
+        while before?.tagName == 'SCRIPT'
             before = before.nextSibling
-        if @compressionEnabled
-            nodes[0].push(before?.__nodeID)
-        else
-            nodes[0].before = before?.__nodeID
-        @broadcastEvent('DOMNodeInsertedIntoDocument', nodes)
+        @broadcastEvent('DOMNodeInsertedIntoDocument', before?.__nodeID, nodes)
 
     DOMNodeRemovedFromDocument : (event) ->
         return if @browserLoading

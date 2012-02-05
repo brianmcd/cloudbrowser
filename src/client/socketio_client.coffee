@@ -108,8 +108,8 @@ RPCMethods =
         target[property] = value
 
     # This function is called for partial updates AFTER the initial load.
-    DOMNodeInsertedIntoDocument : (nodes) ->
-        deserialize(nodes, null, this)
+    DOMNodeInsertedIntoDocument : (before, nodes) ->
+        child = deserialize(nodes, before, null, this)
 
     DOMNodeRemovedFromDocument : (parentId, childId) ->
         parent = @nodes.get(parentId)
@@ -124,6 +124,8 @@ RPCMethods =
         # TODO: this is bad, should be going through TaggedNodeCollection.
         @nodes.reTag(doc, newDocID)
 
+    # TODO: components should be inited here, not in deserializer.
+    # That should just do DOM.
     PageLoaded : (nodes, components, compressionTable) ->
         if !test_env
             console.log('PageLoaded')
@@ -137,7 +139,7 @@ RPCMethods =
         @compressor = new Compressor()
         for own original, compressed of compressionTable
             RPCMethods['newSymbol'].call(this, original, compressed)
-        deserialize(nodes, components, this)
+        deserialize(nodes, null, components, this)
 
     DOMAttrModified : (targetId, name, value, attrChange) ->
         target = @nodes.get(targetId)
