@@ -15,7 +15,7 @@ jquery: submodules
 	cd deps/jquery-cloudbrowser && make update_submodules jquery min
 
 socket.io-client: submodules
-	cd deps/socket.io-client && npm installi --production true
+	cd deps/socket.io-client && npm install --production true
 
 setup: submodules $(NPMDEPS) jquery socket.io-client
 	npm install
