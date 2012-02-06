@@ -92,7 +92,7 @@ class Server extends EventEmitter
 
         @clientEngineModified = new Date().toString()
         b = Browserify
-            require : [Path.resolve(__dirname, '..', 'client', 'socketio_client')]
+            require : [Path.resolve(__dirname, '..', 'client', 'client_engine')]
             ignore : ['socket.io-client']
             filter : (src) ->
                 if Config.compressJS

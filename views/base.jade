@@ -7,6 +7,6 @@ html
     script(src="/clientEngine.js")
     script
         $(function () {
-            var SocketIOClient = require('/socketio_client');
-            window.__client = new SocketIOClient(window, document);
+            var ClientEngine = require('/client_engine');
+            window.__client = new ClientEngine(window, document);
         });

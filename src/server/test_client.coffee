@@ -1,5 +1,5 @@
-{EventEmitter}  = require('events')
-SocketIOClient  = require('../client/socketio_client')
+{EventEmitter}   = require('events')
+ClientEngine     = require('../client/client_engine')
 {noCacheRequire} = require('../shared/utils')
 
 class TestClient extends EventEmitter
@@ -14,7 +14,7 @@ class TestClient extends EventEmitter
         # emit events on the testClient (like 'testDone')
         @window.testClient = this
         @window.__envSessionID = id
-        @socket = new SocketIOClient(@window, @document)
+        @socket = new ClientEngine(@window, @document)
 
     disconnect : () ->
         @socket.disconnect()

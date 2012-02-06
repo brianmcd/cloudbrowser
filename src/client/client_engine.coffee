@@ -9,7 +9,7 @@ Config               = require('./shared/config')
 
 test_env = !!process?.env?.TESTS_RUNNING
 
-class SocketIOClient
+class ClientEngine
     constructor : (@window, @document) ->
         @compressor = new Compressor()
         @socket = @connectSocket()
@@ -240,4 +240,4 @@ RPCMethods =
     RunOnClient : (string) ->
         $.globalEval("(#{string})();")
 
-module.exports = SocketIOClient
+module.exports = ClientEngine 
