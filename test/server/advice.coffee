@@ -150,12 +150,6 @@ exports['AddEventListener'] = (test) ->
     [doc, ee] = getAdvisedDoc()
     div = doc.createElement('div')
 
-    # Make sure we don't add listeners for elements not visible on the client.
-    ee.once 'AddEventListener', () ->
-        test.ok(false)
-    div.addEventListener('click', () ->)
-    ee.removeAllListeners('AddEventListener')
-
     doc.body.appendChild(div)
     events = ['click', 'change', 'keypress']
     count = 0
@@ -173,11 +167,6 @@ exports['Attribute Listeners'] = (test) ->
     [doc, ee] = getAdvisedDoc()
     div = doc.createElement('div')
 
-    ee.once 'AddEventListener', () ->
-        test.ok(false)
-    div.onclick = (() ->)
-    ee.removeAllListeners('AddEventListener')
-    
     doc.body.appendChild(div)
     events = ['click', 'focus', 'change', 'blur']
     count = 0

@@ -127,9 +127,7 @@ RPCMethods =
         @clearDocument(doc)
         @nodes.add(doc, newDocID)
 
-    # TODO: components should be inited here, not in deserializer.
-    # That should just do DOM.
-    PageLoaded : (nodes, components, compressionTable) ->
+    PageLoaded : (nodes, events, components, compressionTable) ->
         if !test_env
             console.log('PageLoaded')
             console.log(arguments)
@@ -143,6 +141,9 @@ RPCMethods =
             RPCMethods['newSymbol'].call(this, original, compressed)
 
         deserialize(nodes, null, this)
+
+        for event in events
+            @eventMonitor.add(event)
 
         if components?.length > 0
             for component in components
@@ -171,8 +172,8 @@ RPCMethods =
     WindowMethodCalled : (method, args) ->
        window[method].apply(window, args)
 
-    AddEventListener : (targetId, type) ->
-        @eventMonitor.addEventListener(targetId, type)
+    AddEventListener : (type) ->
+        @eventMonitor.add(type)
        
     disconnect : () ->
         @socket.disconnect()

@@ -14,37 +14,18 @@ class EventMonitor
         @socket = @client.socket
         @specialEvents = new SpecialEventHandler(this)
 
-        # A lookup table to see if the server has listeners for a particular event
-        # on a particular node.
-        # e.g. { 'nodeID' : {'event1' : true}}
-        @activeEvents = {}
-
         # A lookup table of all of the events we have a listener registered on.
-        # In the case where 2 elements both need a listener for the same event,
-        # we don't want to register 2 capturing listeners on the document, since
-        # we demultiplex in the handler itself.
         @registeredEvents = {}
+
         for type, bool of DefaultEvents
-            if !process?.env?.TESTS_RUNNING
-                console.log("Adding capturing listener for: #{type}")
             @registeredEvents[type] = true
             @document.addEventListener(type, @_handler, true)
 
-    addEventListener : (targetId, type) ->
-        console.log("Client adding listener for: #{type} on #{targetId}")
-        if !@activeEvents[type]
-            @activeEvents[type] = true
+    add : (type) ->
+        console.log("Client adding listener for: #{type}")
         if !@registeredEvents[type]
                 @document.addEventListener(type, @_handler, true)
             @registeredEvents[type] = true
-        ###
-        if !@activeEvents[targetId]
-            @activeEvents[targetId] = {}
-        @activeEvents[targetId][type] = true
-        if !@registeredEvents[type]
-                @document.addEventListener(type, @_handler, true)
-            @registeredEvents[type] = true
-        ###
 
     _handler : (event) =>
         targetID = event.target.__nodeID
@@ -55,13 +36,11 @@ class EventMonitor
         id = undefined
         if Config.monitorLatency
             id = @client.latencyMonitor.start(event.type)
-        if DefaultEvents[event.type] || @activeEvents[event.type]
-            #@activeEvents[event.target.__nodeID]?[event.type]
+        if @registeredEvents[event.type]
             rEvent = {}
             group = EventTypeToGroup[event.type]
             @eventInitializers[group](rEvent, event)
             if @specialEvents[event.type]
-                #console.log("Calling special handler for: #{rEvent.type}")
                 @specialEvents[event.type](rEvent, event, id)
             else
                 console.log("Sending event: #{rEvent.type} - #{id}")

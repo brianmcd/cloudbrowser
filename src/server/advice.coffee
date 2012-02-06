@@ -139,10 +139,9 @@ exports.addAdvice = (dom, emitter) ->
     # client.
     # TODO: wrap removeEventListener.
     adviseMethod events.EventTarget, 'addEventListener', (elem, args, rv) ->
-        if isVisibleOnClient(elem, emitter)
-            emitter.emit 'AddEventListener',
-                target      : elem
-                type        : args[0]
+        emitter.emit 'AddEventListener',
+            target      : elem
+            type        : args[0]
 
     # Advice for: all possible attribute event listeners
     #
@@ -157,10 +156,9 @@ exports.addAdvice = (dom, emitter) ->
                 # TODO: remove listener if this is set to something not a function
                 html.HTMLElement.prototype.__defineSetter__ name, (func) ->
                     rv = this["__#{name}"] = func
-                    if isVisibleOnClient(this, emitter)
-                        emitter.emit 'AddEventListener',
-                            target      : this
-                            type        : type
+                    emitter.emit 'AddEventListener',
+                        target      : this
+                        type        : type
                     return rv
                 html.HTMLElement.prototype.__defineGetter__ name, () ->
                     return this["__#{name}"]

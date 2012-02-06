@@ -137,9 +137,13 @@ exports['event inference via advice'] = (test) ->
                 change.initEvent('change', false, true)
                 textarea.dispatchEvent(change)
 
-        client.on 'AddEventListener', (args) ->
-            [targetID, type] = args
-            eventFirers[type]()
+        # Only 'focus' should emit an event, since it isn't a default event.
+        client.once 'AddEventListener', (args) ->
+            type = args[0]
+            test.equal(type, 'focus')
+            eventFirers['click']()
+            eventFirers['focus']()
+            eventFirers['change']()
 
 # This test is similar to the one above, except that we make sure the
 # listeners are registered before the client is sent its snapshot. We do

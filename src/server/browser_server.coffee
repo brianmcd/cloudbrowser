@@ -11,7 +11,9 @@ TestClient           = require('./test_client')
 {serialize}          = require('./serializer')
 {isVisibleOnClient}  = require('../shared/utils')
 
-{eventTypeToGroup, clientEvents} = require('../shared/event_lists')
+{eventTypeToGroup,
+ clientEvents,
+ defaultEvents} = require('../shared/event_lists')
 
 # Serves 1 Browser to n clients.
 class BrowserServer
@@ -23,13 +25,14 @@ class BrowserServer
         @sockets = []
         @compressor = new Compressor()
         @compressor.on 'newSymbol', (args) =>
-            console.log("newSymbol: #{args.original} -> #{args.compressed}")
             for socket in @sockets
                 socket.emit('newSymbol', args.original, args.compressed)
 
         # Indicates whether @browser is currently loading a page.
         # If so, we don't process client events/updates.
         @browserLoading = false
+
+        @registeredEventTypes = []
 
         # Sockets that have connected before the browser has loaded its first page.
         @queuedSockets = []
@@ -130,6 +133,7 @@ class BrowserServer
             compressionTable = @compressor.textToSymbol
         socket.emit('PageLoaded',
                     nodes,
+                    @registeredEventTypes,
                     @browser.clientComponents,
                     compressionTable)
         @sockets.push(socket)
@@ -160,6 +164,7 @@ DOMEventHandlers =
         for socket in @sockets
             socket.emit('PageLoaded',
                         nodes,
+                        @registeredEventTypes,
                         @browser.clientComponents,
                         compressionTable)
 
@@ -247,17 +252,12 @@ DOMEventHandlers =
 
     AddEventListener : (event) ->
         {target, type} = event
-        return if !clientEvents[type]
+        return if !clientEvents[type] || defaultEvents[type]
+        idx = @registeredEventTypes.indexOf(type)
+        return if idx != -1
 
-        targetId = target.__nodeID
-        
-        if !target.__registeredListeners
-            target.__registeredListeners = [[targetId, type]]
-        else
-            target.__registeredListeners.push([targetId, type])
-
-        if !@browserLoading && target._attachedToDocument
-            @broadcastEvent('AddEventListener', targetId, type)
+        @registeredEventTypes.push(type)
+        @broadcastEvent('AddEventListener', type)
 
     EnteredTimer : () ->
         return if @browserLoading
@@ -407,12 +407,12 @@ RPCMethods =
             throw new Error("No component on node: #{nodeID}")
         for own key, val of params.attrs
             component.attrs?[key] = val
-        @broadcastEvent 'pauseRendering'
+        @broadcastEvent('pauseRendering')
         event = @browser.window.document.createEvent('HTMLEvents')
         event.initEvent(params.event.type, false, false)
         event.info = params.event
         node.dispatchEvent(event)
-        @broadcastEvent 'resumeRendering'
+        @broadcastEvent('resumeRendering')
 
     latencyInfo : (finishedEvents) ->
         logPath = Path.resolve(__dirname, '..', '..',

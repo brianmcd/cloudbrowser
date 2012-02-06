@@ -40,8 +40,6 @@ exports.deserialize = (nodes, sibling, client) ->
                     # HTML and Body elements.
                     while contentDoc.hasChildNodes()
                         contentDoc.removeChild(contentDoc.firstChild)
-                record.events?.forEach (event) ->
-                    client.eventMonitor.addEventListener(event[0], event[1])
 
             when 'text', 'comment'
                 if node

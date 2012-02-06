@@ -13,7 +13,6 @@ NodeCompressor = require('../shared/node_compressor')
 #   [parent] - Optional (but given for everything but document)
 #   [name] - Optional. Given for element nodes
 #   [value] - Optional. Given for text and comment nodes.
-#   [events] - Optional. Given for element nodes with listeners.
 #   [attributes] - Optional. An object like:
 #       Property : value
 exports.serialize = (root, resources, topDoc) ->
@@ -42,8 +41,6 @@ exports.serialize = (root, resources, topDoc) ->
                     record.ownerDocument = node.ownerDocument.__nodeID
                 if /^i?frame$/.test(node.tagName.toLowerCase())
                     record.docID = node.contentDocument.__nodeID
-                if node.__registeredListeners?.length
-                    record.events = node.__registeredListeners
                 cmds.push(NodeCompressor.compress(record))
 
             when 'Comment', 'Text'
