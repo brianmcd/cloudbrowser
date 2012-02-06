@@ -1,0 +1,2 @@
+#!/bin/bash
+bin/server http://localhost/jquery-cloudbrowser/test/
