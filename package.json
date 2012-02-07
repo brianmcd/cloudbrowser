@@ -20,7 +20,6 @@
         "jade"          : "0.10.7",
         "coffee-script" : "1.2.0",
         "request"       : "2.9.3",
-        "html5"         : "0.3.5",
         "eco"           : "*",
         "mime"          : "*",
         "nomnom"        : "1.5.1",
