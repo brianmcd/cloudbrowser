@@ -25,7 +25,7 @@ test:
 
 build:
 	rm -rf lib/
-	node_modules/.bin/coffee -cwb -o lib src
+	node_modules/.bin/coffee -cb -o lib src
 
 clean:
 	rm -rf lib/
