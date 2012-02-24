@@ -86,6 +86,7 @@ class Browser extends EventEmitter
         @window.close if @window?
         @window = @jsdom.createWindow(@jsdom.dom.level3.html)
         @augmentWindow(@window)
+        # The first time we call this, it won't navigate. 
         @window.location = url
         if process.env.TESTS_RUNNING
             @window.browser = this

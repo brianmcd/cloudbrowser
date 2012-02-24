@@ -348,6 +348,8 @@ RPCMethods =
                         "[#{eventTypeToGroup[clientEv.type]}] on " +
                         "#{clientEv.target.__nodeID} [#{clientEv.target.tagName}]")
 
+            console.log("bubbling: #{clientEv.bubbles}")
+
             clientEv.target.dispatchEvent(serverEv)
             @broadcastEvent('resumeRendering', id)
         console.log("Finished processing event: #{id}")
