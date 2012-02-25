@@ -4,13 +4,16 @@ FS              = require('fs')
 express         = require('express')
 sio             = require('socket.io')
 Uglify          = require('uglify-js')
-GZip            = require('gzip')
+zlib            = require('zlib')
 Browserify      = require('browserify')
 BrowserManager  = require('./browser_manager')
 DebugServer     = require('./debug_server')
 Application     = require('./application')
 Config          = require('../shared/config')
 {ko}            = require('../api/ko')
+Managers        = require('./browser_manager')
+
+{MultiProcessBrowserManager,  InProcessBrowserManager} = Managers
 
 # TODO: this should be a proper singleton
 class Server extends EventEmitter
@@ -20,8 +23,7 @@ class Server extends EventEmitter
         if !@defaultApp
             throw new Error("Must specify a default application")
         
-        # We only allow 1 server and 1 BrowserManager per process.
-        global.browsers = @browsers = new BrowserManager()
+        # We only allow 1 server per process.
         global.server = this
 
         @httpServer     = @createHTTPServer()
@@ -38,10 +40,12 @@ class Server extends EventEmitter
         else
             @numServers = 2
 
-        @defaultApp.mount(this)
+        @mountedApps = {}
+        @mount(@defaultApp)
 
     close : () ->
-        @browsers.close()
+        for own key, val of @mountedApps
+            val.browsers.close()
         closed = 0
         closeServer = () =>
             if ++closed == @numServers
@@ -58,6 +62,43 @@ class Server extends EventEmitter
         else if ++@listeningCount == @numServers
             @emit('ready')
 
+    mount : (app) ->
+        {mountPoint} = app
+        @mountedApps[mountPoint] = app
+        browsers = app.browsers = if app.browserStrategy == 'multiprocess'
+            new MultiProcessBrowserManager()
+        else
+            new InProcessBrowserManager()
+
+        # Remove trailing slash
+        mountPointNoSlash = if mountPoint.indexOf('/') == mountPoint.length - 1
+            mountPoint = mountPoint.substring(0, mountPoint.length - 1)
+
+        @httpServer.get app.mountPoint, (req, res) =>
+            id = req.session.browserID
+            if !id? || !browsers.find(id)
+                bserver = browsers.create(app)
+                id = req.session.browserID = bserver.id
+            res.writeHead 301,
+                'Location' : "#{mountPointNoSlash}/browsers/#{id}/index.html"
+            console.log("301 to: #{mountPointNoSlash}/browsers/#{id}/index.html")
+            res.end()
+
+        @httpServer.get "#{mountPointNoSlash}/browsers/:browserid/index.html", (req, res) ->
+            id = decodeURIComponent(req.params.browserid)
+            console.log "Joining: #{id}"
+            res.render 'base.jade',
+                browserid : id
+                appid : app.mountPoint
+
+        # Route for ResourceProxy
+        @httpServer.get "#{mountPointNoSlash}/browsers/:browserid/:resourceid", (req, res) =>
+            resourceid = req.params.resourceid
+            decoded = decodeURIComponent(req.params.browserid)
+            bserver = browsers.find(decoded)
+            # Note: fetch calls res.end()
+            bserver?.resources.fetch(resourceid, res)
+
     createHTTPServer : () ->
         server = express.createServer()
         server.configure () =>
@@ -69,19 +110,6 @@ class Server extends EventEmitter
             server.set('views', Path.join(__dirname, '..', '..', 'views'))
             server.set('view options', {layout: false})
 
-        server.get '/browsers/:browserid/index.html', (req, res) ->
-            id = decodeURIComponent(req.params.browserid)
-            console.log "Joining: #{id}"
-            res.render 'base.jade', browserid : id
-
-        # Route for ResourceProxy
-        server.get '/browsers/:browserid/:resourceid', (req, res) =>
-            resourceid = req.params.resourceid
-            decoded = decodeURIComponent(req.params.browserid)
-            bserver = @browsers.find(decoded)
-            # Note: fetch calls res.end()
-            bserver?.resources.fetch(resourceid, res)
-
         server.get '/clientEngine.js', (req, res) =>
             res.statusCode = 200
             res.setHeader('Last-Modified', @clientEngineModified)
@@ -91,6 +119,16 @@ class Server extends EventEmitter
             res.end(@clientEngineJS)
 
         @clientEngineModified = new Date().toString()
+        if Config.compressJS
+            @gzipJS @bundleJS(), (js) =>
+                @clientEngineJS = js
+                server.listen(3000, @registerServer)
+        else
+            @clientEngineJS = @bundleJS()
+            server.listen(3000, @registerServer)
+        return server
+
+    bundleJS : () ->
         b = Browserify
             require : [Path.resolve(__dirname, '..', 'client', 'client_engine')]
             ignore : ['socket.io-client']
@@ -99,18 +137,12 @@ class Server extends EventEmitter
                     ugly = Uglify(src)
                 else
                     src
-        src = b.bundle()
+        return b.bundle()
 
-        if Config.compressJS
-            GZip src, (err, data) =>
-                throw err if err
-                @clientEngineJS = data
-                server.listen(3000, @registerServer)
-        else
-            @clientEngineJS = src
-            server.listen(3000, @registerServer)
-
-        return server
+    gzipJS : (js, callback) ->
+        zlib.gzip js, (err, data) ->
+            throw err if err
+            callback(data)
 
     createSocketIOServer : (http) ->
         io = sio.listen(http)
@@ -120,9 +152,10 @@ class Server extends EventEmitter
                 io.set('browser client gzip', true)
             io.set('log level', 1)
         io.sockets.on 'connection', (socket) =>
-            socket.on 'auth', (browserID) =>
+            socket.on 'auth', (app, browserID) =>
+                console.log("Auth: #{app} #{browserID}")
                 decoded = decodeURIComponent(browserID)
-                bserver = @browsers.find(decoded)
+                bserver = @mountedApps[app].browsers.find(decoded)
                 bserver?.addSocket(socket)
         return io
 

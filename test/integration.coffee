@@ -1,6 +1,6 @@
 # TODO: a test with dynamically appended iframes
 
-bManager = global.server.browsers
+bManager = global.defaultApp.browsers
 
 exports['basic test'] = (test) ->
     b = bManager.create({
@@ -47,7 +47,7 @@ exports['basic test2'] = (test) ->
             test.done()
 
 exports['iframe test1'] = (test) ->
-    b = browsers.create({
+    b = bManager.create({
             entryPoint : 'http://localhost:3001/test/files/iframe-parent.html'
             remoteBrowsing : true
         }, 'browser3')
@@ -78,7 +78,7 @@ exports['iframe test1'] = (test) ->
             test.done()
 
 exports['event inference via advice'] = (test) ->
-    b = browsers.create({
+    b = bManager.create({
             entryPoint : 'http://localhost:3001/test/files/event_inference_advice.html'
             remoteBrowsing : true
         }, 'browser4')
@@ -150,7 +150,7 @@ exports['event inference via advice'] = (test) ->
 # this by putting the script inline at the bottom of the body.  When the
 # client fires 'loadFromSnapshot', the listeners should be installed.
 exports['event inference via snapshot'] = (test) ->
-    b = browsers.create({
+    b = bManager.create({
             entryPoint : 'http://localhost:3001/test/files/event_inference_snapshot.html'
             remoteBrowsing : true
         }, 'browser5')

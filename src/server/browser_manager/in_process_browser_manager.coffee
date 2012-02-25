@@ -1,7 +1,8 @@
-BrowserServer = require('./browser_server')
-Hat           = require('hat')
+BrowserServer  = require('../browser_server')
+BrowserManager = require('./browser_manager')
+Hat            = require('hat')
 
-class BrowserManager
+class InProcessBrowserManager extends BrowserManager
     constructor : () ->
         @browsers = {}
 
@@ -26,4 +27,4 @@ class BrowserManager
         for browser in @browsers
             browser.close()
 
-module.exports = BrowserManager
+module.exports = InProcessBrowserManager

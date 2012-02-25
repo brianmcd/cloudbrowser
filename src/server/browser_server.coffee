@@ -51,7 +51,7 @@ class BrowserServer
     createTestClient : () ->
         if !process.env.TESTS_RUNNING
             throw new Error('Called createTestClient but not running tests.')
-        return new TestClient(@id)
+        return new TestClient(@id, @app.mountPoint)
 
     initLogs : () ->
         logDir          = Path.resolve(__dirname, '..', '..', 'logs')

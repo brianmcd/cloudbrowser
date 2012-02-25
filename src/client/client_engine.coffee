@@ -34,7 +34,7 @@ class ClientEngine
             socket = io.connect('http://localhost:3000')
             # socket.io-client for node doesn't seem to emit 'connect'
             process.nextTick () =>
-                @socket.emit('auth', @window.__envSessionID)
+                @socket.emit('auth', @window.__appID, @window.__envSessionID)
                 @eventMonitor = new EventMonitor(this)
             # If we're testing, expose a function to let the server signal when
             # a test is finished.
@@ -44,7 +44,7 @@ class ClientEngine
             socket = @window.io.connect()
             socket.on 'connect', () =>
                 console.log("Socket.IO connected...")
-                socket.emit('auth', @window.__envSessionID)
+                socket.emit('auth', @window.__appID, @window.__envSessionID)
                 @eventMonitor = new EventMonitor(this)
         return socket
 
@@ -241,4 +241,4 @@ RPCMethods =
     RunOnClient : (string) ->
         $.globalEval("(#{string})();")
 
-module.exports = ClientEngine 
+module.exports = ClientEngine

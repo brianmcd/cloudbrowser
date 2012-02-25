@@ -10,6 +10,9 @@
     "engines": {
         "node": ">4.0.1"
     },
+    "scripts": {
+        "test": "./run_tests.js"
+    },
     "directories" : { 
         "lib" : "./lib"
     },
@@ -24,7 +27,6 @@
         "mime"          : "*",
         "nomnom"        : "1.5.1",
         "hat"           : "0.0.3",
-        "gzip"          : "0.1.0",
         "uglify-js"     : "1.2.5",
         "terminal"      : "0.1.3"
     },
