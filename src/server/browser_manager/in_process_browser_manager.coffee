@@ -1,25 +1,16 @@
 BrowserServer  = require('../browser_server')
 BrowserManager = require('./browser_manager')
-Hat            = require('hat')
 
 class InProcessBrowserManager extends BrowserManager
-    constructor : () ->
+    constructor : (@mountPoint, @defaultApp) ->
         @browsers = {}
 
     find : (id) ->
         return @browsers[id]
 
-    create : (app, id) ->
-        if !app
-            throw new Error("Must pass an Application to BrowserManager#create")
-        if !id
-            id = Hat()
-            while @browsers[id]
-                id = Hat()
-        bserver = @browsers[id] = new BrowserServer
-            id : id,
-            app : app
-        browser = bserver.browser
+    create : (appOrUrl = @defaultApp, id = @generateUUID()) ->
+        bserver = @browsers[id] = new BrowserServer(id, @mountPoint)
+        bserver.load(appOrUrl)
         return bserver
 
     # Close all browsers

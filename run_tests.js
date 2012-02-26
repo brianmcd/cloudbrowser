@@ -1,14 +1,21 @@
 #!/usr/bin/env node
 require('coffee-script');
 
-// XXX: It's important to set this before requiring file since they check it.
+// TODO: This needs to set Config.
+
+// XXX: It's important to set this before requiring files since they check it.
 process.env.TESTS_RUNNING = true;
+var Config = require('./src/shared/config');
+Config.test_env = true; // Transitioning to this instead of TESTS_RUNNING
+
 var Path        = require('path'),
     Application = require('./src/server/application'),
     Server      = require('./src/server'),
+    Config      = require('./src/shared/config')
     NodeUnit    = require('nodeunit'),
     Reporter    = NodeUnit.reporters.default;
 
+// Whether or not to close the server after tests are done.
 dontClose = (process.argv[3] == 'dontclose')
 log = console.log.bind(console);
 
@@ -16,22 +23,17 @@ process.on('uncaughtException', function (err) {
     console.log("__Uncaught Exception__");
     console.log(err.stack);
 });
-    
 
-// TODO: Test that not setting static dir works with nested entry points
-//       re: resources.
-var entryPoint = Path.join('test', 'files', 'index.html');
-var staticDir  = Path.join('test', 'files');
-global.defaultApp = new Application({ 
+global.defaultApp = new Application({
     // Basically an empty HTML doc
-    entryPoint : entryPoint,
+    entryPoint : Path.join('test', 'files', 'index.html'),
     mountPoint : '/',
-    staticDir  :  staticDir
+    staticDir  : Path.join('test', 'files')
 });
 
 log("Starting server...");
 var s = global.server = new Server({
-    defaultApp : defaultApp,
+    defaultApp : global.defaultApp,
     debugServer : false
 });
 
@@ -57,6 +59,8 @@ var tests = [
     'test/server/XMLHttpRequest.coffee',
 ];
 
+// Filter the test list based on the second argument
+//   e.g. pass "integ" to only run the integration tests.
 var filter = process.argv[2];
 if (filter) {
     var reg = new RegExp(filter);

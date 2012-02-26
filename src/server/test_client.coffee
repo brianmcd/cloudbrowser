@@ -11,9 +11,9 @@ class TestClient extends EventEmitter
         @window = @document.parentWindow
         # Attach this testClient to the window, so that the client code can
         # emit events on the testClient (like 'testDone')
-        @window.testClient = this
+        @window.testClient     = this
         @window.__envSessionID = @browserID
-        @window.__appID = @mountPoint || '/'
+        @window.__appID        = @mountPoint
         @socket = new ClientEngine(@window, @document)
 
     disconnect : () ->

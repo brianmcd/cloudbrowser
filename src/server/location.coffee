@@ -54,7 +54,7 @@ exports.LocationBuilder = (browser) ->
 
             # If there isn't currently a page loaded, then we return, since
             # it means Location is being set before the initial page request.
-            if !browser.window.location?
+            if !browser.window?.location?
                 @parsed = URL.parse(url)
                 return
             # Otherwise, a page has been loaded so we need to see if we should

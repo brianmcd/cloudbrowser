@@ -1,7 +1,15 @@
-Browser = require('../src/server/browser')
-Lists   = require('../src/shared/event_lists')
+Browser          = require('../src/server/browser')
+Lists            = require('../src/shared/event_lists')
+{noCacheRequire} = require('../src/shared/utils')
+{InProcessBrowserManager} = require('../src/server/browser_manager')
 
-# TODO: this functionality should be in Browser
+
+remoteBrowsers = new InProcessBrowserManager('/remote_browsers')
+global.server.httpServer.setupMountPoint(remoteBrowsers)
+
+exports.createRemoteBrowserServer = (url) ->
+    return remoteBrowsers.create(url)
+    
 exports.createEmptyWindow = (callback) ->
     browser = new Browser('browser1', global.defaultApp)
     browser.once 'PageLoaded', () ->
@@ -20,8 +28,4 @@ exports.fireEvent = (browser, type, node) ->
     node.dispatchEvent(ev)
 
 exports.getFreshJSDOM = () ->
-    reqCache = require.cache
-    for entry of reqCache
-        if /jsdom/.test(entry)
-            delete reqCache[entry]
-    return require('jsdom')
+    return noCacheRequire('jsdom')

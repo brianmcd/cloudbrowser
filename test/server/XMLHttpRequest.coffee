@@ -1,11 +1,9 @@
 FS      = require('fs')
 Path    = require('path')
 Request = require('request')
-Helpers = require('../helpers')
 Browser = require('../../src/server/browser')
 
-server = null
-jQuery = null
+defaultAppBrowsers = global.defaultApp.browsers
 
 # Info about the XHR target we'll use for most tests.
 targetPath = Path.join(__dirname, '..', 'files', 'xhr-target.html')
@@ -16,7 +14,7 @@ jQuery = FS.readFileSync(jqPath, 'utf8')
 
 # Using the XMLHttpRequest object, make an AJAX request.
 exports['test basic XHR'] = (test) ->
-    browser = new Browser 'b', global.defaultApp
+    {browser} = defaultAppBrowsers.create()
     browser.once 'PageLoaded', () ->
         window = browser.window
         window.test = test
@@ -34,7 +32,7 @@ exports['test basic XHR'] = (test) ->
 
 # Using $.get, make an AJAX request.
 exports['test jQuery XHR - absolute'] = (test) ->
-    browser = new Browser 'b', global.defaultApp
+    {browser} = defaultAppBrowsers.create()
     browser.once 'PageLoaded', () ->
         window = browser.window
         window.test = test
@@ -48,7 +46,7 @@ exports['test jQuery XHR - absolute'] = (test) ->
 
 # Using $.get, make an AJAX request using a relative URL.
 exports['test jQuery XHR - relative'] = (test) ->
-    browser = new Browser 'b', global.defaultApp
+    {browser} = defaultAppBrowsers.create()
     browser.once 'PageLoaded', () ->
         window = browser.window
         window.test = test

@@ -1,0 +1,127 @@
+HTML5                  = require('html5')
+Config                 = require('../shared/config')
+{LocationBuilder}      = require('./location')
+{ImportXMLHttpRequest} = require('./XMLHttpRequest')
+{addAdvice}            = require('./advice')
+{applyPatches}         = require('./jsdom_patches')
+{noCacheRequire}       = require('../shared/utils')
+
+class DOMWindowFactory
+    constructor : (@browser) ->
+        @jsdom = noCacheRequire('jsdom')
+        @jsdom.defaultDocumentFeatures =
+            FetchExternalResources : ['script', 'img', 'css', 'frame', 'link', 'iframe']
+            ProcessExternalResources : ['script', 'frame', 'iframe', 'css']
+            MutationEvents : '2.0'
+            QuerySelector : false
+        addAdvice(@jsdom.dom.level3, @browser)
+        applyPatches(@jsdom.dom.level3, @browser)
+
+        # This gives us a Location class that is aware of our
+        # DOMWindow and Browser.
+        @Location = LocationBuilder(@browser)
+
+    create : (url) ->
+        window = @jsdom.createWindow(@jsdom.dom.level3.html)
+        @patchImage(window)
+        @patchNavigator(window)
+        # This sets window.XMLHttpRequest, and gives the XHR code access to
+        # the window object.
+        ImportXMLHttpRequest(window)
+        @patchNavigator(window)
+        @patchLocation(window)
+        @patchTimers(window)
+        @patchConsole(window)
+        @patchDOMParser(window)
+        @patchWindowMethods(window)
+        # The first time we call this, it won't navigate. 
+        window.location = url
+        @setupDocument(window, url)
+        if Config.test_env
+            window.browser = @browser
+        return window
+
+    setupDocument : (window, url) ->
+        # Setup Document
+        document = @jsdom.jsdom(false, null,
+            url : url
+            deferClose : true
+            parser : HTML5)
+        document.parentWindow = window
+        window.document = document
+        document.__defineGetter__ 'location', () =>
+            return window.__location
+        document.__defineSetter__ 'location', (href) =>
+            return window.__location = new @Location(href)
+
+    patchImage : (window) ->
+        jsdom = @jsdom
+        # Thanks Zombie for Image code 
+        window.Image = (width, height) ->
+            img = new jsdom
+                      .dom
+                      .level3
+                      .html.HTMLImageElement(window.document)
+            img.width = width
+            img.height = height
+            img
+    
+    patchNavigator : (window) ->
+        window.navigator.javaEnabled = false
+        window.navigator.language = 'en-US'
+        # Taken from Chrome 16 request headers
+        window.navigator.userAgent = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/535.7 (KHTML, like Gecko) Chrome/16.0.912.75 Safari/535.7'
+
+    patchLocation : (window) ->
+        Location = @Location
+        window.__defineGetter__ 'location', () ->
+            return @__location
+        window.__defineSetter__ 'location', (href) ->
+            return @__location = new Location(href)
+
+    patchTimers : (window) ->
+        browser = @browser
+        # window.setTimeout and setInterval piggyback off of Node's functions,
+        # but emit events before/after calling the supplied function.
+        ['setTimeout', 'setInterval'].forEach (timer) ->
+            window[timer] = (fn, interval, args...) ->
+                global[timer] () ->
+                    browser.emit('EnteredTimer')
+                    fn.apply(this, args)
+                    browser.emit('ExitedTimer')
+                , interval
+
+    patchConsole : (window) ->
+        browser = @browser
+        window.console =
+            log : () ->
+                args = Array.prototype.slice.call(arguments)
+                args.push('\n')
+                browser.emit 'ConsoleLog',
+                    msg : args.join(' ')
+                if TESTS_RUNNING
+                    console.log(args.join(' '))
+
+    patchWindowMethods : (window) ->
+        browser = @browser
+        # Note: this loads the URL out of a virtual browser.
+        ['open', 'alert'].forEach (method) =>
+            window[method] = () =>
+                browser.emit 'WindowMethodCalled',
+                    method : method
+                    args : Array.prototype.slice.call(arguments)
+
+    patchDOMParser : (window) ->
+        window.DOMParser = class DOMParser
+            parseFromString : (str, type) ->
+                jsdom = noCacheRequire('jsdom')
+                xmldoc = jsdom.jsdom str, jsdom.level(2),
+                    FetchExternalResources   : false
+                    ProcessExternalResources : false
+                    MutationEvents           : true
+                    QuerySelector            : false
+                # TODO: jsdom should do this
+                xmldoc._documentElement = xmldoc.childNodes[0]
+                return xmldoc
+
+module.exports = DOMWindowFactory

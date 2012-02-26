@@ -1,11 +1,10 @@
 Path    = require('path')
 FS      = require('fs')
 Browser = require('../src/server/browser')
+{createRemoteBrowserServer} = require('./helpers')
 
 exports['updating model should update views'] = (test) ->
-    browser = new Browser 'browser',
-        entryPoint : 'http://localhost:3001/test/files/knockout.html'
-        remoteBrowsing : true
+    {browser} = createRemoteBrowserServer('http://localhost:3001/test/files/knockout.html')
     browser.once 'PageLoaded', () ->
         {window} = browser
         {vm, document} = window
@@ -28,9 +27,7 @@ exports['updating model should update views'] = (test) ->
         test.done()
 
 exports['test ko input value binding - on change'] = (test) ->
-    browser = new Browser 'browser',
-        entryPoint     : 'http://localhost:3001/test/files/knockout.html'
-        remoteBrowsing : true
+    {browser} = createRemoteBrowserServer('http://localhost:3001/test/files/knockout.html')
     browser.once 'PageLoaded', () ->
         {window} = browser
         {document, vm} = window
@@ -50,9 +47,7 @@ exports['test ko input value binding - on change'] = (test) ->
         test.done()
 
 exports['test ko input value binding - afterkeydown'] = (test) ->
-    browser = new Browser 'browser',
-        entryPoint : 'http://localhost:3001/test/files/knockout.html'
-        remoteBrowsing : true
+    {browser} = createRemoteBrowserServer('http://localhost:3001/test/files/knockout.html')
     browser.once 'PageLoaded', () ->
         {window} = browser
         {document, vm} = window

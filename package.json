@@ -8,7 +8,7 @@
     "author": "Brian McDaniel <brianmcd05@gmail.com> (http://people.cs.vt.edu/~brianmcd)",
     "main": "index.js",
     "engines": {
-        "node": ">4.0.1"
+        "node": ">=6.0"
     },
     "scripts": {
         "test": "./run_tests.js"

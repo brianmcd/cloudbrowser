@@ -17,11 +17,10 @@ TestClient           = require('./test_client')
 
 # Serves 1 Browser to n clients.
 class BrowserServer
-    constructor : (opts) ->
-        {@id, @app} = opts
-        if !@id? || !@app?
+    constructor : (@id, @mountPoint) ->
+        if !@id? || !@mountPoint
             throw new Error("Missing required parameter")
-        @browser = new Browser(@id, @app, this)
+        @browser = new Browser(@id, this)
         @sockets = []
         @compressor = new Compressor()
         @compressor.on 'newSymbol', (args) =>
@@ -44,14 +43,17 @@ class BrowserServer
             do (event, handler) =>
                 @browser.on event, () =>
                     handler.apply(this, arguments)
-
         @initLogs()
+
+    # arg can be an Application or URL string.
+    load : (arg) ->
+        @browser.load(arg)
 
     # For testing purposes, return an emulated client for this browser.
     createTestClient : () ->
         if !process.env.TESTS_RUNNING
             throw new Error('Called createTestClient but not running tests.')
-        return new TestClient(@id, @app.mountPoint)
+        return new TestClient(@id, @mountPoint)
 
     initLogs : () ->
         logDir          = Path.resolve(__dirname, '..', '..', 'logs')

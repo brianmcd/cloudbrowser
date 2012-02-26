@@ -1,20 +1,17 @@
 Browser        = require('../../src/server/browser')
 {EventEmitter} = require('events')
-{fireEvent} = require('../helpers')
+
+{fireEvent, createRemoteBrowserServer} = require('../helpers')
+
+defaultAppBrowsers = global.defaultApp.browsers
 
 exports['basic test'] = (test) ->
-    b = new Browser('browser1', global.defaultApp, null)
+    b = defaultAppBrowsers.create().browser
     b.on 'PageLoaded', () ->
         test.done()
 
-exports['initDOM'] = (test) ->
-    b = new Browser('browser1', global.defaultApp, null)
-    b2 = new Browser('browser2', global.defaultApp, null)
-    test.notStrictEqual(b.jsdom, b2.jsdom)
-    test.done()
-
 exports['load app'] = (test) ->
-    b = new Browser('browser1', global.defaultApp, new EventEmitter())
+    b = defaultAppBrowsers.create().browser
     b.once 'PageLoaded', () ->
         test.notEqual(b.window, null)
         test.notEqual(b.window.vt, null)
@@ -22,9 +19,7 @@ exports['load app'] = (test) ->
         test.done()
 
 exports['test remote browsing'] = (test) ->
-    b = new Browser 'browser1',
-        entryPoint : 'http://localhost:3001/test/files/basic.html'
-        remoteBrowsing : true
+    b = createRemoteBrowserServer('http://localhost:3001/test/files/basic.html').browser
     b.once 'PageLoaded', () ->
         test.notEqual(b.window, null)
         doc = b.window.document
@@ -36,9 +31,7 @@ exports['test remote browsing'] = (test) ->
         test.done()
 
 exports['test addEventListener advice'] = (test) ->
-    browser = new Browser 'browser',
-        entryPoint : 'http://localhost:3001/test/files/basic.html'
-        remoteBrowsing : true
+    {browser} = createRemoteBrowserServer('http://localhost:3001/test/files/basic.html')
     events = ['blur', 'click', 'change', 'mousedown', 'mousemove']
     count = 0
     browser.on 'AddEventListener', (params) ->
@@ -55,9 +48,7 @@ exports['test addEventListener advice'] = (test) ->
         div.addEventListener('mousemove', () ->)
 
 exports['test event inference - addEventListener'] = (test) ->
-    browser = new Browser 'browser',
-        entryPoint : 'http://localhost:3001/test/files/event_processor.html'
-        remoteBrowsing : true
+    {browser} = createRemoteBrowserServer('http://localhost:3001/test/files/event_processor.html')
     events = ['mouseover', 'click', 'dblclick', 'change', 'focus']
     count = 0
     browser.on 'AddEventListener', (params) ->
@@ -68,9 +59,7 @@ exports['test event inference - addEventListener'] = (test) ->
             test.done()
 
 exports['test event inference - attribute handlers'] = (test) ->
-    browser = new Browser 'browser',
-        entryPoint : 'http://localhost:3001/test/files/event_processor_attributes.html'
-        remoteBrowsing : true
+    {browser} = createRemoteBrowserServer('http://localhost:3001/test/files/event_processor_attributes.html')
     events = ['focus', 'click', 'change', 'mouseover']
     count = 0
     browser.on 'AddEventListener', (params) ->

@@ -13,4 +13,8 @@ class Application
         if !@mountPoint
             throw new Error("Missing required mountPoint parameter")
 
+    # TODO: this should use global.server to determine prefix.
+    entryURL : () ->
+        "http://localhost:3001/#{@entryPoint}"
+
 module.exports = Application

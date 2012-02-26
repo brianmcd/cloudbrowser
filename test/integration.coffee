@@ -1,12 +1,8 @@
+{createRemoteBrowserServer} = require('./helpers')
 # TODO: a test with dynamically appended iframes
 
-bManager = global.defaultApp.browsers
-
 exports['basic test'] = (test) ->
-    b = bManager.create({
-            entryPoint : 'http://localhost:3001/test/files/basic.html'
-            remoteBrowsing : true
-        }, 'b1')
+    b = createRemoteBrowserServer('http://localhost:3001/test/files/basic.html')
     client = b.createTestClient()
     client.once 'PageLoaded', () ->
         test.equal(client.document.getElementById('div1').innerHTML, 'Testing')
@@ -17,10 +13,7 @@ exports['basic test'] = (test) ->
 # Loads a page that uses setTimeout, createElement, innerHTML, and
 # appendChild to create 20 nodes.
 exports['basic test2'] = (test) ->
-    b = bManager.create({
-            entryPoint : 'http://localhost:3001/test/files/basic2.html'
-            remoteBrowsing : true
-        }, 'b2')
+    b = createRemoteBrowserServer('http://localhost:3001/test/files/basic2.html')
     browser = b.browser
     client = b.createTestClient()
     client.once 'PageLoaded', () ->
@@ -47,10 +40,7 @@ exports['basic test2'] = (test) ->
             test.done()
 
 exports['iframe test1'] = (test) ->
-    b = bManager.create({
-            entryPoint : 'http://localhost:3001/test/files/iframe-parent.html'
-            remoteBrowsing : true
-        }, 'browser3')
+    b = createRemoteBrowserServer('http://localhost:3001/test/files/iframe-parent.html')
     client = b.createTestClient()
     browser = b.browser
     client.once 'PageLoaded', () ->
@@ -78,10 +68,7 @@ exports['iframe test1'] = (test) ->
             test.done()
 
 exports['event inference via advice'] = (test) ->
-    b = bManager.create({
-            entryPoint : 'http://localhost:3001/test/files/event_inference_advice.html'
-            remoteBrowsing : true
-        }, 'browser4')
+    b = createRemoteBrowserServer('http://localhost:3001/test/files/event_inference_advice.html')
     client = b.createTestClient()
     browser = b.browser
     client.once 'PageLoaded', () ->
@@ -150,10 +137,7 @@ exports['event inference via advice'] = (test) ->
 # this by putting the script inline at the bottom of the body.  When the
 # client fires 'loadFromSnapshot', the listeners should be installed.
 exports['event inference via snapshot'] = (test) ->
-    b = bManager.create({
-            entryPoint : 'http://localhost:3001/test/files/event_inference_snapshot.html'
-            remoteBrowsing : true
-        }, 'browser5')
+    b = createRemoteBrowserServer('http://localhost:3001/test/files/event_inference_snapshot.html')
     client = b.createTestClient()
     browser = b.browser
     client.once 'PageLoaded', () ->
