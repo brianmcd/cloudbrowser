@@ -15,6 +15,9 @@ class Application
 
     # TODO: this should use global.server to determine prefix.
     entryURL : () ->
-        "http://localhost:3001/#{@entryPoint}"
+        if @remoteBrowsing
+            return @entryPoint
+        else
+            return "http://localhost:3001/#{@entryPoint}"
 
 module.exports = Application

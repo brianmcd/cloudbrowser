@@ -50,7 +50,7 @@ class Browser extends EventEmitter
         @window.close if @window?
         @window = @DOMWindowFactory.create(url)
         @document = @window.document
-        @initializeApplication(app) if app?
+        @initializeApplication(app) if app? && !app.remoteBrowsing
 
         @window.addEventListener 'load', () =>
             @emit('PageLoaded')
