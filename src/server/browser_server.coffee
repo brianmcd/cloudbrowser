@@ -109,7 +109,9 @@ class BrowserServer
                 socket.emit.apply(socket, args)
 
     addSocket : (socket) ->
+        console.log("BrowserServer#addSocket")
         if Config.monitorTraffic
+            # TODO: will this work with multi process?
             socket = new DebugClient(socket, this.id)
         for own type, func of RPCMethods
             do (type, func) =>

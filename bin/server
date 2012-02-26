@@ -53,6 +53,10 @@ var opts = require('nomnom')
         full    : 'eval-mode',
         default : false,
         help    : "Enable evaluation mode for performance measuring."})
+    .option('multiProcess', {
+        full    : 'multi-process',
+        default : false,
+        help    : "Run each browser in its own process (can't be used with shared global state)."})
     .option('app', {
         position : 0,
         required : true,
@@ -82,10 +86,14 @@ var defaultApp = null;
 // We support passing a URL instead of an application config file for quick
 // testing.
 if (/^http/.test(opts.app) || /\.html$/.test(opts.app)) {
-    defaultApp = new Application({
+    var appOpts = {
         entryPoint : opts.app,
         mountPoint : '/'
-    });
+    };
+    if (config.multiProcess) {
+        appOpts.browserStrategy = 'multiprocess'
+    }
+    defaultApp = new Application(appOpts);
 } else {
     var appConfigPath = Path.resolve(process.cwd(), opts.app);
     var appOpts = require(appConfigPath).app;

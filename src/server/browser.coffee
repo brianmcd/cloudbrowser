@@ -80,7 +80,6 @@ class Browser extends EventEmitter
             @window.run(Browser.koScript, "knockout-1.3.0beta.debug.js")
             @window.vt.ko = KO
             @window.run(Browser.koPatch, "ko-patch.js")
-
         @window.vt.shared = app.sharedState || {}
         @window.vt.local = if app.localState then new app.localState() else {}
 
