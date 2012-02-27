@@ -111,7 +111,7 @@ class BrowserServer
     addSocket : (socket) ->
         if Config.monitorTraffic
             # TODO: will this work with multi process?
-            socket = new DebugClient(socket, this.id)
+            socket = new DebugClient(socket, @id)
         for own type, func of RPCMethods
             do (type, func) =>
                 socket.on type, () =>

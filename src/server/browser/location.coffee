@@ -30,6 +30,7 @@ exports.LocationBuilder = (browser) ->
     class Location
         # url can be absolute or relative
         constructor : (url) ->
+            console.log(url)
             # The POJO that holds location info as properties.
             @parsed = {}
 

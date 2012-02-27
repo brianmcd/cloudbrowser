@@ -17,12 +17,15 @@ Managers        = require('./browser_manager')
 class Server extends EventEmitter
     # config.app - an Application instance, which is the default app.
     constructor : (config) ->
-        {@defaultApp, @debugServer} = config
+        console.log("Creating server:")
+        console.log(config)
+        {@port, @defaultApp, @debugServer} = config
+        @port = 3000 if !@port
         
         # We only allow 1 server per process.
         global.server = this
 
-        @httpServer     = new HTTPServer(3000, @registerServer)
+        @httpServer     = new HTTPServer(@port, @registerServer)
         @socketIOServer = @createSocketIOServer(@httpServer.server)
         @internalServer = @createInternalServer()
 
@@ -32,7 +35,7 @@ class Server extends EventEmitter
             @debugServer = new DebugServer
                 browsers : @browsers
             @debugServer.once('listen', @registerServer)
-            @debugServer.listen(3002)
+            @debugServer.listen(@port + 2)
         else
             @numServers = 2
         @mount(@defaultApp) if @defaultApp?
@@ -83,7 +86,7 @@ class Server extends EventEmitter
         server = express.createServer()
         server.configure () =>
             server.use(express.static(process.cwd()))
-        server.listen(3001, @registerServer)
+        server.listen(@port + 1, @registerServer)
         return server
 
 module.exports = Server

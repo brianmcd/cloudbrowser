@@ -6,7 +6,8 @@ var Path        = require('path'),
     Server      = vt.Server,
     ko          = vt.ko,
     Application = require('../src/server/application'),
-    config      = require('../src/shared/config');
+    config      = require('../src/shared/config'),
+    Router      = require('../src/server/router');
 
 var opts = require('nomnom')
     .option('debug', {
@@ -57,6 +58,13 @@ var opts = require('nomnom')
         full    : 'multi-process',
         default : false,
         help    : "Run each browser in its own process (can't be used with shared global state)."})
+    .option('useRouter', {
+        full    : 'router',
+        default : false,
+        help    : "Use a front-end router process with each app server in its own process."})
+    .option('port', {
+       default : 3000,
+       help    : "Starting port to use."})
     .option('app', {
         position : 0,
         required : true,
@@ -100,11 +108,18 @@ if (/^http/.test(opts.app) || /\.html$/.test(opts.app)) {
     defaultApp = new Application(appOpts);
 }
 
-var s = new Server({
-    defaultApp  : defaultApp,
-    debugServer : opts.debugServer
-});
+var s = null;
+if (opts.useRouter) {
+    // TODO: debugServer needs to become part of app spec.
+    s = new Router(opts.port);
+    s.mount(defaultApp);
+} else {
+    s = new Server({
+        defaultApp  : defaultApp,
+        debugServer : opts.debugServer
+    });
+    s.once('ready', function () {
+        console.log('All services running, ready for clients.')
+    });
+}
 
-s.once('ready', function () {
-    console.log('All services running, ready for clients.')
-});
