@@ -1,19 +1,19 @@
 Util                 = require('util')
 Path                 = require('path')
 FS                   = require('fs')
-Browser              = require('./browser')
-Compressor           = require('../shared/compressor')
+Browser              = require('../browser')
 ResourceProxy        = require('./resource_proxy')
-TaggedNodeCollection = require('../shared/tagged_node_collection')
-Config               = require('../shared/config')
 DebugClient          = require('./debug_client')
 TestClient           = require('./test_client')
+Compressor           = require('../../shared/compressor')
+TaggedNodeCollection = require('../../shared/tagged_node_collection')
+Config               = require('../../shared/config')
 {serialize}          = require('./serializer')
-{isVisibleOnClient}  = require('../shared/utils')
+{isVisibleOnClient}  = require('../../shared/utils')
 
 {eventTypeToGroup,
  clientEvents,
- defaultEvents} = require('../shared/event_lists')
+ defaultEvents} = require('../../shared/event_lists')
 
 # Serves 1 Browser to n clients.
 class BrowserServer
@@ -56,7 +56,7 @@ class BrowserServer
         return new TestClient(@id, @mountPoint)
 
     initLogs : () ->
-        logDir          = Path.resolve(__dirname, '..', '..', 'logs')
+        logDir          = Path.resolve(__dirname, '..', '..', '..', 'logs')
         @consoleLogPath = Path.resolve(logDir, "#{@browser.id}.log")
         @consoleLog     = FS.createWriteStream(@consoleLogPath)
         @consoleLog.write("Log opened: #{Date()}\n")
@@ -109,7 +109,6 @@ class BrowserServer
                 socket.emit.apply(socket, args)
 
     addSocket : (socket) ->
-        console.log("BrowserServer#addSocket")
         if Config.monitorTraffic
             # TODO: will this work with multi process?
             socket = new DebugClient(socket, this.id)

@@ -1,10 +1,10 @@
 HTML5                  = require('html5')
-Config                 = require('../shared/config')
+Config                 = require('../../shared/config')
 {LocationBuilder}      = require('./location')
 {ImportXMLHttpRequest} = require('./XMLHttpRequest')
 {addAdvice}            = require('./advice')
 {applyPatches}         = require('./jsdom_patches')
-{noCacheRequire}       = require('../shared/utils')
+{noCacheRequire}       = require('../../shared/utils')
 
 class DOMWindowFactory
     constructor : (@browser) ->

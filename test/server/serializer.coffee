@@ -1,6 +1,7 @@
-Config = require('../../src/shared/config')
-{serialize} = require('../../src/server/serializer')
+Config          = require('../../src/shared/config')
+{serialize}     = require('../../src/server/browser_server/serializer')
 {getFreshJSDOM} = require('../helpers')
+
 Config.resourceProxy = false
 
 jsdom = getFreshJSDOM()

@@ -1,5 +1,5 @@
-ClientEvents      = require('../shared/event_lists').clientEvents
-{isVisibleOnClient} = require('../shared/utils')
+ClientEvents      = require('../../shared/event_lists').clientEvents
+{isVisibleOnClient} = require('../../shared/utils')
 
 adviseMethod = (obj, name, func) ->
     originalMethod = obj.prototype[name]

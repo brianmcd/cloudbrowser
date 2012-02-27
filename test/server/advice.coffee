@@ -1,6 +1,6 @@
 {EventEmitter}  = require('events')
 {getFreshJSDOM} = require('../helpers')
-{addAdvice}     = require('../../src/server/advice')
+{addAdvice}     = require('../../src/server/browser/advice')
 
 getAdvisedDOM = () ->
     jsdom = getFreshJSDOM()

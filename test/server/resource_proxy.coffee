@@ -1,6 +1,6 @@
 Path          = require('path')
 FS            = require('fs')
-ResourceProxy = require('../../src/server/resource_proxy')
+ResourceProxy = require('../../src/server/browser_server/resource_proxy')
 
 
 #TODO: test CSS re-writing

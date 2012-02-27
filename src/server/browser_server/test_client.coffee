@@ -1,6 +1,6 @@
 {EventEmitter}   = require('events')
-ClientEngine     = require('../client/client_engine')
-{noCacheRequire} = require('../shared/utils')
+ClientEngine     = require('../../client/client_engine')
+{noCacheRequire} = require('../../shared/utils')
 
 class TestClient extends EventEmitter
     constructor : (@browserID, @mountPoint) ->

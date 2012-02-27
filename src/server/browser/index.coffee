@@ -3,11 +3,11 @@ Path                   = require('path')
 FS                     = require('fs')
 URL                    = require('url')
 Request                = require('request')
-EmbedAPI               = require('../api')
-KO                     = require('../api/ko').ko
-Config                 = require('../shared/config')
+EmbedAPI               = require('../../api')
+KO                     = require('../../api/ko').ko
+Config                 = require('../../shared/config')
 DOMWindowFactory       = require('./DOMWindowFactory')
-Application            = require('./application')
+Application            = require('../application')
 
 TESTS_RUNNING = process.env.TESTS_RUNNING
 if TESTS_RUNNING

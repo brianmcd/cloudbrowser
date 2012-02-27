@@ -1,5 +1,5 @@
-URL             = require('url')
-LocationBuilder = require('../../src/server/location').LocationBuilder
+URL               = require('url')
+{LocationBuilder} = require('../../src/server/browser/location')
 
 lastEvent = null
 
