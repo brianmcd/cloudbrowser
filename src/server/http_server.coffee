@@ -50,6 +50,7 @@ class HTTPServer extends EventEmitter
         # Remove trailing slash if it exists
         mountPointNoSlash = if mountPoint.indexOf('/') == mountPoint.length - 1
             mountPoint.substring(0, mountPoint.length - 1)
+        else mountPoint
 
         # Route to reserve a virtual browser.
         # TODO: It would be nice to extract this, since it's useful just to
