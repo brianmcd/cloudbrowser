@@ -146,6 +146,8 @@ class BrowserServer extends EventEmitter
                     @browser.clientComponents,
                     compressionTable)
         @sockets.push(socket)
+        if Config.traceMem
+            gc()
 
 # The BrowserServer constructor iterates over the properties in this object and
 # adds an event handler to the Browser for each one.  The function name must
@@ -176,6 +178,8 @@ DOMEventHandlers =
                         @registeredEventTypes,
                         @browser.clientComponents,
                         compressionTable)
+        if Config.traceMem
+            gc()
 
     DocumentCreated : (event) ->
         @nodes.add(event.target)
@@ -361,7 +365,9 @@ RPCMethods =
 
             clientEv.target.dispatchEvent(serverEv)
             @broadcastEvent('resumeRendering', id)
-        console.log("Finished processing event: #{id}")
+            if Config.traceMem
+                gc()
+            console.log("Finished processing event: #{serverEv.type}")
 
     # Takes a clientEv (an event generated on the client and sent over DNode)
     # and creates a corresponding event for the server's DOM.

@@ -63,12 +63,21 @@ var opts = require('nomnom')
         default : false,
         help    : "Use a front-end router process with each app server in its own process."})
     .option('port', {
-       default : 3000,
-       help    : "Starting port to use."})
+        default : 3000,
+        help    : "Starting port to use."})
+    .option('traceMem', {
+        full    : 'trace-mem',
+        default : false,
+        flag    : true,
+        help    : "Trace memory usage."})
+    .option('adminInterface', {
+        full    : 'admin-interface',
+        default : false,
+        help    : "Enable the admin interface."})
     .option('app', {
         position : 0,
         required : true,
-        help : "The configuration function for the default application."}).parse();
+        help     : "The configuration function for the default application."}).parse();
 
 
 for (var p in opts) {
