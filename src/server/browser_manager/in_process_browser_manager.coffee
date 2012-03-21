@@ -9,13 +9,26 @@ class InProcessBrowserManager extends BrowserManager
         return @browsers[id]
 
     create : (appOrUrl = @defaultApp, id = @generateUUID()) ->
-        bserver = @browsers[id] = new BrowserServer(id, @mountPoint)
-        bserver.load(appOrUrl)
-        return bserver
+        browser = @browsers[id] = new BrowserServer(id, @mountPoint)
+        browser.load(appOrUrl)
+        @addToBrowserList(browser)
+        browser.once 'BrowserClose', () =>
+            @close(browser)
+        return browser
 
     # Close all browsers
-    close : () ->
+    closeAll : () ->
         for browser in @browsers
+            delete @browsers[browser.id]
             browser.close()
+            @removeFromBrowserList(browser)
+    
+    close : (browser) ->
+        console.log("InProcessBrowserManager closing: #{browser.id}")
+        if !browser?
+            throw new Error("Must pass a browser to close")
+        @removeFromBrowserList(browser)
+        delete @browsers[browser.id]
+        browser.close()
 
 module.exports = InProcessBrowserManager

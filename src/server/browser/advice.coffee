@@ -28,6 +28,8 @@ adviseProperty = (obj, name, args) ->
 # changes.
 exports.addAdvice = (dom, emitter) ->
     {html, events} = dom
+    emitter.removeAdvice = () ->
+        emitter = null
 
     # Advice for: HTMLDocument constructor
     #

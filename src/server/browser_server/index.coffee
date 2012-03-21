@@ -1,6 +1,7 @@
 Util                 = require('util')
 Path                 = require('path')
 FS                   = require('fs')
+{EventEmitter}       = require('events')
 Browser              = require('../browser')
 ResourceProxy        = require('./resource_proxy')
 DebugClient          = require('./debug_client')
@@ -16,7 +17,7 @@ Config               = require('../../shared/config')
  defaultEvents} = require('../../shared/event_lists')
 
 # Serves 1 Browser to n clients.
-class BrowserServer
+class BrowserServer extends EventEmitter
     constructor : (@id, @mountPoint) ->
         if !@id? || !@mountPoint
             throw new Error("Missing required parameter")
@@ -67,9 +68,14 @@ class BrowserServer
             @rpcLog    = FS.createWriteStream(rpcLogPath)
 
     close : () ->
+        return if @closed
+        @closed = true
         for socket in @sockets
             socket.disconnect()
+        @browser.removeAllListeners()
         @browser.close()
+        @browser = null
+        @emit('BrowserClose')
 
     logRPCMethod : (name, params) ->
         @rpcLog.write("#{name}(")

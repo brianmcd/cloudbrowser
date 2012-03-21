@@ -1,12 +1,23 @@
-Hat = require('hat')
+Hat  = require('hat')
+{ko} = require('../../api/ko')
+
+if !global.browserList?
+    global.browserList = ko.observableArray()
 
 # Base class for browser management strategies.
 # Must also define @mountPoint
 class BrowserManager
+    addToBrowserList : (browser) ->
+        console.log("Pushing to browserList")
+        global.browserList.push(browser)
+
+    removeFromBrowserList : (browser) ->
+        global.browserList.remove(browser)
+
     find : () ->
         throw new Error("BrowserManager subclass must implement find.")
 
-    create : () ->
+    create : (app, id) ->
         throw new Error("BrowserManager subclass must implement create.")
 
     close : () ->

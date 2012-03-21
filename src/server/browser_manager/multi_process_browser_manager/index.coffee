@@ -11,10 +11,14 @@ class MultiProcessBrowserManager extends BrowserManager
     create : (appOrUrl = @defaultApp, id = @generateUUID()) ->
         shim = @browsers[id] = new BrowserServerShim(id, @mountPoint)
         shim.load(appOrUrl)
+        @addToBrowserList(shim)
         return shim
 
     close : () ->
         for browser in @browsers
+            delete @browsers[browser.id]
+            @removeFromBrowserList(browser)
             browser.close()
+
 
 module.exports = MultiProcessBrowserManager

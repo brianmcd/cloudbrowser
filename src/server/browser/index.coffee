@@ -32,8 +32,14 @@ class Browser extends EventEmitter
 
 
     close : () ->
-        @emit('BrowserClose')
         @window.close()
+        @removeAdvice()
+        @window = null
+        @components = null
+        @clientComponents = null
+        @DOMWindowFactory = null
+        @bserver = null
+        @emit('BrowserClose')
 
     # Loads the application @app
     load : (arg) ->
