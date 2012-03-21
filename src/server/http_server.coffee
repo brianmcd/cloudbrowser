@@ -1,6 +1,6 @@
 express        = require('express')
 {EventEmitter} = require('events')
-ZLib           = require('zlib')
+#ZLib           = require('zlib') #TODO: re-enable!
 Path           = require('path')
 Uglify         = require('uglify-js')
 Browserify     = require('browserify')

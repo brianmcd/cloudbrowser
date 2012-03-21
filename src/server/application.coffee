@@ -20,8 +20,9 @@ class Application
         if @remoteBrowsing
             return @entryPoint
         else
-            relativeURL = Path.relative(process.cwd(), @entryPoint)
-            console.log("Requesting: http://localhost:3001/#{relativeURL}")
-            return "http://localhost:3001/#{relativeURL}"
+            #relativeURL = Path.relative(process.cwd(), @entryPoint)
+            #console.log("Requesting: http;//localhost:3001/#{relativeURL}")
+            console.log("Requesting: http;//localhost:3001/#{@entryPoint}")
+            return "http://localhost:3001/#{@entryPoint}"
 
 module.exports = Application

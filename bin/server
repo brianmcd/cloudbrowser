@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-
+require('v8-profiler');
 require('coffee-script');
 var Path        = require('path'),
     vt          = require('../');
