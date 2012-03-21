@@ -1,3 +1,5 @@
+Path = require('path')
+
 class Application
     constructor : (opts) ->
         {@entryPoint,
@@ -18,6 +20,8 @@ class Application
         if @remoteBrowsing
             return @entryPoint
         else
-            return "http://localhost:3001/#{@entryPoint}"
+            relativeURL = Path.relative(process.cwd(), @entryPoint)
+            console.log("Requesting: http://localhost:3001/#{relativeURL}")
+            return "http://localhost:3001/#{relativeURL}"
 
 module.exports = Application
