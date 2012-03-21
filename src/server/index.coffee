@@ -10,6 +10,7 @@ Config          = require('../shared/config')
 {ko}            = require('../api/ko')
 HTTPServer      = require('./http_server')
 Managers        = require('./browser_manager')
+AdminInterface  = require('./admin_interface')
 
 {MultiProcessBrowserManager, InProcessBrowserManager} = Managers
 
@@ -39,6 +40,7 @@ class Server extends EventEmitter
         else
             @numServers = 2
         @mount(@defaultApp) if @defaultApp?
+        @mount(AdminInterface) if Config.adminInterface
 
     close : () ->
         for own key, val of @httpServer.mountedBrowserManagers
