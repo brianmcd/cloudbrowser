@@ -10,7 +10,7 @@ class DOMWindowFactory
     constructor : (@browser) ->
         @jsdom = noCacheRequire('jsdom')
         @jsdom.defaultDocumentFeatures =
-            FetchExternalResources : ['script', 'img', 'css', 'frame', 'link', 'iframe']
+            FetchExternalResources : ['script', 'css', 'frame', 'link', 'iframe']
             ProcessExternalResources : ['script', 'frame', 'iframe', 'css']
             MutationEvents : '2.0'
             QuerySelector : false
@@ -99,7 +99,7 @@ class DOMWindowFactory
                 args.push('\n')
                 browser.emit 'ConsoleLog',
                     msg : args.join(' ')
-                if TESTS_RUNNING
+                if process.env.TESTS_RUNNING
                     console.log(args.join(' '))
 
     patchWindowMethods : (window) ->
