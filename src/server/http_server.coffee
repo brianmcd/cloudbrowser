@@ -86,7 +86,7 @@ class HTTPServer extends EventEmitter
     bundleJS : () ->
         b = Browserify
             require : [Path.resolve(__dirname, '..', 'client', 'client_engine')]
-            ignore : ['socket.io-client']
+            ignore : ['socket.io-client', 'weak']
             filter : (src) ->
                 if Config.compressJS
                     ugly = Uglify(src)

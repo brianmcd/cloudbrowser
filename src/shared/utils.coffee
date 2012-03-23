@@ -46,6 +46,8 @@ exports.noCacheRequire = (name, regExp) ->
     reqCache = require.cache
     regExp = new RegExp(name) if !regExp
     for entry of reqCache
-        if regExp.test(entry)
-            delete reqCache[entry]
-    return require(name)
+        delete reqCache[entry] if regExp.test(entry)
+    rv = require(name)
+    for entry of reqCache
+        delete reqCache[entry] if regExp.test(entry)
+    return rv
