@@ -30,6 +30,9 @@ exports.addAdvice = (dom, emitter) ->
     {html, events} = dom
     emitter.removeAdvice = () ->
         emitter = null
+        dom = null
+        html = null
+        events = null
 
     # Advice for: HTMLDocument constructor
     #

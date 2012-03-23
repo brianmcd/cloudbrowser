@@ -55,10 +55,11 @@ class DOMWindowFactory
             return window.__location = new @Location(href)
 
     patchImage : (window) ->
-        jsdom = @jsdom
+        # TODO MEM
+        self = this
         # Thanks Zombie for Image code 
         window.Image = (width, height) ->
-            img = new jsdom
+            img = new self.jsdom
                       .dom
                       .level3
                       .html.HTMLImageElement(window.document)
@@ -80,34 +81,33 @@ class DOMWindowFactory
             return @__location = new Location(href)
 
     patchTimers : (window) ->
-        browser = @browser
+        self = this
         # window.setTimeout and setInterval piggyback off of Node's functions,
         # but emit events before/after calling the supplied function.
         ['setTimeout', 'setInterval'].forEach (timer) ->
             window[timer] = (fn, interval, args...) ->
                 global[timer] () ->
-                    browser.emit('EnteredTimer')
+                    self.browser.emit('EnteredTimer')
                     fn.apply(this, args)
-                    browser.emit('ExitedTimer')
+                    self.browser.emit('ExitedTimer')
                 , interval
 
     patchConsole : (window) ->
-        browser = @browser
+        self = this
         window.console =
             log : () ->
                 args = Array.prototype.slice.call(arguments)
                 args.push('\n')
-                browser.emit 'ConsoleLog',
+                self.browser.emit 'ConsoleLog',
                     msg : args.join(' ')
                 if process.env.TESTS_RUNNING
                     console.log(args.join(' '))
 
     patchWindowMethods : (window) ->
-        browser = @browser
         # Note: this loads the URL out of a virtual browser.
         ['open', 'alert'].forEach (method) =>
             window[method] = () =>
-                browser.emit 'WindowMethodCalled',
+                self.browser.emit 'WindowMethodCalled',
                     method : method
                     args : Array.prototype.slice.call(arguments)
 

@@ -72,10 +72,10 @@ class BrowserServer extends EventEmitter
         @closed = true
         for socket in @sockets
             socket.disconnect()
-        @browser.removeAllListeners()
         @browser.close()
         @browser = null
         @emit('BrowserClose')
+        @removeAllListeners()
 
     logRPCMethod : (name, params) ->
         @rpcLog.write("#{name}(")
@@ -339,6 +339,7 @@ RPCMethods =
             target.setAttribute(attribute, value)
             @setByClient = null
 
+    # TODO: what is this id for?
     processEvent : (event, id) ->
         if !@browserLoading
             # TODO
@@ -356,18 +357,18 @@ RPCMethods =
 
             # Create an event we can dispatch on the server.
             serverEv = RPCMethods._createEvent(clientEv, @browser.window)
-
+            ###
             console.log("Dispatching #{serverEv.type}\t" +
                         "[#{eventTypeToGroup[clientEv.type]}] on " +
                         "#{clientEv.target.__nodeID} [#{clientEv.target.tagName}]")
 
             console.log("bubbling: #{clientEv.bubbles}")
-
+            ###
             clientEv.target.dispatchEvent(serverEv)
             @broadcastEvent('resumeRendering', id)
             if Config.traceMem
                 gc()
-            console.log("Finished processing event: #{serverEv.type}")
+            #console.log("Finished processing event: #{serverEv.type}")
 
     # Takes a clientEv (an event generated on the client and sent over DNode)
     # and creates a corresponding event for the server's DOM.

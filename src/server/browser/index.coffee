@@ -32,14 +32,18 @@ class Browser extends EventEmitter
 
 
     close : () ->
-        @window.close()
-        @removeAdvice()
+        @window.close() if @window?
+        @removeAdvice() # TODO: move to advice or something.  or maybe advice should attach to jsdom.
         @window = null
+        @document = null
         @components = null
         @clientComponents = null
+        @DOMWindowFactory.browser = null
+        @DOMWindowFactory.jsdom = null # TODO: move into cleanup method
         @DOMWindowFactory = null
         @bserver = null
         @emit('BrowserClose')
+        @removeAllListeners()
 
     # Loads the application @app
     load : (arg) ->
