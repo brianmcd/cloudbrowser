@@ -1,8 +1,9 @@
-var ChatManager = require('./model/shared/chatmanager'),
+var Path        = require('path'),
+    ChatManager = require('./model/shared/chatmanager'),
     User        = require('./model/local/user');
 
 exports.app = {
-  entryPoint  : 'index.html',
+  entryPoint  : Path.resolve(__dirname, 'index.html'),
   mountPoint  : '/',
   name        : 'chat2',
   sharedState : {

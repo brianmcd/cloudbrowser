@@ -1,0 +1,14 @@
+<html>
+    <head>
+    </head>
+    <body>
+        <div id='target'></div>
+        <script>
+            var count = 0;
+            var div = document.getElementById('target');
+            div.addEventListener('click', function () {
+                div.innerHTML = ++count;
+            });
+        </script>
+    </body>
+</html>
