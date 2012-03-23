@@ -1,7 +1,12 @@
+if process.title != 'browser'
+    Weak = require('weak')
+
+# TODO: On server, emit a delete event that can be used to tell the client to
+#       remove a node from the map.
+#
 class TaggedNodeCollection
     constructor : ->
         @ids = {}
-        @count = 0
         @nextID = 0
         # When we add multiplexing, we can use different prefixes.
         @idPrefix = 'node'
@@ -22,36 +27,28 @@ class TaggedNodeCollection
         if !node?
             throw new Error("Trying to add null node")
         if node.__nodeID?
-            if (node != @ids[node.__nodeID])
-                throw new Error("Added a node with existing __nodeID, but it 
-                                 doesn't match: #{node.__nodeID}")
             # We need to allow assigning a new ID to an existing node so that
             # we can re-tag an iframe's contentDocument.
             # It starts as a blank iframe with a blank document, then src gets
             # set, and the blank iframe's document gets deleted and a new on
             # is created.
-            #return
-            @count-- # hacky, but this is since we'll increment it below.
-        if !id?
-            found = false
-            while (!found)
-                id = "#{@idPrefix}#{++@nextID}"
-                if @ids[id] == undefined
-                    found = true
-        else if typeof id == 'string'
+            if (node != @ids[node.__nodeID])
+                throw new Error("Added a node with existing __nodeID, but it 
+                                 doesn't match: #{node.__nodeID}")
+        if typeof id == 'string'
             current = @ids[id]
             if current && (current != node)
                 throw new Error("User supplied existing but mismatched ID: #{id}")
         else
-            throw new Error("Invalid ID: #{id}")
-        @count++
+            id = "#{@idPrefix}#{++@nextID}"
+            while (@ids[id] != undefined)
+                id = "#{@idPrefix}#{++@nextID}"
         node[@propName] = id
-        @ids[id] = node
-
-    reTag : (node, newID) ->
-        delete @ids[node.__nodeID]
-        node.__nodeID = newID
-        return @ids[newID] = node
+        if typeof Weak != 'undefined'
+            # TODO: emit an event so we can notify client.
+            @ids[id] = Weak node, () => delete @ids[id]
+        else
+            @ids[id] = node
 
     # Substitutes DOM elements in a parameter list with their id.
     # Updates are done in place.
