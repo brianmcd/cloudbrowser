@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 var spawn = require('child_process').spawn,
+    terminal = require('terminal'),
     Path  = require('path');
 
 var numClients = parseInt(process.argv[2], 10);
