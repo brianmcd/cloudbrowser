@@ -85,8 +85,9 @@ class DOMWindowFactory
         # window.setTimeout and setInterval piggyback off of Node's functions,
         # but emit events before/after calling the supplied function.
         ['setTimeout', 'setInterval'].forEach (timer) ->
+            old = window[timer]
             window[timer] = (fn, interval, args...) ->
-                global[timer] () ->
+                old () ->
                     self.browser.emit('EnteredTimer')
                     fn.apply(this, args)
                     self.browser.emit('ExitedTimer')

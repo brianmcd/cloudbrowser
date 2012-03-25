@@ -32,6 +32,9 @@ class Browser extends EventEmitter
 
 
     close : () ->
+        @window.vt?.shared = null
+        @window.vt?.local = null
+        @window.vt = null if @window?.vt?
         @window.close() if @window?
         @removeAdvice() # TODO: move to advice or something.  or maybe advice should attach to jsdom.
         @window = null

@@ -1,7 +1,7 @@
-exports.applyPatches = (level3, browser) ->
+exports.applyPatches = (level3) ->
     addDefaultHandlers(level3.html)
     addKeyboardEvents(level3)
-    patchScriptTag(level3, browser)
+    patchScriptTag(level3)
 
 patchScriptTag = (level3) ->
     html = level3.html
@@ -38,8 +38,6 @@ patchScriptTag = (level3) ->
                 catch e
                     # TODO: log this based on debug flag.
                     console.log(e.stack)
-                    browser.consoleLogStream.write("JavaScript ERROR\n")
-                    browser.consoleLogStream.write(e.stack + "\n")
                     # TODO: JSDOM swallows this exception.
                     throw e
 
