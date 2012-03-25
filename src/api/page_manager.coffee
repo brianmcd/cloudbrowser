@@ -2,7 +2,7 @@ Weak           = require('weak')
 Path           = require('path')
 FS             = require('fs')
 {EventEmitter} = require('events')
-{dfs}          = require('../../shared/utils')
+{dfs}          = require('../shared/utils')
 
 class PageManager extends EventEmitter
     constructor : (container) ->
