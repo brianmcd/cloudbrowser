@@ -1,5 +1,4 @@
-var EventEmitter = require('events').EventEmitter,
-    ko           = require('../../../../src/api/ko').ko;
+var ko = require('../../../../src/api/ko');
 
 function User() {
     this.username = ko.observable("New User");
@@ -12,15 +11,13 @@ User.prototype = {
     joinRoom : function (room) {
         var name = room.name;
         if (this.joinedRoomsByName[name]) {
-            // activate the room.
+            this.activeRoom(room);
             return;
         }
         this.activeRoom(room);
         this.joinedRooms.push(room);
         this.joinedRoomsByName[name] = room;
-        this.emit('activateRoom', room);
     }
 };
-User.prototype.__proto__ = new EventEmitter();
 
 module.exports = User;

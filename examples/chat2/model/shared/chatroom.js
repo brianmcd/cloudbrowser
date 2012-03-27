@@ -1,4 +1,4 @@
-var ko = require('../../../../src/api/ko').ko;
+var ko = require('../../../../src/api/ko');
 
 function ChatRoom (name) {
     this.name = name;

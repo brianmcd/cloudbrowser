@@ -3,13 +3,20 @@
     <link rel="stylesheet" href="css/bootstrap.min.css">
     <link rel="stylesheet" href="css/chat.css">
     <script>
-      $(function () {
-        vt.initPages(document.getElementById('main'), function (pages) {
-          window.vt.pages = pages;
-          pages.activePage('home');
-          ko.applyBindings(pages, document.getElementById('navbar'));
+        $(function () {
+            vt.pageMan = new vt.PageManager(document.getElementById('main'));
+            var vm = {
+                pageMan : vt.pageMan,
+                activePage : ko.observable()
+            };
+            vt.pageMan.on('change', function (name) {
+                vm.activePage(name);
+            });
+            vt.pageMan.once('load', function () {
+                vt.pageMan.swap('home');
+                ko.applyBindings(vm, document.getElementById('navbar'));
+            });
         });
-      });
     </script>
   </head>
   <body style='padding-top: 40px'>
@@ -23,7 +30,7 @@
                     class : (activePage() == 'home' ? 'active' : '')
                  },
                  event : {
-                     click: function () { activePage('home'); }
+                     click: function () { pageMan.swap('home'); }
                  }">
                  <a href='#'>Home</a>
              </li>
@@ -32,7 +39,7 @@
                     class : (activePage() == 'chats' ? 'active' : '')
                  },
                  event : {
-                     click : function () { activePage('chats'); }
+                     click : function () { pageMan.swap('chats'); }
                  }">
                  <a href="#">Chats</a>
              </li>

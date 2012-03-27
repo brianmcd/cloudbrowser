@@ -1,38 +1,38 @@
 (function () {
   var chats = vt.shared.chats;
-  var user  = vt.local.user;
-
+  var user = vt.local.user;
   var viewModel = {
     rooms        : chats.rooms,
     username     : ko.observable(user.username()),
     newRoomName  : ko.observable('NewRoom'),
-    selectedRoom : ko.observable(vt.shared.chats.rooms()[0])
+    selectedRoom : ko.observable(chats.rooms()[0])
   };
-  viewModel.username.subscribe(function (val) {
-    user.username(val);
-  });
-  viewModel.rooms.subscribe(function (val) {
+  var sub = viewModel.rooms.subscribe(function (val) {
     if (val.length == 1) {
       viewModel.selectedRoom(val[0]);
     }
+  });
+  var sub2 = viewModel.username.subscribe(function (val) {
+    user.username(val);
+  });
+  // We have to manually clean up our subscribables.
+  window.addEventListener('close', function () {
+      sub.dispose();
+      sub2.dispose();
   });
   ko.applyBindings(viewModel, document.getElementById('homeContainer'));
 
   $('#create-room').click(function () {
     var name = viewModel.newRoomName();
-    var room;
     try {
-        room = chats.create(name);
-    } catch (e) {
-        //TODO:
-        return;
-    }
-    user.joinRoom(room);
-    vt.pages.activePage('chats')
+        var room = chats.create(name); // Might throw
+        user.joinRoom(room);
+        vt.pageMan.swap('chats')
+    } catch (e) {}
   });
 
   $('#join-room').click(function () {
     user.joinRoom(viewModel.selectedRoom());
-    vt.pages.activePage('chats')
+    vt.pageMan.swap('chats')
   });
 })();
