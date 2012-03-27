@@ -48,7 +48,8 @@ class DebugServer extends EventEmitter
             browser = null
             if browserID == 'global'
                 socket.on 'evaluate', (cmd) ->
-                    eval.call(global, cmd)
+                    do () ->
+                        eval(cmd)
                 return
             for val, idx in global.browserList()
                 if val.id == browserID
