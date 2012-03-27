@@ -1,1 +1,1 @@
-../../deps/knockout-node/build/output/knockout-node.debug.js
+../../deps/knockout-node/build/output/knockout-node-latest.debug.js
