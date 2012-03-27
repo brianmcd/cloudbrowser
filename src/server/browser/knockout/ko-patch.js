@@ -32,4 +32,11 @@ if (ko) {
     // ko.dependencyDetection.registerDependency() when they are read, so
     // they must all call the same one.
     ko.dependencyDetection = vt.ko.dependencyDetection;
+
+    // We need to clean up all of the nodes, which removes references to shared
+    // data, fixing memory leaks that prevented pretty much anything from being
+    // GC'd (Browser, Window, etc).
+    window.addEventListener('close', function () {
+        ko.cleanNode(document);
+    });
 }
