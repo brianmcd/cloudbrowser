@@ -30,20 +30,16 @@ class Browser extends EventEmitter
         @testDone = () ->
             @emit 'TestDone'
 
-
     close : () ->
         @DOMWindowFactory.tearDown()
         @DOMWindowFactory = null
-        @window.__location = null
-        @window.vt?.shared = null
-        @window.vt?.local = null
-        @window.vt = null if @window?.vt?
+        @window?.vt = null
         if @window.document
             ev = @window.document.createEvent('HTMLEvents')
             ev.initEvent('close', false, false)
             @window.dispatchEvent(ev)
         @window.close() if @window?
-        @removeAdvice() # TODO: move to advice or something.  or maybe advice should attach to jsdom.
+        @removeAdvice() # This is added by "addAdvice"...kinda hacky.
         @window = null
         @document = null
         @components = null
