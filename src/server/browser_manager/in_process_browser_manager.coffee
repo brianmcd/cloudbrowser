@@ -24,9 +24,9 @@ class InProcessBrowserManager extends BrowserManager
             @removeFromBrowserList(browser)
     
     close : (browser) ->
-        console.log("InProcessBrowserManager closing: #{browser.id}")
         if !browser?
             throw new Error("Must pass a browser to close")
+        console.log("InProcessBrowserManager closing: #{browser.id}")
         @removeFromBrowserList(browser)
         delete @browsers[browser.id]
         browser.close()

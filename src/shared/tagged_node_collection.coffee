@@ -1,5 +1,8 @@
 if process.title != 'browser'
     Weak = require('weak')
+    isWeak = true
+else
+    isWeak = false
 
 # TODO: On server, emit a delete event that can be used to tell the client to
 #       remove a node from the map.
@@ -17,6 +20,8 @@ class TaggedNodeCollection
         if !id then return null
         if @ids[id] == undefined
             throw new Error('node id not in table: ' + id)
+        if isWeak
+            return Weak.get(@ids[id]) if isWeak
         return @ids[id]
     
     exists : (id) ->
@@ -44,7 +49,7 @@ class TaggedNodeCollection
             while (@ids[id] != undefined)
                 id = "#{@idPrefix}#{++@nextID}"
         node[@propName] = id
-        if typeof Weak != 'undefined'
+        if isWeak
             # TODO: emit an event so we can notify client.
             @ids[id] = Weak node, () => delete @ids[id]
         else

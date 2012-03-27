@@ -1,4 +1,3 @@
-TestCase             = require('nodeunit').testCase
 TaggedNodeCollection = require('../../src/shared/tagged_node_collection')
 {getFreshJSDOM}      = require('../helpers')
 
@@ -31,19 +30,15 @@ exports['test add'] = (test) ->
     div3 = doc.getElementById('div3')
     div4 = doc.getElementById('div4')
 
-    test.equal(nodes.count, 0)
     test.equal(p.__nodeID, undefined)
 
     nodes.add(p)
-    test.equal(nodes.count, 1)
     test.equal(p.__nodeID, 'node1')
 
     nodes.add(div1)
-    test.equal(nodes.count, 2)
     test.equal(div1.__nodeID, 'node2')
 
     nodes.add(div2, 'node4')
-    test.equal(nodes.count, 3)
     test.equal(div2.__nodeID, 'node4')
 
     # Adding a node with existing ID, and ID doesn't belong to it.
@@ -55,15 +50,10 @@ exports['test add'] = (test) ->
     test.throws () ->
         nodes.add(div3, 'node1')
 
-    # ID must be string
-    test.throws () ->
-        nodes.add(div3, {})
-
     nodes.add(div3)
     nodes.add(div4)
 
     test.equal(div4.__nodeID, 'node5')
-    test.equal(nodes.count, 5)
     test.done()
 
 exports['test get'] = (test) ->
@@ -77,11 +67,11 @@ exports['test get'] = (test) ->
     for node in [p, div1, div2, div3, div4]
         nodes.add(node)
     
-    test.equal(p, nodes.get('node1'))
-    test.equal(div1, nodes.get('node2'))
-    test.equal(div2, nodes.get('node3'))
-    test.equal(div3, nodes.get('node4'))
-    test.equal(div4, nodes.get('node5'))
+    test.strictEqual(p, nodes.get('node1'))
+    test.strictEqual(div1, nodes.get('node2'))
+    test.strictEqual(div2, nodes.get('node3'))
+    test.strictEqual(div3, nodes.get('node4'))
+    test.strictEqual(div4, nodes.get('node5'))
 
     test.throws () ->
         nodes.get('wrong')

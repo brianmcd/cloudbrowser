@@ -43,7 +43,7 @@ class Server extends EventEmitter
 
     close : () ->
         for own key, val of @httpServer.mountedBrowserManagers
-            val.close()
+            val.closeAll()
         closed = 0
         closeServer = () =>
             if ++closed == @numServers

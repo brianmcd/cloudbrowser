@@ -14,11 +14,18 @@ class MultiProcessBrowserManager extends BrowserManager
         @addToBrowserList(shim)
         return shim
 
-    close : () ->
+    closeAll : () ->
         for browser in @browsers
             delete @browsers[browser.id]
             @removeFromBrowserList(browser)
             browser.close()
 
+    close : (browser) ->
+        if !browser?
+            throw new Error("Must pass a browser to close")
+        console.log("InProcessBrowserManager closing: #{browser.id}")
+        @removeFromBrowserList(browser)
+        delete @browsers[browser.id]
+        browser.close()
 
 module.exports = MultiProcessBrowserManager
