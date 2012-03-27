@@ -19,6 +19,7 @@ Config.monitorTraffic = false;
 Config.monitorLatency = false;
 Config.traceProtocol  = false;
 Config.testsRunning   = true;
+Config.test_env       = true;
 
 var url = process.argv[3] || 'http://localhost/jquery-cloudbrowser/test/';
 

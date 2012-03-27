@@ -34,6 +34,7 @@ class Browser extends EventEmitter
         @DOMWindowFactory.tearDown()
         @DOMWindowFactory = null
         @window?.vt = null
+        @window?.browser = null
         if @window.document
             ev = @window.document.createEvent('HTMLEvents')
             ev.initEvent('close', false, false)
