@@ -1,5 +1,5 @@
-Hat  = require('hat')
-{ko} = require('../../api/ko')
+Hat = require('hat')
+ko  = require('../../api/ko')
 
 if !global.browserList?
     global.browserList = ko.observableArray()

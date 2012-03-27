@@ -4,7 +4,7 @@ FS                     = require('fs')
 URL                    = require('url')
 Request                = require('request')
 EmbedAPI               = require('../../api')
-KO                     = require('../../api/ko').ko
+KO                     = require('../../api/ko')
 Config                 = require('../../shared/config')
 DOMWindowFactory       = require('./DOMWindowFactory')
 Application            = require('../application')
@@ -32,18 +32,22 @@ class Browser extends EventEmitter
 
 
     close : () ->
+        @DOMWindowFactory.tearDown()
+        @DOMWindowFactory = null
+        @window.__location = null
         @window.vt?.shared = null
         @window.vt?.local = null
         @window.vt = null if @window?.vt?
+        if @window.document
+            ev = @window.document.createEvent('HTMLEvents')
+            ev.initEvent('close', false, false)
+            @window.dispatchEvent(ev)
         @window.close() if @window?
         @removeAdvice() # TODO: move to advice or something.  or maybe advice should attach to jsdom.
         @window = null
         @document = null
         @components = null
         @clientComponents = null
-        @DOMWindowFactory.browser = null
-        @DOMWindowFactory.jsdom = null # TODO: move into cleanup method
-        @DOMWindowFactory = null
         @bserver = null
         @emit('BrowserClose')
         @removeAllListeners()
@@ -90,7 +94,7 @@ class Browser extends EventEmitter
         # some ko functions.
         if Config.knockout
             @window.run(Browser.jQScript, "jquery-1.6.2.js")
-            @window.run(Browser.koScript, "knockout-1.3.0beta.debug.js")
+            @window.run(Browser.koScript, "knockout-latest.debug.js")
             @window.vt.ko = KO
             @window.run(Browser.koPatch, "ko-patch.js")
         @window.vt.shared = app.sharedState || {}
@@ -101,7 +105,7 @@ class Browser extends EventEmitter
         FS.readFileSync(koPatchPath, 'utf8')
 
     @koScript = do () ->
-        koPath = Path.resolve(__dirname, 'knockout', 'knockout-1.3.0beta.debug.js')
+        koPath = Path.resolve(__dirname, 'knockout', 'knockout-latest.debug.js')
         FS.readFileSync(koPath, 'utf8')
 
     @jQScript = do () ->

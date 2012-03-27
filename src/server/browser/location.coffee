@@ -28,6 +28,8 @@ exports.LocationBuilder = (browser) ->
     #       - fire 'hashchange' event on DOM
     #       - cause the Browser to load a new page.
     class Location
+        @tearDown : () ->
+            browser = null
         # url can be absolute or relative
         constructor : (url) ->
             console.log(url)

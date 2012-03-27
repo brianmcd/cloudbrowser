@@ -15,11 +15,16 @@ class DOMWindowFactory
             MutationEvents : '2.0'
             QuerySelector : false
         addAdvice(@jsdom.dom.level3, @browser)
-        applyPatches(@jsdom.dom.level3, @browser)
+        applyPatches(@jsdom.dom.level3)
 
         # This gives us a Location class that is aware of our
         # DOMWindow and Browser.
         @Location = LocationBuilder(@browser)
+
+    tearDown : () ->
+        @browser = null
+        @jsdom = null
+        @Location.tearDown()
 
     create : (url) ->
         window = @jsdom.createWindow(@jsdom.dom.level3.html)
@@ -105,6 +110,7 @@ class DOMWindowFactory
                     console.log(args.join(' '))
 
     patchWindowMethods : (window) ->
+        self = this
         # Note: this loads the URL out of a virtual browser.
         ['open', 'alert'].forEach (method) =>
             window[method] = () =>
