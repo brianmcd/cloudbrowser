@@ -1,22 +1,5 @@
 URL = require('url')
 
-# Keep this out of the object so we don't expose it to pages.
-# checkChange compares the new and current URLs and returns one of:
-#    undefined   - URLs are the same
-#   'hashchange' - URLs are the same except for hash
-#   'pagechange' - URLs are different
-checkChange = (newloc, oldloc) ->
-    if (newloc.protocol != oldloc.protocol) ||
-       (newloc.host     != oldloc.host)     ||
-       (newloc.hostname != oldloc.hostname) ||
-       (newloc.port     != oldloc.port)     ||
-       (newloc.pathname != oldloc.pathname) ||
-       (newloc.search   != oldloc.search)
-        return 'pagechange'
-    if newloc.hash != oldloc.hash
-        return 'hashchange'
-    return undefined
-
 exports.LocationBuilder = (browser) ->
     # Partial implementation of w3c Location class:
     # See: http://dev.w3.org/html5/spec/Overview.html#the-location-interface
@@ -30,7 +13,6 @@ exports.LocationBuilder = (browser) ->
     class Location
         # url can be absolute or relative
         constructor : (url) ->
-            console.log(url)
             # The POJO that holds location info as properties.
             @parsed = {}
 
@@ -69,26 +51,18 @@ exports.LocationBuilder = (browser) ->
                 @assign(url)
 
         assign : (url) ->
-            # window.location could be 1 of 3 things right now:
+            # window.location could be 1 of 2 things right now:
             #   1. 'this' if user used window.location.assign(url).
             #   2. A different Location object if user used
             #      window.location = url
-            #   3. undefined, if this is the first time window.location has
-            #      been set (initial page load)
             oldLoc = browser.window.location
 
-            # Case 1 above.  We need a copy of the POJO so we can detect
-            # page change or hash change.
-            if oldLoc == this
-                oldLoc = URL.parse(URL.format(@parsed))
+            # Resolve the new url relative to that page's url.
+            url = URL.resolve(oldLoc.href, url)
 
-            # If the window already has a page loaded, resolve the new url
-            # relative to that page's url.
-            if oldLoc
-                url = URL.resolve(oldLoc.href, url)
-            
             # Set up our POJO for the new URL.
             @parsed = URL.parse(url)
+
 
             switch checkChange(this, oldLoc)
                 when 'hashchange'
@@ -111,6 +85,24 @@ exports.LocationBuilder = (browser) ->
         toString : () -> URL.format(@parsed)
 
     return Location
+
+# Keep this out of the object so we don't expose it to pages.
+# checkChange compares the new and current URLs and returns one of:
+#    undefined   - URLs are the same
+#   'hashchange' - URLs are the same except for hash
+#   'pagechange' - URLs are different
+checkChange = (newloc, oldloc) ->
+    if (newloc.protocol != oldloc.protocol) ||
+       (newloc.host     != oldloc.host)     ||
+       (newloc.hostname != oldloc.hostname) ||
+       (newloc.port     != oldloc.port)     ||
+       (newloc.pathname != oldloc.pathname) ||
+       (newloc.search   != oldloc.search)
+        return 'pagechange'
+    if newloc.hash != oldloc.hash
+        return 'hashchange'
+    return undefined
+
 
 ###
 interface Location {

@@ -34,8 +34,6 @@ class DOMWindowFactory
         @patchConsole(window)
         @patchDOMParser(window)
         @patchWindowMethods(window)
-        # The first time we call this, it won't navigate. 
-        window.location = url
         @setupDocument(window, url)
         if Config.test_env
             window.browser = @browser

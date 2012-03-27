@@ -49,6 +49,7 @@ class Browser extends EventEmitter
 
     # Loads the application @app
     load : (arg) ->
+        console.log("Inside load")
         url = null
         app = null
         if arg instanceof Application
@@ -61,6 +62,8 @@ class Browser extends EventEmitter
 
         @window.close if @window?
         @window = @DOMWindowFactory.create(url)
+        # The first time we call this, it won't navigate. 
+        @window.location = url
         @document = @window.document
         @initializeApplication(app) if app? && !app.remoteBrowsing
 
