@@ -31,16 +31,14 @@ class Browser extends EventEmitter
             @emit 'TestDone'
 
     close : () ->
-        @DOMWindowFactory.tearDown()
-        @DOMWindowFactory = null
-        @window?.vt = null
-        @window?.browser = null
-        if @window.document
-            ev = @window.document.createEvent('HTMLEvents')
-            ev.initEvent('close', false, false)
-            @window.dispatchEvent(ev)
+        if @window?
+            @window.vt = null
+            @window.browser = null
+            if @window.document?
+                ev = @window.document.createEvent('HTMLEvents')
+                ev.initEvent('close', false, false)
+                @window.dispatchEvent(ev)
         @window.close() if @window?
-        @removeAdvice() # This is added by "addAdvice"...kinda hacky.
         @window = null
         @document = null
         @components = null

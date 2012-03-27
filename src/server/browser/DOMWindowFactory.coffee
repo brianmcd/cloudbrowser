@@ -21,11 +21,6 @@ class DOMWindowFactory
         # DOMWindow and Browser.
         @Location = LocationBuilder(@browser)
 
-    tearDown : () ->
-        @browser = null
-        @jsdom = null
-        @Location.tearDown()
-
     create : (url) ->
         window = @jsdom.createWindow(@jsdom.dom.level3.html)
         @patchImage(window)
