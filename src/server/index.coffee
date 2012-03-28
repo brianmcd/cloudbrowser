@@ -13,14 +13,27 @@ AdminInterface  = require('./admin_interface')
 
 {MultiProcessBrowserManager, InProcessBrowserManager} = Managers
 
+global.processedEvents = 0
+eventTracker = () ->
+    console.log("Processing #{global.processedEvents/10} events/sec")
+    global.processedEvents = 0
+    setTimeout(eventTracker, 10000)
+eventTracker()
+
 # TODO: this should be a proper singleton
 class Server extends EventEmitter
     # config.app - an Application instance, which is the default app.
-    constructor : (config) ->
-        console.log("Creating server:")
-        console.log(config)
-        {@port, @defaultApp, @debugServer} = config
-        @port = 3000 if !@port
+    constructor : (config = {}) ->
+        if typeof config == 'string'
+            # Helper for creating a server to serve an app quickly.
+            @defaultApp = new Application
+                entryPoint : config
+                mountPoint : '/'
+            @port = 3000
+            @debugServer = false
+        else
+            {@port, @defaultApp, @debugServer} = config
+            @port = 3000 if !@port
         
         # We only allow 1 server per process.
         global.server = this

@@ -34,6 +34,8 @@ class BrowserServerShim
             when 'emit'
                 socket = @sockets[msg.id]
                 socket.emit.apply(socket, msg.args)
+                if msg.args[0] == 'resumeRendering'
+                    global.processedEvents++
 
     load : (appOrUrl) ->
         isApp = appOrUrl instanceof Application

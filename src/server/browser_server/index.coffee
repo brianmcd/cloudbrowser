@@ -45,6 +45,7 @@ class BrowserServer extends EventEmitter
                 @browser.on event, () =>
                     handler.apply(this, arguments)
         @initLogs()
+        @processedEvents = 0
 
     # arg can be an Application or URL string.
     load : (arg) ->
@@ -148,6 +149,7 @@ class BrowserServer extends EventEmitter
         @sockets.push(socket)
         if Config.traceMem
             gc()
+        @emit('ClientAdded')
 
 # The BrowserServer constructor iterates over the properties in this object and
 # adds an event handler to the Browser for each one.  The function name must
@@ -347,8 +349,7 @@ RPCMethods =
             # only really exists client side and doesn't have a nodeID (and we 
             # can't handle clicks on the server anyway).
             # Need something more elegant.
-            if !event.target
-                return
+            return if !event.target
 
             @broadcastEvent('pauseRendering')
 
@@ -368,6 +369,7 @@ RPCMethods =
             @broadcastEvent('resumeRendering', id)
             if Config.traceMem
                 gc()
+            global.processedEvents++
             #console.log("Finished processing event: #{serverEv.type}")
 
     # Takes a clientEv (an event generated on the client and sent over DNode)
