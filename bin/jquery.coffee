@@ -4,6 +4,8 @@ page.onConsoleMessage = (msg) ->
     if /Error/.test(msg)
         console.log(msg)
 
-page.open "http://localhost:3000", (status) ->
+url = phantom.args[0] || "http://localhost:3000"
+
+page.open url, (status) ->
     if status != 'success'
         console.log("Failed to load page.")
