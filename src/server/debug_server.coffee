@@ -46,6 +46,14 @@ class DebugServer extends EventEmitter
         socket.on 'attach', (browserID) =>
             bserver = null
             browser = null
+            socket.on 'closeBrowsers', () ->
+                gc() if gc?
+                blist = global.browserList().concat()
+                for browser in blist
+                    console.log("Closing #{browser.id}")
+                    browser.close()
+            socket.on 'forceGC', () ->
+                gc() for [0..10]
             if browserID == 'global'
                 socket.on 'evaluate', (cmd) ->
                     do () ->
@@ -73,7 +81,6 @@ class DebugServer extends EventEmitter
                         bserver.consoleLog.write(e.stack + '\n')
                         socket.emit('browserLog', e.stack + '\n')
                         socket.emit('evalRV', e.stack)
-
                 socket.on 'disconnect', () ->
                     browser.removeListener('log', logListener)
 

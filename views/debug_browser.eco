@@ -11,6 +11,8 @@
         Evaluate:<br />
         <textarea id='input' rows='5' cols='80'></textarea><br />
         <button id='eval'>Execute</button>
+        <button id='closeBrowsers'>Close Browsers</button>
+        <button id='forceGC'>Force GC</button>
         <br />
         Evaluation Return Value:<br />
         <textarea id='evalRV' rows='5' cols='160'></textarea>
@@ -25,6 +27,12 @@
                     socket.emit('attach', '<%= @browser.id %>');
                     $('#eval').click(function () {
                         socket.emit('evaluate', input.val());
+                    });
+                    $('#closeBrowsers').click(function () {
+                        socket.emit('closeBrowsers');
+                    });
+                    $('#forceGC').click(function () {
+                        socket.emit('forceGC');
                     });
                     socket.on('browserLog', function (msg) {
                         output.text(output.text() + msg);
