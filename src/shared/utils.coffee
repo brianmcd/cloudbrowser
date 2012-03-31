@@ -36,12 +36,8 @@ exports.isVisibleOnClient = (node, browser) ->
         doc = doc.__enclosingFrame?._ownerDocument
     return false
 
-# Clear JSDOM out of the require cache.  We have to do this because
-# we modify JSDOM's internal data structures with per-BrowserInstance
-# specifiy information, so we need to get a whole new JSDOM instance
-# for each BrowserInstance.  require() caches the objects it returns,
-# so we need to remove those objects from the cache to force require
-# to give us a new object each time.
+# require() caches the objects it returns, so we need to remove those objects
+# from the cache to force require to give us a new object each time.
 exports.noCacheRequire = (name, regExp) ->
     reqCache = require.cache
     regExp = new RegExp(name) if !regExp

@@ -49,7 +49,6 @@ class Browser extends EventEmitter
 
     # Loads the application @app
     load : (arg) ->
-        console.log("Inside load")
         url = null
         app = null
         if arg instanceof Application

@@ -3,41 +3,42 @@
 {addAdvice}     = require('../../src/server/browser/advice')
 
 getAdvisedDOM = () ->
-    jsdom = getFreshJSDOM()
-    ee = new EventEmitter()
+    jsdom = require('jsdom')
     {level3} = jsdom.dom
-    addAdvice(level3, ee)
-    return [ee, jsdom, level3.html]
+    if !level3.cloudBrowserAugmentation
+        addAdvice(level3)
+    return [jsdom, level3.html]
 
 getAdvisedDoc = () ->
-    [ee, jsdom, html] = getAdvisedDOM()
-    doc = jsdom.jsdom()
+    [jsdom, html] = getAdvisedDOM()
+    browser = new EventEmitter()
+    doc = jsdom.jsdom(null, null, {browser: browser})
+    browser.window = {document: doc}
     # We need to set this so isVisibleOnClient works.
-    ee.window = {document: doc}
-    return [doc, ee]
+    return [doc, browser]
 
 exports['basic test'] = (test) ->
-    test.expect(3)
-    [ee, jsdom, html] = getAdvisedDOM()
-    test.notEqual(ee, null)
+    test.expect(2)
+    [jsdom, html] = getAdvisedDOM()
     test.notEqual(jsdom, null)
     test.notEqual(html, null)
     test.done()
 
 exports['DocumentCreated'] = (test) ->
     test.expect(1)
-    [ee, jsdom, html] = getAdvisedDOM()
-    ee.once 'DocumentCreated', (event) ->
+    [jsdom, html] = getAdvisedDOM()
+    browser = new EventEmitter
+    browser.once 'DocumentCreated', (event) ->
         test.equal(event.target.nodeType, 9)
         test.done()
-    doc = new html.HTMLDocument()
+    doc = new html.HTMLDocument({browser: browser})
 
 exports['DOMNodeInserted'] = (test) ->
     test.expect(3)
-    [doc, ee] = getAdvisedDoc()
+    [doc, browser] = getAdvisedDoc()
     div = doc.createElement('div')
     test.notEqual(div, null)
-    ee.once 'DOMNodeInserted', (event) ->
+    browser.once 'DOMNodeInserted', (event) ->
         test.equal(event.target, div)
         test.equal(event.relatedNode, doc.body)
         test.done()
@@ -45,11 +46,11 @@ exports['DOMNodeInserted'] = (test) ->
 
 exports['DOMNodeInsertedIntoDocument'] = (test) ->
     test.expect(7)
-    [doc, ee] = getAdvisedDoc()
+    [doc, browser] = getAdvisedDoc()
     div = doc.createElement('div')
     div2 = doc.createElement('div2')
     insertedCount = 0
-    ee.on 'DOMNodeInserted', (event) ->
+    browser.on 'DOMNodeInserted', (event) ->
         switch insertedCount++
             when 0
                 test.equal(event.target, div2)
@@ -57,7 +58,7 @@ exports['DOMNodeInsertedIntoDocument'] = (test) ->
             when 1
                 test.equal(event.target, div)
                 test.equal(event.relatedNode, doc.body)
-    ee.once 'DOMNodeInsertedIntoDocument', (event) ->
+    browser.once 'DOMNodeInsertedIntoDocument', (event) ->
         test.equal(event.target, div)
         test.equal(event.relatedNode, doc.body)
         test.equal(event.target.firstChild, div2)

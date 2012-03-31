@@ -71,12 +71,16 @@ class BrowserServer extends EventEmitter
     close : () ->
         return if @closed
         @closed = true
-        for socket in @sockets
-            socket.disconnect()
+        @sockets = @sockets.concat(@queuedSockets)
+        socket.disconnect() for socket in @sockets
+        @sockets = []
+        @queuedSockets = []
         @browser.close()
         @browser = null
         @emit('BrowserClose')
         @removeAllListeners()
+        @consoleLog?.end()
+        @rpcLog?.end()
 
     logRPCMethod : (name, params) ->
         @rpcLog.write("#{name}(")

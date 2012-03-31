@@ -1,3 +1,4 @@
+{EventEmitter}  = require('events')
 Config          = require('../../src/shared/config')
 {serialize}     = require('../../src/server/browser_server/serializer')
 {getFreshJSDOM} = require('../helpers')
@@ -5,6 +6,10 @@ Config          = require('../../src/shared/config')
 Config.resourceProxy = false
 
 jsdom = getFreshJSDOM()
+
+createDoc = (html) ->
+    return jsdom.jsdom(html, null, {browser : new EventEmitter})
+    
 
 compareRecords = (actual, expected, test) ->
     test.equal(actual.length, expected.length)
@@ -23,7 +28,7 @@ compareRecords = (actual, expected, test) ->
             test.equal(expectedAttrs[key], val)
 
 exports['test null'] = (test) ->
-    doc = jsdom.jsdom()
+    doc = createDoc()
     records = serialize(null, null, doc)
     test.notEqual(records, null)
     test.ok(records instanceof Array)
@@ -31,7 +36,7 @@ exports['test null'] = (test) ->
     test.done()
 
 exports['elements'] = (test) ->
-    doc = jsdom.jsdom("<html>" +
+    doc = createDoc("<html>" +
                       "<head></head>" +
                       "<body><div><input type='text'></input></div></body>" +
                       "</html>")
@@ -63,7 +68,7 @@ exports['elements'] = (test) ->
     test.done()
 
 exports['comments'] = (test) ->
-    doc = jsdom.jsdom("<html><body><!--Here's my comment!--></body></html>")
+    doc = createDoc("<html><body><!--Here's my comment!--></body></html>")
     expected = [
         type : 'element'
         name : 'HTML'
@@ -83,7 +88,7 @@ exports['comments'] = (test) ->
     test.done()
 
 exports['text'] = (test) ->
-    doc = jsdom.jsdom("<html><body>Here's my text!</body></html>")
+    doc = createDoc("<html><body>Here's my text!</body></html>")
     expected = [
         type : 'element'
         name : 'HTML'

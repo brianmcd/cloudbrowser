@@ -24,9 +24,24 @@ adviseProperty = (obj, name, args) ->
                     func(this, rv)
                     return rv
 
+getBrowser = (node) ->
+    if node.nodeType == 9 # Document
+        browser = node.__browser__
+    else if node.nodeType != undefined # Other Node
+        browser = node._ownerDocument.__browser__
+    else # Window
+        browser = node.document.__browser__
+    if !browser?
+        console.log("Found browser on #{node.tagName} #{node.nodeType}")
+        console.log("Couldn't get browser: #{node.tagName} #{node.nodeType}")
+        console.log(node)
+        throw new Error
+    return browser
+
 # Adds advice to a number of DOM methods so we can emit events when the DOM
 # changes.
-exports.addAdvice = (dom, emitter) ->
+exports.addAdvice = (dom) ->
+    dom.cloudBrowserAugmentation = true
     {html, events} = dom
 
     # Advice for: HTMLDocument constructor
@@ -35,9 +50,13 @@ exports.addAdvice = (dom, emitter) ->
     # created.  We need this so we can tag Document nodes.
     do () ->
         oldDoc = html.HTMLDocument
-        html.HTMLDocument = () ->
+        # TODO: this needs to be monkey patched...or dig into jsdom to pass
+        # browser to ctor.  Can we use object.clone to do a lightweight clone and then
+        # just patch this method?
+        html.HTMLDocument = (options) ->
             oldDoc.apply(this, arguments)
-            emitter.emit 'DocumentCreated',
+            this.__browser__ = options.browser
+            options.browser.emit 'DocumentCreated',
                 target : this
         html.HTMLDocument.prototype = oldDoc.prototype
 
@@ -46,14 +65,15 @@ exports.addAdvice = (dom, emitter) ->
     # var insertedNode = parentNode.insertBefore(newNode, referenceNode);
     adviseMethod html.Node, 'insertBefore', (parent, args, rv) ->
         elem = args[0]
-        emitter.emit 'DOMNodeInserted',
+        browser = getBrowser(parent)
+        browser.emit 'DOMNodeInserted',
             target : elem
             relatedNode : parent
         # Note: unlike the DOM, we only emit DOMNodeInsertedIntoDocument
         # on the root of a removed subtree, meaning the handler should check
         # to see if it has children.
-        if isVisibleOnClient(parent, emitter)
-            emitter.emit 'DOMNodeInsertedIntoDocument',
+        if isVisibleOnClient(parent, browser)
+            browser.emit 'DOMNodeInsertedIntoDocument',
                 target : elem
                 relatedNode : parent
 
@@ -63,9 +83,10 @@ exports.addAdvice = (dom, emitter) ->
     adviseMethod html.Node, 'removeChild', (parent, args, rv) ->
         # Note: Unlike DOM, we only emit DOMNodeRemovedFromDocument on the root
         # of the removed subtree.
-        if isVisibleOnClient(parent, emitter)
+        browser = getBrowser(parent)
+        if isVisibleOnClient(parent, browser)
             elem = args[0]
-            emitter.emit 'DOMNodeRemovedFromDocument',
+            browser.emit 'DOMNodeRemovedFromDocument',
                 target : elem
                 relatedNode : parent
     
@@ -83,8 +104,9 @@ exports.addAdvice = (dom, emitter) ->
                 if !attr then return
 
                 target = map._parentNode
-                if isVisibleOnClient(target, emitter)
-                    emitter.emit 'DOMAttrModified',
+                browser = getBrowser(target)
+                if isVisibleOnClient(target, browser)
+                    browser.emit 'DOMAttrModified',
                         target : target
                         attrName : attr.name
                         newValue : attr.value
@@ -117,8 +139,9 @@ exports.addAdvice = (dom, emitter) ->
                 ev = doc.createEvent('HTMLEvents')
                 ev.initEvent('change', false, false)
                 elem.dispatchEvent(ev)
-            if isVisibleOnClient(elem, emitter)
-                emitter.emit 'DOMPropertyModified',
+            browser = getBrowser(elem)
+            if isVisibleOnClient(elem, browser)
+                browser.emit 'DOMPropertyModified',
                     target   : elem
                     property : 'selected'
                     value    : value
@@ -128,10 +151,12 @@ exports.addAdvice = (dom, emitter) ->
     # This is the only way to detect changes to the text contained in a node.
     adviseProperty html.CharacterData, '_nodeValue',
         setter : (elem, value) ->
-            if elem._parentNode? && isVisibleOnClient(elem._parentNode, emitter)
-                emitter.emit 'DOMCharacterDataModified',
-                    target : elem
-                    value  : value
+            if elem._parentNode?
+                browser = getBrowser(elem)
+                if isVisibleOnClient(elem._parentNode, browser)
+                    browser.emit 'DOMCharacterDataModified',
+                        target : elem
+                        value  : value
 
     # Advice for: EventTarget.addEventListener
     #
@@ -139,7 +164,7 @@ exports.addAdvice = (dom, emitter) ->
     # client.
     # TODO: wrap removeEventListener.
     adviseMethod events.EventTarget, 'addEventListener', (elem, args, rv) ->
-        emitter.emit 'AddEventListener',
+        getBrowser(elem).emit 'AddEventListener',
             target      : elem
             type        : args[0]
 
@@ -156,7 +181,7 @@ exports.addAdvice = (dom, emitter) ->
                 # TODO: remove listener if this is set to something not a function
                 html.HTMLElement.prototype.__defineSetter__ name, (func) ->
                     rv = this["__#{name}"] = func
-                    emitter.emit 'AddEventListener',
+                    getBrowser(this).emit 'AddEventListener',
                         target      : this
                         type        : type
                     return rv
@@ -175,8 +200,9 @@ exports.addAdvice = (dom, emitter) ->
                 args[1].toLowerCase()
             else
                 args[0].toLowerCase()
-            if attr == 'src' && isVisibleOnClient(elem, emitter)
-                emitter.emit 'ResetFrame',
+            browser = getBrowser(elem)
+            if attr == 'src' && isVisibleOnClient(elem, browser)
+                browser.emit 'ResetFrame',
                     target : elem
     adviseMethod html.HTMLFrameElement, 'setAttribute', createFrameAttrHandler(false)
     adviseMethod html.HTMLFrameElement, 'setAttributeNS', createFrameAttrHandler(true)
@@ -251,11 +277,13 @@ exports.addAdvice = (dom, emitter) ->
                 if !this[prop]
                     this[this.length++] = attr
                 rv = this[prop] = val
-                if isVisibleOnClient(parent, emitter)
-                    emitter.emit 'DOMStyleChanged',
-                        target    : parent
-                        attribute : attr
-                        value     : val
+                if parent
+                    browser = getBrowser(parent)
+                    if isVisibleOnClient(parent, browser)
+                        browser.emit 'DOMStyleChanged',
+                            target    : parent
+                            attribute : attr
+                            value     : val
                 return rv
             proto.__defineGetter__ attr, () ->
                 return @["_#{attr}"]

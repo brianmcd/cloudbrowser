@@ -1,4 +1,5 @@
 TaggedNodeCollection = require('../../src/shared/tagged_node_collection')
+{EventEmitter}       = require('events')
 {getFreshJSDOM}      = require('../helpers')
 
 jsdom = getFreshJSDOM()
@@ -14,7 +15,7 @@ getDoc = () ->
                 <div id='div3'></div>
                 <div id='div4'></div>
             </body>
-        </html>"
+        </html>", null, {browser : new EventEmitter}
 
 exports['basic test'] = (test) ->
     nodes = new TaggedNodeCollection()

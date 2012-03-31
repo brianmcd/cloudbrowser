@@ -28,4 +28,4 @@ exports.fireEvent = (browser, type, node) ->
     node.dispatchEvent(ev)
 
 exports.getFreshJSDOM = () ->
-    return noCacheRequire('jsdom')
+    return noCacheRequire('jsdom-nocache')

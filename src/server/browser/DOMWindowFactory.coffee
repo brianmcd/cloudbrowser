@@ -4,25 +4,31 @@ Config                 = require('../../shared/config')
 {ImportXMLHttpRequest} = require('./XMLHttpRequest')
 {addAdvice}            = require('./advice')
 {applyPatches}         = require('./jsdom_patches')
-{noCacheRequire}       = require('../../shared/utils')
+
+jsdom = require('jsdom')
+jsdom.defaultDocumentFeatures =
+    FetchExternalResources : ['script', 'css', 'frame', 'link', 'iframe']
+    ProcessExternalResources : ['script', 'frame', 'iframe', 'css']
+    MutationEvents : '2.0'
+    QuerySelector : false
+addAdvice(jsdom.dom.level3)
+applyPatches(jsdom.dom.level3)
 
 class DOMWindowFactory
     constructor : (@browser) ->
-        @jsdom = noCacheRequire('jsdom')
-        @jsdom.defaultDocumentFeatures =
-            FetchExternalResources : ['script', 'css', 'frame', 'link', 'iframe']
-            ProcessExternalResources : ['script', 'frame', 'iframe', 'css']
-            MutationEvents : '2.0'
-            QuerySelector : false
-        addAdvice(@jsdom.dom.level3, @browser)
-        applyPatches(@jsdom.dom.level3)
+        @jsdom = jsdom
 
         # This gives us a Location class that is aware of our
         # DOMWindow and Browser.
         @Location = LocationBuilder(@browser)
 
     create : (url) ->
+        #TODO passing browser: security issue, memory leak issue, etc.
+        #     Could make it a weak ref, plus non enumerable?
         window = @jsdom.createWindow(@jsdom.dom.level3.html)
+        # TODO: or maybe just store the browser ID, then look it up in the advice.
+        # TODO: alternatively, we coudl use a global variable tracking the current
+        # browser being manipulated and advice reads that.
         @patchImage(window)
         @patchNavigator(window)
         # This sets window.XMLHttpRequest, and gives the XHR code access to
@@ -42,9 +48,10 @@ class DOMWindowFactory
     setupDocument : (window, url) ->
         # Setup Document
         document = @jsdom.jsdom(false, null,
-            url : url
+            url        : url
+            browser    : @browser
             deferClose : true
-            parser : HTML5)
+            parser     : HTML5)
         document.parentWindow = window
         window.document = document
         document.__defineGetter__ 'location', () =>
