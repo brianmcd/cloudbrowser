@@ -30,16 +30,11 @@ request('http://localhost:3000', function (err, response, body) {
     var count = 0;
     socket.on('PageLoaded', function (json) {
         console.log('PageLoaded');
-        //(function sendEvent () {
-            socket.emit('processEvent', event, ++count);
-       //     process.nextTick(sendEvent);
-            //setTimeout(sendEvent, 5);
-        //})();
+        socket.emit('processEvent', event, ++count);
     });
     socket.on('resumeRendering', function (num) {
         // Synchronous send/recv
         socket.emit('processEvent', event, ++count);
-        console.log("Processed event: " + num);
     });
     socket.emit('auth', appid, browserid);
 });
