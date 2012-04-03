@@ -2,11 +2,9 @@
 Assert         = require('assert')
 Client         = require('./client')
 
-class Worker extends EventEmitter
-    constructor: () ->
+class ClientWorker extends EventEmitter
+    constructor: (@startId, @numClients) ->
         @setMaxListeners(0)
-        @startId    = parseInt(process.argv[2], 10)
-        @numClients = parseInt(process.argv[3], 10)
         @endId      = @startId + @numClients
         @currentId  = @startId
 
@@ -14,13 +12,12 @@ class Worker extends EventEmitter
 
         @results = {}
 
+        # Don't start the clients until the Master tells us to.
         process.once 'message', (msg) =>
             Assert.equal(msg.status, 'start')
             @emit('start')
 
-
-    start: () ->
-        @startNextClient()
+    start: () -> @startNextClient()
 
     startNextClient: () ->
         if @currentId == @endId
@@ -35,4 +32,4 @@ class Worker extends EventEmitter
             process.nextTick () =>
                 @startNextClient()
 
-module.exports = Worker
+module.exports = ClientWorker
