@@ -44,7 +44,7 @@ class BrowserServer extends EventEmitter
             do (event, handler) =>
                 @browser.on event, () =>
                     handler.apply(this, arguments)
-        @initLogs()
+        @initLogs() if !Config.noLogs
         @processedEvents = 0
 
     # arg can be an Application or URL string.
@@ -287,7 +287,7 @@ DOMEventHandlers =
         @broadcastEvent 'resumeRendering'
 
     ConsoleLog : (event) ->
-        @consoleLog.write(event.msg + '\n')
+        @consoleLog?.write(event.msg + '\n')
         # TODO: debug flag to enable line below.
         console.log("[[[#{@browser.id}]]] #{event.msg}")
 

@@ -14,6 +14,11 @@ var opts = require('nomnom')
         flag    : true,
         default : false,
         help    : "Enable debug mode."})
+    .option('noLogs', {
+        full    : 'disable-logging',
+        flag    : true,
+        default : false,
+        help    : "Disable all logging to files."})
     .option('debugServer', {
         full    : 'debug-server',
         flag    : true,
