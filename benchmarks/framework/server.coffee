@@ -28,6 +28,10 @@ class Server extends EventEmitter
             if /^All\sservices\srunning/.test(data)
                 @emit('ready')
 
-        process.on('exit', () => @server.kill())
+        process.on('exit', () => @server?.kill())
+
+    stop: (callback) ->
+        @server.once('exit', callback)
+        @server.kill()
 
 module.exports = Server
