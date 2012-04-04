@@ -1,11 +1,6 @@
 Path           = require('path')
-Spawn          = require('child_process').spawn
+Fork           = require('child_process').fork
 {EventEmitter} = require('events')
-
-# TODO: knobs for measuring stuff in the server.
-#       - memory usage?
-#       - bandwidth?
-# TODO: we could have bin/server detect if it was started with fork() (if process.send), and if so, send statistics every 5s
 
 process.env.NODE_ENV = 'production'
 class Server extends EventEmitter
@@ -16,19 +11,26 @@ class Server extends EventEmitter
         nodeOpts =
             cwd : Path.resolve(__dirname, '..', '..')
             env : process.env
-        nodeArgs = [Path.resolve(__dirname, '..', '..', 'bin', 'server')].concat(args)
+        serverPath = Path.resolve(__dirname, '..', '..', 'bin', 'server')
 
-        @server = Spawn('node', nodeArgs, nodeOpts)
-        @server.stdout.setEncoding('utf8')
-        @server.stdout.on 'data', (data) =>
-            if printEverything
-                process.stdout.write(data)
-            else if printEventsPerSec && /^Processing/.test(data)
-                process.stdout.write(data)
-            if /^All\sservices\srunning/.test(data)
-                @emit('ready')
+        @server = Fork(serverPath, args, nodeOpts)
+        @server.on 'message', (msg) =>
+            switch msg.type
+                when 'log'
+                    data = msg.data
+                    if printEverything
+                        process.stdout.write(data)
+                    else if printEventsPerSec && /^Processing/.test(data)
+                        process.stdout.write(data)
+                    if /^All\sservices\srunning/.test(data)
+                        @emit('ready')
+                else
+                    @emit('message', msg)
 
         process.on('exit', () => @server?.kill())
+
+    send: (msg) ->
+        @server.send(msg)
 
     stop: (callback) ->
         @server.once('exit', callback)

@@ -1,6 +1,13 @@
 #!/usr/bin/env node
 
 require('coffee-script');
+
+// If we were called with child_process.fork, we want to set up a lightweight
+// RPC channel that can be used to collect statistics and invoke gc.
+if (typeof process.send == 'function') {
+    setupForkRPC();
+}
+
 var Path        = require('path'),
     vt          = require('../');
     Server      = vt.Server,
@@ -137,3 +144,32 @@ if (opts.useRouter) {
     });
 }
 
+function setupForkRPC () {
+    // We need to make console.log send RPC messages instead of writing to
+    // stdout since child_process.fork merges the child's stdout with the
+    // parent's, and there's currently no way to disable that.
+    function log () {
+        args = Array.prototype.slice.call(arguments)
+        process.send({
+            type: 'log',
+            data: args.join(' ')
+        });
+    }
+    process.stdout.write = log;
+    process.stderr.write = log;
+    process.on('message', function (msg) {
+        var i;
+        switch (msg.type) {
+            case 'gc':
+                if (typeof gc == 'function') {
+                    for (i = 0; i < 7; i++) {
+                        gc();
+                    }
+                }
+                break;
+            case 'memory':
+                process.send({type: 'memory', data: process.memoryUsage()});
+                break;
+        };
+    });
+}

@@ -47,7 +47,7 @@ class Client extends EventEmitter
         @sendOneEvent()
 
     start: () ->
-        @worker.once('start', @sendOneEvent.bind(this))
+        @worker?.once('start', @sendOneEvent.bind(this))
         @socket.on('resumeRendering', @countEvent.bind(this))
         @socket.once 'PageLoaded', () =>
             @emit('PageLoaded')
