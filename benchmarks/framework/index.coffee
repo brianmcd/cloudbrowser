@@ -1,8 +1,9 @@
 Path         = require('path')
 ClientMaster = require('./client_master')
 Server       = require('./server')
+Exec         = require('child_process').exec
 
-exports.client = require('./client')
+exports.Client = require('./client')
 
 exports.createServer = (opts, callback) ->
     server = new Server(opts)
@@ -20,7 +21,8 @@ exports.createClients = (numClients, numClientsPerProcess, callbackInterval, cal
             , callbackInterval
     return master
 
-exports.gnuPlot = (script) ->
-    cwd = path.dirname(module.parent.filename)
+exports.gnuPlot = (script, callback) ->
+    cwd = Path.dirname(module.parent.filename)
     Exec "gnuplot #{script}", {cwd : cwd}, (err, stdout) ->
         throw err if err
+        callback() if callback

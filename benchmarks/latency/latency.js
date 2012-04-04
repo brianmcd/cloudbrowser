@@ -6,7 +6,7 @@ var Framework = require('../framework');
 
 if (process.argv.length != 5) {
     console.log("Usage: " + process.argv[0] + " " + process.argv[1] +
-                "<starting number of clients> " +
+                " <starting number of clients> " +
                 "<ending number of clients> " +
                 "<stepsize>");
     process.exit(1);
@@ -28,10 +28,10 @@ var results = {};
 (function runSim (numClients) {
     console.log("Running simulation for " + numClients);
     var server = Framework.createServer({
-        args: ['--compression=false',
-               '--resource-proxy=false',
-               '--disable-logging',
-               'examples/benchmark-app/app.js'],
+        serverArgs: ['--compression=false',
+                     '--resource-proxy=false',
+                     '--disable-logging',
+                     'examples/benchmark-app/app.js'],
         printEventsPerSec: true
     });
 
@@ -81,4 +81,5 @@ function done () {
         }
     }
     outfile.end();
+    Framework.gnuPlot('latency.p');
 }
