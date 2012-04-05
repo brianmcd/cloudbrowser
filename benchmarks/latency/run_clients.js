@@ -34,7 +34,7 @@ process.once('message', function (msg) {
         if (++currentIteration >= liveIterations) {
             tallyAndReport();
         }
-    });
+    }, true);
 
     function tallyAndReport () {
         var sum = results[0];
