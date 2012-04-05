@@ -3,6 +3,7 @@ ClientMaster = require('./client_master')
 Server       = require('./server')
 Exec         = require('child_process').exec
 
+# TODO: this should have createClient to go with createServer.
 exports.Client = require('./client')
 
 exports.createServer = (opts, callback) ->
@@ -12,8 +13,8 @@ exports.createServer = (opts, callback) ->
             callback(server)
     return server
 
-exports.createClients = (numClients, numClientsPerProcess, callbackInterval, callback) ->
-    master = new ClientMaster(numClients) #TODO: numClientsPerProcess
+exports.createClients = (numClients, numClientsPerProcess, callbackInterval, callback, sendMessages) ->
+    master = new ClientMaster(numClients, sendMessages) #TODO: numClientsPerProcess
     master.once 'start', () ->
         if callback? && callbackInterval?
             setInterval () ->

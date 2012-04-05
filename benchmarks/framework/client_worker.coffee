@@ -3,7 +3,7 @@ Assert         = require('assert')
 Client         = require('./client')
 
 class ClientWorker extends EventEmitter
-    constructor: (@startId, @numClients) ->
+    constructor: (@startId, @numClients, @sendMessages) ->
         @setMaxListeners(0)
         @endId      = @startId + @numClients
         @currentId  = @startId
@@ -23,7 +23,7 @@ class ClientWorker extends EventEmitter
         if @currentId == @endId
             return process.send({status: 'done'})
 
-        client = new Client(@currentId++, this)
+        client = new Client(@currentId++, @sendMessages, this)
 
         client.on 'result', (latency) =>
             @results[client.id] = latency

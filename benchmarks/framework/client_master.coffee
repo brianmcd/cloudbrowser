@@ -4,11 +4,12 @@ Assert         = require('assert')
 {EventEmitter} = require('events')
 
 class ClientMaster extends EventEmitter
-    constructor: (@numClients) ->
+    constructor: (@numClients, @sendMessages) ->
         @numWorkers = Math.floor(@numClients / 100)
         @numWorkers++ if @numClients % 100 != 0
         @workers = []
         @results = Array(@numClients)
+        process.setMaxListeners(0)
         process.on('exit', () => @killWorkers())
         @spawnWorkers()
 
@@ -30,12 +31,16 @@ class ClientMaster extends EventEmitter
 
     spawnWorker: (offset, num, callback) ->
         worker = Fork Path.resolve(__dirname, 'run_client_worker.js'),
-                      [offset, num],
+                      [offset, num, @sendMessages.toString()],
                       {cwd : process.cwd()}
         @workers.push(worker)
-        worker.once 'message', (msg) =>
-            Assert.equal(msg.status, 'done')
-            callback()
+        # Note: using this 'fn' because I'm seeing spurious empty 'message'
+        # callbacks from the worker process, so we can't just use 'once'.
+        fn = (msg) =>
+            if msg.status == 'done'
+                worker.removeListener('message', fn)
+                callback()
+        worker.on('message', fn)
 
     finalizeWorkers: () ->
         for worker in @workers

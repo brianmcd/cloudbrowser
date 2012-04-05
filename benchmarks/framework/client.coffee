@@ -5,10 +5,8 @@ util             = require('util')
 request          = require('request')
 
 class Client extends EventEmitter
-    constructor: (id, worker) ->
-        console.log("Creating client #{id}")
-        @id         = id
-        @worker     = worker
+    constructor: (@id, @sendMessages = true, @worker, @sendMessages) ->
+        #console.log("Creating client #{@id}")
         @latencySum = 0
         @currentEventStart = null
         @numSent = 0
@@ -47,8 +45,9 @@ class Client extends EventEmitter
         @sendOneEvent()
 
     start: () ->
-        @worker?.once('start', @sendOneEvent.bind(this))
-        @socket.on('resumeRendering', @countEvent.bind(this))
+        if @sendMessages
+            @worker?.once('start', @sendOneEvent.bind(this))
+            @socket.on('resumeRendering', @countEvent.bind(this))
         @socket.once 'PageLoaded', () =>
             @emit('PageLoaded')
 

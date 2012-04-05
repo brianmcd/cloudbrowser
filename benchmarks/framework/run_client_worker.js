@@ -14,8 +14,9 @@ var ClientWorker = require('./client_worker');
 
 var startId = parseInt(process.argv[2], 10);
 var numClients = parseInt(process.argv[3], 10);
+var sendMessages = (process.argv[4] == 'true');
 
-var worker = new ClientWorker(startId, numClients);
+var worker = new ClientWorker(startId, numClients, sendMessages);
 worker.start();
 
 setInterval(function () {
