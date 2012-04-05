@@ -170,6 +170,15 @@ function setupForkRPC () {
             case 'memory':
                 process.send({type: 'memory', data: process.memoryUsage()});
                 break;
+            case 'closeBrowser':
+                var browser = global.weakRefList[msg.id];
+                if (browser) {
+                    browser.close();
+                } else {
+                    console.log('Asked to close non-existent browser: ' + id);
+                }
+                break;
         };
     });
+    process.env.WAS_FORKED = true;
 }
