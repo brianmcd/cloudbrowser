@@ -5,7 +5,7 @@ util             = require('util')
 request          = require('request')
 
 class Client extends EventEmitter
-    constructor: (@id, @sendMessages = true, @worker, @sendMessages) ->
+    constructor: (@id, @sendMessages = true, @worker) ->
         #console.log("Creating client #{@id}")
         @latencySum = 0
         @currentEventStart = null
