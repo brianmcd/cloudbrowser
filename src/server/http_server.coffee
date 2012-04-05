@@ -1,6 +1,7 @@
 express        = require('express')
 {EventEmitter} = require('events')
-ZLib           = require('zlib')
+if !/^v0\.4\./.test(process.version)
+    ZLib           = require('zlib')
 Path           = require('path')
 Uglify         = require('uglify-js')
 Browserify     = require('browserify')

@@ -25,3 +25,7 @@ class Application
             return "http://localhost:3001/#{relativeURL}"
 
 module.exports = Application
+
+# For 0.4 compat
+if typeof Path != 'function'
+    require('./patch_relative')
