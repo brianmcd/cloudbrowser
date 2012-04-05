@@ -116,7 +116,7 @@ addKeyboardEvents = (level3) ->
         @locale   = null
 
         # Set up getters/setters for keys that are properties.
-        ['ctrlKey', 'shiftKey', 'altKey', 'metaKey'].forEach (key) ->
+        ['ctrlKey', 'shiftKey', 'altKey', 'metaKey'].forEach (key) =>
             prop = "_#{key}"
             this[prop] = false
             # TODO: put these on proto
