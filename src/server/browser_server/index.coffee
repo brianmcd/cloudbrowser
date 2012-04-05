@@ -438,12 +438,4 @@ RPCMethods =
         node.dispatchEvent(event)
         @broadcastEvent('resumeRendering')
 
-    latencyInfo : (finishedEvents) ->
-        logPath = Path.resolve(__dirname, '..', '..',
-                               'logs', "#{@browser.id}-latency.log")
-        log = FS.createWriteStream(logPath)
-        for own id, info of finishedEvents
-            log.write("[#{id}]: #{info.type} (#{info.elapsed})\n")
-        log.destroySoon()
-
 module.exports = BrowserServer

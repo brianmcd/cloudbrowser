@@ -1,7 +1,6 @@
 TaggedNodeCollection = require('./shared/tagged_node_collection')
 Compressor           = require('./shared/compressor')
 EventMonitor         = require('./event_monitor')
-LatencyMonitor       = require('./latency_monitor')
 Components           = require('./components')
 {deserialize}        = require('./deserializer')
 Config               = require('./shared/config')
@@ -16,7 +15,6 @@ class ClientEngine
         @setupRPC(@socket)
 
         @eventMonitor = null
-        @latencyMonitor = null
 
         @components = {}
 
@@ -79,11 +77,6 @@ RPCMethods =
     SetConfig : (config) ->
         for own key, value of config
             Config[key] = value
-        if Config.monitorLatency
-            @latencyMonitor = new LatencyMonitor(this)
-            setInterval () =>
-                @latencyMonitor.sync()
-            , 10000
 
     newSymbol : (original, compressed) ->
         console.log("newSymbol: #{original} -> #{compressed}")
@@ -214,13 +207,6 @@ RPCMethods =
             event.func.apply(this, event.args)
         @eventQueue = []
         @renderingPaused = false
-
-        if Config.monitorLatency && id?
-            info = @latencyMonitor.stop(id)
-            if !info?
-                console.log("LatencyMonitor ignoring event from other client.")
-            else
-                console.log("[#{id}] #{info.type}: #{info.elapsed} ms")
 
     # If params given, clear the document of the specified frame.
     # Otherwise, clear the global window's document.
