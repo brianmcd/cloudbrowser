@@ -86,6 +86,10 @@ var opts = require('nomnom')
         full    : 'admin-interface',
         default : false,
         help    : "Enable the admin interface."})
+    .option('simulateLatency', {
+        full    : 'simulate-latency',
+        default : false,
+        help    : "Simulate latency for clients (20-120 ms, assigned randomly and uniformly."})
     .option('app', {
         position : 0,
         required : true,

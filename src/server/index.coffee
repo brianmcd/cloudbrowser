@@ -90,6 +90,16 @@ class Server extends EventEmitter
                 io.set('browser client gzip', true)
             io.set('log level', 1)
         io.sockets.on 'connection', (socket) =>
+            if Config.simulateLatency
+                latency = Math.random() * 120
+                latency = Math.max(20, latency)
+                console.log("Assigning client #{latency} ms of latency.")
+                oldEmit = socket.emit
+                socket.emit = () ->
+                    args = arguments
+                    setTimeout () ->
+                        oldEmit.apply(socket, args)
+                    , latency
             socket.on 'auth', (app, browserID) =>
                 decoded = decodeURIComponent(browserID)
                 bserver = browserManagers[app].find(decoded)
