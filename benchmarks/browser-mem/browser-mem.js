@@ -5,21 +5,30 @@ var Fork      = require('child_process').fork;
 var Framework = require('../framework');
 var Client    = Framework.Client;
 
-if (process.argv.length != 3) {
+if (process.argv.length < 3) {
     console.log("Usage: " + process.argv[0] + " " + process.argv[1] +
-                " <number of browsers>");
+                " <number of browsers> [<app>]");
     process.exit(1);
 }
+
+var app = (process.argv[3] == 'chat2' ? 'examples/chat2/app.js' 
+                                      : 'examples/benchmark-app/app.js');
 
 var numBrowsers = parseInt(process.argv[2], 10);
 var results = [];
 
-var server = Framework.createServer({
-    nodeArgs: ['--expose_gc'],
-    serverArgs: ['--compression=false',
+var serverArgs = ['--compression=false',
                  '--resource-proxy=false',
                  '--disable-logging',
-                 'examples/benchmark-app/app.js']
+                 app];
+
+if (process.argv[3] == 'chat2') {
+    serverArgs.unshift('--knockout');
+}
+
+var server = Framework.createServer({
+    nodeArgs: ['--expose_gc'],
+    serverArgs: serverArgs
 });
 
 server.once('ready', function () {
