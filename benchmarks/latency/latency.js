@@ -4,12 +4,23 @@ var Assert    = require('assert');
 var Fork      = require('child_process').fork;
 var Framework = require('../framework');
 
-if (process.argv.length != 5) {
+if (process.argv.length < 5) {
     console.log("Usage: " + process.argv[0] + " " + process.argv[1] +
                 " <starting number of clients> " +
                 "<ending number of clients> " +
-                "<stepsize>");
+                "<stepsize> [<app>]");
     process.exit(1);
+}
+
+var serverArgs = ['--compression=false',
+                 '--resource-proxy=false',
+                 '--simulate-latency=true',
+                 '--disable-logging'];
+
+if (process.argv[3] == 'chat2') {
+    serverArgs.concat(['--knockout', 'examples/chat2/app.js']);
+} else {
+    serverArgs.push('examples/benchmark-app/app.js');
 }
 
 var startNumClients = parseInt(process.argv[2], 10);
@@ -28,10 +39,7 @@ var results = {};
 (function runSim (numClients) {
     console.log("Running simulation for " + numClients);
     var server = Framework.createServer({
-        serverArgs: ['--compression=false',
-                     '--resource-proxy=false',
-                     '--disable-logging',
-                     'examples/benchmark-app/app.js'],
+        serverArgs: serverArgs,
         printEventsPerSec: true
     });
 

@@ -14,12 +14,6 @@ process.once('message', function (msg) {
                             100, /* num per process */
                             5000, /* callback interval */
                             function (latencies) {
-        if (iter++ < warmupIterations) {
-            console.log("Warmup iteration...")
-            return;
-        }
-        console.log("Iteration...");
-
         var sum = 0
         var i, result;
         for (i = 0; i < numClients; i++) {
@@ -30,6 +24,7 @@ process.once('message', function (msg) {
             sum += result;
         }
         var avgLatency = sum / numClients;
+        console.log('Avg latency: ' + avgLatency);
         results.push(avgLatency);
         if (++currentIteration >= liveIterations) {
             tallyAndReport();
