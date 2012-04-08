@@ -28,13 +28,17 @@ request('http://localhost:3000', function (err, response, body) {
     console.log('appid: ' + appid);
     var socket = socketio.connect('http://localhost:3000');
     var count = 0;
-    socket.on('PageLoaded', function (json) {
+    socket.once('PageLoaded', function (json) {
         console.log('PageLoaded');
-        socket.emit('processEvent', event, ++count);
+        (function sendEvent () {
+            socket.emit('processEvent', event, ++count);
+            process.nextTick(sendEvent);
+        })();
     });
     socket.on('resumeRendering', function (num) {
         // Synchronous send/recv
         socket.emit('processEvent', event, ++count);
+        console.log("Received event: " + num);
     });
     socket.emit('auth', appid, browserid);
 });

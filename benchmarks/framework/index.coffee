@@ -1,10 +1,11 @@
 Path         = require('path')
-ClientMaster = require('./client_master')
 Server       = require('./server')
 Exec         = require('child_process').exec
 
-# TODO: this should have createClient to go with createServer.
-exports.Client = require('./client')
+Client = require('./client')
+
+for own prop of Client
+    exports[prop] = Client[prop]
 
 exports.createServer = (opts, callback) ->
     server = new Server(opts)
@@ -12,15 +13,6 @@ exports.createServer = (opts, callback) ->
         server.once 'ready', () ->
             callback(server)
     return server
-
-exports.createClients = (numClients, numClientsPerProcess, callbackInterval, callback, sendMessages) ->
-    master = new ClientMaster(numClients, sendMessages) #TODO: numClientsPerProcess
-    master.once 'start', () ->
-        if callback? && callbackInterval?
-            setInterval () ->
-                callback(master.results)
-            , callbackInterval
-    return master
 
 exports.gnuPlot = (script, callback) ->
     cwd = Path.dirname(module.parent.filename)

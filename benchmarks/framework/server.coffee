@@ -6,7 +6,16 @@ process.env.NODE_ENV = 'production'
 class Server extends EventEmitter
     # args is an array of command line arguments to pass to the server.
     constructor: (opts) ->
-        {nodeArgs, serverArgs, printEventsPerSec, printEverything} = opts
+        {app,
+         nodeArgs,
+         serverArgs,
+         printEventsPerSec,
+         printEverything} = opts
+
+        if app == 'chat2'
+            serverArgs = serverArgs.concat(['--knockout', 'examples/chat2/app.js'])
+        else if app == 'benchmark'
+            serverArgs.push('examples/benchmark-app/app.js')
 
         nodeOpts =
             cwd : Path.resolve(__dirname, '..', '..')
