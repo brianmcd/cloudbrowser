@@ -28,10 +28,10 @@ var TIME_PERIOD = 5000;
 var io = socketio.listen(server);
 io.set('log level', 1);
 io.on('connection', function (socket) {
-    socket.counter = 0;
+    var counter = 0;
     socket.on('poke', function () {
-        socket.counter++;
-        socket.emit('pokeCount', socket.counter);
+        counter++;
+        socket.emit('pokeCount', counter);
         numRequests++;
     });
 });
