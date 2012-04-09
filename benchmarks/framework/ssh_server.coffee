@@ -9,8 +9,7 @@ class SSHServer extends EventEmitter
          printEventsPerSec,
          printEverything} = opts
 
-        @sshOpts = ['-tt']
-        @sshOpts = @sshOpts.concat(host.split(' '))
+        @sshOpts = host.split(' ')
 
         @server = Spawn('ssh', @sshOpts.concat(cmd))
         @server.stderr.setEncoding('utf8')
