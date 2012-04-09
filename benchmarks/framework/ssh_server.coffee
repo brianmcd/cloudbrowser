@@ -12,9 +12,11 @@ class SSHServer extends EventEmitter
         @sshOpts = host.split(' ')
 
         @server = Spawn('ssh', @sshOpts.concat(cmd))
+        ###
         @server.stderr.setEncoding('utf8')
         @server.stderr.on 'data', (data) ->
             console.log(data)
+        ###
 
         @server.stdout.setEncoding('utf8')
         buffer = ''
