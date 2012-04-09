@@ -32,7 +32,6 @@ server.once 'ready', () ->
     server.send({type: 'gc'})
     server.send({type: 'memory'})
     server.once 'message', (msg) ->
-        # Results holds the memory usage for a given number of browsers.
         results = [msg.data.heapUsed / 1024]
         console.log("0: #{msg.data.heapUsed / 1024}")
         server.send({type: 'memory'})
