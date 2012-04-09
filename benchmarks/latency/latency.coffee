@@ -72,7 +72,6 @@ runSim = (numClients) ->
             return if finishedClients[id]
             numResults[id] = numResults[id] + 1 || 0
             if numResults[id] == 5
-                console.log("#{id} is finished")
                 finishedClients[id] = true
             if Object.keys(finishedClients).length == numClients
                 client.kill() for client in clients
