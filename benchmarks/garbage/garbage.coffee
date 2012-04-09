@@ -45,6 +45,7 @@ server.once 'ready', () ->
         Framework.spawnClientsInProcess
             numClients: Opts.numBrowsers
             sharedBrowser: false
+            serverAddress: 'http://localhost:3000'
             clientCallback: (client, cb) ->
                 console.log("[iteration #{i}] created client: #{client.id}")
                 cb()
