@@ -12,10 +12,12 @@ class Server extends EventEmitter
          printEventsPerSec,
          printEverything} = opts
 
+        appPrefix = 'benchmarks/framework/apps'
+
         if app == 'chat2'
-            serverArgs = serverArgs.concat(['--knockout', 'examples/chat2/app.js'])
-        else if app == 'benchmark'
-            serverArgs.push('examples/benchmark-app/app.js')
+            serverArgs = serverArgs.concat(['--knockout'])
+
+        serverArgs.push("#{appPrefix}/#{app}/app.js")
 
         nodeOpts =
             cwd : Path.resolve(__dirname, '..', '..')

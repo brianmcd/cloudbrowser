@@ -23,13 +23,8 @@ serverArgs = ['--compression=false',
               '--resource-proxy=false',
               '--disable-logging']
 
-if Opts.app == 'chat2'
-    serverArgs.push('examples/chat2/app.js')
-    serverArgs.unshift('--knockout')
-else
-    serverArgs.push('examples/benchmark-app/app.js')
-
 server = Framework.createServer
+    app: Opts.app
     nodeArgs: ['--expose_gc']
     serverArgs: serverArgs
 
@@ -46,6 +41,7 @@ server.once 'ready', () ->
         Framework.spawnClientsInProcess
             numClients: Opts.numClients
             sharedBrowser: if Opts.type == 'client' then true else false
+            serverAddress: 'http://localhost:3000'
             clientCallback: (client, cb) ->
                 server.send({type: 'gc'})
                 server.send({type: 'memory'})

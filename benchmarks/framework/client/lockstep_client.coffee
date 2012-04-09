@@ -1,7 +1,7 @@
 Client = require('./client')
 
 class LockstepClient extends Client
-    constructor: (@id, @appid, @browserid, @clientData) ->
+    constructor: (@id, @appid, @browserid, @serverAddress, @clientData) ->
         #console.log("Creating client #{@id}")
         {@event} = @clientData
         @latencySum = 0

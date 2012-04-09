@@ -11,6 +11,7 @@ exports.spawnClientsInProcess = (opts) ->
     {numClients,
      sharedBrowser,
      startId,
+     serverAddress,
      clientClass, # Function object
      clientData, # args to pass to clientClass
      clientCallback, # Called after creating each client.
@@ -27,7 +28,7 @@ exports.spawnClientsInProcess = (opts) ->
 
     createClient = (id, appid, browserid) ->
         if id < numClients + startId
-            client = new clientClass(id, appid, browserid, clientData)
+            client = new clientClass(id, appid, browserid, serverAddress, clientData)
             client.on 'Result', (info) ->
                 resultEE.emit('Result', id, info)
             client.once 'Ready', () ->
@@ -38,7 +39,7 @@ exports.spawnClientsInProcess = (opts) ->
             doneCallback(clients)
 
     if sharedBrowser
-        Request 'http://localhost:3000', (err, response, body) ->
+        Request serverAddress, (err, response, body) ->
             throw err if err
             appid = /window.__appID\ =\ '(.*)'/.exec(body)[1]
             browserid = /window.__envSessionID\ =\ '(.*)'/.exec(body)[1]
@@ -50,6 +51,7 @@ exports.spawnClientsInProcess = (opts) ->
 
 exports.spawnClientsMultiProcess = (opts) ->
     {numClients,
+     serverAddress,
      sharedBrowser,
      numProcesses,
      clientClass, # Function object TODO make string
@@ -66,7 +68,6 @@ exports.spawnClientsMultiProcess = (opts) ->
     children = []
     spawnChild = (clientsLeft, pid) ->
         if clientsLeft == 0
-            console.log("Sending 'Start' to children.")
             child.send({type: 'Start'}) for child in children
             return doneCallback(children)
         startId = numClients - clientsLeft + 1
@@ -81,6 +82,7 @@ exports.spawnClientsMultiProcess = (opts) ->
             type: 'Config'
             startId: startId
             numClients: childNumClients
+            serverAddress: serverAddress
             clientClass: clientClass?.prototype.constructor.name
             clientData: clientData
             sharedBrowser: sharedBrowser

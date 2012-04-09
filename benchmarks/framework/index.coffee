@@ -1,5 +1,6 @@
 Path         = require('path')
 Server       = require('./server')
+SSHServer    = require('./ssh_server')
 Exec         = require('child_process').exec
 
 Client = require('./client')
@@ -9,6 +10,13 @@ for own prop of Client
 
 exports.createServer = (opts, callback) ->
     server = new Server(opts)
+    if callback?
+        server.once 'ready', () ->
+            callback(server)
+    return server
+
+exports.createSSHServer = (opts, callback) ->
+    server = new SSHServer(opts)
     if callback?
         server.once 'ready', () ->
             callback(server)

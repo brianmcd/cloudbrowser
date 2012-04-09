@@ -1,8 +1,9 @@
 require('coffee-script')
 
 var clientCtors = {
-    'LockstepClient' : require('./lockstep_client'),
-    'Client'         : require('./client')
+    'LockstepClient'          : require('./lockstep_client'),
+    'RequestsPerSecondClient' : require('./requests_per_second_client'),
+    'Client'                  : require('./client')
 };
 
 var Clients = require('./index');

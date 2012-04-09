@@ -2,7 +2,6 @@ FS        = require('fs')
 Assert    = require('assert')
 Fork      = require('child_process').fork
 Framework = require('../framework')
-LockstepClient = require('../framework/client/lockstep_client')
 
 # TODO: make latency configurable.
 Opts = require('nomnom')
@@ -17,6 +16,18 @@ Opts = require('nomnom')
         full: 'end-clients'
         required: true
         help: 'The ending number of clients to create.'
+    .option 'requestRate',
+        full: 'request-rate'
+        help: 'The number of requests per second to send for the RPS client (using this option forces use of RPS client instead of lockstep).'
+    .option 'serverAddress',
+        full: 'server-address'
+        help: 'The address to reach the web server (e.g. http://localhost:3000).'
+    .option 'sshHost',
+        full: 'ssh-host'
+        help: "The address of the host to connect to."
+    .option 'sshCmd',
+        full: 'ssh-cmd'
+        help: 'The command to run to start the server remotely.'
     .option 'stepSize',
         full: 'step-size'
         required: true
@@ -35,24 +46,24 @@ aggregateResults = {}
 
 runSim = (numClients) ->
     console.log("Running simulation for #{numClients}.")
-    server = Framework.createServer
-        app: Opts.app
-        serverArgs: ['--compression=false',
-                     '--resource-proxy=false',
-                     '--simulate-latency=true',
-                     '--disable-logging']
-        printEventsPerSec: true
-    server.once 'ready', () ->
+    start = () ->
+        console.log("server is ready")
         results = {}
         numResults = {}
         finishedClients = {}
         clients = null
+        clientClass = if Opts.requestRate
+            require('../framework/client/requests_per_second_client')
+        else
+            require('../framework/client/lockstep_client')
         resultEE = Framework.spawnClientsMultiProcess
             numClients: numClients
+            serverAddress: Opts.serverAddress || 'http://localhost:3000'
             sharedBrowser: false
-            clientClass: LockstepClient
+            clientClass: clientClass
             clientData:
                 event: event
+                rate: Opts.requestRate
             doneCallback: (_clients) ->
                 clients = _clients
         resultEE.on 'Result', (id, latency) ->
@@ -75,6 +86,21 @@ runSim = (numClients) ->
                         runSim(numClients)
                     else
                         done()
+    if Opts.sshHost
+        server = Framework.createSSHServer
+            host: Opts.sshHost
+            cmd: Opts.sshCmd
+            printEventsPerSec: true
+        server.once('ready', start)
+    else
+        server = Framework.createServer
+            app: Opts.app
+            serverArgs: ['--compression=false',
+                         '--resource-proxy=false',
+                         '--simulate-latency=true',
+                         '--disable-logging']
+            printEventsPerSec: true
+        server.once('ready', start)
 runSim(Opts.startNumClients)
 
 done = () ->
