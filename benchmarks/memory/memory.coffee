@@ -60,5 +60,7 @@ server.once 'ready', () ->
                     outfile.write("#{i}\t#{result}\n")
                 outfile.end()
                 Framework.gnuPlot "#{prefix}.p", () ->
+                    FS.renameSync("../results/#{prefix}.png", "../results/#{prefix}-#{Opts.numClients}-#{Opts.app}.png")
+                    FS.renameSync("../results/#{prefix}.dat", "../results/#{prefix}-#{Opts.numClients}-#{Opts.app}.dat")
                     server.stop()
                     process.exit(0)
