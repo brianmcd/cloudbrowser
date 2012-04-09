@@ -1,2 +1,3 @@
 # ../../../bin/server ./person.html
-../../../bin/server ./personjquery.html
+../../../bin/server --simulate-latency=200 ./personjquery.html
+

@@ -91,8 +91,11 @@ class Server extends EventEmitter
             io.set('log level', 1)
         io.sockets.on 'connection', (socket) =>
             if Config.simulateLatency
-                latency = Math.random() * 100
-                latency += 20
+                if typeof Config.simulateLatency == 'number'
+                    latency = Config.simulateLatency
+                else
+                    latency = Math.random() * 100
+                    latency += 20
                 console.log("Assigning client #{latency} ms of latency.")
                 oldEmit = socket.emit
                 socket.emit = () ->
