@@ -109,7 +109,7 @@ opts = require('nomnom')
     .option 'simulateLatency',
         full    : 'simulate-latency'
         default : false
-        help    : "Simulate latency for clients (20-120 ms, assigned randomly and uniformly."
+        help    : "Simulate latency for clients in ms (if not given assign uniform randomly in 20-120 ms range."
     .option 'app',
         position : 0
         required : true
