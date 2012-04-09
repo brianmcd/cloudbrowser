@@ -1,0 +1,18 @@
+<html>
+    <head>
+    </head>
+    <body>
+        <div id='target'></div>
+        <script>
+            var count = 0;
+            var div = document.getElementById('target');
+            div.addEventListener('click', function () {
+                while(div.hasChildNodes()) {
+                    div.removeChild(div.childNodes[0]);
+                }
+                var text = document.createTextNode(++count);
+                div.appendChild(text);
+            });
+        </script>
+    </body>
+</html>
