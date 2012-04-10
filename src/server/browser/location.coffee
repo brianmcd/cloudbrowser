@@ -70,7 +70,9 @@ exports.LocationBuilder = (browser) ->
                     event.initEvent("hashchange", true, false)
                     event.oldURL = oldLoc.href
                     event.newURL = this.href
-                    browser.window.dispatchEvent(event)
+                    # Doing this on nextTick so that the new window.location will be set.
+                    process.nextTick () ->
+                        browser.window.dispatchEvent(event)
                 when 'pagechange'
                     browser.load(@parsed.href)
 

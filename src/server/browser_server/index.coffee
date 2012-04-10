@@ -22,6 +22,12 @@ class BrowserServer extends EventEmitter
         if !@id? || !@mountPoint
             throw new Error("Missing required parameter")
         @browser = new Browser(@id, this)
+
+        @browser.on 'PageLoaded', () =>
+            @browser.window.addEventListener 'hashchange', (event) =>
+                @broadcastEvent('UpdateLocationHash',
+                                @browser.window.location.hash)
+            
         @sockets = []
         @compressor = new Compressor()
         @compressor.on 'newSymbol', (args) =>

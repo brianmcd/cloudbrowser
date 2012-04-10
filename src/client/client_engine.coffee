@@ -165,6 +165,9 @@ RPCMethods =
     WindowMethodCalled : (method, args) ->
        window[method].apply(window, args)
 
+    UpdateLocationHash : (hash) ->
+        window.location.hash = hash
+
     AddEventListener : (type) ->
         @eventMonitor.add(type)
        
