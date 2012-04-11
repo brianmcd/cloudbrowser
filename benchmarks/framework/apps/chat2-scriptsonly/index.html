@@ -1,0 +1,26 @@
+<html>
+  <head>
+    <script src='jquery-1.7.2.js'></script>
+    <script src='knockout-2.0.0.js'></script>
+    <script src='views/chats.js'></script>
+    <script src='views/home.js'></script>
+    <script>
+        $(function () {
+            vt.pageMan = new vt.PageManager(document.getElementById('main'));
+            var vm = {
+                pageMan : vt.pageMan,
+                activePage : ko.observable()
+            };
+            vt.pageMan.on('change', function (name) {
+                vm.activePage(name);
+            });
+            vt.pageMan.once('load', function () {
+                vt.pageMan.swap('home');
+                ko.applyBindings(vm, document.getElementById('navbar'));
+            });
+        });
+    </script>
+  </head>
+  <body>
+  </body>
+</html>

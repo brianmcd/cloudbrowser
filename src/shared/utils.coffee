@@ -41,9 +41,9 @@ exports.isVisibleOnClient = (node, browser) ->
 exports.noCacheRequire = (name, regExp) ->
     reqCache = require.cache
     regExp = new RegExp(name) if !regExp
-    for entry of reqCache
+    for entry in Object.keys(reqCache)
         delete reqCache[entry] if regExp.test(entry)
     rv = require(name)
-    for entry of reqCache
+    for entry in Object.keys(reqCache)
         delete reqCache[entry] if regExp.test(entry)
     return rv

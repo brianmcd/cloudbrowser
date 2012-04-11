@@ -34,7 +34,9 @@ Opts = require('nomnom')
         help: 'The step size of the number of clients between each iteration'
 Opts = Opts.parse()
 
-Opts.startNumClients += Opts.stepSize if Opts.startNumClients == 0
+if Opts.startNumClients == 0
+    Opts.startNumClients = 1
+    fakeStart = true
 
 event =
     type: 'click', target: 'node12', bubbles: true, cancelable: true,
@@ -80,7 +82,11 @@ runSim = (numClients) ->
                     for own id, result of results
                         sum += result
                     aggregateResults[numClients] = sum / numClients
-                    numClients += Opts.stepSize
+                    if fakeStart
+                        numClients += (Opts.stepSize - 1)
+                        fakeStart = false
+                    else
+                        numClients += Opts.stepSize
                     if numClients <= Opts.endNumClients
                         runSim(numClients)
                     else
@@ -96,7 +102,7 @@ runSim = (numClients) ->
             app: Opts.app
             serverArgs: ['--compression=false',
                          '--resource-proxy=false',
-                         '--simulate-latency=true',
+                         #'--simulate-latency=500',
                          '--disable-logging']
             printEventsPerSec: true
         server.once('ready', start)

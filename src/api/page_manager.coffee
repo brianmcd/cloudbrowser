@@ -7,9 +7,7 @@ FS             = require('fs')
 class PageManager extends EventEmitter
     constructor : (container) ->
         # TODO: does this need to be weak?
-        @container = Weak(container, () =>
-            @removeAllListeners()
-            console.log("CLEANING UP PAGEMAN CONTAINER"))
+        @container = Weak(container, () => @removeAllListeners())
         if !@container?
             throw new Error("Must pass DOM node to PageManager")
         # An object with references to DOMNodes
@@ -35,7 +33,7 @@ class PageManager extends EventEmitter
         dfs @container, filter, (node) ->
             attr = node.getAttribute('data-page')
             return if !attr || attr == ''
-            node = Weak(node, () -> console.log("CLEANING A PAGE"))
+            node = Weak(node)
             {id, src} = self._splitAttr(attr)
             path = self._getPath(src, node)
             pendingPages++

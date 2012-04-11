@@ -33,6 +33,7 @@ class SSHServer extends EventEmitter
                 buffer = ''
                 @emit('ready')
 
+        process.setMaxListeners(0)
         process.on 'exit', () =>
             if @server
                 @server.kill()

@@ -1,3 +1,4 @@
+FS             = require('fs')
 Path           = require('path')
 Fork           = require('child_process').fork
 {EventEmitter} = require('events')
@@ -17,12 +18,18 @@ class Server extends EventEmitter
         if app == 'chat2'
             serverArgs = serverArgs.concat(['--knockout'])
 
-        serverArgs.push("#{appPrefix}/#{app}/app.js")
+        serverCwd = Path.resolve(__dirname, '..', '..')
+
+        appPath = Path.resolve(serverCwd, 'benchmarks', 'framework', 'apps', app, 'app.js')
+        if FS.existsSync(appPath)
+            serverArgs.push(appPath)
+        else
+            serverArgs.push(Path.resolve(serverCwd, app))
 
         nodeOpts =
-            cwd : Path.resolve(__dirname, '..', '..')
+            cwd : serverCwd
             env : process.env
-        serverPath = Path.resolve(__dirname, '..', '..', 'bin', 'server')
+        serverPath = Path.resolve(serverCwd, 'bin', 'server')
 
         if nodeArgs
             serverArgs = nodeArgs.concat(serverArgs)

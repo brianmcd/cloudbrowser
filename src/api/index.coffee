@@ -4,18 +4,14 @@ Components  = require('../server/components')
 
 module.exports = EmbedAPI = (browser) ->
     cleaned = false
-    window = Weak browser.window, () ->
-        cleaned = true
-        console.log("WINDOW GC'D")
-    browser = Weak browser, () ->
-        cleaned = true
-        console.log("BROWSER GC'D")
+    # TODO: is this weak ref required?
+    window = Weak(browser.window, () -> cleaned = true)
+    browser = Weak(browser, () -> cleaned = true)
 
     window.vt =
         Model       : require('./model')
         PageManager : require('./page_manager')
 
-        # TODO: memory leak due to reference with browser.
         createComponent : (name, target, options) ->
             throw new Error("Browser has been garbage collected") if cleaned
             targetID = target.__nodeID

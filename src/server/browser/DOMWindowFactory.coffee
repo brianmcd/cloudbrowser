@@ -3,6 +3,7 @@ Config                 = require('../../shared/config')
 {LocationBuilder}      = require('./location')
 {ImportXMLHttpRequest} = require('./XMLHttpRequest')
 {addAdvice}            = require('./advice')
+{noCacheRequire}       = require('../../shared/utils')
 {applyPatches}         = require('./jsdom_patches')
 
 jsdom = require('jsdom')
@@ -121,7 +122,7 @@ class DOMWindowFactory
     patchDOMParser : (window) ->
         window.DOMParser = class DOMParser
             parseFromString : (str, type) ->
-                jsdom = noCacheRequire('jsdom')
+                jsdom = noCacheRequire('jsdom-nocache')
                 xmldoc = jsdom.jsdom str, jsdom.level(2),
                     FetchExternalResources   : false
                     ProcessExternalResources : false
