@@ -1,4 +1,5 @@
 FS        = require('fs')
+Path      = require('path')
 Assert    = require('assert')
 Fork      = require('child_process').fork
 Framework = require('../framework')
@@ -56,10 +57,13 @@ server.once 'ready', () ->
                     'browser-mem'
                 outfile = FS.createWriteStream("../results/#{prefix}.dat")
                 for result, i in results
+                    continue if Opts.type == 'client' && i == 0
                     outfile.write("#{i}\t#{result}\n")
                 outfile.end()
                 Framework.gnuPlot "#{prefix}.p", () ->
-                    FS.renameSync("../results/#{prefix}.png", "../results/#{prefix}-#{Opts.numClients}-#{Opts.app}.png")
-                    FS.renameSync("../results/#{prefix}.dat", "../results/#{prefix}-#{Opts.numClients}-#{Opts.app}.dat")
+                    FS.renameSync(Path.resolve(__dirname, '..', 'results', "#{prefix}.png"),
+                                  Path.resolve(__dirname, '..', 'results', "#{prefix}-#{Opts.numClients}-#{Opts.app}.png"))
+                    FS.renameSync(Path.resolve(__dirname, '..', 'results', "#{prefix}.dat"),
+                                  Path.resolve(__dirname, '..', 'results', "#{prefix}-#{Opts.numClients}-#{Opts.app}.dat"))
                     server.stop()
                     process.exit(0)
