@@ -1,0 +1,11 @@
+.d-month {
+    color: white;
+    text-align: left;
+    background-color: #3385E4;
+    padding: 3px;
+}
+
+.participant-row {
+    padding-top: 3px;
+    padding-bottom: 3px;
+}
