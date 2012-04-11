@@ -1,1 +1,1 @@
-../../../../bin/server --compression=false --resource-proxy=false --simulate-latency=true --disable-logging app.js
+../../../../bin/server --compression=false --resource-proxy=false --simulate-latency=500 --disable-logging app.js

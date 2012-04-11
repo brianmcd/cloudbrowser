@@ -1,0 +1,122 @@
+<html>
+  <head>
+      <link rel="stylesheet" href="css/bootstrap.min.css" />
+      <link rel="stylesheet" href="css/chat.css" />
+  </head>
+  <body style='padding-top: 40px'>
+    <div class="topbar" data-dropdown="dropdown">
+      <div class="fill">
+        <div id='navbar' class="container">
+          <h3><a href="#">Cloud Browser Chat</a></h3>
+          <ul>
+            <li data-bind=
+                "attr: {
+                    class : (activePage() == 'home' ? 'active' : '')
+                 },
+                 event : {
+                     click: function () { pageMan.swap('home'); }
+                 }">
+                 <a href='#'>Home</a>
+             </li>
+             <li data-bind=
+                "attr: {
+                    class : (activePage() == 'chats' ? 'active' : '')
+                 },
+                 event : {
+                     click : function () { pageMan.swap('chats'); }
+                 }">
+                 <a href="#">Chats</a>
+             </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div id='main' style='padding-top: 10px'>
+      <div data-page="id: home,  src: views/home.html"></div>
+      <div data-page="id: chats, src: views/chats.html"></div>
+    </div>
+        <div id='homeContainer' class='container'>
+          <div class='row'>
+            <div class='offset2 span8'>
+              <h1 style='text-align: center'>Welcome</h1>
+            </div>
+        </div>
+        <div class='row'>
+          <div class='offset2 span10'>
+            <h2>About</h2>
+            <p>This is an example of using the Cloud Browser framework. You are currently viewing this on a virtual browser. This application is developed using jQuery, Knockout.js, and Twitter Bootstrap.</p>
+          </div>
+        </div>
+        <br />
+        <br />
+        <div class='row'>
+            <div class='span6'>
+              <div id='create-room-form' class='clearfix'>
+                <form>
+                  <fieldset>
+                    <div class='clearfix'>
+                      <label for='usernameInput'>Username</label>
+                      <div class='input'>
+                      <input id='usernameInput' type='text' data-bind='value: username' />
+                      </div>
+                    </div>
+                    <br />
+                    <div class='clearfix'>
+                      <label for='roomNameInput'>New Room Name</label>
+                      <div class='input'>
+                        <input id='roomNameInput' type='text' data-bind='value: newRoomName'></input>
+                      </div>
+                    </div>
+                  </fieldset>
+                </form>
+              </div>
+              <div class='row'>
+                <div class='offset2 span4'>
+                  <button id='create-room' class='btn large primary'>Create a New Room</button>
+                </div>
+              </div>
+            </div>
+            <div class='offset2 span6'>
+              <div id='join-room-form' class='clearfix'>
+                <form>
+                  <fieldset>
+                    <div class='clearfix'>
+                      <label>Room To Join</label>
+                      <div class='input'>
+                        <select data-bind='options: rooms, value: selectedRoom, optionsText: "name"'>
+                        </select>
+                      </div>
+                    </div>
+                  </fieldset>
+                </form>
+              </div>
+              <div class='row'>
+                <div class='offset2 span4'>
+                  <button id='join-room' class='btn large primary'>Join a Room</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div id='chatsContainer' class='container'>
+          <ul class="tabs" data-tabs="tabs" data-bind="foreach: myChats">
+            <li data-bind="css: { active: $root.activeRoom().name === name}">
+              <a href='#'
+                 data-bind="text: name,
+                            click: function () { $root.changeRoom($data);}">
+              </a>
+            </li>
+          </ul>
+          <div id="chat-tabs" data-bind='foreach: myChats'>
+            <div class='tab-pane'
+                 data-bind="visible: ($root.activeRoom() === $data)">
+              <textarea rows='20' data-bind='value: messages'></textarea>
+            </div>
+          </div>
+          <input type='text' size='160' 
+                 data-bind='value: currentMessage, event: {keyup: currentMessageKeyUp}'>
+          </input>
+          <button class='btn' data-bind='click: postMessage'>Send</button>
+        </div>
+  </body>
+</html>

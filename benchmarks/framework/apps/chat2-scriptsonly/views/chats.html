@@ -1,0 +1,22 @@
+<div id='chatsContainer' class='container'>
+  <ul class="tabs" data-tabs="tabs" data-bind="foreach: myChats">
+    <li data-bind="css: { active: $root.activeRoom().name === name}">
+      <a href='#'
+         data-bind="text: name,
+                    click: function () { $root.changeRoom($data);}">
+      </a>
+    </li>
+  </ul>
+  <div id="chat-tabs" data-bind='foreach: myChats'>
+    <div class='tab-pane'
+         data-bind="visible: ($root.activeRoom() === $data)">
+      <textarea rows='20' data-bind='value: messages'></textarea>
+    </div>
+  </div>
+  <input type='text' size='160' 
+         data-bind='value: currentMessage, event: {keyup: currentMessageKeyUp}'>
+  </input>
+  <button class='btn' data-bind='click: postMessage'>Send</button>
+</div>
+
+<script src='views/chats.js'></script>
