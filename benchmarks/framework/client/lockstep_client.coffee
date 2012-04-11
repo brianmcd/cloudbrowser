@@ -14,7 +14,7 @@ class LockstepClient extends Client
 
     sendOneEvent: () ->
         @currentEventStart = Date.now()
-        @socket.emit('processEvent', @event, @numSent++)
+        @socket.emit('processEvent', @event, ++@numSent)
 
     countEvent: (eventId) ->
         @latencySum += Date.now() - @currentEventStart
