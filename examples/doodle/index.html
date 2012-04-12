@@ -42,9 +42,7 @@
     <div class="container-fluid">
      <div class="row-fluid">
       <div class="span1">
-          Demo of how
-          to implement a "Doodle"-like
-          application in CloudBrowser
+          Demo of how to implement a "Doodle"-like application in CloudBrowser
       </div>
       <div class="span10">
       <table>
@@ -71,19 +69,16 @@
           <tbody data-bind="foreach: participants">
               <tr class="participant-row">
                   <td class="container">
-                      <a class="close" data-bind="visible: !editing(), 
-                              click: function (participant) { 
-                                  appModel.participants.remove(participant);
-                              }">&nbsp;×&nbsp;</a>
+                      <a class="close" data-bind="visible: !editing(), click: $parent.removeParticipant">&nbsp;×&nbsp;</a>
                       <span data-bind="visible: !editing(), click: edit, text: name"></span>
                       <input data-bind="visible: editing, value: name, hasfocus: editing" type="text"></input>
                   </td>
                   <!-- ko foreach: available -->
                   <td class="container" style="text-align: center"
-                          data-bind="text: $data.state() == 0 ? '\u2716' : '\u2714', 
-                          css: { 'alert-danger': $data.state() == 0, 'alert-success': $data.state() == 1 },
-                          click: function () { 
-                              $data.state(1 - $data.state()); 
+                          data-bind="text: $data.avail() == 0 ? '\u2716' : '\u2714', 
+                          css: { 'alert-danger': $data.avail() == 0, 'alert-success': $data.avail() == 1 },
+                          click: function toggleAvailability () { 
+                              $data.avail(1 - $data.avail()); 
                           }"
                       >
                   </td>
@@ -91,9 +86,7 @@
               </tr>
           </tbody>
       </table>
-      <button data-bind="click: function () { 
-                  appModel.participants.push(new Participant('New Participant', true)); 
-              }">New Participant</button>
+      <button data-bind="click: addParticipant">New Participant</button>
      </div>
     </div>
     </div> <!-- /container -->
@@ -113,15 +106,15 @@
             this.available = new ko.observableArray();
             if (available != undefined) {
                 for (var i = 0; i < available.length; i++)
-                    this.available.push({ state: new ko.observable(available[i]) });
+                    this.available.push({ avail: new ko.observable(available[i]) });
             } else {
                 for (var i = 0; i < appModel.times().length; i++)
-                    this.available.push({ state: new ko.observable(0) });
+                    this.available.push({ avail: new ko.observable(0) });
             }
         }
 
         var appModel = {
-            times: new ko.observableArray([ 
+            times: new ko.observableArray([
                     { start: 1334678400000, duration: 7200000 },
                     { start: 1334754900000, duration: 7200000 },
                     { start: 1334774700000, duration: 7200000 },
@@ -130,7 +123,13 @@
                 ]),
             participants: new ko.observableArray([
                 new Participant("Ms. Busy", false, [0, 1, 0, 1, 1])
-            ])
+            ]),
+            addParticipant : function () {
+                appModel.participants.push(new Participant('New Participant', true)); 
+            },
+            removeParticipant : function (participant) {
+                appModel.participants.remove(participant);
+            }
         };
         ko.applyBindings(appModel);
 
