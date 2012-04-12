@@ -47,7 +47,6 @@
           application in CloudBrowser
       </div>
       <div class="span10">
-          Last changed: <span data-bind="text: moment(lastChange()).fromNow()"></span>
       <table>
           <thead>
               <tr><th width="25%"></th>
@@ -122,7 +121,6 @@
         }
 
         var appModel = {
-            lastChange: new ko.observable(new Date()),
             times: new ko.observableArray([ 
                     { start: 1334678400000, duration: 7200000 },
                     { start: 1334754900000, duration: 7200000 },
@@ -135,9 +133,6 @@
             ])
         };
         ko.applyBindings(appModel);
-        appModel.participants.subscribe(function () {
-            appModel.lastChange(new Date());
-        });
 
         // if running in CloudBrowser, provide a JSON service to obtain current data
         if (typeof require == "function") {
