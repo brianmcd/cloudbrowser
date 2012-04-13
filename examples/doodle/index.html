@@ -34,60 +34,64 @@
     <div class="navbar navbar-fixed-top">
       <div class="navbar-inner">
         <div class="container">
-          <a class="brand" href="#">Doodle</a>
+          <a class="brand" href="#">Scheduler</a>
         </div>
       </div>
     </div>
 
     <div class="container-fluid">
-     <div class="row-fluid">
-      <div class="span1">
-          Demo of how to implement a "Doodle"-like application in CloudBrowser
-      </div>
-      <div class="span10">
-      <table>
+      <div class="row-fluid">
+        <h4 style="text-align: center;margin-bottom: 20px">Demo of how to implement a "Doodle"-like application in CloudBrowser</h4>
+        <div class="span10">
+        <table>
           <thead>
-              <tr><th width="25%"></th>
-                  <!-- ko foreach: times -->
-                  <th class="d-month container"
-                              data-bind="text: moment(start).format('MMMM')"></th>
-                  <!-- /ko -->
-              </tr>
-              <tr><th></th>
-                  <!-- ko foreach: times -->
-                  <th class="d-month container"
-                      data-bind="text: moment(start).format('ddd DD')"></th>
-                  <!-- /ko -->
-              </tr>
-              <tr><th></th>
-                  <!-- ko foreach: times -->
-                  <th class="container"
-                      data-bind="text: moment(start).format('h:mma') + ' - ' + moment(start+duration).format('h:mma')"></th>
-                  <!-- /ko -->
-              </tr>
+            <tr>
+              <th width="25%"></th>
+              <!-- ko foreach: times -->
+              <th class="d-month container" data-bind="text: getMonth()"></th>
+              <!-- /ko -->
+            </tr>
+            <tr>
+              <th></th>
+              <!-- ko foreach: times -->
+              <th class="d-month container" data-bind="text: getDay()"></th>
+              <!-- /ko -->
+            </tr>
+            <tr>
+              <th></th>
+              <!-- ko foreach: times -->
+              <th class="container" data-bind="text: getTimeRange()"></th>
+              <!-- /ko -->
+            </tr>
           </thead>
           <tbody data-bind="foreach: participants">
-              <tr class="participant-row">
-                  <td class="container">
-                      <a class="close" data-bind="visible: !editing(), click: $parent.removeParticipant">&nbsp;×&nbsp;</a>
-                      <span data-bind="visible: !editing(), click: edit, text: name"></span>
-                      <input data-bind="visible: editing, value: name, hasfocus: editing" type="text"></input>
-                  </td>
-                  <!-- ko foreach: available -->
-                  <td class="container" style="text-align: center"
-                          data-bind="text: $data.avail() == 0 ? '\u2716' : '\u2714', 
-                          css: { 'alert-danger': $data.avail() == 0, 'alert-success': $data.avail() == 1 },
-                          click: function toggleAvailability () { 
-                              $data.avail(1 - $data.avail()); 
-                          }"
-                      >
-                  </td>
-                  <!-- /ko -->
-              </tr>
+            <tr class="participant-row">
+              <td class="container">
+                <a class="close"
+                   data-bind="visible: !editing(),
+                              click: $parent.removeParticipant">&nbsp;×&nbsp;</a>
+                <span data-bind="visible: !editing(),
+                                 click: edit,
+                                 text: name"></span>
+                <input data-bind="visible: editing,
+                                  value: name,
+                                  hasfocus: editing"></input>
+              </td>
+              <!-- ko foreach: available -->
+              <td class="container" style="text-align: center"
+                  data-bind="text: $data.avail() ? '\u2714' : '\u2716', 
+                             css: { 'alert-danger': !$data.avail(),
+                                    'alert-success': $data.avail()},
+                             click: function () { 
+                               $data.avail(!$data.avail());
+                             }">
+              </td>
+              <!-- /ko -->
+            </tr>
           </tbody>
-      </table>
-      <button data-bind="click: addParticipant">New Participant</button>
-     </div>
+        </table>
+        <button data-bind="click: addParticipant">New Participant</button>
+      </div>
     </div>
     </div> <!-- /container -->
 
@@ -99,31 +103,39 @@
     <script src="assets/js/knockout-2.0.0.js"></script>
     <script src="assets/js/moment.min.js"></script>
     <script type="text/javascript">
-        function edit() { this.editing(true); }
-        function Participant(name, editing, available) {
-            this.name = name;
-            this.editing = new ko.observable(editing);
-            this.available = new ko.observableArray();
-            if (available != undefined) {
-                for (var i = 0; i < available.length; i++)
-                    this.available.push({ avail: new ko.observable(available[i]) });
-            } else {
-                for (var i = 0; i < appModel.times().length; i++)
-                    this.available.push({ avail: new ko.observable(0) });
-            }
+        function Participant(name, editing) {
+          this.name = name;
+          this.editing = ko.observable(editing);
+          this.edit = function() {
+            this.editing(true);
+          };
+          this.available = ko.observableArray();
+          for (var i = 0; i < appModel.times().length; i++)
+            this.available.push({avail: ko.observable(false)});
+        }
+
+        function Time(start, duration) {
+          this.getMonth = function () {
+            return moment(start).format('MMMM');
+          };
+          this.getDay = function () {
+            return moment(start).format('ddd DD');
+          };
+          this.getTimeRange = function () {
+            return moment(start).format('h:mma') + ' - ' +
+                   moment(start+duration).format('h:mma')
+          };
         }
 
         var appModel = {
-            times: new ko.observableArray([
-                    { start: 1334678400000, duration: 7200000 },
-                    { start: 1334754900000, duration: 7200000 },
-                    { start: 1334774700000, duration: 7200000 },
-                    { start: 1334927700000, duration: 7200000 },
-                    { start: 1334904300000, duration: 7200000 }
+            times: ko.observableArray([
+                     new Time(1334678400000, 7200000),
+                     new Time(1334754900000, 7200000),
+                     new Time(1334774700000, 7200000),
+                     new Time(1334927700000, 7200000),
+                     new Time(1334904300000, 7200000)
                 ]),
-            participants: new ko.observableArray([
-                new Participant("Ms. Busy", false, [0, 1, 0, 1, 1])
-            ]),
+            participants: ko.observableArray(),
             addParticipant : function () {
                 appModel.participants.push(new Participant('New Participant', true)); 
             },
@@ -131,20 +143,21 @@
                 appModel.participants.remove(participant);
             }
         };
+        appModel.participants.push(new Participant("Ms. Busy", false));
         ko.applyBindings(appModel);
 
         // if running in CloudBrowser, provide a JSON service to obtain current data
         if (typeof require == "function") {
-            var http  = require('http');
-            http.createServer(function (req, res) {
-                try {
-                    res.writeHead(200, {'Content-Type': 'application/json'});
-                    res.end(ko.toJSON(appModel), 'utf-8');
-                } catch (err) {
-                    res.writeHead(500);
-                    res.end('Internal Server Error: ' + err);
-                }  
-            }).listen(1337);
+          var http  = require('http');
+          http.createServer(function (req, res) {
+            try {
+              res.writeHead(200, {'Content-Type': 'application/json'});
+              res.end(ko.toJSON(appModel), 'utf-8');
+            } catch (err) {
+              res.writeHead(500);
+              res.end('Internal Server Error: ' + err);
+            }  
+          }).listen(1337);
         }
     </script>
   </body>
