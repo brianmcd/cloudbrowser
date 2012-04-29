@@ -1,13 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <meta charset="utf-8">
     <title>Meeting Schedule App</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="">
-    <meta name="author" content="">
 
-    <!-- Le styles -->
     <link href="assets/css/bootstrap.css" rel="stylesheet">
     <link href="doodle.css" rel="stylesheet">
     <style>
@@ -16,21 +11,8 @@
       }
     </style>
     <link href="assets/css/bootstrap-responsive.css" rel="stylesheet">
-
-    <!-- Le HTML5 shim, for IE6-8 support of HTML5 elements -->
-    <!--[if lt IE 9]>
-      <script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
-    <![endif]-->
-
-    <!-- Le fav and touch icons -->
-    <link rel="shortcut icon" href="assets/ico/favicon.ico">
-    <link rel="apple-touch-icon-precomposed" sizes="114x114" href="assets/ico/apple-touch-icon-114-precomposed.png">
-    <link rel="apple-touch-icon-precomposed" sizes="72x72" href="assets/ico/apple-touch-icon-72-precomposed.png">
-    <link rel="apple-touch-icon-precomposed" href="assets/ico/apple-touch-icon-57-precomposed.png">
   </head>
-
   <body>
-
     <div class="navbar navbar-fixed-top">
       <div class="navbar-inner">
         <div class="container">
@@ -38,7 +20,6 @@
         </div>
       </div>
     </div>
-
     <div class="container-fluid">
       <div class="row-fluid">
         <div class="span10">
@@ -46,18 +27,21 @@
           <thead>
             <tr>
               <th width="25%"></th>
+              <th></th>
               <!-- ko foreach: times -->
               <th class="d-month container" data-bind="text: getMonth()"></th>
               <!-- /ko -->
             </tr>
             <tr>
               <th></th>
+              <th></th>
               <!-- ko foreach: times -->
               <th class="d-month container" data-bind="text: getDay()"></th>
               <!-- /ko -->
             </tr>
             <tr>
-              <th></th>
+              <th style='text-align: left'>Name</th>
+              <th style='text-align: left'>E-mail</th>
               <!-- ko foreach: times -->
               <th class="container" data-bind="text: getTimeRange()"></th>
               <!-- /ko -->
@@ -66,9 +50,6 @@
           <tbody data-bind="foreach: participants">
             <tr class="participant-row">
               <td class="container">
-                <a class="close"
-                   data-bind="visible: !editing(),
-                              click: $parent.removeParticipant">&nbsp;×&nbsp;</a>
                 <span data-bind="visible: !editing(),
                                  click: function () {editing(true)},
                                  text: name"></span>
@@ -76,6 +57,18 @@
                                   value: name,
                                   hasfocus: editing"></input>
               </td>
+              <td class="container">
+                <a class="close"
+                   data-bind="visible: !editing(),
+                              click: $parent.removeParticipant">&nbsp;×&nbsp;</a>
+                <span data-bind="visible: !editing(),
+                                 click: function () {editing(true)},
+                                 text: email"></span>
+                <input data-bind="visible: editing,
+                                  value: email,
+                                  hasfocus: editing"></input>
+              </td>
+
               <!-- ko foreach: available -->
               <td class="container" style="text-align: center"
                   data-bind="text: $data.avail() ? '\u2714' : '\u2716', 
@@ -89,72 +82,27 @@
             </tr>
           </tbody>
         </table>
-        <button data-bind="click: addParticipant">New Participant</button>
+        <button class='btn btn-primary'
+                data-bind="click: addParticipant">New Participant</button>
+        <div id='timeList' style='padding-top: 20px'>
+          <h4>Possible times:</h4>
+          <ul>
+            <!-- ko foreach: possibleTimes -->
+            <li data-bind="text: $data"></li>
+            <!-- /ko -->
+          </ul>
+          <button id='send-mail' class='btn btn-primary'
+                  data-bind="visible: possibleTimes().length != 0">
+            Send Reminder E-mail
+          </button>
+        </div>
       </div>
     </div>
     </div> <!-- /container -->
-
-    <!-- Le javascript
-    ================================================== -->
-    <!-- Placed at the end of the document so the pages load faster -->
     <script src="assets/js/jquery.js"></script>
     <script src="assets/js/bootstrap.js"></script>
     <script src="assets/js/knockout-2.0.0.js"></script>
     <script src="assets/js/moment.min.js"></script>
-    <script type="text/javascript">
-        function Participant(name, editing) {
-          this.name = name;
-          this.editing = ko.observable(editing);
-          this.available = ko.observableArray();
-          for (var i = 0; i < appModel.times().length; i++)
-            this.available.push({avail: ko.observable(false)});
-        }
-
-        function Time(start, duration) {
-          this.getMonth = function () {
-            return moment(start).format('MMMM');
-          };
-          this.getDay = function () {
-            return moment(start).format('ddd DD');
-          };
-          this.getTimeRange = function () {
-            return moment(start).format('h:mma') + ' - ' +
-                   moment(start+duration).format('h:mma')
-          };
-        }
-
-        var appModel = {
-            times: ko.observableArray([
-                     new Time(1334678400000, 7200000),
-                     new Time(1334754900000, 7200000),
-                     new Time(1334774700000, 7200000),
-                     new Time(1334927700000, 7200000),
-                     new Time(1334904300000, 7200000)
-                ]),
-            participants: ko.observableArray(),
-            addParticipant : function () {
-                appModel.participants.push(new Participant('New Participant', true)); 
-            },
-            removeParticipant : function (participant) {
-                appModel.participants.remove(participant);
-            }
-        };
-        appModel.participants.push(new Participant("Ms. Busy", false));
-        ko.applyBindings(appModel);
-
-        // if running in CloudBrowser, provide a JSON service to obtain current data
-        if (typeof require == "function") {
-          var http  = require('http');
-          http.createServer(function (req, res) {
-            try {
-              res.writeHead(200, {'Content-Type': 'application/json'});
-              res.end(ko.toJSON(appModel), 'utf-8');
-            } catch (err) {
-              res.writeHead(500);
-              res.end('Internal Server Error: ' + err);
-            }  
-          }).listen(1337);
-        }
-    </script>
+    <script src="doodle.js"></script>
   </body>
 </html>
