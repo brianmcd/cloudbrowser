@@ -51,17 +51,23 @@ appModel =
 appModel.addParticipant()
 ko.applyBindings(appModel)
 
+nodemailer = require('nodemailer')
+
+smtp = nodemailer.createTransport 'SMTP',
+  service: 'Gmail'
+  auth:
+    user: 'cloudbrowserframework@gmail.com'
+    pass: FS.readFileSync('emailpass.txt', 'utf8')
+
 $('#send-mail').click () ->
-  {spawn} = require('child_process')
   for p in appModel.participants()
     addr = p.email()
     return if addr == 'none'
-    mail = spawn('ssmtp', [addr])
-    mail.stdin.write("To: #{addr}\n")
-    mail.stdin.write("From: cloudbrowserframework@gmail.com\n")
-    mail.stdin.write("Subject: Available Meeting Times\n\n\n")
-    mail.stdin.write("Hey #{p.name()}, here are the available times:\n")
-    for time in appModel.possibleTimes()
-      mail.stdin.write("\t#{time}\n")
-    mail.stdin.end()
-    #mail.kill()
+    msg = "Hey #{p.name()}, here are the available times:\n"
+    msg += "\t#{time}\n" for time in appModel.possibleTimes()
+    mail =
+      from: "CloudBrowser <cloudbrowserframework@gmail.com>"
+      to: addr
+      subject: "Available Meeting Times"
+      text: msg
+    smtp.sendMail(mail)
