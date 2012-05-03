@@ -94,9 +94,6 @@ copyElementAttrs = (node, resources) ->
                     # Otherwise, convert it to an absolute URL.
                     else
                         value = URL.resolve(node.ownerDocument.location, value)
-            # Don't send things like data-page, data-bind, etc.
-            if /^data-/.test(lowercase)
-                continue
             attrs[name] = value
     return attrs
 
