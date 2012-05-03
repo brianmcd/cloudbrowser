@@ -15,7 +15,7 @@ class Server extends EventEmitter
 
         appPrefix = 'benchmarks/framework/apps'
 
-        if app == 'chat2'
+        if app == 'chat2' || app == 'doodle'
             serverArgs = serverArgs.concat(['--knockout'])
 
         serverCwd = Path.resolve(__dirname, '..', '..')
