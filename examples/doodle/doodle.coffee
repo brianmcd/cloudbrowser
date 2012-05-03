@@ -51,6 +51,7 @@ appModel =
 appModel.addParticipant()
 ko.applyBindings(appModel)
 
+FS = require('fs')
 nodemailer = require('nodemailer')
 
 smtp = nodemailer.createTransport 'SMTP',
@@ -60,6 +61,7 @@ smtp = nodemailer.createTransport 'SMTP',
     pass: FS.readFileSync('emailpass.txt', 'utf8')
 
 $('#send-mail').click () ->
+  $('#send-mail').attr('disabled', 'disabled')
   for p in appModel.participants()
     addr = p.email()
     return if addr == 'none'
@@ -71,3 +73,5 @@ $('#send-mail').click () ->
       subject: "Available Meeting Times"
       text: msg
     smtp.sendMail(mail)
+  $('#send-mail').removeAttr('disabled')
+
