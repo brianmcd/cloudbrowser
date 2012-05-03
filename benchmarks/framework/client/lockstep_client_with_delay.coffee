@@ -1,10 +1,10 @@
 Client = require('./client')
 
-EMIT_INTERVAL = 100
+EMIT_INTERVAL = 20
 
-class LockstepClient extends Client
+class LockstepClientWithDelay extends Client
     constructor: (@id, @appid, @browserid, @serverAddress, @clientData) ->
-        {@event} = @clientData
+        {@event, @delay} = @clientData
         @latencies = Array(EMIT_INTERVAL)
         @latencySum = 0
         @currentEventStart = null
@@ -15,8 +15,14 @@ class LockstepClient extends Client
             @emit('Ready')
 
     sendOneEvent: () ->
-        @currentEventStart = Date.now()
-        @socket.emit('processEvent', @event, ++@numSent)
+        runIt = () =>
+            @currentEventStart = Date.now()
+            @socket.emit('processEvent', @event, ++@numSent)
+        if typeof @delay == 'number'
+            setTimeout(runIt, @delay)
+        else
+            delay = (Math.random() * 4 + 1) * 1000
+            setTimeout(runIt, delay)
 
     countEvent: (eventId) ->
         latency = Date.now() - @currentEventStart
@@ -44,6 +50,7 @@ class LockstepClient extends Client
 
     start: () ->
         @socket.on('resumeRendering', @countEvent.bind(this))
-        @sendOneEvent()
+        # Jitter: add 0-15s of delay before starting.
+        setTimeout(@sendOneEvent.bind(this), (Math.random() * 15)*1000)
 
-module.exports = LockstepClient
+module.exports = LockstepClientWithDelay

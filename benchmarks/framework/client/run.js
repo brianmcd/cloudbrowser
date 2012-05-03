@@ -2,6 +2,7 @@ require('coffee-script')
 
 var clientCtors = {
     'LockstepClient'          : require('./lockstep_client'),
+    'LockstepClientWithDelay' : require('./lockstep_client_with_delay'),
     'RequestsPerSecondClient' : require('./requests_per_second_client'),
     'Client'                  : require('./client')
 };
