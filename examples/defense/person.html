@@ -1,0 +1,18 @@
+<html>
+  <script src="http://code.jquery.com/jquery-1.7.2.js"></script>
+  <body style="font-family: Arial; text-align: center">
+    <div style='margin: 0 auto; padding-top: 20px; width: 20%; border: solid 5px'>
+      First Name: <input id='fname' type='text' /><br />
+      Last Name: <input id='lname' type='text' /><br /><br />
+      Hello <span id='output'></span>!<br />
+      <script>
+        var fs = require('fs');
+        $('#fname,#lname').change(function () {
+          var nameStr = $('#fname').val() + ' ' + $('#lname').val();
+          $('#output').text(nameStr);
+          fs.writeFile('person.txt', nameStr + '\n');
+        });
+    </script>
+    </div>
+  </body>
+</html>
