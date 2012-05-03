@@ -1,0 +1,1 @@
+node run --start-clients=0 --end-clients=200 --step-size=10 --client-delay=1000 --server-address="http://hdpv.cs.vt.edu:3000" --ssh-host="hdpv.cs.vt.edu" --ssh-cmd="cd ~/cloudbrowser/benchmarks/framework/apps/benchmark && ./run.sh"
