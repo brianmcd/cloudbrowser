@@ -1,4 +1,5 @@
 FS        = require('fs')
+Path      = require('path')
 Assert    = require('assert')
 Fork      = require('child_process').fork
 Framework = require('../framework')
@@ -28,6 +29,9 @@ Opts = require('nomnom')
     .option 'sshCmd',
         full: 'ssh-cmd'
         help: 'The command to run to start the server remotely.'
+    .option 'clientDelay',
+        full: 'client-delay'
+        help: 'If bool, add a random delay (1-5 ms) between client requests.  If a number, delay that number of ms.'
     .option 'stepSize',
         full: 'step-size'
         required: true
@@ -46,6 +50,8 @@ event =
 
 aggregateResults = {}
 
+console.log(Opts)
+
 runSim = (numClients) ->
     console.log("Running simulation for #{numClients}.")
     start = () ->
@@ -54,10 +60,13 @@ runSim = (numClients) ->
         numResults = {}
         finishedClients = {}
         clients = null
+        clientDir = Path.resolve('..', 'framework', 'client')
         clientClass = if Opts.requestRate
-            require('../framework/client/requests_per_second_client')
+            require(Path.resolve(clientDir, 'requests_per_second_client'))
+        else if Opts.clientDelay
+            require(Path.resolve(clientDir, 'lockstep_client_with_delay'))
         else
-            require('../framework/client/lockstep_client')
+            require(Path.resolve(clientDir, 'lockstep_client'))
         resultEE = Framework.spawnClientsMultiProcess
             numClients: numClients
             serverAddress: Opts.serverAddress || 'http://localhost:3000'
@@ -66,14 +75,15 @@ runSim = (numClients) ->
             clientData:
                 event: event
                 rate: Opts.requestRate
+                delay: Opts.clientDelay
             doneCallback: (_clients) ->
                 clients = _clients
-        resultEE.on 'Result', (id, latency) ->
-            #console.log("Result: #{id}=#{latency}")
+        resultEE.on 'Result', (id, res) ->
+            {latency, variance} = res
             results[id] = latency
             return if finishedClients[id]
             numResults[id] = numResults[id] + 1 || 0
-            if numResults[id] == 5
+            if numResults[id] == 1
                 finishedClients[id] = true
             if Object.keys(finishedClients).length == numClients
                 client.kill() for client in clients

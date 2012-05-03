@@ -8,4 +8,4 @@ set ylabel "Latency (ms)"
 f(x) = m*x + b
 fit f(x) "../results/latency.dat" using 1:2 via m,b
 set label "m = %g", m at graph 0.7, 0.6
-plot "../results/latency.dat" using 1:2 with lines title "latency", f(x) title 'fit'
+plot "../results/latency.dat" using 1:2 with linespoints title "latency"
