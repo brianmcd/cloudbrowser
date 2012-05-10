@@ -1,0 +1,6 @@
+examples/
+benchmarks/
+deps/
+logs/
+node_modules/
+test/
