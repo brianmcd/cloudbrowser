@@ -18,7 +18,7 @@ setup: submodules $(NPMDEPS) jquery
 	npm install
 
 test:
-	./run_tests.js
+	test/runner.js
 
 build:
 	rm -rf lib/
