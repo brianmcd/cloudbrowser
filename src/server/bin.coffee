@@ -153,5 +153,6 @@ else
     s = new Server
         defaultApp  : defaultApp
         debugServer : opts.debugServer
+        port        : opts.port
     s.once 'ready', () ->
         console.log('All services running, ready for clients.')

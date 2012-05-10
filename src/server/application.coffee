@@ -21,8 +21,9 @@ class Application
             return @entryPoint
         else
             relativeURL = Path.relative(process.cwd(), @entryPoint)
-            console.log("Requesting: http://localhost:3001/#{relativeURL}")
-            return "http://localhost:3001/#{relativeURL}"
+            url = "http://localhost:#{global.server.internalServerPort}/#{relativeURL}"
+            console.log("Requesting: #{url}")
+            return url
 
 module.exports = Application
 

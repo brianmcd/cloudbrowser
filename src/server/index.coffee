@@ -110,11 +110,12 @@ class Server extends EventEmitter
         return io
 
     createInternalServer : () ->
+        @internalServerPort = @port + 1
         server = express.createServer()
         server.configure () =>
             server.use(express.staticCache())
             server.use(express.static(process.cwd()))
-        server.listen(@port + 1, @registerServer)
+        server.listen(@internalServerPort, @registerServer)
         return server
 
 module.exports = Server
