@@ -1,10 +1,10 @@
-compiled/
-compiled-test/
+src/server/browser/knockout/knockout-latest.debug.js
+src/api/ko.js
+src/client/shared
 TODO
 *.swp
 *.swo
 node_modules/
 logs/*
 lib/
-lib-cov/
-coverage/
+npm-debug.log

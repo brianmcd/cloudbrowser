@@ -1,1 +1,0 @@
-../../shared/compressor.coffee
