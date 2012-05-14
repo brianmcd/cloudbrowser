@@ -9,7 +9,7 @@ jquery: submodules
 	cd deps/jquery-cloudbrowser && make update_submodules jquery min
 
 setup: jquery
-	npm update
+	npm install
 
 test:
 	test/runner.js

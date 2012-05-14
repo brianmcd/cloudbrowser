@@ -5,6 +5,6 @@ TODO
 *.swp
 *.swo
 node_modules/
-logs/*
+logs
 lib/
 npm-debug.log
