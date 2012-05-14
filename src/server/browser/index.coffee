@@ -70,8 +70,7 @@ class Browser extends EventEmitter
             @emit('PageLoaded')
             process.nextTick(() => @emit('afterload'))
 
-        Request {uri: url}, (err, response, html) =>
-            throw err if err
+        initDoc = (html) =>
             # Fire window load event once document is loaded.
             @document.addEventListener 'load', (ev) =>
                 ev = @document.createEvent('HTMLEvents')
@@ -79,6 +78,16 @@ class Browser extends EventEmitter
                 @window.dispatchEvent(ev)
             @document.innerHTML = html
             @document.close()
+
+        if /^\//.test(url)
+            console.log("reading file: #{url}")
+            FS.readFile url, 'utf8', (err, data) =>
+                throw err if err
+                initDoc(data)
+        else
+            Request {uri: url}, (err, response, html) =>
+                throw err if err
+                initDoc(html)
 
     initializeApplication : (app) ->
         # For now, we attach require and process.  Eventually, we will pass

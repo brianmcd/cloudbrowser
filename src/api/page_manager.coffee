@@ -37,9 +37,6 @@ class PageManager extends EventEmitter
             {id, src} = self._splitAttr(attr)
             path = self._getPath(src, node)
             pendingPages++
-            #TODO: it might be the content of the nodes...maybe knockout?
-            #TODO: look into innerHTML implementation...is something causing leak?
-            #      if html is '', no leak.
             if !PageManager.HTMLCache[path]
                 FS.readFile path, 'utf8', (err, data) ->
                     if err then throw err
@@ -56,10 +53,7 @@ class PageManager extends EventEmitter
 
     _getPath : (src, node) ->
         docPath = node.ownerDocument.location.pathname
-        if docPath[0] == '/'
-            docPath = docPath.substring(1)
-        basePath = Path.dirname(Path.resolve(process.cwd(), docPath))
-        return Path.resolve(basePath, src)
+        return Path.resolve(Path.dirname(docPath), src)
 
     # Split a data-page attribute into its key-value parts
     _splitAttr : (str) ->

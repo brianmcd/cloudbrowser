@@ -15,15 +15,11 @@ class Application
         if !@mountPoint
             throw new Error("Missing required mountPoint parameter")
 
-    # TODO: this should use global.server to determine prefix.
     entryURL : () ->
         if @remoteBrowsing
             return @entryPoint
         else
-            relativeURL = Path.relative(process.cwd(), @entryPoint)
-            url = "http://localhost:#{global.server.internalServerPort}/#{relativeURL}"
-            console.log("Requesting: #{url}")
-            return url
+            return Path.resolve(process.cwd(), @entryPoint)
 
 module.exports = Application
 

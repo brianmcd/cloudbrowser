@@ -20,7 +20,6 @@ eventTracker = () ->
     setTimeout(eventTracker, 10000)
 eventTracker()
 
-# TODO: this should be a proper singleton
 class Server extends EventEmitter
     # config.app - an Application instance, which is the default app.
     constructor : (config = {}) ->
@@ -40,17 +39,16 @@ class Server extends EventEmitter
 
         @httpServer     = new HTTPServer(@port, @registerServer)
         @socketIOServer = @createSocketIOServer(@httpServer.server)
-        @internalServer = @createInternalServer()
 
         @debugServerEnabled = !!config.debugServer
         if @debugServerEnabled
-            @numServers = 3
+            @numServers = 2
             @debugServer = new DebugServer
                 browsers : @browsers
             @debugServer.once('listen', @registerServer)
-            @debugServer.listen(@port + 2)
+            @debugServer.listen(@port + 1)
         else
-            @numServers = 2
+            @numServers = 1
         @mount(@defaultApp) if @defaultApp?
         @mount(AdminInterface) if Config.adminInterface
 
@@ -62,7 +60,7 @@ class Server extends EventEmitter
             if ++closed == @numServers
                 @listeningCount = 0
                 @emit('close')
-        for server in [@httpServer, @internalServer, @debugServer]
+        for server in [@httpServer, @debugServer]
             if server
                 server.once('close', closeServer)
                 server.close()
@@ -108,14 +106,5 @@ class Server extends EventEmitter
                 bserver = browserManagers[app].find(decoded)
                 bserver?.addSocket(socket)
         return io
-
-    createInternalServer : () ->
-        @internalServerPort = @port + 1
-        server = express.createServer()
-        server.configure () =>
-            server.use(express.staticCache())
-            server.use(express.static(process.cwd()))
-        server.listen(@internalServerPort, @registerServer)
-        return server
 
 module.exports = Server

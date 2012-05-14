@@ -24,13 +24,8 @@ class DOMWindowFactory
         @Location = LocationBuilder(@browser)
 
     create : (url) ->
-        #TODO passing browser: security issue, memory leak issue, etc.
-        #     Could make it a weak ref, plus non enumerable?
         window = @jsdom.createWindow(@jsdom.dom.level3.html)
         window.history = {}
-        # TODO: or maybe just store the browser ID, then look it up in the advice.
-        # TODO: alternatively, we coudl use a global variable tracking the current
-        # browser being manipulated and advice reads that.
         @patchImage(window)
         @patchNavigator(window)
         # This sets window.XMLHttpRequest, and gives the XHR code access to
