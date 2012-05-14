@@ -17,7 +17,6 @@ exports.clientEvents =
     'focus'       : true
     'focusin'     : true
     'focusout'    : true
-    'click'       : true
     'dblclick'    : true # TODO: does our capturing click prevent dblclicks?
     'mousedown'   : true
     'mouseenter'  : true
