@@ -33,8 +33,6 @@ class EventMonitor
         if targetID == undefined
             return
         id = undefined
-        if @client.config.monitorLatency
-            id = @client.latencyMonitor.start(event.type)
         if @registeredEvents[event.type]
             rEvent = {}
             group = EventTypeToGroup[event.type]

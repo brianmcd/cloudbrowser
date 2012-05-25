@@ -42,8 +42,6 @@ class SpecialEventHandler
         @_pendingKeyup = false
         # Called directly as an event listener.
         if arguments.length != 3
-            if monitor.client.config.monitorLatency
-                id = @monitor.client.latencyMonitor.start('keyup')
             event = rEvent
             rEvent = {}
             @monitor.eventInitializers[EventTypeToGroup[event.type]](rEvent, event)

@@ -73,10 +73,6 @@ opts = require('nomnom')
         full    : 'monitor-traffic'
         default : false
         help    : "Monitor/log traffic to/from socket.io clients."
-    .option 'monitorLatency',
-        full    : 'monitor-latency'
-        default : false
-        help    : "Monitor/log event handler latency to browserid-latency.log."
     .option 'traceProtocol',
         full    : 'trace-protocol'
         default : false

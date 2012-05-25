@@ -16,7 +16,6 @@ Config.compression    = true;
 Config.compressJS     = true;
 Config.resourceProxy  = true;
 Config.monitorTraffic = false;
-Config.monitorLatency = false;
 Config.traceProtocol  = false;
 Config.testsRunning   = true;
 Config.test_env       = true;

@@ -227,7 +227,4 @@ RPCMethods =
             @nodes = new TaggedNodeCollection()
         delete doc.__nodeID
 
-    RunOnClient : (string) ->
-        $.globalEval("(#{string})();")
-
 module.exports = ClientEngine
