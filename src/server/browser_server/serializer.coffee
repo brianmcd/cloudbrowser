@@ -1,5 +1,4 @@
 URL            = require('url')
-Config         = require('../../shared/config')
 NodeCompressor = require('../../shared/node_compressor')
 {dfs}          = require('../../shared/utils')
 
@@ -15,7 +14,7 @@ NodeCompressor = require('../../shared/node_compressor')
 #   [value] - Optional. Given for text and comment nodes.
 #   [attributes] - Optional. An object like:
 #       Property : value
-exports.serialize = (root, resources, topDoc) ->
+exports.serialize = (root, resources, topDoc, config) ->
     # A filter that skips script tags.
     filter = (node) ->
         if !node? || node.tagName?.toLowerCase() == 'script'
@@ -41,7 +40,9 @@ exports.serialize = (root, resources, topDoc) ->
                     record.ownerDocument = node.ownerDocument.__nodeID
                 if /^i?frame$/.test(node.tagName.toLowerCase())
                     record.docID = node.contentDocument.__nodeID
-                cmds.push(NodeCompressor.compress(record))
+                if config.compression
+                    record = NodeCompressor.compress(record)
+                cmds.push(record)
 
             when 'Comment', 'Text'
                 # The issue is that JSDOM gives Document 3 child nodes: the HTML
@@ -57,17 +58,6 @@ exports.serialize = (root, resources, topDoc) ->
                     if node.ownerDocument != topDoc
                         record.ownerDocument = node.ownerDocument.__nodeID
                     cmds.push(NodeCompressor.compress(record))
-
-    ###
-    when 'Document_Type'
-        record =
-            type   : 'doctype'
-            id     : node.__nodeID
-            name   : node.name
-            pid    : node.publicId
-            sid    : node.systemId
-        cmds.push(NodeCompressor.compress(record))
-    ###
     return cmds
 
 # Contains special cases for:
@@ -89,7 +79,7 @@ copyElementAttrs = (node, resources) ->
                 if value
                     # If we're using the resource proxy, substitute the URL with a
                     # ResourceProxy number.
-                    if Config.resourceProxy
+                    if resources?
                         value = "#{resources.addURL(value)}"
                     # Otherwise, convert it to an absolute URL.
                     else

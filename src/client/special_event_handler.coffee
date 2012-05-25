@@ -1,5 +1,4 @@
 EventTypeToGroup = require('./shared/event_lists').eventTypeToGroup
-Config           = require('./shared/config')
 
 class SpecialEventHandler
     constructor : (monitor) ->
@@ -43,7 +42,7 @@ class SpecialEventHandler
         @_pendingKeyup = false
         # Called directly as an event listener.
         if arguments.length != 3
-            if Config.monitorLatency
+            if monitor.client.config.monitorLatency
                 id = @monitor.client.latencyMonitor.start('keyup')
             event = rEvent
             rEvent = {}

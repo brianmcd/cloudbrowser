@@ -6,7 +6,8 @@ exports.deserialize = (nodes, sibling, client) ->
         sibling = client.nodes.get(sibling)
 
     for record in nodes
-        record = NodeCompressor.uncompress(record)
+        if client.config.compression
+            record = NodeCompressor.uncompress(record)
         node = null
 
         # If the node already exists, we don't need to create it.

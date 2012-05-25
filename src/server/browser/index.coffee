@@ -5,7 +5,6 @@ URL                    = require('url')
 Request                = require('request')
 EmbedAPI               = require('../../api')
 KO                     = require('../../api/ko')
-Config                 = require('../../shared/config')
 DOMWindowFactory       = require('./DOMWindowFactory')
 Application            = require('../application')
 
@@ -98,7 +97,7 @@ class Browser extends EventEmitter
         EmbedAPI(this, @bserver)
         # If an app needs server-side knockout, we have to monkey patch
         # some ko functions.
-        if Config.knockout
+        if @bserver.server.config.knockout
             @window.run(Browser.jQScript, "jquery-1.6.2.js")
             @window.run(Browser.koScript, "knockout-latest.debug.js")
             @window.vt.ko = KO

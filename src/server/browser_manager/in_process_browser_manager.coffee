@@ -2,14 +2,14 @@ BrowserServer  = require('../browser_server')
 BrowserManager = require('./browser_manager')
 
 class InProcessBrowserManager extends BrowserManager
-    constructor : (@mountPoint, @defaultApp) ->
+    constructor : (@server, @mountPoint, @defaultApp) ->
         @browsers = {}
 
     find : (id) ->
         return @browsers[id]
 
     create : (appOrUrl = @defaultApp, id = @generateUUID()) ->
-        browser = @browsers[id] = new BrowserServer(id, @mountPoint)
+        browser = @browsers[id] = new BrowserServer(@server, id, @mountPoint)
         browser.load(appOrUrl)
         @addToBrowserList(browser)
         browser.once 'BrowserClose', () =>

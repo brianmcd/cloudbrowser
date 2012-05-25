@@ -6,105 +6,72 @@ sio             = require('socket.io')
 BrowserManager  = require('./browser_manager')
 DebugServer     = require('./debug_server')
 Application     = require('./application')
-Config          = require('../shared/config')
 HTTPServer      = require('./http_server')
 Managers        = require('./browser_manager')
 AdminInterface  = require('./admin_interface')
 
 {MultiProcessBrowserManager, InProcessBrowserManager} = Managers
 
-global.processedEvents = 0
-eventTracker = () ->
-    console.log("Processing #{global.processedEvents/10} events/sec")
-    global.processedEvents = 0
-    setTimeout(eventTracker, 10000)
-eventTracker()
 
 class Server extends EventEmitter
     # config.app - an Application instance, which is the default app.
-    constructor : (config = {}) ->
-        if typeof config == 'string'
-            # Helper for creating a server to serve an app quickly.
-            @defaultApp = new Application
-                entryPoint : config
-                mountPoint : '/'
-            @port = 3000
-            @debugServer = false
-        else
-            {@port, @defaultApp, @debugServer} = config
-            @port = 3000 if !@port
-        
-        # We only allow 1 server per process.
-        global.server = this
-
-        @httpServer     = new HTTPServer(@port, @registerServer)
+    constructor : (@config = {}) ->
+        @httpServer     = new HTTPServer(@config, @registerServer)
         @socketIOServer = @createSocketIOServer(@httpServer.server)
+        @mount(@config.defaultApp) if @config.defaultApp?
+        @mount(AdminInterface) if @config.adminInterface
+        @setupEventTracker if @config.printEventStats
 
-        @debugServerEnabled = !!config.debugServer
-        if @debugServerEnabled
-            @numServers = 2
-            @debugServer = new DebugServer
-                browsers : @browsers
-            @debugServer.once('listen', @registerServer)
-            @debugServer.listen(@port + 1)
-        else
-            @numServers = 1
-        @mount(@defaultApp) if @defaultApp?
-        @mount(AdminInterface) if Config.adminInterface
+    setupEventTracker : () ->
+        @processedEvents = 0
+        eventTracker = () ->
+            console.log("Processing #{@processedEvents/10} events/sec")
+            @processedEvents = 0
+            setTimeout(eventTracker, 10000)
+        eventTracker()
 
     close : () ->
         for own key, val of @httpServer.mountedBrowserManagers
             val.closeAll()
-        closed = 0
-        closeServer = () =>
-            if ++closed == @numServers
-                @listeningCount = 0
-                @emit('close')
-        for server in [@httpServer, @debugServer]
-            if server
-                server.once('close', closeServer)
-                server.close()
-
-    registerServer : () =>
-        if !@listeningCount
-            @listeningCount = 1
-        else if ++@listeningCount == @numServers
-            @emit('ready')
+        @httpServer.once 'close', () ->
+            @emit('close')
+        @httpServer.close()
 
     mount : (app) ->
         {mountPoint} = app
         browsers = app.browsers = if app.browserStrategy == 'multiprocess'
-            new MultiProcessBrowserManager(mountPoint, app)
+            new MultiProcessBrowserManager(this, mountPoint, app)
         else
-            new InProcessBrowserManager(mountPoint, app)
+            new InProcessBrowserManager(this, mountPoint, app)
         @httpServer.setupMountPoint(browsers, app)
 
     createSocketIOServer : (http) ->
         browserManagers = @httpServer.mountedBrowserManagers
         io = sio.listen(http)
         io.configure () =>
-            if Config.compressJS
+            if @config.compressJS
                 io.set('browser client minification', true)
                 io.set('browser client gzip', true)
             io.set('log level', 1)
         io.sockets.on 'connection', (socket) =>
-            if Config.simulateLatency
-                if typeof Config.simulateLatency == 'number'
-                    latency = Config.simulateLatency
-                else
-                    latency = Math.random() * 100
-                    latency += 20
-                console.log("Assigning client #{latency} ms of latency.")
-                oldEmit = socket.emit
-                socket.emit = () ->
-                    args = arguments
-                    setTimeout () ->
-                        oldEmit.apply(socket, args)
-                    , latency
+            @addLatencyToClient(socket) if @config.simulateLatency
             socket.on 'auth', (app, browserID) =>
                 decoded = decodeURIComponent(browserID)
                 bserver = browserManagers[app].find(decoded)
                 bserver?.addSocket(socket)
         return io
+    
+    addLatencyToClient : (socket) ->
+        if typeof @config.simulateLatency == 'number'
+            latency = @config.simulateLatency
+        else
+            latency = Math.random() * 100
+            latency += 20
+        oldEmit = socket.emit
+        socket.emit = () ->
+            args = arguments
+            setTimeout () ->
+                oldEmit.apply(socket, args)
+            , latency
 
 module.exports = Server

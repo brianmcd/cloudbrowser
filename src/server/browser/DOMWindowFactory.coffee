@@ -1,5 +1,4 @@
 HTML5                  = require('html5')
-Config                 = require('../../shared/config')
 {LocationBuilder}      = require('./location')
 {ImportXMLHttpRequest} = require('./XMLHttpRequest')
 {addAdvice}            = require('./advice')
@@ -38,7 +37,7 @@ class DOMWindowFactory
         @patchDOMParser(window)
         @patchWindowMethods(window)
         @setupDocument(window, url)
-        if Config.test_env
+        if @browser.bserver.server.config.test_env
             window.browser = @browser
         return window
 

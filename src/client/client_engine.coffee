@@ -3,13 +3,13 @@ Compressor           = require('./shared/compressor')
 EventMonitor         = require('./event_monitor')
 Components           = require('./components')
 {deserialize}        = require('./deserializer')
-Config               = require('./shared/config')
 {noCacheRequire}     = require('./shared/utils')
 
 test_env = !!process?.env?.TESTS_RUNNING
 
 class ClientEngine
     constructor : (@window, @document) ->
+        @config = {}
         @compressor = new Compressor()
         @socket = @connectSocket()
         @setupRPC(@socket)
@@ -76,7 +76,7 @@ class ClientEngine
 RPCMethods =
     SetConfig : (config) ->
         for own key, value of config
-            Config[key] = value
+            @config[key] = value
 
     newSymbol : (original, compressed) ->
         console.log("newSymbol: #{original} -> #{compressed}")

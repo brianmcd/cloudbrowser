@@ -8,7 +8,6 @@ DebugClient          = require('./debug_client')
 TestClient           = require('./test_client')
 Compressor           = require('../../shared/compressor')
 TaggedNodeCollection = require('../../shared/tagged_node_collection')
-Config               = require('../../shared/config')
 {serialize}          = require('./serializer')
 {isVisibleOnClient}  = require('../../shared/utils')
 
@@ -18,7 +17,7 @@ Config               = require('../../shared/config')
 
 # Serves 1 Browser to n clients.
 class BrowserServer extends EventEmitter
-    constructor : (@id, @mountPoint) ->
+    constructor : (@server, @id, @mountPoint) ->
         if !@id? || !@mountPoint
             throw new Error("Missing required parameter")
         @browser = new Browser(@id, this)
@@ -50,8 +49,7 @@ class BrowserServer extends EventEmitter
             do (event, handler) =>
                 @browser.on event, () =>
                     handler.apply(this, arguments)
-        @initLogs() if !Config.noLogs
-        @processedEvents = 0
+        @initLogs() if !@server.config.noLogs
 
     # arg can be an Application or URL string.
     load : (arg) ->
@@ -70,7 +68,7 @@ class BrowserServer extends EventEmitter
         @consoleLog.write("Log opened: #{Date()}\n")
         @consoleLog.write("BrowserID: #{@browser.id}\n")
 
-        if Config.traceProtocol
+        if @server.config.traceProtocol
             rpcLogPath = Path.resolve(logDir, "#{@browser.id}-rpc.log")
             @rpcLog    = FS.createWriteStream(rpcLogPath)
 
@@ -112,9 +110,9 @@ class BrowserServer extends EventEmitter
         @_broadcastHelper(socket, name, args)
 
     _broadcastHelper : (except, name, args) ->
-        if Config.traceProtocol
+        if @server.config.traceProtocol
             @logRPCMethod(name, args)
-        if Config.compression
+        if @server.config.compression
             name = @compressor.compress(name)
         args.unshift(name)
         if except?
@@ -126,13 +124,13 @@ class BrowserServer extends EventEmitter
                 socket.emit.apply(socket, args)
 
     addSocket : (socket) ->
-        if Config.monitorTraffic
+        if @server.config.monitorTraffic
             # TODO: will this work with multi process?
             socket = new DebugClient(socket, @id)
         for own type, func of RPCMethods
             do (type, func) =>
                 socket.on type, () =>
-                    if Config.traceProtocol
+                    if @server.config.traceProtocol
                         @logRPCMethod(type, arguments)
                     args = Array.prototype.slice.call(arguments)
                     args.push(socket)
@@ -140,16 +138,22 @@ class BrowserServer extends EventEmitter
         socket.on 'disconnect', () =>
             @sockets       = (s for s in @sockets       when s != socket)
             @queuedSockets = (s for s in @queuedSockets when s != socket)
-        socket.emit 'SetConfig', Config
+
+        # TODO: don't do this workaround
+        oldApp = @server.config.defaultApp
+        @server.config.defaultApp = null
+        socket.emit('SetConfig', @server.config)
+        @server.config.defaultApp = oldApp
 
         if !@browserInitialized
             return @queuedSockets.push(socket)
 
         nodes = serialize(@browser.window.document,
                           @resources,
-                          @browser.window.document)
+                          @browser.window.document,
+                          @server.config)
         compressionTable = undefined
-        if Config.compression
+        if @server.config.compression
             compressionTable = @compressor.textToSymbol
         socket.emit('PageLoaded',
                     nodes,
@@ -157,8 +161,7 @@ class BrowserServer extends EventEmitter
                     @browser.clientComponents,
                     compressionTable)
         @sockets.push(socket)
-        if Config.traceMem
-            gc()
+        gc() if @server.config.traceMem
         @emit('ClientAdded')
 
 # The BrowserServer constructor iterates over the properties in this object and
@@ -167,7 +170,7 @@ class BrowserServer extends EventEmitter
 DOMEventHandlers =
     PageLoading : (event) ->
         @nodes = new TaggedNodeCollection()
-        if Config.resourceProxy
+        if @server.config.resourceProxy
             @resources = new ResourceProxy(event.url)
         @browserLoading = true
 
@@ -176,13 +179,14 @@ DOMEventHandlers =
         @browserLoading = false
         nodes = serialize(@browser.window.document,
                           @resources,
-                          @browser.window.document)
+                          @browser.window.document,
+                          @server.config)
         compressionTable = undefined
-        if Config.compression
+        if @server.config.compression
             compressionTable = @compressor.textToSymbol
         @sockets = @sockets.concat(@queuedSockets)
         @queuedSockets = []
-        if Config.traceProtocol
+        if @server.config.traceProtocol
             @logRPCMethod('PageLoaded', [nodes, @browser.clientComponents, compressionTable])
         for socket in @sockets
             socket.emit('PageLoaded',
@@ -190,7 +194,7 @@ DOMEventHandlers =
                         @registeredEventTypes,
                         @browser.clientComponents,
                         compressionTable)
-        if Config.traceMem
+        if @server.config.traceMem
             gc()
 
     DocumentCreated : (event) ->
@@ -233,7 +237,8 @@ DOMEventHandlers =
         {target} = event
         nodes = serialize(target,
                           @resources,
-                          @browser.window.document)
+                          @browser.window.document,
+                          @server.config)
         return if nodes.length == 0
         # 'sibling' tells the client where to insert the top level node in
         # relation to its siblings.
@@ -377,9 +382,9 @@ RPCMethods =
             ###
             clientEv.target.dispatchEvent(serverEv)
             @broadcastEvent('resumeRendering', id)
-            if Config.traceMem
+            if @server.config.traceMem
                 gc()
-            global.processedEvents++
+            @server.processedEvents++
             #console.log("Finished processing event: #{serverEv.type}")
 
     # Takes a clientEv (an event generated on the client and sent over DNode)

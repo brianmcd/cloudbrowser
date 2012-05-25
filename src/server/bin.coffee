@@ -33,7 +33,6 @@ Util        = require('util')
 Server      = require('./index')
 {ko}        = require('../api/ko')
 Application = require('./application')
-config      = require('../shared/config')
 Router      = require('./router')
 
 opts = require('nomnom')
@@ -116,13 +115,9 @@ opts = require('nomnom')
         help     : "The configuration function for the default application."
     .parse()
 
-
-for own p of opts
-    config[p] = opts[p]
-
 if opts.debug
     console.log("Config:")
-    console.log(Util.inspect(config))
+    console.log(Util.inspect(opts))
 
 if !opts.strict
     process.on 'uncaughtException', (err) ->
@@ -137,7 +132,7 @@ if /^http/.test(opts.app) || /\.html$/.test(opts.app)
     appOpts =
         entryPoint : opts.app
         mountPoint : '/'
-    appOpts.browserStrategy = 'multiprocess' if config.multiProcess
+    appOpts.browserStrategy = 'multiprocess' if opts.multiProcess
     defaultApp = new Application(appOpts)
 else
     appConfigPath = Path.resolve(process.cwd(), opts.app)
@@ -150,9 +145,7 @@ if opts.useRouter
     s = new Router(opts.port)
     s.mount(defaultApp)
 else
-    s = new Server
-        defaultApp  : defaultApp
-        debugServer : opts.debugServer
-        port        : opts.port
+    opts.defaultApp = defaultApp
+    s = new Server(opts)
     s.once 'ready', () ->
         console.log('All services running, ready for clients.')

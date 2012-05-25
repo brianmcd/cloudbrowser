@@ -2,7 +2,7 @@ BrowserManager    = require('../browser_manager')
 BrowserServerShim = require('./browser_server_shim')
 
 class MultiProcessBrowserManager extends BrowserManager
-    constructor : (@mountPoint, @defaultApp) ->
+    constructor : (@server, @mountPoint, @defaultApp) ->
         @browsers = {}
 
     find : (id) ->

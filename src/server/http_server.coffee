@@ -1,14 +1,12 @@
 express        = require('express')
 {EventEmitter} = require('events')
-if !/^v0\.4\./.test(process.version)
-    ZLib           = require('zlib')
+ZLib           = require('zlib')
 Path           = require('path')
 Uglify         = require('uglify-js')
 Browserify     = require('browserify')
-Config         = require('../shared/config')
 
 class HTTPServer extends EventEmitter
-    constructor : (port, callback) ->
+    constructor : (@config, callback) ->
         server = @server = express.createServer()
         @clientEngineModified = new Date().toString()
         @clientEngineJS = null
@@ -27,17 +25,17 @@ class HTTPServer extends EventEmitter
             res.statusCode = 200
             res.setHeader('Last-Modified', @clientEngineModified)
             res.setHeader('Content-Type', 'text/javascript')
-            if Config.compressJS
+            if @config.compressJS
                 res.setHeader('Content-Encoding', 'gzip')
             res.end(@clientEngineJS)
 
-        if Config.compressJS
+        if @config.compressJS
             @gzipJS @bundleJS(), (js) =>
                 @clientEngineJS = js
-                server.listen(port, callback)
+                server.listen(@config.port, callback)
         else
             @clientEngineJS = @bundleJS()
-            server.listen(port, callback)
+            server.listen(@config.port, callback)
     
     close : (callback) ->
         @server.close(callback)
@@ -88,8 +86,8 @@ class HTTPServer extends EventEmitter
         b = Browserify
             require : [Path.resolve(__dirname, '..', 'client', 'client_engine')]
             ignore : ['socket.io-client', 'weak']
-            filter : (src) ->
-                if Config.compressJS
+            filter : (src) =>
+                if @config.compressJS
                     ugly = Uglify(src)
                 else
                     src
