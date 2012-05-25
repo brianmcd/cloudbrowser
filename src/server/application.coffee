@@ -22,7 +22,3 @@ class Application
             return Path.resolve(process.cwd(), @entryPoint)
 
 module.exports = Application
-
-# For 0.4 compat
-if typeof Path != 'function'
-    require('./patch_relative')
