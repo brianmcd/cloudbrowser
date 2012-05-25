@@ -1,1 +1,1 @@
-../../bin/server --compression=false --knockout --debug app.js
+node ../../bin/server --knockout --debug app.js
