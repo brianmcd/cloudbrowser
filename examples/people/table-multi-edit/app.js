@@ -4,7 +4,7 @@ var PhoneBook = require("./phonebook"),
 CloudBrowser.createServer({
     knockout: true,
     defaultApp: CloudBrowser.createApplication({
-        entryPoint  : 'table.html',
+        entryPoint  : 'phonebook.html',
         mountPoint  : '/',
         name        : 'phonebook',
         localState  : PhoneBook

@@ -1,4 +1,4 @@
-var ko        = require('vt-node-lib').ko,
+var ko        = require('../../../').ko,
     Sequelize = require('sequelize');
 
 var sequelize = new Sequelize('phonebook', 'root', 'sqlroot');

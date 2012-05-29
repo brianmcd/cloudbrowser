@@ -1,7 +1,11 @@
-var PhoneBook = require("./phonebook");
+var PhoneBook = require("./phonebook"),
+    CloudBrowser = require('../../../');
 
-exports.app = {
-  entryPoint  : 'table.html',
-  mountPoint  : '/',
-  sharedState  : new PhoneBook()
-};
+CloudBrowser.createServer({
+    knockout: true,
+    defaultApp: CloudBrowser.createApplication({
+        entryPoint  : 'table.html',
+        mountPoint  : '/',
+        sharedState  : new PhoneBook()
+    })
+});
