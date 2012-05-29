@@ -77,10 +77,6 @@ opts = require('nomnom')
         full    : 'trace-protocol'
         default : false
         help    : "Log protocol messages to browserid-rpc.log."
-    .option 'evalMode',
-        full    : 'eval-mode'
-        default : false
-        help    : "Enable evaluation mode for performance measuring."
     .option 'multiProcess',
         full    : 'multi-process'
         default : false
@@ -115,12 +111,6 @@ if opts.debug
     console.log("Config:")
     console.log(Util.inspect(opts))
 
-if !opts.strict
-    process.on 'uncaughtException', (err) ->
-        console.log("Uncaught Exception:")
-        console.log(err)
-        console.log(err.stack)
-
 defaultApp = null
 # We support passing a URL instead of an application config file for quick
 # testing.
@@ -137,7 +127,6 @@ else
 
 s = null
 if opts.useRouter
-    # TODO: debugServer needs to become part of app spec.
     s = new Router(opts.port)
     s.mount(defaultApp)
 else
