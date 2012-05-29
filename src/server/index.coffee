@@ -16,7 +16,8 @@ AdminInterface  = require('./admin_interface')
 class Server extends EventEmitter
     # config.app - an Application instance, which is the default app.
     constructor : (@config = {}) ->
-        @httpServer     = new HTTPServer(@config, @registerServer)
+        @httpServer = new HTTPServer @config, () =>
+            @emit('ready')
         @socketIOServer = @createSocketIOServer(@httpServer.server)
         @mount(@config.defaultApp) if @config.defaultApp?
         @mount(AdminInterface) if @config.adminInterface

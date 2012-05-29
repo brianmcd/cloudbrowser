@@ -1,23 +1,16 @@
 #!/usr/bin/env node
 require('coffee-script');
 
-// TODO: This needs to set Config.
-
-// XXX: It's important to set this before requiring files since they check it.
 process.env.TESTS_RUNNING = true;
-var Config = require('../src/shared/config');
-Config.test_env = true; // Transitioning to this instead of TESTS_RUNNING
 
 var Path        = require('path'),
     Application = require('../src/server/application'),
     Server      = require('../src/server'),
-    Config      = require('../src/shared/config')
     NodeUnit    = require('nodeunit'),
     Reporter    = NodeUnit.reporters.default;
 
 // Whether or not to close the server after tests are done.
 dontClose = (process.argv[3] == 'dontclose')
-log = console.log.bind(console);
 
 global.defaultApp = new Application({
     // Basically an empty HTML doc
@@ -26,9 +19,10 @@ global.defaultApp = new Application({
     staticDir  : Path.resolve(__dirname, 'files')
 });
 
-log("Starting server...");
+console.log("Starting server...");
 var s = global.server = new Server({
     defaultApp : global.defaultApp,
+    test_env: true,
     debugServer : false
 });
 
@@ -71,6 +65,6 @@ if (filter) {
 }
 
 s.once('ready', function () {
-    log("Server ready, running tests...");
+    console.log("Server ready, running tests...");
     Reporter.run(tests);
 });
