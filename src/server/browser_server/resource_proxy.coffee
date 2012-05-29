@@ -17,7 +17,9 @@ class ResourceProxy
     # url - a relative or absolute URL
     addURL : (url) ->
         path = null
-        if @useFS
+        if /^http/.test(url)
+            path = url
+        else if @useFS
             path = Path.resolve(@baseURL, url)
         else
             path = URL.resolve(@baseURL, url)
@@ -40,12 +42,12 @@ class ResourceProxy
                     return "url(\"#{newURL}\")"
             res.write(data)
             res.end()
-        if @useFS
-            FS.readFile path, 'utf8', (err, data) ->
+        if /^http/.test(path) || !@useFS
+            Request {uri: path}, (err, response, data) ->
                 throw err if err
                 sendResponse(data)
         else
-            Request {uri: path}, (err, response, data) ->
+            FS.readFile path, 'utf8', (err, data) ->
                 throw err if err
                 sendResponse(data)
         console.log("Fetching resource: #{id} [type=#{type}] [path=#{path}]")
