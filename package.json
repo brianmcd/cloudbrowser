@@ -6,7 +6,7 @@
     "url": "https://github.com/brianmcd/cloudbrowser"
   },
   "author": "Brian McDaniel <brianmcd05@gmail.com>",
-  "main": "lib/index.js",
+  "main": "src/index.js",
   "engines": {
     "node": ">=0.6.0"
   },
@@ -17,7 +17,7 @@
     "lib": "./lib"
   },
   "scripts": {
-    "postinstall": "bin/make-links.sh && mkdir logs"
+    "postinstall": "bin/make-links.sh && mkdir -p logs"
   },
   "dependencies": {
     "jsdom"            : "git+https://github.com/brianmcd/cloudbrowser-jsdom.git#a0df4bbb8eb839d9a5ecb0adc3223063ddfe20d5",

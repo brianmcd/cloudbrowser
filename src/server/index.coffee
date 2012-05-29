@@ -12,10 +12,49 @@ AdminInterface  = require('./admin_interface')
 
 {MultiProcessBrowserManager, InProcessBrowserManager} = Managers
 
+# Server options:
+#   debug           - bool - Enable debug mode.
+#   noLogs          - bool - Disable all logging to files.
+#   debugServer     - bool - Enable the debug server.
+#   compression     - bool - Enable protocol compression.
+#   compressJS      - bool - Pass socket.io client and client engine through
+#                            uglify and gzip.
+#   knockout        - bool - Enable server-side knockout.js bindings.
+#   strict          - bool - Enable strict mode - uncaught exceptions exit the
+#                            program.
+#   resourceProxy   - bool - Enable the resource proxy.
+#   monitorTraffic  - bool - Monitor/log traffic to/from socket.io clients.
+#   traceProtocol   - bool - Log protocol messages to #{browserid}-rpc.log.
+#   multiProcess    - bool - Run each browser in its own process.
+#   useRouter       - bool - Use a front-end router process with each app server
+#                            in its own process.
+#   port            - integer - Port to use for the server.
+#   traceMem        - bool - Trace memory usage.
+#   adminInterface  - bool - Enable the admin interface.
+#   simulateLatency - bool | number - Simulate latency for clients in ms.
+#   app             - Application - The application to serve from this server.
+defaults =
+    debug : false
+    noLogs : true
+    debugServer : false
+    compression : true
+    compressJS : false
+    knockout : false
+    strict : false
+    resourceProxy : true
+    monitorTraffic : false
+    traceProtocol : false
+    multiProcess : false
+    useRouter : false
+    port : 3000
+    traceMem : false
+    adminInterface : false
+    simulateLatency : false
 
 class Server extends EventEmitter
-    # config.app - an Application instance, which is the default app.
     constructor : (@config = {}) ->
+        for own k, v of defaults
+            @config[k] = @config[k] || v
         @httpServer = new HTTPServer @config, () =>
             @emit('ready')
         @socketIOServer = @createSocketIOServer(@httpServer.server)
@@ -76,3 +115,8 @@ class Server extends EventEmitter
             , latency
 
 module.exports = Server
+
+process.on 'uncaughtException', (err) ->
+    console.log("Uncaught Exception:")
+    console.log(err)
+    console.log(err.stack)
