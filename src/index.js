@@ -11,4 +11,4 @@ exports.createApplication = function (opts) {
     return new Application(opts);
 };
 
-exports.ko = require('./api/ko').ko
+exports.ko = require('./api/ko');
