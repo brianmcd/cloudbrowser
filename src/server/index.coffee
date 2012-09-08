@@ -54,7 +54,8 @@ defaults =
 class Server extends EventEmitter
     constructor : (@config = {}) ->
         for own k, v of defaults
-            @config[k] = @config[k] || v
+            @config[k] = if @config.hasOwnProperty k then @config[k] else v
+
         @httpServer = new HTTPServer @config, () =>
             @emit('ready')
         @socketIOServer = @createSocketIOServer(@httpServer.server)
