@@ -154,7 +154,10 @@ RPCMethods =
             else
                 target.setAttribute(name, value)
         else if attrChange == 'REMOVAL'
-            target.removeAttribute(name)
+            if /^checked$/.test(name)
+                target[name] = false
+            else
+                target.removeAttribute(name)
         else
             throw new Error("Invalid attrChange: #{attrChange}")
 
