@@ -6,11 +6,14 @@ HTML5                  = require('html5')
 {applyPatches}         = require('./jsdom_patches')
 
 jsdom = require('jsdom')
+#
+# This seems to be ineffective.
+#
 jsdom.defaultDocumentFeatures =
     FetchExternalResources : ['script', 'css', 'frame', 'link', 'iframe']
     ProcessExternalResources : ['script', 'frame', 'iframe', 'css']
     MutationEvents : '2.0'
-    QuerySelector : false
+    QuerySelector : true
 addAdvice(jsdom.dom.level3)
 applyPatches(jsdom.dom.level3)
 
@@ -47,7 +50,10 @@ class DOMWindowFactory
             url        : url
             browser    : @browser
             deferClose : true
-            parser     : HTML5)
+            parser     : HTML5
+            features   :
+                QuerySelector : true
+            )
         document.parentWindow = window
         window.document = document
         document.__defineGetter__ 'location', () =>
@@ -122,7 +128,7 @@ class DOMWindowFactory
                     FetchExternalResources   : false
                     ProcessExternalResources : false
                     MutationEvents           : true
-                    QuerySelector            : false
+                    QuerySelector            : true
                 # TODO: jsdom should do this
                 xmldoc._documentElement = xmldoc.childNodes[0]
                 return xmldoc
