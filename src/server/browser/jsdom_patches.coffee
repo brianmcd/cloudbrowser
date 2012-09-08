@@ -50,23 +50,39 @@ addDefaultHandlers = (html) ->
             console.log("event.target.href:" + event.target.href)
             window.location = event.target.href if event.target.href?
 
-    html.HTMLInputElement.prototype._eventDefaults =
-        click : (event) ->
-            console.log "Inside INPUT click handler"
-            target = event.target
-            if target.type == 'checkbox'
-                target.checked = !target.checked
-            else if target.type == 'radio'
-                doc = target.ownerDocument
-                others = doc.getElementsByName(target.name)
-                for other in others
-                    if other != target && other.type == 'radio'
-                        other.checked = false
-                target.checked = true
-            else if target.type == 'submit'
-                form = target.form
-                if form
-                  form._dispatchSubmitEvent()
+    # See http://dev.w3.org/html5/spec/single-page.html#interactive-content
+    # and http://dev.w3.org/html5/spec/single-page.html#checkbox-state-(type=checkbox)
+    html.HTMLInputElement.prototype._preActivationHandlers.click = () ->
+        target = this
+        if target.type == 'checkbox'
+            target._oldchecked = target.checked
+            target.checked = !target.checked
+        else if target.type == 'radio'
+            doc = target.ownerDocument
+            others = doc.getElementsByName(target.name)
+            for other in others
+                if other != target && other.type == 'radio'
+                    other.checked = false
+            target._oldchecked = target.checked
+            target.checked = true
+
+    html.HTMLInputElement.prototype._eventDefaults.click = (event) ->
+        console.log "Inside INPUT new click handler"
+        target = event.target
+        if target.type == 'submit'
+            form = target.form
+            if form
+              form._dispatchSubmitEvent()
+
+    html.HTMLInputElement.prototype._canceledActivationHandlers.click = (event) ->
+        target = event.target
+        if target.type == 'checkbox'
+            target._checked = target._oldchecked
+        else if target.type == 'radio'
+            target._checked = target._oldchecked
+            # at this point all other radio buttons in that group are false
+            # which seems to be what the spec wants; we don't attempt to
+            # restore their original values
 
     html.HTMLButtonElement.prototype._eventDefaults =
         # looks like this already is done for input
