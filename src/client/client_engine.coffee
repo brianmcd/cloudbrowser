@@ -140,7 +140,7 @@ RPCMethods =
 
         if components?.length > 0
             for component in components
-                @RPCMethods.CreateComponent(component)
+                RPCMethods.CreateComponent(component, this)
 
     DOMAttrModified : (targetId, name, value, attrChange) ->
         target = @nodes.get(targetId)
@@ -186,15 +186,15 @@ RPCMethods =
         component[method].apply(component, args)
 
     # args is an array: [name, targetID, options]
-    CreateComponent : (args) ->
+    CreateComponent : (args, clientEngine) ->
         [name, targetID, options] = args
         console.log("CreateComponent")
         console.log(arguments)
-        node = @nodes.get(targetID)
+        node = clientEngine.nodes.get(targetID)
         Constructor = Components[name]
         if !Constructor
             throw new Error("Invalid component: #{name}")
-        @components[targetID] = new Constructor(@socket, node, options)
+        clientEngine.components[targetID] = new Constructor(clientEngine.socket, node, options)
 
     close : () ->
         document.write("
