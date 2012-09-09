@@ -263,7 +263,7 @@ DOMEventHandlers =
             return
         isAddition = (attrChange == 'ADDITION')
         if isAddition && attrName == 'src'
-            attrValue = @resources.addURL(newValue)
+            newValue = @resources.addURL(newValue)
         if @browserLoading
             return
         if @setByClient
