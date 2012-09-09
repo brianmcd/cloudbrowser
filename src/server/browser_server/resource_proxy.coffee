@@ -37,6 +37,7 @@ class ResourceProxy
         sendResponse = (data) =>
             res.writeHead(200, {'Content-Type' : type})
             if type == 'text/css'
+                data = (new Buffer data).toString()
                 data = data.replace /url\(\"?(.+)\"?\)/g, (matched, original) =>
                     newURL = @addURL(URL.resolve(path, original))
                     return "url(\"#{newURL}\")"
@@ -47,7 +48,7 @@ class ResourceProxy
                 throw err if err
                 sendResponse(data)
         else
-            FS.readFile path, 'utf8', (err, data) ->
+            FS.readFile path, (err, data) ->
                 throw err if err
                 sendResponse(data)
         console.log("Fetching resource: #{id} [type=#{type}] [path=#{path}]")
