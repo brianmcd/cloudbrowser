@@ -179,14 +179,15 @@ exports.addAdvice = (dom) ->
             do (type) ->
                 name = "on#{type}"
                 # TODO: remove listener if this is set to something not a function
-                html.HTMLElement.prototype.__defineSetter__ name, (func) ->
-                    rv = this["__#{name}"] = func
-                    getBrowser(this).emit 'AddEventListener',
-                        target      : this
-                        type        : type
-                    return rv
-                html.HTMLElement.prototype.__defineGetter__ name, () ->
-                    return this["__#{name}"]
+                for eventTarget in [html.HTMLElement, html.HTMLDocument]
+                    eventTarget.prototype.__defineSetter__ name, (func) ->
+                        rv = this["__#{name}"] = func
+                        getBrowser(this).emit 'AddEventListener',
+                            target      : this
+                            type        : type
+                        return rv
+                    eventTarget.prototype.__defineGetter__ name, () ->
+                        return this["__#{name}"]
 
     createFrameAttrHandler = (namespace) ->
         return (elem, args, rv) ->
