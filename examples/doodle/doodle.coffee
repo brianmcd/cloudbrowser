@@ -31,11 +31,11 @@ findAvailableTimes = (i, isAvailable) ->
 
 appModel =
   times: ko.observableArray([
-    new Time(1334678400000, 7200000)
-    new Time(1334754900000, 7200000)
-    new Time(1334774700000, 7200000)
-    new Time(1334927700000, 7200000)
-    new Time(1334904300000, 7200000)
+    new Time(1347897600000, 7200000)
+    new Time(1347974100000, 7200000)
+    new Time(1347993900000, 7200000)
+    new Time(1348146900000, 7200000)
+    new Time(1348123500000, 7200000)
   ])
   possibleTimes: ko.observableArray()
   participants:  ko.observableArray()
