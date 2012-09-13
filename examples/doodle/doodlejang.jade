@@ -1,0 +1,72 @@
+doctype html
+html(lang="en", ng-app="doodleApp")
+  head
+    meta(charset='utf-8')
+    title Meeting Schedule App
+    link(href="assets/css/bootstrap.css", rel="stylesheet")
+    link(href="assets/css/bootstrap-responsive.css", rel="stylesheet")
+    link(href="doodle.css", rel="stylesheet")
+
+  body(ng-controller="doodleController")
+    div.navbar.navbar-fixed-top
+      div.navbar-inner
+        div.container
+          a.brand(href="#") Meeting Time Scheduler
+
+    div.container-fluid
+      div.row-fluid
+        div.span10
+          table.table-condensed
+            thead
+              tr
+                th.namecolumn
+                th.emailcolumn
+                th.d-month(ng-repeat="time in model.times") 
+                  | {{time.start | date:'MMMM' }}
+                  br
+                  | {{time.start | date:'EEE d' }}
+
+              tr
+                th Name
+                th E-Mail
+                th(ng-repeat="time in model.times")
+                  | {{time.start | date:'hh:mma'}} - {{time.end | date:'hh:mma'}}
+
+            tbody(ng-repeat="pt in model.participants")
+              tr
+                td
+                  span(ng-hide="pt.editing", ng-click="pt.editing = true") {{pt.name}}
+                  input(ng-show="pt.editing", ng-model="pt.name", focuson="pt.editing", focuschange="pt.editing")
+
+                td
+                  span(ng-hide="pt.editing", ng-click="pt.editing = true") {{pt.email}}
+                  input(ng-show="pt.editing", ng-model="pt.email", focuschange="pt.editing")
+                  a.close(ng-hide="pt.editing", ng-click="model.participants.remove(pt)") &nbsp;×&nbsp;
+
+                td.ptcheckbox(ng-repeat="data in pt.available", 
+                    ng-class="{ 'alert-danger' : !data.avail, 'alert-success' : data.avail }",
+                    ng-click="data.avail = !data.avail")
+                  | {{ { true : '\u2714' , false : '\u2716' }[data.avail] }}
+
+      div.row-fluid
+        button.btn.btn-primary(ng-click="model.addParticipant()")
+          | Add Participant
+
+        button.btn.btn-primary(ng-click="model.addTimeSlot()")
+          | Add Time Slot
+
+      div.row-fluid(ng-show="model.possibleTimes().length > 0", ng-controller="doodleEmailController")
+        div.span10
+          h4 Times where all can meet:
+          ul
+            li(ng-repeat="time in model.possibleTimes()")
+              {{time.start | date:'MMMM EEE d hh:mma'}}
+
+          button.btn.btn-primary(ng-click="sendmail()")
+            | Send Reminder E-mail To All Participants
+
+    script(src="assets/js/angular-1.0.2.js")
+    script(src="assets/js/moment.min.js")
+    script(src="focus.js")
+    script(src="doodleang.js")
+    script(src="doodleemail.js")

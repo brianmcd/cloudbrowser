@@ -5,7 +5,14 @@
     padding: 3px;
 }
 
-.participant-row {
-    padding-top: 3px;
-    padding-bottom: 3px;
+body {
+    /* required to leave space for navbar */
+    padding-top: 50px;
+}
+.ptcheckbox {
+    text-align: center !important;
+}
+
+.namecolumn, .emailcolumn {
+    width: 216px;
 }
