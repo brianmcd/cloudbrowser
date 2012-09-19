@@ -23,7 +23,10 @@ exports.deserialize = (nodes, sibling, client) ->
         switch record.type
             when 'element'
                 if !node
-                    node = doc.createElement(record.name)
+                    if record.namespaceURI
+                        node = doc.createElementNS(record.namespaceURI, record.name)
+                    else
+                        node = doc.createElement(record.name)
                 for name, value of record.attributes
                     node.setAttribute(name, value)
                 client.nodes.add(node, record.id)

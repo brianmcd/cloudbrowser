@@ -2,6 +2,17 @@ URL            = require('url')
 NodeCompressor = require('../../shared/node_compressor')
 {dfs}          = require('../../shared/utils')
 
+#
+# Elements from the svg and math namespaces that are parsed
+# may or may not have a namespaceURI, which is optional in HTML5.
+# Instead, they have a namespace field with values 'svg' or 'math'
+# On the client, however, we must use document.createElementNS
+# to create them. 
+#
+namespace2URI =
+    svg:    "http://www.w3.org/2000/svg"
+    math:   "http://www.w3.org/1998/Math/MathML"
+
 # Each node in the DOM is represented by an object.
 # A serialized DOM (or snapshot) is an array of these objects.
 # Sample record:
@@ -33,7 +44,14 @@ exports.serialize = (root, resources, topDoc, config) ->
                     type   : 'element'
                     id     : node.__nodeID
                     parent : node.parentNode.__nodeID
-                    name   : node.tagName
+                    # use raw tagName, not uppercased by core.Element.tagName getter
+                    name   : node._tagName
+
+                if node._namespaceURI
+                    record.namespaceURI = node._namespaceURI
+                if node.namespace and node.namespace of namespace2URI
+                    record.namespaceURI = namespace2URI[node.namespace]
+
                 if attributes != null
                     record.attributes = attributes
                 if node.ownerDocument != topDoc
