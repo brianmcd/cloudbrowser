@@ -63,7 +63,7 @@ class HTTPServer extends EventEmitter
                 bserver = browsers.create(app)
                 id = req.session.browserID = bserver.id
             res.writeHead 301,
-                'Location' : "#{mountPointNoSlash}/browsers/#{id}/index.html"
+                {'Location' : "#{mountPointNoSlash}/browsers/#{id}/index.html",'Cache-Control' : "max-age=0, must-revalidate"}
             res.end()
 
         # Route to connect to a virtual browser.
