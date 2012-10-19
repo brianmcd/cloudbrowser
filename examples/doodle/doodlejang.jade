@@ -2,7 +2,7 @@ doctype html
 html(lang="en", ng-app="doodleApp")
   head
     meta(charset='utf-8')
-    title Meeting Schedule App
+    title Meeting Scheduler App
     link(href="assets/css/bootstrap.css", rel="stylesheet")
     link(href="assets/css/bootstrap-responsive.css", rel="stylesheet")
     link(href="doodle.css", rel="stylesheet")
@@ -32,8 +32,8 @@ html(lang="en", ng-app="doodleApp")
                 th(ng-repeat="time in model.times")
                   | {{time.start | date:'hh:mma'}} - {{time.end | date:'hh:mma'}}
 
-            tbody(ng-repeat="pt in model.participants")
-              tr
+            tbody
+              tr(ng-repeat="pt in model.participants")
                 td
                   span(ng-hide="pt.editing", ng-click="pt.editing = true") {{pt.name}}
                   input(ng-show="pt.editing", ng-model="pt.name", focuson="pt.editing", focuschange="pt.editing")
@@ -41,7 +41,7 @@ html(lang="en", ng-app="doodleApp")
                 td
                   span(ng-hide="pt.editing", ng-click="pt.editing = true") {{pt.email}}
                   input(ng-show="pt.editing", ng-model="pt.email", focuschange="pt.editing")
-                  a.close(ng-hide="pt.editing", ng-click="model.participants.remove(pt)") &nbsp;×&nbsp;
+                  a.close(ng-hide="pt.editing", ng-click="model.removeParticipant(pt)") &nbsp;×&nbsp;
 
                 td.ptcheckbox(ng-repeat="data in pt.available", 
                     ng-class="{ 'alert-danger' : !data.avail, 'alert-success' : data.avail }",
@@ -57,7 +57,7 @@ html(lang="en", ng-app="doodleApp")
 
       div.row-fluid(ng-show="model.possibleTimes().length > 0", ng-controller="doodleEmailController")
         div.span10
-          h4 Times where all can meet:
+          h4 Times when all can meet:
           ul
             li(ng-repeat="time in model.possibleTimes()")
               {{time.start | date:'MMMM EEE d hh:mma'}}
