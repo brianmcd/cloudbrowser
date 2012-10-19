@@ -1,12 +1,11 @@
-// !!! means doctype html https://github.com/visionmedia/jade#doctypes
-!!!
+doctype 5
 html
   head
     title VirtualBrowser: #{browserid}
     script
         window.__envSessionID = '#{browserid}'
         window.__appID = '#{appid}'
-    script(src="http://ajax.googleapis.com/ajax/libs/jquery/1.5.0/jquery.min.js")
+    script(src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js")
     script(src="/socket.io/socket.io.js")
     script(src="/clientEngine.js")
     script
