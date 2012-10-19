@@ -186,7 +186,7 @@ addKeyboardEvents = (level3) ->
             when "MouseEvents", "MouseEvent"
                 return new events.MouseEvent(eventType)
             when "HTMLEvents", "HTMLEvent"
-                return new events.HTMLEvent(eventType)
+                return new events.Event(eventType)
             when "KeyboardEvents", "KeyboardEvent"
                 return new events.KeyboardEvent(eventType)
         return new events.Event(eventType)
