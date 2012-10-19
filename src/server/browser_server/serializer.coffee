@@ -75,7 +75,10 @@ exports.serialize = (root, resources, topDoc, config) ->
                         value  : node.nodeValue
                     if node.ownerDocument != topDoc
                         record.ownerDocument = node.ownerDocument.__nodeID
-                    cmds.push(NodeCompressor.compress(record))
+
+                    if config.compression
+                        record = NodeCompressor.compress(record)
+                    cmds.push(record)
     return cmds
 
 # Contains special cases for:
