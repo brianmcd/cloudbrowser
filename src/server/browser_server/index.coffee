@@ -320,7 +320,7 @@ DOMEventHandlers =
         return if @browserLoading
         @broadcastEvent('DOMCharacterDataModified',
                         event.target.__nodeID,
-                        event.target.value)
+                        event.value)
 
     WindowMethodCalled : (event) ->
         return if @browserLoading
