@@ -50,8 +50,9 @@ class ClientEngine
         RPCMethods.disconnect.call(this)
 
     clearDocument : (doc) ->
-        while doc.hasChildNodes()
-            doc.removeChild(doc.firstChild)
+        # remove all nodes except for the DocumentType
+        while doc.hasChildNodes() and doc.lastChild.nodeType != 10
+            doc.removeChild(doc.lastChild)
         delete doc.__nodeID
 
     setupRPC : (socket) ->
