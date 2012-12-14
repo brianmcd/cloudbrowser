@@ -10,17 +10,15 @@
   "engines": {
     "node": ">=0.6.0"
   },
-  "scripts": {
-    "test": "./run_tests.js"
-  },
   "directories": {
     "lib": "./lib"
   },
   "scripts": {
+    "test": "./run_tests.js",
     "postinstall": "bin/make-links.sh && mkdir -p logs"
   },
   "dependencies": {
-    "jsdom"            : "git+https://github.com/brianmcd/cloudbrowser-jsdom.git#854ea27e6e08add90514095464f243e36ea11057",
+		"jsdom" 					 : "*",
     "html5"            : "git+https://github.com/brianmcd/cloudbrowser-html5.git#2c17c7c5558282aaf2dd93c5de65df830770a0c2",
     "knockout-node"    : "git+https://github.com/brianmcd/cloudbrowser-knockout.git#81e4cfc792a2cabf40a15e31c6bcbbbbe4c84244",
     "browserify"       : "1.4.2",
