@@ -1,0 +1,245 @@
+--- lib/jsdom/browser/documentfeatures.js	2012-11-08 16:19:47.941242111 -0500
++++ cloudbrowser-jsdom/lib/jsdom/browser/documentfeatures.js	2012-09-07 10:18:25.363177804 -0400
+@@ -2,14 +2,14 @@
+   'FetchExternalResources',
+   'ProcessExternalResources',
+   'MutationEvents',
+-  'SkipExternalResources'
++  'QuerySelector'
+ ];
+ 
+ exports.defaultDocumentFeatures = {
+   "FetchExternalResources": ['script', 'link'/*, 'img', 'css', 'frame'*/],
+   "ProcessExternalResources": ['script'/*, 'frame', 'iframe'*/],
+   "MutationEvents": '2.0',
+-  "SkipExternalResources": false
++  "QuerySelector": false
+ };
+ 
+ exports.applyDocumentFeatures = function(doc, features) {
+--- lib/jsdom/browser/index.js	2012-10-07 17:56:30.176028264 -0400
++++ cloudbrowser-jsdom/lib/jsdom/browser/index.js	2012-10-11 15:47:59.967533256 -0400
+@@ -201,7 +201,7 @@
+       // Recursively close child frame windows, then ourselves.
+       var currentWindow = this;
+       (function windowCleaner (window) {
+-        var i;
++        var i, unload;
+         // We could call window.frames.length etc, but window.frames just points
+         // back to window.
+         if (window.length > 0) {
+@@ -211,11 +211,22 @@
+         }
+         // We're already in our own window.close().
+         if (window !== currentWindow) {
++          unload = window.document.createEvent('HTMLEvents');
++          unload.initEvent('unload', true, true);
++          // TODO: I think this should hit body then window, maybe doc too?
++          window.dispatchEvent(unload);
+           window.close();
+         }
+       })(this);
+ 
+       if (this.document) {
++        // TODO: factor out of above.
++        // TODO: it we should let GC take over after close, not bomb
++        var unload = this.document.createEvent('HTMLEvents');
++        unload.initEvent('unload', true, true);
++        // TODO: I think this should hit body then window, maybe doc too?
++        this.dispatchEvent(unload);
++
+         if (this.document.body) {
+           this.document.body.innerHTML = "";
+         }
+--- lib/jsdom/level1/core.js	2012-11-08 16:19:47.949242159 -0500
++++ cloudbrowser-jsdom/lib/jsdom/level1/core.js	2012-10-19 10:25:37.339094049 -0400
+@@ -297,13 +297,7 @@
+     } else if (typeof versions === 'string') {
+       return versions === version;
+     } else if (versions.indexOf && versions.length > 0) {
+-      for (var i = 0; i < versions.length; i++) {
+-        var found = versions[i] instanceof RegExp ?
+-          versions[i].test(version) :
+-          versions[i] === version;
+-        if (found) { return true; }
+-      }
+-      return false;
++       return versions.indexOf(version) !== -1;
+     } else {
+       return false;
+     }
+@@ -1005,7 +999,7 @@
+     if (attribute) {
+       return attribute.value;
+     }
+-    return "";
++    return null;
+   },
+ 
+   /* returns string */
+--- lib/jsdom/level2/events.js	2012-10-12 09:28:48.083147218 -0400
++++ cloudbrowser-jsdom/lib/jsdom/level2/events.js	2012-10-11 15:47:59.959533215 -0400
+@@ -196,10 +196,9 @@
+             try {
+               listeners[currentListener].call(target, event);
+             } catch (e) {
+-              target.raise(
+-                'error', "Dispatching event '" + event._type + "' failed",
+-                {error: e, event: event}
+-              );
++              console.log("JavaScript event handler error:");
++              console.log(e.stack);
++              throw e;
+             }
+         }
+         target = iterator();
+--- lib/jsdom/level2/html.js	2012-12-07 09:19:04.864667913 -0500
++++ cloudbrowser-jsdom/lib/jsdom/level2/html.js	2012-10-11 15:56:32.526074892 -0400
+@@ -22,9 +22,6 @@
+     if (ownerImplementation.hasFeature('FetchExternalResources', element.tagName.toLowerCase())) {
+       var full = this.resolve(element._ownerDocument, href);
+       var url = URL.parse(full);
+-      if (ownerImplementation.hasFeature('SkipExternalResources', full)) {
+-        return false;
+-      }
+       if (url.hostname) {
+         this.download(url, this.baseUrl(element._ownerDocument), this.enqueue(element, callback, full));
+       }
+@@ -70,7 +67,7 @@
+         baseUrl      = document.URL;
+ 
+     if (baseElements.length > 0) {
+-      baseUrl = baseElements.item(0).href || baseUrl;
++      baseUrl = baseElements.item(0).href;
+     }
+ 
+     return baseUrl;
+@@ -143,7 +140,7 @@
+     request.end();
+   },
+   readFile: function(url, callback) {
+-    fs.readFile(url.replace(/^file:\/\//, "").replace(/^\/([a-z]):\//i, '$1:/').replace(/%20/g, ' '), 'utf8', callback);
++    fs.readFile(url.replace(/^file:\/\//, "").replace(/^\/([a-z]):\//i, '$1:/'), 'utf8', callback);
+   }
+ };
+ 
+@@ -318,6 +315,9 @@
+   if (!options.contentType) {
+     options.contentType = 'text/html';
+   }
++  if (!options.browser) {
++      throw new Error("Document lacks browser.");
++  }
+   core.Document.call(this, options);
+   this._referrer = options.referrer;
+   this._cookie = options.cookie;
+@@ -471,9 +471,20 @@
+   proto : {
+     // Add default event behavior (click link to navigate, click button to submit
+     // form, etc). We start by wrapping dispatchEvent so we can forward events to
+-    // the element's _eventDefault function (only events that did not incur
+-    // preventDefault).
++    // the element's _preActivationHandler, _eventDefault, and (unless canceled)
++    // _canceledActivationHandlers functions.
++    // This order is dictated by the HTML spec
++    // http://dev.w3.org/html5/spec/single-page.html#interactive-content
++    // which demands that the actual event handler sees the effects of
++    // the pre-click activation steps.
++    //  
+     dispatchEvent : function (event) {
++      if (this._preActivationHandlers[event.type] &&
++          typeof this._preActivationHandlers[event.type] === 'function')
++      {
++        this._preActivationHandlers[event.type].call(this);
++      }
++
+       var outcome = core.Node.prototype.dispatchEvent.call(this, event)
+ 
+       if (!event._preventDefault     &&
+@@ -482,9 +493,20 @@
+       {
+         event.target._eventDefaults[event.type](event)
+       }
++
++      if (event._preventDefault     &&
++          event.target._canceledActivationHandlers[event.type] &&
++          typeof event.target._canceledActivationHandlers[event.type] === 'function')
++      {
++        event.target._canceledActivationHandlers[event.type](event)
++      }
+       return outcome;
+     },
+-    _eventDefaults : {}
++    _eventDefaults : {},
++    // _preActivationHandler supports pre-click activation steps as defined here
++    _preActivationHandlers : {},
++    // _canceledActivationHandlers supports canceled activation steps 
++    _canceledActivationHandlers : {}
+   },
+   attributes: [
+     'id',
+@@ -778,7 +800,10 @@
+       else this.removeAttribute('selected');
+     },
+     get text() {
+-      return this.innerHTML;
++      return (this.hasAttribute('text')) ? this.getAttribute('text') : this.innerHTML;
++    },
++    set text(val) {
++      this.setAttribute('text', val);
+     },
+     get value() {
+       return (this.hasAttribute('value')) ? this.getAttribute('value') : this.innerHTML;
+@@ -1661,9 +1674,11 @@
+   var parentDoc = frame._ownerDocument;
+   var url = core.resourceLoader.resolve(parentDoc, src);
+   var contentDoc = frame._contentDocument = new core.HTMLDocument({
++    browser: parentDoc.__browser__,
+     url: url,
+     documentRoot: Path.dirname(url)
+   });
++  contentDoc.__enclosingFrame = frame; // XXX: McD added for vt; not standard.
+   applyDocumentFeatures(contentDoc, parentDoc.implementation._features);
+ 
+   var parent = parentDoc.parentWindow;
+@@ -1700,6 +1715,7 @@
+       var parentDoc = self._ownerDocument;
+       // Calling contentDocument creates the Document if it doesn't exist.
+       var doc = self.contentDocument;
++      doc.__enclosingFrame = self; // XXX: McD added for vt; not standard.
+       applyDocumentFeatures(doc, parentDoc.implementation._features);
+       var window = self.contentWindow;
+       window.parent = parent;
+@@ -1743,7 +1759,9 @@
+     _contentDocument : null,
+     get contentDocument() {
+       if (this._contentDocument == null) {
+-        this._contentDocument = new core.HTMLDocument();
++        this._contentDocument = new core.HTMLDocument({
++            browser: this._ownerDocument.__browser__
++        });
+       }
+       return this._contentDocument;
+     },
+--- lib/jsdom.js	2012-11-08 16:19:47.929242066 -0500
++++ cloudbrowser-jsdom/lib/jsdom.js	2012-10-11 15:47:59.967533256 -0400
+@@ -38,6 +38,9 @@
+ exports.jsdom = function (html, level, options) {
+ 
+   options = options || {};
++  if (!options.browser) {
++      throw new Error("Must pass a browser to jsdom.jsdom.");
++  }
+   if(typeof level == "string") {
+     level = exports.level(level, 'html')
+   } else {
+@@ -168,8 +171,7 @@
+     options    = {
+       features: config.features || {
+         'FetchExternalResources' : false,
+-        'ProcessExternalResources' : false,
+-        'SkipExternalResources' : false
++        'ProcessExternalResources' : false
+       },
+       url: config.url
+     },
