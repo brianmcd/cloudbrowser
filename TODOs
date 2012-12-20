@@ -1,0 +1,20 @@
+
+Some notes on TODOs.
+
+Would like to chizzle away at jsdom patch to reduce it to zero.
+
+- preClickActivationHandler clearly need to go in jsdom proper
+
+- console.log on error output - shouldn't we instead override HTMLElement.raise or HTMLDocument.raise?
+
+- __enclosingFrame:     is this really needed? Can't .parent be used?
+
+- browser:  - can this be made generic.
+
+- other patches: are they really needed (like documentFeatures, shouldn't they be
+    settable from outside?)
+
+    - unload etc. - shouldn't this go in jsdom proper?
+
+
+
