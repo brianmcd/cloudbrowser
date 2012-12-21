@@ -208,6 +208,16 @@ exports.addAdvice = (dom) ->
     adviseMethod html.HTMLFrameElement, 'setAttribute', createFrameAttrHandler(false)
     adviseMethod html.HTMLFrameElement, 'setAttributeNS', createFrameAttrHandler(true)
 
+    adviseMethod html.CSSStyleDeclaration, 'setProperty', (elem, args, rv) ->
+      parent = elem._parentElement
+      return if !parent
+      browser = getBrowser(parent)
+      if isVisibleOnClient(parent, browser)
+        browser.emit 'DOMStyleChanged',
+          target:parent
+          attribute:args[0]
+          value:args[1]
+
     # Advice for: HTMLElement.style
     #
     # JSDOM level2/style.js uses the style getter to lazily create the 
@@ -218,73 +228,3 @@ exports.addAdvice = (dom) ->
     adviseProperty html.HTMLElement, 'style',
         getter : (elem, rv) ->
             rv._parentElement = elem
-
-    # This list is from:
-    #   http://dev.w3.org/csswg/cssom/#the-cssstyledeclaration-interface
-    cssAttrs = [
-        'azimuth', 'background', 'backgroundAttachment', 'backgroundColor',
-        'backgroundImage', 'backgroundPosition', 'backgroundRepeat', 'border',
-        'borderCollapse', 'borderColor', 'borderSpacing', 'borderStyle',
-        'borderTop', 'borderRight', 'borderBottom', 'borderLeft',
-        'borderTopColor', 'borderRightColor', 'borderBottomColor',
-        'borderLeftColor', 'borderTopStyle', 'borderRightStyle',
-        'borderBottomStyle', 'borderLeftStyle', 'borderTopWidth',
-        'borderRightWidth', 'borderBottomWidth', 'borderLeftWidth',
-        'borderWidth', 'bottom', 'captionSide', 'clear', 'clip', 'color',
-        'content', 'counterIncrement', 'counterReset', 'cue', 'cueAfter',
-        'cueBefore', 'cursor', 'direction', 'display', 'elevation',
-        'emptyCells', 'cssFloat', 'font', 'fontFamily', 'fontSize',
-        'fontSizeAdjust', 'fontStretch', 'fontStyle', 'fontVariant',
-        'fontWeight', 'height', 'left', 'letterSpacing', 'lineHeight',
-        'listStyle', 'listStyleImage', 'listStylePosition', 'listStyleType',
-        'margin', 'marginTop', 'marginRight', 'marginBottom', 'marginLeft',
-        'markerOffset', 'marks', 'maxHeight', 'maxWidth', 'minHeight',
-        'minWidth', 'orphans', 'outline', 'outlineColor', 'outlineStyle',
-        'outlineWidth', 'overflow', 'padding', 'paddingTop', 'paddingRight',
-        'paddingBottom', 'paddingLeft', 'page', 'pageBreakAfter',
-        'pageBreakBefore', 'pageBreakInside', 'pause', 'pauseAfter',
-        'pauseBefore', 'pitch', 'pitchRange', 'playDuring', 'position',
-        'quotes', 'richness', 'right', 'size', 'speak', 'speakHeader',
-        'speakNumeral', 'speakPunctuation', 'speechRate', 'stress',
-        'tableLayout', 'textAlign', 'textDecoration', 'textIndent',
-        'textShadow', 'textTransform', 'top', 'unicodeBidi', 'verticalAlign',
-        'visibility', 'voiceFamily', 'volume', 'whiteSpace', 'widows', 'width',
-        'wordSpacing', 'zIndex'
-    ]
-
-    # Advice for: Element.style.*
-    # For each possible style property, add a setter to emit advice.
-    do () ->
-        proto = html.CSSStyleDeclaration.prototype
-        cssAttrs.forEach (attr) ->
-            proto.__defineSetter__ attr, (val) ->
-                # cssom seems to use some CSSStyleDeclaration objects
-                # internally, so we only want to emit instructions if there
-                # is a parent element pointer, meaning this CSSStyleDeclaration
-                # belongs to an element.
-                parent = this._parentElement
-                prop = "_#{attr}"
-
-                # To explain this if statement, see cssom's
-                #    CSSStyleDeclaration.js.
-                # CSSStyleDeclaration treats itself like an array, with each
-                # index containing a string for a property that has been set
-                # on the object.  See CSSStyleDeclaration#setProperty.
-                # The array indices are used by the cssText getter to iterate
-                # over the CSS properties that have been set, so not doing this
-                # was causing cssText to miss properties, and therefore our
-                # serializer to miss CSS attributes (due to JSDOM's StyleAttr
-                # object, which uses cssText internally).
-                if !this[prop]
-                    this[this.length++] = attr
-                rv = this[prop] = val
-                if parent
-                    browser = getBrowser(parent)
-                    if isVisibleOnClient(parent, browser)
-                        browser.emit 'DOMStyleChanged',
-                            target    : parent
-                            attribute : attr
-                            value     : val
-                return rv
-            proto.__defineGetter__ attr, () ->
-                return @["_#{attr}"]
