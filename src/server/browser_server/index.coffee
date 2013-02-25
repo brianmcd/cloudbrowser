@@ -17,7 +17,9 @@ TaggedNodeCollection = require('../../shared/tagged_node_collection')
 
 # Serves 1 Browser to n clients.
 class BrowserServer extends EventEmitter
-    constructor : (@server, @id, @mountPoint) ->
+    constructor : (@server, @id, @mountPoint, isAuthenticationVB) ->
+        if isAuthenticationVB
+            @isAuthenticationVB = isAuthenticationVB
         if !@id? || !@mountPoint
             throw new Error("Missing required parameter")
         @browser = new Browser(@id, this)
@@ -50,6 +52,16 @@ class BrowserServer extends EventEmitter
                 @browser.on event, () =>
                     handler.apply(this, arguments)
         @initLogs() if !@server.config.noLogs
+
+    redirect : (URL) ->
+        @broadcastEvent('Redirect', URL)
+        
+
+    getSessions : () ->
+        sessionID = []
+        for socket in @sockets
+            sessionID.push(socket.handshake.headers.cookie)
+        return sessionID
 
     # arg can be an Application or URL string.
     load : (arg) ->

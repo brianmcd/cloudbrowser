@@ -94,6 +94,7 @@ class Browser extends EventEmitter
         # based on a package.json manifest.
         @window.require = require
         @window.process = process
+        @window.bserver = @bserver
         EmbedAPI(this, @bserver)
         # If an app needs server-side knockout, we have to monkey patch
         # some ko functions.

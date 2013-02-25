@@ -40,6 +40,8 @@ class ClientEngine
                 @window.testClient.emit('TestDone')
         else
             socket = @window.io.connect()
+            socket.on 'error', (err) ->
+                console.log("Error:"+err)
             socket.on 'connect', () =>
                 console.log("Socket.IO connected...")
                 socket.emit('auth', @window.__appID, @window.__envSessionID)
@@ -174,6 +176,9 @@ RPCMethods =
 
     AddEventListener : (type) ->
         @eventMonitor.add(type)
+
+    Redirect : (URL) ->
+        window.location = URL
        
     disconnect : () ->
         @socket.disconnect()

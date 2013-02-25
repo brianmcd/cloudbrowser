@@ -9,6 +9,9 @@ Application     = require('./application')
 HTTPServer      = require('./http_server')
 Managers        = require('./browser_manager')
 AdminInterface  = require('./admin_interface')
+AuthenticationInterface = require('./authentication_interface')
+ParseCookie    = require('cookie').parse
+#Signature      = require('cookie-signature')     Ashima - Will require this if we want the cookies to be signed (which is default in later versions of express) 
 
 {MultiProcessBrowserManager, InProcessBrowserManager} = Managers
 
@@ -31,6 +34,7 @@ AdminInterface  = require('./admin_interface')
 #   port            - integer - Port to use for the server.
 #   traceMem        - bool - Trace memory usage.
 #   adminInterface  - bool - Enable the admin interface.
+#   authenticationInterface - bool - Enable the authentication interface
 #   simulateLatency - bool | number - Simulate latency for clients in ms.
 #   app             - Application - The application to serve from this server.
 defaults =
@@ -49,6 +53,7 @@ defaults =
     port : 3000
     traceMem : false
     adminInterface : false
+    authenticationInterface : false
     simulateLatency : false
 
 class Server extends EventEmitter
@@ -58,9 +63,10 @@ class Server extends EventEmitter
 
         @httpServer = new HTTPServer @config, () =>
             @emit('ready')
-        @socketIOServer = @createSocketIOServer(@httpServer.server)
+        @socketIOServer = @createSocketIOServer(@httpServer.server, @httpServer.mongoStore, AuthenticationInterface)
         @mount(@config.defaultApp) if @config.defaultApp?
         @mount(AdminInterface) if @config.adminInterface
+        @mount(AuthenticationInterface) #if @config.authenticationInterface
         @setupEventTracker if @config.printEventStats
 
     setupEventTracker : () ->
@@ -86,7 +92,7 @@ class Server extends EventEmitter
             new InProcessBrowserManager(this, mountPoint, app)
         @httpServer.setupMountPoint(browsers, app)
 
-    createSocketIOServer : (http) ->
+    createSocketIOServer : (http, mongoStore, app) ->
         browserManagers = @httpServer.mountedBrowserManagers
         io = sio.listen(http)
         io.configure () =>
@@ -94,6 +100,31 @@ class Server extends EventEmitter
                 io.set('browser client minification', true)
                 io.set('browser client gzip', true)
             io.set('log level', 1)
+            io.set 'authorization', (handshakeData, callback) ->
+                browserID = handshakeData.headers.referer.split('\/')
+                browserID = browserID[browserID.indexOf('browsers') + 1]
+                console.log("Checking for" + browserID)
+                browser = app.browsers.find(browserID)
+                if browser && browser.isAuthenticationVB
+                    callback(null, true)
+                if handshakeData.headers.cookie
+                    handshakeData.cookie = ParseCookie(handshakeData.headers.cookie)
+                    #Ashima - Needed if we plan to sign the cookies
+                    #handshakeData.sessionID = Signature.unsign(handshakeData.cookie['cb.id'].replace("s:", ""), "change me please")
+                    handshakeData.sessionID = handshakeData.cookie['cb.id']
+                    mongoStore.get handshakeData.sessionID, (err, session) ->
+                        if err
+                            callback(err.message, false)
+                        else
+                            if session.user
+                                handshakeData.session = session
+                                #Ashima - Using anything other than null sends 500 instead of 403
+                                callback(null, true)
+                            else
+                                callback(null, false)
+                else
+                    callback(null, false)
+              
         io.sockets.on 'connection', (socket) =>
             @addLatencyToClient(socket) if @config.simulateLatency
             socket.on 'auth', (app, browserID) =>
