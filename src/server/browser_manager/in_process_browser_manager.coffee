@@ -8,8 +8,8 @@ class InProcessBrowserManager extends BrowserManager
     find : (id) ->
         return @browsers[id]
 
-    create : (appOrUrl = @defaultApp, isAuthenticationVB, id = @generateUUID()) ->
-        browser = @browsers[id] = new BrowserServer(@server, id, @mountPoint, isAuthenticationVB)
+    create : (appOrUrl = @defaultApp, id = @generateUUID()) ->
+        browser = @browsers[id] = new BrowserServer(@server, id, @mountPoint)
         browser.load(appOrUrl)
         @addToBrowserList(browser)
         browser.once 'BrowserClose', () =>

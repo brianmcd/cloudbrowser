@@ -10,6 +10,7 @@ Compressor           = require('../../shared/compressor')
 TaggedNodeCollection = require('../../shared/tagged_node_collection')
 {serialize}          = require('./serializer')
 {isVisibleOnClient}  = require('../../shared/utils')
+ParseCookie          = require('cookie').parse
 
 {eventTypeToGroup,
  clientEvents,
@@ -17,9 +18,7 @@ TaggedNodeCollection = require('../../shared/tagged_node_collection')
 
 # Serves 1 Browser to n clients.
 class BrowserServer extends EventEmitter
-    constructor : (@server, @id, @mountPoint, isAuthenticationVB) ->
-        if isAuthenticationVB
-            @isAuthenticationVB = isAuthenticationVB
+    constructor : (@server, @id, @mountPoint) ->
         if !@id? || !@mountPoint
             throw new Error("Missing required parameter")
         @browser = new Browser(@id, this)
@@ -57,11 +56,13 @@ class BrowserServer extends EventEmitter
         @broadcastEvent('Redirect', URL)
         
 
+    # Returns cookies of all clients connected to the VB
     getSessions : () ->
-        sessionID = []
+        sessionIDS = []
         for socket in @sockets
-            sessionID.push(socket.handshake.headers.cookie)
-        return sessionID
+            cookie = ParseCookie(socket.handshake.headers.cookie)
+            sessionIDS.push(cookie)
+        return sessionIDS
 
     # arg can be an Application or URL string.
     load : (arg) ->

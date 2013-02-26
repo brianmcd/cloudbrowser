@@ -69,56 +69,77 @@ class HTTPServer extends EventEmitter
         # strategies for creating browsers should be pluggable (e.g. creating
         # a browser from a URL sent via POST).
 
-        #Ashima - Have different routes if authentication_interface is not configured
+        if @config.authenticationInterface
+            @server.get mountPoint, (req, res) =>
+                if !req.session.user && !app.isAuthenticationApp
+                    res.writeHead 302,
+                        {'Location' : "/authenticate",'Cache-Control' : "max-age=0, must-revalidate"}
+                    res.end()
+                else
+                    id = req.session.browserID
+                    if !id? || !browsers.find(id)
+                      bserver = browsers.create(app)
+                      id = req.session.browserID = bserver.id
+                      bserver.redirectURL = req.query.redirectto
+                    #Ashima - What should be done if we can't find the browser?
+                    res.writeHead 301,
+                        {'Location' : "#{mountPointNoSlash}/browsers/#{id}/index",'Cache-Control' : "max-age=0, must-revalidate"}
+                    res.end()
 
-        @server.get mountPoint, (req, res) =>
-            if (/^\/authenticate/.test(mountPoint))
-              isAuthenticationVB = true
-            if !req.session.user && !(/^\/authenticate/.test(mountPoint))
-                res.writeHead 302,
-                    {'Location' : "/authenticate",'Cache-Control' : "max-age=0, must-revalidate"}
-                res.end()
-            else
+            # Route to connect to a virtual browser.
+            @server.get "#{mountPointNoSlash}/browsers/:browserid/index", (req, res) ->
+                if !req.session.user && !app.isAuthenticationApp
+                    queryString = "?redirectto=" + "#{mountPointNoSlash}/browsers/" + req.params.browserid + "/index"
+                    res.writeHead 302,
+                        {'Location' : "/authenticate" + queryString, 'Cache-Control' : "max-age=0, must-revalidate"}
+                    res.end()
+                else
+                    id = decodeURIComponent(req.params.browserid)
+                    console.log "Joining: #{id}"
+                    res.render 'base.jade',
+                        browserid : id #Ashima - Must remove
+                        appid : app.mountPoint
+
+            # Route for ResourceProxy
+            @server.get "#{mountPointNoSlash}/browsers/:browserid/:resourceid", (req, res) =>
+                if !req.session.user && !app.isAuthenticationApp
+                    queryString = "?redirectto=" + "#{mountPointNoSlash}/browsers/" + req.params.browserid + "/" + req.params.resourceid
+                    res.writeHead 302,
+                        {'Location' : "/authenticate" + queryString, 'Cache-Control' : "max-age=0, must-revalidate"}
+                    res.end()
+                else
+                    resourceid = req.params.resourceid
+                    decoded = decodeURIComponent(req.params.browserid)
+                    bserver = browsers.find(decoded)
+                    # Note: fetch calls res.end()
+                    bserver?.resources.fetch(resourceid, res)
+
+        else
+            @server.get mountPoint, (req, res) =>
                 id = req.session.browserID
                 if !id? || !browsers.find(id)
-                  if isAuthenticationVB
-                    console.log("Is an authentication VB")
-                    bserver = browsers.create(app, isAuthenticationVB)
-                  else
-                    bserver = browsers.create(app)
+                  bserver = browsers.create(app)
                   id = req.session.browserID = bserver.id
-                  bserver.redirectURL = req.query.redirectto
-                  console.log(id)
                 #Ashima - What should be done if we can't find the browser?
                 res.writeHead 301,
                     {'Location' : "#{mountPointNoSlash}/browsers/#{id}/index",'Cache-Control' : "max-age=0, must-revalidate"}
                 res.end()
 
-        # Route to connect to a virtual browser.
-        @server.get "#{mountPointNoSlash}/browsers/:browserid/index", (req, res) ->
-            if !req.session.user && !(/^\/authenticate/.test(mountPoint))
-                res.writeHead 302,
-                    {'Location' : "/authenticate?redirectto=" + "#{mountPointNoSlash}/browsers/" + req.params.browserid + "/index",'Cache-Control' : "max-age=0, must-revalidate"}
-                res.end()
-            else
-              id = decodeURIComponent(req.params.browserid)
-              console.log "Joining: #{id}"
-              res.render 'base.jade',
-                  browserid : id
-                  appid : app.mountPoint
+            # Route to connect to a virtual browser.
+            @server.get "#{mountPointNoSlash}/browsers/:browserid/index", (req, res) ->
+                id = decodeURIComponent(req.params.browserid)
+                console.log "Joining: #{id}"
+                res.render 'base.jade',
+                    browserid : id #Ashima - Must remove
+                    appid : app.mountPoint
 
-        # Route for ResourceProxy
-        @server.get "#{mountPointNoSlash}/browsers/:browserid/:resourceid", (req, res) =>
-            if !req.session.user && !(/^\/authenticate/.test(mountPoint))
-                res.writeHead 302,
-                    {'Location' : "/authenticate?redirectto=" + "#{mountPointNoSlash}/browsers/" + req.params.browserid + "/" + req.params.resourceid,'Cache-Control' : "max-age=0, must-revalidate"}
-                res.end()
-            else
-              resourceid = req.params.resourceid
-              decoded = decodeURIComponent(req.params.browserid)
-              bserver = browsers.find(decoded)
-              # Note: fetch calls res.end()
-              bserver?.resources.fetch(resourceid, res)
+            # Route for ResourceProxy
+            @server.get "#{mountPointNoSlash}/browsers/:browserid/:resourceid", (req, res) =>
+                resourceid = req.params.resourceid
+                decoded = decodeURIComponent(req.params.browserid)
+                bserver = browsers.find(decoded)
+                # Note: fetch calls res.end()
+                bserver?.resources.fetch(resourceid, res)
 
     bundleJS : () ->
         b = Browserify

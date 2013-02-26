@@ -26,14 +26,18 @@ CBAuthentication.controller('LoginCtrl', function($scope) {
       if(!err){
         collection.findOne({username:$scope.username}, function (err, item){
           if(item && item.password == $scope.password){
-            var sessionID = decodeURIComponent(window.bserver.getSessions()[0].split('=')[1]);
+            var sessionID = decodeURIComponent(window.bserver.getSessions()[0]['cb.id']);
             mongoStore.get(sessionID, function(err, session){
-              session.user = $scope.username;
-              mongoStore.set(sessionID, session, function(){});
-              if(redirect)
-                window.bserver.redirect("http://localhost:3000" + redirect);
-              else
-                window.bserver.redirect("http://localhost:3000");
+              if(!err){
+                session.user = $scope.username;
+                mongoStore.set(sessionID, session, function(){});
+                if(redirect)
+                  window.bserver.redirect("http://localhost:3000" + redirect);
+                else
+                  window.bserver.redirect("http://localhost:3000");
+              }else{
+                console.log("Error in finding the session:" + err);
+              }
             });
           }
           else{
@@ -75,7 +79,7 @@ CBAuthentication.controller('SignupCtrl', function ($scope) {
       if(!err){
         user = {username:$scope.username, password:$scope.password};
         collection.insert(user);
-        var sessionID = decodeURIComponent(window.bserver.getSessions()[0].split('=')[1]);
+        var sessionID = decodeURIComponent(window.bserver.getSessions()[0]['cb.id']);
         mongoStore.get(sessionID, function(err, session){
           session.user = $scope.username;
           mongoStore.set(sessionID, session, function(){});

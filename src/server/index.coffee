@@ -66,7 +66,7 @@ class Server extends EventEmitter
         @socketIOServer = @createSocketIOServer(@httpServer.server, @httpServer.mongoStore, AuthenticationInterface)
         @mount(@config.defaultApp) if @config.defaultApp?
         @mount(AdminInterface) if @config.adminInterface
-        @mount(AuthenticationInterface) #if @config.authenticationInterface
+        @mount(AuthenticationInterface) if @config.authenticationInterface
         @setupEventTracker if @config.printEventStats
 
     setupEventTracker : () ->
@@ -92,7 +92,7 @@ class Server extends EventEmitter
             new InProcessBrowserManager(this, mountPoint, app)
         @httpServer.setupMountPoint(browsers, app)
 
-    createSocketIOServer : (http, mongoStore, app) ->
+    createSocketIOServer : (http, mongoStore, authentication_app) ->
         browserManagers = @httpServer.mountedBrowserManagers
         io = sio.listen(http)
         io.configure () =>
@@ -100,30 +100,31 @@ class Server extends EventEmitter
                 io.set('browser client minification', true)
                 io.set('browser client gzip', true)
             io.set('log level', 1)
-            io.set 'authorization', (handshakeData, callback) ->
-                browserID = handshakeData.headers.referer.split('\/')
-                browserID = browserID[browserID.indexOf('browsers') + 1]
-                console.log("Checking for" + browserID)
-                browser = app.browsers.find(browserID)
-                if browser && browser.isAuthenticationVB
-                    callback(null, true)
-                if handshakeData.headers.cookie
-                    handshakeData.cookie = ParseCookie(handshakeData.headers.cookie)
-                    #Ashima - Needed if we plan to sign the cookies
-                    #handshakeData.sessionID = Signature.unsign(handshakeData.cookie['cb.id'].replace("s:", ""), "change me please")
-                    handshakeData.sessionID = handshakeData.cookie['cb.id']
-                    mongoStore.get handshakeData.sessionID, (err, session) ->
-                        if err
-                            callback(err.message, false)
-                        else
-                            if session.user
-                                handshakeData.session = session
-                                #Ashima - Using anything other than null sends 500 instead of 403
-                                callback(null, true)
+            if @config.authenticationInterface
+                io.set 'authorization', (handshakeData, callback) ->
+                    browserID = handshakeData.headers.referer.split('\/')
+                    browserID = browserID[browserID.indexOf('browsers') + 1]
+                    browser = authentication_app.browsers.find(browserID)
+                    #If VB is an authentication VB, let is connect to websocket server
+                    if browser
+                        callback(null, true)
+                    else if handshakeData.headers.cookie
+                        handshakeData.cookie = ParseCookie(handshakeData.headers.cookie)
+                        #Ashima - Needed if we plan to sign the cookies
+                        #handshakeData.sessionID = Signature.unsign(handshakeData.cookie['cb.id'].replace("s:", ""), "change me please")
+                        handshakeData.sessionID = handshakeData.cookie['cb.id']
+                        mongoStore.get handshakeData.sessionID, (err, session) ->
+                            if err
+                                callback(err.message, false)
                             else
-                                callback(null, false)
-                else
-                    callback(null, false)
+                                if session.user
+                                    handshakeData.session = session
+                                    #Ashima - Using anything other than null sends 500 instead of 403
+                                    callback(null, true)
+                                else
+                                    callback(null, false)
+                    else
+                        callback(null, false)
               
         io.sockets.on 'connection', (socket) =>
             @addLatencyToClient(socket) if @config.simulateLatency
