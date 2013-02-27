@@ -1,5 +1,5 @@
 (function() {
-  var CBAuthentication, CloubBrowserDb_server, CloudBrowserDb, Express, Mongo, MongoStore, mongoStore, redirectURL;
+  var CBAuthentication, CloudBrowserDb, CloudBrowserDb_server, Express, Mongo, MongoStore, mongoStore, redirectURL;
 
   CBAuthentication = angular.module("CBAuthentication", []);
 
@@ -46,7 +46,7 @@
           }, function(err, item) {
             var sessionID;
             if (item && item.password === $scope.password) {
-              sessionID = decodeURIComponent(window.bserver.getSessions()[0]["cb.id"]);
+              sessionID = decodeURIComponent(window.bserver.getSessions()[0]);
               return mongoStore.get(sessionID, function(err, session) {
                 if (!err) {
                   session.user = $scope.username;
@@ -108,7 +108,7 @@
             password: $scope.password
           };
           collection.insert(user);
-          sessionID = decodeURIComponent(window.bserver.getSessions()[0]["cb.id"]);
+          sessionID = decodeURIComponent(window.bserver.getSessions()[0]);
           return mongoStore.get(sessionID, function(err, session) {
             session.user = $scope.username;
             mongoStore.set(sessionID, session, function() {});

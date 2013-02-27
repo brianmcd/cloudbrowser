@@ -61,7 +61,7 @@ class BrowserServer extends EventEmitter
         sessionIDS = []
         for socket in @sockets
             cookie = ParseCookie(socket.handshake.headers.cookie)
-            sessionIDS.push(cookie)
+            sessionIDS.push(cookie["cb.id"])
         return sessionIDS
 
     # arg can be an Application or URL string.

@@ -2,7 +2,7 @@ CBAuthentication = angular.module("CBAuthentication", [])
 Mongo = require("mongodb")
 Express = require("express")
 MongoStore = require("connect-mongo")(Express)
-CloubBrowserDb_server = new Mongo.Server("localhost", 27017,
+CloudBrowserDb_server = new Mongo.Server("localhost", 27017,
   auto_reconnect: true
 )
 CloudBrowserDb = new Mongo.Db("cloudbrowser", CloudBrowserDb_server)
@@ -30,7 +30,7 @@ CBAuthentication.controller "LoginCtrl", ($scope) ->
           username: $scope.username
         , (err, item) ->
           if item and item.password is $scope.password
-            sessionID = decodeURIComponent(window.bserver.getSessions()[0]["cb.id"])
+            sessionID = decodeURIComponent(window.bserver.getSessions()[0])
             mongoStore.get sessionID, (err, session) ->
               unless err
                 session.user = $scope.username
@@ -84,7 +84,7 @@ CBAuthentication.controller "SignupCtrl", ($scope) ->
           password: $scope.password
 
         collection.insert user
-        sessionID = decodeURIComponent(window.bserver.getSessions()[0]["cb.id"])
+        sessionID = decodeURIComponent(window.bserver.getSessions()[0])
         mongoStore.get sessionID, (err, session) ->
           session.user = $scope.username
           mongoStore.set sessionID, session, ->
