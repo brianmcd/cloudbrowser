@@ -18,19 +18,24 @@
       <h1 class="page-header pagination-centered">CloudBrowser</h1>
       <div class="row-fluid">
         <div class="span4 offset4 well">
-          <form id="login" ng-controller="LoginCtrl" ng-submit="login()">
+          <form id="login" ng-controller="LoginCtrl">
             <fieldset>
               <legend>Log In</legend>
+              <div class="control-group pagination-centered" ng-class="{true:'error'}[email_error]">
+                <div class="controls">
+                  <input class="span8" type="text" placeholder="Email" ng-model="email">
+                  <span class="help-inline" ng-show="email_error">Invalid Email ID</span>
+                </div>
+              </div>
+              <div class="control-group pagination-centered" ng-show="showPassword">
+                <div class="controls">
+                  <input class="span8" type="password" placeholder="Password" ng-model="password">
+                </div>
+              </div>
               <div class="control-group pagination-centered">
                 <div class="controls">
-                  <input class="span8" type="text" placeholder="Username" ng-model="username" required>
-                </div>
-                <div class="controls">
-                  <input class="span8" type="password" placeholder="Password" ng-model="password" name="password" required>
-                </div>
-                <div class="controls">
-                  <button class="btn btn-primary" type="submit" ng-disabled="isDisabled">Log In</button>
-                  <span class="text-error" ng-show="error">Login Failed</span>
+                  <button class="btn btn-primary" ng-click="continue()" ng-disabled="isDisabled">{{loginText}}</button>
+                  <span class="text-error" ng-show="login_error"><br>{{login_error}}</span>
                 </div>
               </div>
             </fieldset>
@@ -38,26 +43,27 @@
           <form id="signup" ng-controller="SignupCtrl" ng-submit="signup()">
             <fieldset>
               <legend>Sign Up</legend>
-              <div class="control-group pagination-centered" ng-class="{true:'error'}[!!uerror]">
+              <div class="control-group pagination-centered" ng-class="{true:'error'}[!!email_error]">
                 <div class="controls">
-                  <input class="span8" type="text" name="username" placeholder="Username" ng-model="username" required>
-                  <span class="help-inline" ng-show="uerror">Username Exists</span>
+                  <input class="span8" type="text" placeholder="Email" ng-model="email">
+                  <span class="help-inline" ng-show="email_error">{{email_error}}</span>
                 </div>
               </div>
               <div class="control-group pagination-centered">
                 <div class="controls">
-                  <input class="span8" type="password" name="password" placeholder="Password" ng-model="password" required>
+                  <input class="span8" type="password" placeholder="Password" ng-model="password">
                 </div>
               </div>
               <div class="control-group pagination-centered" ng-class="{true:'error'}[password != vpassword]">
                 <div class="controls">
-                  <input class="span8" type="password" name="vpassword" placeholder="Retype Password" ng-model="vpassword" required>
+                  <input class="span8" type="password" placeholder="Retype Password" ng-model="vpassword">
                   <span class="help-inline" ng-show="password != vpassword">Passwords don't match!</span>
                 </div>
               </div>
               <div class="control-group pagination-centered">
                 <div class="controls">
-                  <button class="btn btn-success" type="submit" ng-disabled="isDisabled">Sign Up</button>
+                  <button class="btn btn-success" type="submit" ng-disabled="isDisabled">Sign Up as Local User</button>
+                  <span class="text-error" ng-show="signup_error"><br>{{signup_error}}</span>
                 </div>
               </div>
             </fieldset>
