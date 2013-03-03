@@ -69,6 +69,40 @@ class HTTPServer extends EventEmitter
         # strategies for creating browsers should be pluggable (e.g. creating
         # a browser from a URL sent via POST).
 
+
+        #Ashima - Make a similar route for post
+        @server.get "/checkauth", (req, res) ->
+            #unsuccessful authentication
+            if req.query.openid.mode == "cancel"
+                res.writeHead 302,
+                    {'Location' : "/authenticate",'Cache-Control' : "max-age=0, must-revalidate"}
+                res.end()
+            else
+                #Ashima - use openid.claimed_id?
+                console.log req.query.ax.value.email
+                req.session.user = req.query.ax.value.email
+                req.session.save()
+                redirectURL = req.query.return_to.split("?redirectto=")
+                console.log redirectURL
+                if redirectURL.length > 1
+                  console.log "Redirecting to " + redirectURL[1]
+                  res.writeHead 302,
+                      {'Location' : redirectURL[1],'Cache-Control' : "max-age=0, must-revalidate"}
+                  res.end()
+                else
+                  console.log "Redirecting to " + mountPointNoSlash
+                  res.writeHead 302,
+                      {'Location' : mountPointNoSlash,'Cache-Control' : "max-age=0, must-revalidate"}
+                  res.end()
+
+        @server.get mountPointNoSlash + "/logout", (req, res) ->
+            #Ashima - Verify if session is associated with application having this mountpoint
+            if req.session
+                req.session.destroy()
+                res.writeHead 302,
+                    {'Location' : mountPoint,'Cache-Control' : "max-age=0, must-revalidate"}
+                res.end()
+
         if @config.authenticationInterface
             @server.get mountPoint, (req, res) =>
                 if !req.session.user && !app.isAuthenticationApp

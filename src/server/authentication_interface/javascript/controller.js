@@ -1,5 +1,5 @@
 (function() {
-  var CBAuthentication, CloudBrowserDb, CloudBrowserDb_server, Express, Http, Https, Mongo, MongoStore, mongoStore, redirectURL;
+  var CBAuthentication, CloudBrowserDb, CloudBrowserDb_server, Express, Https, Mongo, MongoStore, Xml2JS, authentication_string, getJSON, mongoStore, redirectURL;
 
   CBAuthentication = angular.module("CBAuthentication", []);
 
@@ -9,9 +9,9 @@
 
   MongoStore = require("connect-mongo")(Express);
 
-  Http = require('http');
-
   Https = require('https');
+
+  Xml2JS = require('xml2js');
 
   CloudBrowserDb_server = new Mongo.Server("localhost", 27017, {
     auto_reconnect: true
@@ -33,21 +33,26 @@
     }
   });
 
-  /*
-  OpenIDEndpoint
-    host: 'www.google.com'
-    port: 443
-    path: '/accounts/o8/id'
-    method: 'GET'
-    headers:
-      'Content-Type': 'application/xrds+xml'
-  
-  GoogleAuthenticationEndpoint
-    host: 'www.google.com'
-    port: 443
-    path: ''
-    method: 'GET'
-  */
+  authentication_string = "?openid.ns=http://specs.openid.net/auth/2.0" + "&openid.ns.pape=http:\/\/specs.openid.net/extensions/pape/1.0" + "&openid.ns.max_auth_age=300" + "&openid.claimed_id=http:\/\/specs.openid.net/auth/2.0/identifier_select" + "&openid.identity=http:\/\/specs.openid.net/auth/2.0/identifier_select" + "&openid.return_to=" + window.bserver.domain + "/checkauth?redirectto=" + (window.bserver.redirectURL != null ? window.bserver.redirectURL : "") + "&openid.realm=" + window.bserver.domain + "&openid.mode=checkid_setup" + "&openid.ui.ns=http:\/\/specs.openid.net/extensions/ui/1.0" + "&openid.ui.mode=popup" + "&openid.ui.icon=true" + "&openid.ns.ax=http:\/\/openid.net/srv/ax/1.0" + "&openid.ax.mode=fetch_request" + "&openid.ax.type.email=http:\/\/axschema.org/contact/email" + "&openid.ax.type.language=http:\/\/axschema.org/pref/language" + "&openid.ax.required=email,language";
+
+  getJSON = function(options, callback) {
+    var request;
+    request = Https.get(options, function(res) {
+      var output;
+      output = '';
+      res.setEncoding('utf8');
+      res.on('data', function(chunk) {
+        return output += chunk;
+      });
+      return res.on('end', function() {
+        return callback(res.statusCode, output);
+      });
+    });
+    request.on('error', function(err) {
+      return callback(-1, err);
+    });
+    return request.end;
+  };
 
   CBAuthentication.controller("LoginCtrl", function($scope) {
     $scope.email = null;
@@ -61,7 +66,20 @@
       if (!($scope.email != null)) {
         return $scope.login_error = "Please provide the Email ID";
       } else if (/@gmail\.com$/.test($scope.email)) {
-        return console.log("Login through gmail");
+        return getJSON("https://www.google.com/accounts/o8/id", function(statusCode, result) {
+          if (statusCode === -1) {
+            console.log("OpenID Discovery Endpoint " + result);
+            $scope.$apply(function() {
+              return $scope.login_error = "There was a failure in contacting the google discovery service";
+            });
+          }
+          return Xml2JS.parseString(result, function(err, result) {
+            var path, uri;
+            uri = result["xrds:XRDS"].XRD[0].Service[0].URI[0];
+            path = uri.substring(uri.indexOf('\.com') + 4);
+            return window.bserver.redirect("https://www.google.com" + path + authentication_string);
+          });
+        });
       } else if ($scope.buttonState === 0) {
         $scope.loginText = "Log In";
         $scope.buttonState = 1;
@@ -118,6 +136,7 @@
     $scope.vpassword = null;
     $scope.email_error = null;
     $scope.signup_error = null;
+    $scope.password_error = null;
     $scope.isDisabled = false;
     $scope.$watch("email", function(nval, oval) {
       $scope.email_error = null;
@@ -147,18 +166,21 @@
     });
     $scope.$watch("password+vpassword", function() {
       $scope.signup_error = "";
+      $scope.password_error = "";
       $scope.isDisabled = false;
-      if ($scope.password !== $scope.vpassword) return $scope.isDisabled = true;
+      if ($scope.password !== $scope.vpassword) {
+        $scope.isDisabled = true;
+        return $scope.password_error = "Passwords don't match!";
+      }
     });
     return $scope.signup = function() {
       $scope.isDisabled = true;
       if (!($scope.email != null) || !($scope.password != null)) {
-        $scope.signup_error = "Must provide both Email and Password!";
-      }
-      console.log($scope.email.toUpperCase());
-      console.log(/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}$/.test($scope.email.toUpperCase()));
-      if (!/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}$/.test($scope.email.toUpperCase())) {
+        return $scope.signup_error = "Must provide both Email and Password!";
+      } else if (!/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}$/.test($scope.email.toUpperCase())) {
         return $scope.email_error = "Not a valid Email ID!";
+      } else if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^\da-zA-Z])\S{8,15}$/.test($scope.password)) {
+        return $scope.password_error = "Password must be have a length between 8 - 15 characters, must contain atleast 1 <strong>uppercase</strong>, 1 <strong>lowercase</strong>, 1 <strong>digit</strong> and 1 <strong>special character</strong>. Spaces are not allowed.";
       } else {
         return CloudBrowserDb.collection("users", function(err, collection) {
           var sessionID, user;

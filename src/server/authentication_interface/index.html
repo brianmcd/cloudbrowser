@@ -54,10 +54,10 @@
                   <input class="span8" type="password" placeholder="Password" ng-model="password">
                 </div>
               </div>
-              <div class="control-group pagination-centered" ng-class="{true:'error'}[password != vpassword]">
+              <div class="control-group pagination-centered" ng-class="{true:'error'}[!!password_error]">
                 <div class="controls">
                   <input class="span8" type="password" placeholder="Retype Password" ng-model="vpassword">
-                  <span class="help-inline" ng-show="password != vpassword">Passwords don't match!</span>
+                  <span class="help-inline" ng-show="password_error" ng-bind-html-unsafe="password_error"></span>
                 </div>
               </div>
               <div class="control-group pagination-centered">
