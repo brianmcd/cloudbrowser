@@ -1,0 +1,5 @@
+{
+    "knockout" : true,
+    "instantiationLimit" : "oneperuser",
+    "state" : "chatboot.js"
+}

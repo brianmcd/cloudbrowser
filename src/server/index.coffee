@@ -53,7 +53,6 @@ defaults =
     port : 3000
     traceMem : false
     adminInterface : false
-    authenticationInterface : false
     simulateLatency : false
 
 class Server extends EventEmitter
@@ -65,8 +64,8 @@ class Server extends EventEmitter
             @emit('ready')
         @socketIOServer = @createSocketIOServer(@httpServer.server, @httpServer.mongoStore, AuthenticationInterface)
         @mount(@config.defaultApp) if @config.defaultApp?
+        @mountMultiple(@config.apps) if @config.apps?
         @mount(AdminInterface) if @config.adminInterface
-        @mount(AuthenticationInterface) if @config.authenticationInterface
         @setupEventTracker if @config.printEventStats
 
     setupEventTracker : () ->
@@ -84,7 +83,16 @@ class Server extends EventEmitter
             @emit('close')
         @httpServer.close()
 
+    mountMultiple : (apps) =>
+        for app in apps
+          @mount(app)
+          ###
+          if app.authenticationInterface
+            mount(AuthenticationInterface)
+          ###
+
     mount : (app) ->
+        console.log "Mounting " + app.mountPoint
         {mountPoint} = app
         browsers = app.browsers = if app.browserStrategy == 'multiprocess'
             new MultiProcessBrowserManager(this, mountPoint, app)

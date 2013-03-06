@@ -1,0 +1,57 @@
+<html>
+  <body style="font-family: Arial">
+    <table>
+      <thead>
+        <tr>
+          <th>First Name</th>
+          <th>Last Name</th>
+          <th>Phone Number</th>
+        </tr>
+      </thead>
+      <tbody data-bind="foreach: entries">
+        <tr data-bind="click: $parent.rowClick">
+          <td data-bind="text: fname" /></td>
+          <td data-bind="text: lname" /></td>
+          <td data-bind="text: phoneNumber" /></td>
+        </tr>
+      </tbody>
+    </table>
+    <button data-bind='click: create'>Add Entry</button>
+    <div data-bind="with: currentEntry">
+      <table>
+        <tr><td>First Name: </td><td><input data-bind='value: fname' /></td></tr>
+        <tr><td>Last Name: </td><td><input data-bind='value: lname' /></td></tr>
+        <tr><td>Phone Number: </td><td><input data-bind='value: phoneNumber' /></td></tr>
+      </table>
+      <button data-bind='click: $parent.save'>Save</button>
+      <button data-bind='click: $parent.remove'>Delete</button>
+    </div>
+    <script>
+      var phoneBook = vt.local;
+      phoneBook.getEntries(function (entries) {
+        var vm = {
+          entries      : ko.observableArray(entries),
+          currentEntry : ko.observable(),
+          rowClick     : function () {
+            vm.currentEntry(this);
+          },
+          save : function () {
+            this.save();
+            vm.entries.remove(this);
+            vm.entries.push(this);
+            vm.currentEntry(null);
+          },
+          remove : function () {
+            this.destroy();
+            vm.entries.remove(this);
+            vm.currentEntry(null);
+          },
+          create : function () {
+            this.currentEntry(phoneBook.createEntry());
+          }
+        };
+        ko.applyBindings(vm);
+      });
+    </script>
+  </body>
+</html>

@@ -7,6 +7,7 @@ class Application
          @sharedState,
          @localState,
          @isAuthenticationApp,
+         @authenticationInterface,
          @browserStrategy} = opts
 
         @remoteBrowsing = /^http/.test(@entryPoint)

@@ -19,6 +19,7 @@ ParseCookie          = require('cookie').parse
 # Serves 1 Browser to n clients.
 class BrowserServer extends EventEmitter
     constructor : (@server, @id, @mountPoint) ->
+        @domain = "theta.cs.vt.edu"
         if !@id? || !@mountPoint
             throw new Error("Missing required parameter")
         @browser = new Browser(@id, this)
@@ -153,10 +154,13 @@ class BrowserServer extends EventEmitter
             @queuedSockets = (s for s in @queuedSockets when s != socket)
 
         # TODO: don't do this workaround
-        oldApp = @server.config.defaultApp
+        oldApps = @server.config.apps
+        oldapp  = @server.config.defaultApp
+        @server.config.apps = null
         @server.config.defaultApp = null
         socket.emit('SetConfig', @server.config)
-        @server.config.defaultApp = oldApp
+        @server.config.apps = oldApps
+        @server.config.defaultApp = oldapp
 
         if !@browserInitialized
             return @queuedSockets.push(socket)

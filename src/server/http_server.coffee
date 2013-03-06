@@ -103,7 +103,7 @@ class HTTPServer extends EventEmitter
                     {'Location' : mountPoint,'Cache-Control' : "max-age=0, must-revalidate"}
                 res.end()
 
-        if @config.authenticationInterface
+        if app.authenticationInterface
             @server.get mountPoint, (req, res) =>
                 if !req.session.user && !app.isAuthenticationApp
                     res.writeHead 302,
