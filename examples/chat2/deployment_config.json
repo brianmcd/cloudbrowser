@@ -1,5 +1,5 @@
 {
-    "authenticationInterface": false,
+    "authenticationInterface": true,
     "readOnlyUsers": ["ALL"],
     "comments" : "This file is provided by the developer. Override default mountpoint. allowedUsers=users.mongodb"
 }

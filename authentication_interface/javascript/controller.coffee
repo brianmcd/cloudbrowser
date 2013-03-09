@@ -1,15 +1,19 @@
-CBAuthentication = angular.module("CBAuthentication", [])
-Mongo = require("mongodb")
-Express = require("express")
-MongoStore = require("connect-mongo")(Express)
-Https = require('https')
-Xml2JS = require('xml2js')
-CloudBrowserDb_server = new Mongo.Server("localhost", 27017,
+CBAuthentication        = angular.module("CBAuthentication", [])
+Mongo                   = require("mongodb")
+Express                 = require("express")
+MongoStore              = require("connect-mongo")(Express)
+Https                   = require('https')
+Xml2JS                  = require('xml2js')
+CloudBrowserDb_server   = new Mongo.Server("localhost", 27017,
   auto_reconnect: true
 )
 CloudBrowserDb = new Mongo.Db("cloudbrowser", CloudBrowserDb_server)
 mongoStore = new MongoStore(db: "cloudbrowser_sessions")
-redirectURL = window.bserver.redirectURL
+redirectURL = bserver.redirectURL
+console.log "REDIRECT" + redirectURL
+mountPoint = bserver.mountPoint.split("/")[1]
+baseURL = "http://" + config.domain + ":" + config.port + "/" + mountPoint
+console.log baseURL
 
 CloudBrowserDb.open (err, Db) ->
   unless err
@@ -22,8 +26,8 @@ authentication_string = "?openid.ns=http://specs.openid.net/auth/2.0" +
   "&openid.ns.max_auth_age=300" +
   "&openid.claimed_id=http:\/\/specs.openid.net/auth/2.0/identifier_select" +
   "&openid.identity=http:\/\/specs.openid.net/auth/2.0/identifier_select" +
-  "&openid.return_to=" + window.bserver.domain + "/checkauth?redirectto=" + (if window.bserver.redirectURL? then window.bserver.redirectURL else "") +
-  "&openid.realm=" + window.bserver.domain +
+  "&openid.return_to=" + bserver.domain + "/checkauth?redirectto=" + (if bserver.redirectURL? then bserver.redirectURL else "") +
+  "&openid.realm=" + bserver.domain +
   "&openid.mode=checkid_setup" +
   "&openid.ui.ns=http:\/\/specs.openid.net/extensions/ui/1.0" +
   "&openid.ui.mode=popup" +
@@ -66,7 +70,7 @@ CBAuthentication.controller "LoginCtrl", ($scope) ->
         Xml2JS.parseString result, (err, result) ->
           uri = result["xrds:XRDS"].XRD[0].Service[0].URI[0]
           path = uri.substring(uri.indexOf('\.com') + 4)
-          window.bserver.redirect("https://www.google.com" + path + authentication_string)
+          bserver.redirect("https://www.google.com" + path + authentication_string)
     else if $scope.buttonState == 0
       $scope.loginText = "Log In"
       $scope.buttonState = 1
@@ -82,15 +86,15 @@ CBAuthentication.controller "LoginCtrl", ($scope) ->
               email: $scope.email
             , (err, item) ->
               if item and item.password is $scope.password
-                sessionID = decodeURIComponent(window.bserver.getSessions()[0])
+                sessionID = decodeURIComponent(bserver.getSessions()[0])
                 mongoStore.get sessionID, (err, session) ->
                   unless err
                     session.user = $scope.email
                     mongoStore.set sessionID, session, ->
                     if redirectURL
-                      window.bserver.redirect "http://localhost:3000" + redirectURL
+                      bserver.redirect baseURL + redirectURL
                     else
-                      window.bserver.redirect "http://localhost:3000"
+                      bserver.redirect baseURL
                   else
                     console.log "Error in finding the session:" + sessionID + " Error:" + err
               else
@@ -155,13 +159,13 @@ CBAuthentication.controller "SignupCtrl", ($scope) ->
             email: $scope.email
             password: $scope.password
           collection.insert user
-          sessionID = decodeURIComponent(window.bserver.getSessions()[0])
+          sessionID = decodeURIComponent(bserver.getSessions()[0])
           mongoStore.get sessionID, (err, session) ->
             session.user = $scope.email
             mongoStore.set sessionID, session, ->
             if redirectURL
-              window.bserver.redirect "http://localhost:3000" + redirectURL
+              bserver.redirect baseURL + redirectURL
             else
-              window.bserver.redirect "http://localhost:3000"
+              bserver.redirect baseURL
         else
           console.log "The authentication interface was unable to connect to the users collection. Error:" + err

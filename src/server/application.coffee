@@ -6,7 +6,6 @@ class Application
          @mountPoint,
          @sharedState,
          @localState,
-         @isAuthenticationApp,
          @authenticationInterface,
          @browserStrategy} = opts
 

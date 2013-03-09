@@ -1,5 +1,5 @@
 (function() {
-  var CBAuthentication, CloudBrowserDb, CloudBrowserDb_server, Express, Https, Mongo, MongoStore, Xml2JS, authentication_string, getJSON, mongoStore, redirectURL;
+  var CBAuthentication, CloudBrowserDb, CloudBrowserDb_server, Express, Https, Mongo, MongoStore, Xml2JS, authentication_string, baseURL, getJSON, mongoStore, mountPoint, redirectURL;
 
   CBAuthentication = angular.module("CBAuthentication", []);
 
@@ -23,7 +23,15 @@
     db: "cloudbrowser_sessions"
   });
 
-  redirectURL = window.bserver.redirectURL;
+  redirectURL = bserver.redirectURL;
+
+  console.log("REDIRECT" + redirectURL);
+
+  mountPoint = bserver.mountPoint.split("/")[1];
+
+  baseURL = "http://" + config.domain + ":" + config.port + "/" + mountPoint;
+
+  console.log(baseURL);
 
   CloudBrowserDb.open(function(err, Db) {
     if (!err) {
@@ -33,7 +41,7 @@
     }
   });
 
-  authentication_string = "?openid.ns=http://specs.openid.net/auth/2.0" + "&openid.ns.pape=http:\/\/specs.openid.net/extensions/pape/1.0" + "&openid.ns.max_auth_age=300" + "&openid.claimed_id=http:\/\/specs.openid.net/auth/2.0/identifier_select" + "&openid.identity=http:\/\/specs.openid.net/auth/2.0/identifier_select" + "&openid.return_to=" + window.bserver.domain + "/checkauth?redirectto=" + (window.bserver.redirectURL != null ? window.bserver.redirectURL : "") + "&openid.realm=" + window.bserver.domain + "&openid.mode=checkid_setup" + "&openid.ui.ns=http:\/\/specs.openid.net/extensions/ui/1.0" + "&openid.ui.mode=popup" + "&openid.ui.icon=true" + "&openid.ns.ax=http:\/\/openid.net/srv/ax/1.0" + "&openid.ax.mode=fetch_request" + "&openid.ax.type.email=http:\/\/axschema.org/contact/email" + "&openid.ax.type.language=http:\/\/axschema.org/pref/language" + "&openid.ax.required=email,language";
+  authentication_string = "?openid.ns=http://specs.openid.net/auth/2.0" + "&openid.ns.pape=http:\/\/specs.openid.net/extensions/pape/1.0" + "&openid.ns.max_auth_age=300" + "&openid.claimed_id=http:\/\/specs.openid.net/auth/2.0/identifier_select" + "&openid.identity=http:\/\/specs.openid.net/auth/2.0/identifier_select" + "&openid.return_to=" + bserver.domain + "/checkauth?redirectto=" + (bserver.redirectURL != null ? bserver.redirectURL : "") + "&openid.realm=" + bserver.domain + "&openid.mode=checkid_setup" + "&openid.ui.ns=http:\/\/specs.openid.net/extensions/ui/1.0" + "&openid.ui.mode=popup" + "&openid.ui.icon=true" + "&openid.ns.ax=http:\/\/openid.net/srv/ax/1.0" + "&openid.ax.mode=fetch_request" + "&openid.ax.type.email=http:\/\/axschema.org/contact/email" + "&openid.ax.type.language=http:\/\/axschema.org/pref/language" + "&openid.ax.required=email,language";
 
   getJSON = function(options, callback) {
     var request;
@@ -77,7 +85,7 @@
             var path, uri;
             uri = result["xrds:XRDS"].XRD[0].Service[0].URI[0];
             path = uri.substring(uri.indexOf('\.com') + 4);
-            return window.bserver.redirect("https://www.google.com" + path + authentication_string);
+            return bserver.redirect("https://www.google.com" + path + authentication_string);
           });
         });
       } else if ($scope.buttonState === 0) {
@@ -96,15 +104,15 @@
               }, function(err, item) {
                 var sessionID;
                 if (item && item.password === $scope.password) {
-                  sessionID = decodeURIComponent(window.bserver.getSessions()[0]);
+                  sessionID = decodeURIComponent(bserver.getSessions()[0]);
                   return mongoStore.get(sessionID, function(err, session) {
                     if (!err) {
                       session.user = $scope.email;
                       mongoStore.set(sessionID, session, function() {});
                       if (redirectURL) {
-                        return window.bserver.redirect("http://localhost:3000" + redirectURL);
+                        return bserver.redirect(baseURL + redirectURL);
                       } else {
-                        return window.bserver.redirect("http://localhost:3000");
+                        return bserver.redirect(baseURL);
                       }
                     } else {
                       return console.log("Error in finding the session:" + sessionID + " Error:" + err);
@@ -190,14 +198,14 @@
               password: $scope.password
             };
             collection.insert(user);
-            sessionID = decodeURIComponent(window.bserver.getSessions()[0]);
+            sessionID = decodeURIComponent(bserver.getSessions()[0]);
             return mongoStore.get(sessionID, function(err, session) {
               session.user = $scope.email;
               mongoStore.set(sessionID, session, function() {});
               if (redirectURL) {
-                return window.bserver.redirect("http://localhost:3000" + redirectURL);
+                return bserver.redirect(baseURL + redirectURL);
               } else {
-                return window.bserver.redirect("http://localhost:3000");
+                return bserver.redirect(baseURL);
               }
             });
           } else {

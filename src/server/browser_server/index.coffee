@@ -22,7 +22,7 @@ class BrowserServer extends EventEmitter
         @domain = "theta.cs.vt.edu"
         if !@id? || !@mountPoint
             throw new Error("Missing required parameter")
-        @browser = new Browser(@id, this)
+        @browser = new Browser(@id, this, @server)
 
         @browser.on 'PageLoaded', () =>
             @browser.window.addEventListener 'hashchange', (event) =>
@@ -155,12 +155,10 @@ class BrowserServer extends EventEmitter
 
         # TODO: don't do this workaround
         oldApps = @server.config.apps
-        oldapp  = @server.config.defaultApp
         @server.config.apps = null
         @server.config.defaultApp = null
         socket.emit('SetConfig', @server.config)
         @server.config.apps = oldApps
-        @server.config.defaultApp = oldapp
 
         if !@browserInitialized
             return @queuedSockets.push(socket)

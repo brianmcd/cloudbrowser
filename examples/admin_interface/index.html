@@ -1,0 +1,39 @@
+<html ng-app="CBAdmin">
+    <head>
+        <title>CloudBrowser - Administration Interface</title>
+        <script type="text/javascript" src='javascript/angular.js'></script>
+        <script type="text/javascript" src='javascript/controller.js'></script>
+        <link href="css/bootstrap.css" rel="stylesheet">
+        <link href="css/bootstrap-responsive.css" rel="stylesheet">
+        <link rel='stylesheet' href='css/font-awesome.css'>
+        <link rel='stylesheet' href='css/style.css'>
+    </head>
+    <body>
+        <div class="container-fluid">
+            <div class="row-fluid">
+                <div class="span8 offset2" ng-controller="AppCtrl">
+                    <div class="page-header pagination-centered">
+                        <h3>CloudBrowser Administration Interface</h3>
+                    </div>
+                    <table class="table table-bordered">
+                        <thead>
+                            <th>Application</th>
+                            <th>Virtual Browsers</th>
+                        </thead>
+                        <tbody>
+                        <tr ng-repeat="(mountPoint,app) in apps">
+                            <td><a href="{{mountPoint}}" ng-click="click(mountPoint)" target="_blank">{{mountPoint}}</a></td>
+                            <td>
+                                <div ng-repeat="(id,browser) in app.browsers.browsers">
+                                    <a href="http://{{domain}}:{{port}}{{mountPoint}}/browsers/{{id}}/index">{{id}}</a>
+                                    <i id="remove" class="icon-remove-sign icon-large" ng-click="deleteVB(mountPoint,id)"></i>
+                                </div>
+                            </td>
+                        </tr> 
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div> 
+    </body>
+</html>

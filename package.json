@@ -38,8 +38,7 @@
     "connect-mongo"    : "0.3.2",
     "mongodb"          : "1.2.12",
     "cookie"           : "0.0.5",
-    "xml2js"           : "0.2.6",
-    "walkdir"          : "0.0.5"
+    "xml2js"           : "0.2.6"
   },
   "devDependencies": {
     "nodeunit": "0.6.4"

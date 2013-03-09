@@ -1,70 +1,70 @@
-Path            = require('path')
-{EventEmitter}  = require('events')
-FS              = require('fs')
-express         = require('express')
-sio             = require('socket.io')
-BrowserManager  = require('./browser_manager')
-DebugServer     = require('./debug_server')
-Application     = require('./application')
-HTTPServer      = require('./http_server')
-Managers        = require('./browser_manager')
-AdminInterface  = require('./admin_interface')
-AuthenticationInterface = require('./authentication_interface')
-ParseCookie    = require('cookie').parse
-#Signature      = require('cookie-signature')     Ashima - Will require this if we want the cookies to be signed (which is default in later versions of express) 
+Path                = require('path')
+{EventEmitter}      = require('events')
+FS                  = require('fs')
+express             = require('express')
+sio                 = require('socket.io')
+DebugServer         = require('./debug_server')
+Application         = require('./application')
+HTTPServer          = require('./http_server')
+Managers            = require('./browser_manager')
+AdminInterface      = require('./admin_interface')
+ParseCookie         = require('cookie').parse
+ApplicationManager  = require('./application_manager')
 
 {MultiProcessBrowserManager, InProcessBrowserManager} = Managers
 
 # Server options:
-#   debug           - bool - Enable debug mode.
-#   noLogs          - bool - Disable all logging to files.
-#   debugServer     - bool - Enable the debug server.
+#   adminInterface  - bool - Enable the admin interface.
+#   appDir          - str  - Path of directory where all the applications are stored.
 #   compression     - bool - Enable protocol compression.
 #   compressJS      - bool - Pass socket.io client and client engine through
 #                            uglify and gzip.
+#   debug           - bool - Enable debug mode.
+#   debugServer     - bool - Enable the debug server.
+#   domain          - str  - Domain name of server.
 #   knockout        - bool - Enable server-side knockout.js bindings.
+#   monitorTraffic  - bool - Monitor/log traffic to/from socket.io clients.
+#   multiProcess    - bool - Run each browser in its own process.
+#   noLogs          - bool - Disable all logging to files.
+#   port            - integer - Port to use for the server.
+#   resourceProxy   - bool - Enable the resource proxy.
+#   simulateLatency - bool | number - Simulate latency for clients in ms.
 #   strict          - bool - Enable strict mode - uncaught exceptions exit the
 #                            program.
-#   resourceProxy   - bool - Enable the resource proxy.
-#   monitorTraffic  - bool - Monitor/log traffic to/from socket.io clients.
+#   traceMem        - bool - Trace memory usage.
 #   traceProtocol   - bool - Log protocol messages to #{browserid}-rpc.log.
-#   multiProcess    - bool - Run each browser in its own process.
 #   useRouter       - bool - Use a front-end router process with each app server
 #                            in its own process.
-#   port            - integer - Port to use for the server.
-#   traceMem        - bool - Trace memory usage.
-#   adminInterface  - bool - Enable the admin interface.
-#   authenticationInterface - bool - Enable the authentication interface
-#   simulateLatency - bool | number - Simulate latency for clients in ms.
-#   app             - Application - The application to serve from this server.
 defaults =
-    debug : false
-    noLogs : true
-    debugServer : false
-    compression : true
-    compressJS : false
-    knockout : false
-    strict : false
-    resourceProxy : true
-    monitorTraffic : false
-    traceProtocol : false
-    multiProcess : false
-    useRouter : false
-    port : 3000
-    traceMem : false
-    adminInterface : false
+    adminInterface  : false
+    appDir          : "applications"
+    compression     : true
+    compressJS      : false
+    debug           : false
+    debugServer     : false
+    domain          : "localhost"
+    knockout        : false
+    monitorTraffic  : false
+    multiProcess    : false
+    noLogs          : true
+    port            : 3000
+    resourceProxy   : true
     simulateLatency : false
+    strict          : false
+    traceMem        : false
+    traceProtocol   : false
+    useRouter       : false
 
 class Server extends EventEmitter
     constructor : (@config = {}) ->
         for own k, v of defaults
             @config[k] = if @config.hasOwnProperty k then @config[k] else v
 
-        @httpServer = new HTTPServer @config, () =>
+        @applicationManager = new ApplicationManager(@config.appDir)
+        @httpServer = new HTTPServer @config,@applicationManager, () =>
             @emit('ready')
-        @socketIOServer = @createSocketIOServer(@httpServer.server, @httpServer.mongoStore, AuthenticationInterface)
-        @mount(@config.defaultApp) if @config.defaultApp?
-        @mountMultiple(@config.apps) if @config.apps?
+        @socketIOServer = @createSocketIOServer(@httpServer.server, @httpServer.mongoStore, @config.apps)
+        @mountMultiple(@applicationManager.applications) if @applicationManager.applications?
         @mount(AdminInterface) if @config.adminInterface
         @setupEventTracker if @config.printEventStats
 
@@ -84,12 +84,8 @@ class Server extends EventEmitter
         @httpServer.close()
 
     mountMultiple : (apps) =>
-        for app in apps
+        for mountPoint, app of apps
           @mount(app)
-          ###
-          if app.authenticationInterface
-            mount(AuthenticationInterface)
-          ###
 
     mount : (app) ->
         console.log "Mounting " + app.mountPoint
@@ -100,26 +96,24 @@ class Server extends EventEmitter
             new InProcessBrowserManager(this, mountPoint, app)
         @httpServer.setupMountPoint(browsers, app)
 
-    createSocketIOServer : (http, mongoStore, authentication_app) ->
+    createSocketIOServer : (http, mongoStore, apps) ->
         browserManagers = @httpServer.mountedBrowserManagers
+        applicationManager = @applicationManager
         io = sio.listen(http)
         io.configure () =>
             if @config.compressJS
                 io.set('browser client minification', true)
                 io.set('browser client gzip', true)
             io.set('log level', 1)
-            if @config.authenticationInterface
-                io.set 'authorization', (handshakeData, callback) ->
-                    browserID = handshakeData.headers.referer.split('\/')
-                    browserID = browserID[browserID.indexOf('browsers') + 1]
-                    browser = authentication_app.browsers.find(browserID)
-                    #If VB is an authentication VB, let is connect to websocket server
-                    if browser
-                        callback(null, true)
-                    else if handshakeData.headers.cookie
+            io.set 'authorization', (handshakeData, callback) ->
+                #Ashima - Browsers can turn off sending of the referer header and is this secure enough anyway?
+                referer = handshakeData.headers.referer.split('\/')
+                if referer
+                    mountPoint = "/" + referer[3]
+                    isAuthenticationReq = (referer[4] == "authenticate")
+                    app = applicationManager.find(mountPoint)
+                    if app.authenticationInterface && not isAuthenticationReq
                         handshakeData.cookie = ParseCookie(handshakeData.headers.cookie)
-                        #Ashima - Needed if we plan to sign the cookies
-                        #handshakeData.sessionID = Signature.unsign(handshakeData.cookie['cb.id'].replace("s:", ""), "change me please")
                         handshakeData.sessionID = handshakeData.cookie['cb.id']
                         mongoStore.get handshakeData.sessionID, (err, session) ->
                             if err
@@ -127,13 +121,15 @@ class Server extends EventEmitter
                             else
                                 if session.user
                                     handshakeData.session = session
-                                    #Ashima - Using anything other than null sends 500 instead of 403
+                                    #Using anything other than null sends 500 instead of 403
                                     callback(null, true)
                                 else
                                     callback(null, false)
                     else
-                        callback(null, false)
-              
+                        callback null, true
+                else
+                    callback null, false
+
         io.sockets.on 'connection', (socket) =>
             @addLatencyToClient(socket) if @config.simulateLatency
             socket.on 'auth', (app, browserID) =>

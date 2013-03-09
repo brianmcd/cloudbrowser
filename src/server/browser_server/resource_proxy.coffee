@@ -38,7 +38,7 @@ class ResourceProxy
             res.writeHead(200, {'Content-Type' : type})
             if type == 'text/css'
                 data = (new Buffer data).toString()
-                data = data.replace /url\(\"?(.+)\"?\)/g, (matched, original) =>
+                data = data.replace /url\(\"?(.+)\"\)/g, (matched, original) =>
                     newURL = @addURL(URL.resolve(path, original))
                     return "url(\"#{newURL}\")"
             res.write(data)

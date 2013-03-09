@@ -8,20 +8,19 @@ MongoStore     = require('connect-mongo')(express)
 Mongo          = require('mongodb')
 
 class HTTPServer extends EventEmitter
-    constructor : (@config, callback) ->
+    constructor : (@config, @applicationManager, callback) ->
         server = @server = express.createServer()
         @clientEngineModified = new Date().toString()
         @clientEngineJS = null
         @mountedBrowserManagers = {}
-        #Ashima - Have to remove hardcoded localhost
-        @db_server = new Mongo.Server('localhost', 27017, {auto_reconnect:true})
+        @db_server = new Mongo.Server(@config.domain, 27017, {auto_reconnect:true})
         @db = new Mongo.Db('cloudbrowser', @db_server)
         @mongoStore = new MongoStore({db:'cloudbrowser_sessions'})
         @db.open (err, db) ->
           if !err
-              console.log("Connected to Database")
+              console.log "Connection to Database cloudbrowser established"
           else
-              console.log("Database Connection Error : " + err)
+              console.log err
 
         server.configure () =>
             if !process.env.TESTS_RUNNING
@@ -71,7 +70,7 @@ class HTTPServer extends EventEmitter
 
 
         #Ashima - Make a similar route for post
-        @server.get "/checkauth", (req, res) ->
+        @server.get app.mountPoint + "/checkauth", (req, res) ->
             #unsuccessful authentication
             if req.query.openid.mode == "cancel"
                 res.writeHead 302,
@@ -83,7 +82,7 @@ class HTTPServer extends EventEmitter
                 req.session.user = req.query.ax.value.email
                 req.session.save()
                 redirectURL = req.query.return_to.split("?redirectto=")
-                console.log redirectURL
+                console.log "Redirect to " + redirectURL
                 if redirectURL.length > 1
                   console.log "Redirecting to " + redirectURL[1]
                   res.writeHead 302,
@@ -105,16 +104,16 @@ class HTTPServer extends EventEmitter
 
         if app.authenticationInterface
             @server.get mountPoint, (req, res) =>
-                if !req.session.user && !app.isAuthenticationApp
+                if !req.session.user
                     res.writeHead 302,
-                        {'Location' : "/authenticate",'Cache-Control' : "max-age=0, must-revalidate"}
+                        {'Location' : mountPointNoSlash + "/authenticate",'Cache-Control' : "max-age=0, must-revalidate"}
                     res.end()
                 else
                     id = req.session.browserID
                     if !id? || !browsers.find(id)
                       bserver = browsers.create(app)
                       id = req.session.browserID = bserver.id
-                      bserver.redirectURL = req.query.redirectto
+                      #bserver.redirectURL = req.query.redirectto
                     #Ashima - What should be done if we can't find the browser?
                     res.writeHead 301,
                         {'Location' : "#{mountPointNoSlash}/browsers/#{id}/index",'Cache-Control' : "max-age=0, must-revalidate"}
@@ -122,10 +121,10 @@ class HTTPServer extends EventEmitter
 
             # Route to connect to a virtual browser.
             @server.get "#{mountPointNoSlash}/browsers/:browserid/index", (req, res) ->
-                if !req.session.user && !app.isAuthenticationApp
+                if !req.session.user
                     queryString = "?redirectto=" + "#{mountPointNoSlash}/browsers/" + req.params.browserid + "/index"
                     res.writeHead 302,
-                        {'Location' : "/authenticate" + queryString, 'Cache-Control' : "max-age=0, must-revalidate"}
+                        {'Location' : mountPointNoSlash + "/authenticate" + queryString, 'Cache-Control' : "max-age=0, must-revalidate"}
                     res.end()
                 else
                     id = decodeURIComponent(req.params.browserid)
@@ -136,10 +135,10 @@ class HTTPServer extends EventEmitter
 
             # Route for ResourceProxy
             @server.get "#{mountPointNoSlash}/browsers/:browserid/:resourceid", (req, res) =>
-                if !req.session.user && !app.isAuthenticationApp
+                if !req.session.user
                     queryString = "?redirectto=" + "#{mountPointNoSlash}/browsers/" + req.params.browserid + "/" + req.params.resourceid
                     res.writeHead 302,
-                        {'Location' : "/authenticate" + queryString, 'Cache-Control' : "max-age=0, must-revalidate"}
+                        {'Location' : mountPointNoSlash + "/authenticate" + queryString, 'Cache-Control' : "max-age=0, must-revalidate"}
                     res.end()
                 else
                     resourceid = req.params.resourceid

@@ -13,7 +13,7 @@ if TESTS_RUNNING
     QUnit = require('./qunit')
 
 class Browser extends EventEmitter
-    constructor : (@id, @bserver) ->
+    constructor : (@id, @bserver, @server) ->
         @window = null
         @components = {}
         @clientComponents = []
@@ -53,6 +53,7 @@ class Browser extends EventEmitter
         if arg instanceof Application
             url = arg.entryURL()
             app = arg
+            @bserver.mountPoint = arg.mountPoint
         else url = arg
 
         @emit 'PageLoading',
@@ -95,6 +96,9 @@ class Browser extends EventEmitter
         @window.require = require
         @window.process = process
         @window.bserver = @bserver
+        @window.config = @server.config
+        if app.mountPoint == "/admin_interface"
+            @window.server  = @server
         EmbedAPI(this, @bserver)
         # If an app needs server-side knockout, we have to monkey patch
         # some ko functions.
