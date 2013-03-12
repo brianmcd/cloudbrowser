@@ -95,6 +95,7 @@ class Browser extends EventEmitter
         # based on a package.json manifest.
         @window.require = require
         @window.process = process
+        @window.Buffer  = Buffer
         @window.bserver = @bserver
         @window.config = @server.config
         if app.mountPoint == "/admin_interface"

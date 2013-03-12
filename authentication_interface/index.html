@@ -1,75 +1,118 @@
 <!DOCTYPE html>
 <html ng-app="CBAuthentication">
-  <head>
-    <title>CloudBrowser</title>
-    <script type="text/javascript" src='javascript/angular.js'></script>
-    <script type="text/javascript" src='javascript/controller.js'></script>
-    <link href="css/bootstrap.css" rel="stylesheet">
-    <link href="css/bootstrap-responsive.css" rel="stylesheet">
-    <style>
-      input{
-        height:40px !important;
-        font-size:16px !important;
-      }
-    </style>
-  </head>
-  <body>
-    <div class="container-fluid">
-      <h1 class="page-header pagination-centered">CloudBrowser</h1>
-      <div class="row-fluid">
-        <div class="span4 offset4 well">
-          <form id="login" ng-controller="LoginCtrl">
-            <fieldset>
-              <legend>Log In</legend>
-              <div class="control-group pagination-centered" ng-class="{true:'error'}[email_error]">
-                <div class="controls">
-                  <input class="span8" type="text" placeholder="Email" ng-model="email">
-                  <span class="help-inline" ng-show="email_error">Invalid Email ID</span>
+    <head>
+        <title>CloudBrowser</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link rel="stylesheet" href="css/bootstrap.css">
+        <link rel="stylesheet" href="css/bootstrap-responsive.css">
+        <script type="text/javascript" src='javascript/angular.js'></script>
+        <script type="text/javascript" src='javascript/controller.js'></script>
+		<script src="javascript/jquery-latest.js"></script>
+		<script src="javascript/bootstrap.js"></script>
+        <style>
+            input{
+                height:40px !important;
+                font-size:16px !important;
+            }
+            #or{
+                margin:-30px auto 15px;
+                padding: 0 20px;
+                background-color: #fff;
+                width:20px;
+            }
+            hr{
+                border-top:1px solid #ccc;
+            }
+            #box{
+                border-radius:5px;
+                border: 1px solid #ccc;
+                padding:30px;
+                -webkit-box-shadow: 0px 2px 10px #ccc;
+                -moz-box-shadow: 0px 2px 10px #ccc;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container-fluid">
+            <h1 class="page-header pagination-centered">CloudBrowser</h1>
+            <div class="row-fluid">
+                <div class="tabbable span4 offset4" id="box">
+                    <ul class="nav nav-tabs">
+                        <li class="active"><a href="#tab1" data-toggle="tab">Log In</a></li>
+                        <li><a href="#tab2" data-toggle="tab">Sign Up</a></li>
+                    </ul>
+                    <div class="tab-content">
+                        <div class="tab-pane active" ng-controller="LoginCtrl" id="tab1">
+                            <form id="login" ng-submit="login()">
+                                <fieldset>
+                                    <div class="control-group pagination-centered">
+                                        <div class="controls">
+                                            <input class="span8" type="text" placeholder="Email" ng-model="email">
+                                        </div>
+                                    </div>
+                                    <div class="control-group pagination-centered">
+                                        <div class="controls">
+                                            <input class="span8" type="password" placeholder="Password" ng-model="password">
+                                        </div>
+                                    </div>
+                                    <div class="control-group pagination-centered">
+                                        <div class="controls">
+                                            <button class="btn btn-primary" type="submit" ng-disabled="isDisabled">Log In</button>
+                                            &nbsp;&nbsp;<input type="checkbox" name="PersistentCookie" value="yes" style="margin:0" ng-model="remember">
+                                            <span style="font-size:12px;"><strong>Keep me Logged In</strong></span>
+                                            <span class="text-error" ng-show="login_error"><br>{{login_error}}</span>
+                                        </div>
+                                    </div>
+                                </fieldset>
+                            </form>
+                            <div class="control-group pagination-centered">
+                                <div class="controls">
+                                    <hr>
+                                    <p id="or">or</p>
+                                    <button class="btn btn-primary" ng-click="googleLogin()"><img src="img/googlePlus.png" width="20px"> Log In with Google</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="tab-pane" ng-controller="SignupCtrl" id="tab2">
+                            <form id="signup" ng-submit="signup()">
+                                <fieldset>
+                                    <div class="control-group pagination-centered" ng-class="{true:'error'}[!!email_error]">
+                                        <div class="controls">
+                                            <input class="span8" type="text" placeholder="Email" ng-model="email">
+                                            <span class="help-inline" ng-show="email_error">{{email_error}}</span>
+                                        </div>
+                                    </div>
+                                    <div class="control-group pagination-centered" ng-class="{true:'error'}[!!password_error]">
+                                        <div class="controls">
+                                            <input class="span8" type="password" placeholder="Password" ng-model="password">
+                                            <span class="help-inline" ng-show="password_error">{{password_error}}</span>
+                                        </div>
+                                    </div>
+                                    <div class="control-group pagination-centered" ng-class="{true:'error'}[password != vpassword]">
+                                        <div class="controls">
+                                            <input class="span8" type="password" placeholder="Retype Password" ng-model="vpassword">
+                                            <span class="help-inline" ng-show="password != vpassword">Password's don't match!</span>
+                                        </div>
+                                    </div>
+                                    <div class="control-group pagination-centered">
+                                        <div class="controls">
+                                            <button class="btn btn-primary" type="submit" ng-disabled="isDisabled">Sign Up</button>
+                                            <span class="text-error" ng-show="signup_error"><br>{{signup_error}}</span>
+                                        </div>
+                                    </div>
+                                </fieldset>
+                            </form>
+                            <div class="control-group pagination-centered">
+                                <div class="controls">
+                                    <hr>
+                                    <p id="or">or</p>
+                                    <button class="btn btn-primary" ng-click="googleLogin()"><img src="img/googlePlus.png" width="20px"> Sign Up with Google</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-              </div>
-              <div class="control-group pagination-centered" ng-show="showPassword">
-                <div class="controls">
-                  <input class="span8" type="password" placeholder="Password" ng-model="password">
-                </div>
-              </div>
-              <div class="control-group pagination-centered">
-                <div class="controls">
-                  <button class="btn btn-primary" ng-click="continue()" ng-disabled="isDisabled">{{loginText}}</button>
-                  <span class="text-error" ng-show="login_error"><br>{{login_error}}</span>
-                </div>
-              </div>
-            </fieldset>
-          </form>
-          <form id="signup" ng-controller="SignupCtrl" ng-submit="signup()">
-            <fieldset>
-              <legend>Sign Up</legend>
-              <div class="control-group pagination-centered" ng-class="{true:'error'}[!!email_error]">
-                <div class="controls">
-                  <input class="span8" type="text" placeholder="Email" ng-model="email">
-                  <span class="help-inline" ng-show="email_error">{{email_error}}</span>
-                </div>
-              </div>
-              <div class="control-group pagination-centered">
-                <div class="controls">
-                  <input class="span8" type="password" placeholder="Password" ng-model="password">
-                </div>
-              </div>
-              <div class="control-group pagination-centered" ng-class="{true:'error'}[!!password_error]">
-                <div class="controls">
-                  <input class="span8" type="password" placeholder="Retype Password" ng-model="vpassword">
-                  <span class="help-inline" ng-show="password_error" ng-bind-html-unsafe="password_error"></span>
-                </div>
-              </div>
-              <div class="control-group pagination-centered">
-                <div class="controls">
-                  <button class="btn btn-success" type="submit" ng-disabled="isDisabled">Sign Up as Local User</button>
-                  <span class="text-error" ng-show="signup_error"><br>{{signup_error}}</span>
-                </div>
-              </div>
-            </fieldset>
-          </form>
+            </div>
         </div>
-      </div>
-    </div>
-  </body>
+    </body>
 </html>
