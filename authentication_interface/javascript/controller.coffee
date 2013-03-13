@@ -4,6 +4,7 @@ MongoStore              = require("connect-mongo")(Express)
 Https                   = require("https")
 Xml2JS                  = require("xml2js")
 Crypto                  = require("crypto")
+nodemailer              = require("nodemailer")
 CBAuthentication        = angular.module("CBAuthentication", [])
 CloudBrowserDb_server   = new Mongo.Server(config.domain, 27017,
     auto_reconnect: true
@@ -12,8 +13,9 @@ CloudBrowserDb          = new Mongo.Db("cloudbrowser", CloudBrowserDb_server)
 mongoStore              = new MongoStore(db: "cloudbrowser_sessions")
 #redirectURL            = bserver.redirectURL
 #console.log "REDIRECT" + redirectURL
+mountPoint              = bserver.mountPoint.split("/")[1]
 rootURL                 = "http://" + config.domain + ":" + config.port
-baseURL                 = rootURL + "/" + bserver.mountPoint.split("/")[1]
+baseURL                 = rootURL + "/" + mountPoint
 
 defaults =
     iterations : 10000
@@ -47,6 +49,31 @@ HashPassword = (config={}, callback) ->
             config.key = key
             callback config
 
+sendActivationEmail = (toEmailID, callback) ->
+    Crypto.randomBytes 32, (err, buf) ->
+        if err then callback err, null
+        else
+            buf = buf.toString 'hex'
+            confirmationMsg = "Please click on the link below to verify your email address.<br>" +
+            "<p><a href='#{baseURL}/activate/#{buf}'>Activate your account</a></p>" +
+            "<p>If you have received this message in error and did not sign up for a cloudbrowser account, click <a href='#{baseURL}/deactivate/#{buf}'>not my account</a></p>"
+            smtpTransport = nodemailer.createTransport "SMTP",
+                service: "Gmail"
+                auth:
+                    user: "ashimaathri@gmail.com"
+                    pass: "Jgilson*2716"
+
+            mailOptions =
+                from: "ashimaathri@gmail.com"
+                to: toEmailID
+                subject: "Activate your CloudBrowser Account"
+                html:confirmationMsg
+
+            smtpTransport.sendMail mailOptions, (error, response) ->
+                if error then callback error, null
+                else callback null, buf
+                smtpTransport.close()
+
 CloudBrowserDb.open (err, Db) ->
     unless err
         console.log "The authentication interface is connected to the database"
@@ -58,7 +85,7 @@ authentication_string = "?openid.ns=http://specs.openid.net/auth/2.0" +
     "&openid.ns.max_auth_age=300" +
     "&openid.claimed_id=http:\/\/specs.openid.net/auth/2.0/identifier_select" +
     "&openid.identity=http:\/\/specs.openid.net/auth/2.0/identifier_select" +
-    "&openid.return_to=" + rootURL + "/checkauth?redirectto=" + (if bserver.redirectURL? then bserver.redirectURL else "") +
+    "&openid.return_to=" + baseURL + "/checkauth?redirectto=" + (if bserver.redirectURL? then bserver.redirectURL else "") +
     "&openid.realm=" + rootURL +
     "&openid.mode=checkid_setup" +
     "&openid.ui.ns=http:\/\/specs.openid.net/extensions/ui/1.0" +
@@ -95,20 +122,22 @@ CBAuthentication.controller "LoginCtrl", ($scope) ->
             $scope.isDisabled = true
             CloudBrowserDb.collection "users", (err, collection) ->
                 unless err
-                    collection.findOne {email: $scope.email}, (err, item) ->
-                        if item
-                            HashPassword {password : $scope.password, salt : new Buffer(item.salt, 'hex')}, (result) ->
-                                if result.key.toString('hex') == item.key
+                    collection.findOne {email: $scope.email}, (err, user) ->
+                        if user and user.status isnt 'unverified'
+                            HashPassword {password : $scope.password, salt : new Buffer(user.salt, 'hex')}, (result) ->
+                                if result.key.toString('hex') == user.key
                                     sessionID = decodeURIComponent(bserver.getSessions()[0])
                                     mongoStore.get sessionID, (err, session) ->
                                         unless err
                                             session.user = $scope.email
+                                            ### Remember me
                                             if $scope.remember
                                                 session.cookie.maxAge = 24 * 60 * 60 * 1000
                                                 #notify the client
                                                 bserver.updateCookie(session.cookie.maxAge)
                                             else
                                                 session.cookie.expires = false
+                                            ###
                                             mongoStore.set sessionID, session, ->
                                                 if redirectURL? then bserver.redirect baseURL + redirectURL
                                                 else bserver.redirect baseURL
@@ -123,7 +152,6 @@ CBAuthentication.controller "LoginCtrl", ($scope) ->
             $scope.isDisabled = false
 
     $scope.googleLogin = ->
-        console.log "In googleLogin"
         getJSON "https://www.google.com/accounts/o8/id", (statusCode, result) ->
             if statusCode == -1 then $scope.$apply ->
                 $scope.login_error="There was a failure in contacting the google discovery service"
@@ -143,6 +171,7 @@ CBAuthentication.controller "SignupCtrl", ($scope) ->
     $scope.email_error = null
     $scope.signup_error = null
     $scope.password_error = null
+    $scope.success_message = null
     $scope.isDisabled = false
     $scope.$watch "email", (nval, oval) ->
         $scope.email_error = null
@@ -171,22 +200,35 @@ CBAuthentication.controller "SignupCtrl", ($scope) ->
         else if not /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^\da-zA-Z])\S{8,15}$/.test $scope.password
             $scope.password_error = "Password must be have a length between 8 - 15 characters, must contain atleast 1 uppercase, 1 lowercase, 1 digit and 1 special character. Spaces are not allowed."
         else
-            CloudBrowserDb.collection "users", (err, collection) ->
+            sendActivationEmail $scope.email, (err, buf) ->
                 unless err
-                    HashPassword {password:$scope.password}, (result) ->
-                        user =
-                            email: $scope.email
-                            key: result.key.toString('hex')
-                            salt: result.salt.toString('hex')
-                        collection.insert user
-                        sessionID = decodeURIComponent(bserver.getSessions()[0])
-                        mongoStore.get sessionID, (err, session) ->
-                            session.user = $scope.email
-                            mongoStore.set sessionID, session, ->
-                                if redirectURL? then bserver.redirect baseURL + redirectURL
-                                else bserver.redirect baseURL
+                    $scope.$apply ->
+                        $scope.success_message = true
+                    CloudBrowserDb.collection "users", (err, collection) ->
+                        unless err
+                            HashPassword {password:$scope.password}, (result) ->
+                                user =
+                                    email: $scope.email
+                                    key: result.key.toString('hex')
+                                    salt: result.salt.toString('hex')
+                                    status: 'unverified'
+                                    token: buf
+                                collection.insert user
+                                $scope.$apply ->
+                                    $scope.email = ""
+                                    $scope.password = ""
+                                    $scope.vpassword = ""
+                        else
+                            $scope.$apply ->
+                                $scope.signup_error = "Our system encountered an error! Please try again later."
+                            console.log err
                 else
-                  console.log err
+                    $scope.$apply ->
+                        $scope.success_message = false
+                        $scope.signup_error = "There was an error sending the confirmation email : " + err
+                        $scope.email = ""
+                        $scope.password = ""
+                        $scope.vpassword = ""
 
     $scope.googleLogin = ->
         getJSON "https://www.google.com/accounts/o8/id", (statusCode, result) ->

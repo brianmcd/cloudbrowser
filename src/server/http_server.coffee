@@ -19,8 +19,7 @@ class HTTPServer extends EventEmitter
         @db.open (err, db) ->
           if !err
               console.log "Connection to Database cloudbrowser established"
-          else
-              console.log err
+          else throw err
 
         server.configure () =>
             if !process.env.TESTS_RUNNING
@@ -69,31 +68,6 @@ class HTTPServer extends EventEmitter
         # a browser from a URL sent via POST).
 
 
-        #Ashima - Make a similar route for post
-        @server.get app.mountPoint + "/checkauth", (req, res) ->
-            #unsuccessful authentication
-            if req.query.openid.mode == "cancel"
-                res.writeHead 302,
-                    {'Location' : "/authenticate",'Cache-Control' : "max-age=0, must-revalidate"}
-                res.end()
-            else
-                #Ashima - use openid.claimed_id?
-                console.log req.query.ax.value.email
-                req.session.user = req.query.ax.value.email
-                req.session.save()
-                redirectURL = req.query.return_to.split("?redirectto=")
-                console.log "Redirect to " + redirectURL
-                if redirectURL.length > 1
-                  console.log "Redirecting to " + redirectURL[1]
-                  res.writeHead 302,
-                      {'Location' : redirectURL[1],'Cache-Control' : "max-age=0, must-revalidate"}
-                  res.end()
-                else
-                  console.log "Redirecting to " + mountPointNoSlash
-                  res.writeHead 302,
-                      {'Location' : mountPointNoSlash,'Cache-Control' : "max-age=0, must-revalidate"}
-                  res.end()
-
         @server.get mountPointNoSlash + "/logout", (req, res) ->
             #Ashima - Verify if session is associated with application having this mountpoint
             if req.session
@@ -103,6 +77,50 @@ class HTTPServer extends EventEmitter
                 res.end()
 
         if app.authenticationInterface
+            #Ashima - Make a similar route for post
+            @server.get app.mountPoint + "/checkauth", (req, res) ->
+                #unsuccessful authentication
+                if req.query['openid\.mode']? and req.query['openid\.mode'] is "cancel"
+                    console.log "Authentication unsuccessful"
+                    res.writeHead 302,
+                        {'Location' : "/authenticate",'Cache-Control' : "max-age=0, must-revalidate"}
+                    res.end()
+                else
+                    #console.log req.query
+                    req.session.user = req.query['openid\.ext1\.value\.email']
+                    req.session.save()
+                    ### Ashima - Fix redirection
+                    redirectURL = req.query['openid\.return_to'].split("?redirectto=")
+                    console.log "Redirect to " + redirectURL
+                    if redirectURL.length > 1
+                      console.log "Redirecting to " + redirectURL[1]
+                      res.writeHead 302,
+                          {'Location' : redirectURL[1],'Cache-Control' : "max-age=0, must-revalidate"}
+                      res.end()
+                    else
+                    ###
+                    res.writeHead 302,
+                        {'Location' : mountPointNoSlash,'Cache-Control' : "max-age=0, must-revalidate"}
+                    res.end()
+
+            thisObj = this
+            @server.get mountPointNoSlash + "/activate/:token", (req, res) ->
+                token = req.params.token
+                thisObj.db.collection "users", (err, collection) ->
+                    if err then throw err
+                    else collection.update {token: token}, {$unset: {token: "", status: ""}}, {w:1}, (err, result) ->
+                        if err then throw err
+                        else res.render 'activate.jade',
+                            url: "http://"+ thisObj.config.domain + ":" + thisObj.config.port + mountPoint
+
+            @server.get mountPointNoSlash + "/deactivate/:token", (req, res) ->
+                token = req.params.token
+                thisObj.db.collection "users", (err, collection) ->
+                    if err then throw err
+                    else collection.remove {token: token}, (err, result) ->
+                        if err then throw err
+                        else res.render 'deactivate.jade'
+
             @server.get mountPoint, (req, res) =>
                 if !req.session.user
                     res.writeHead 302,

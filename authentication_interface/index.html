@@ -98,6 +98,9 @@
                                         <div class="controls">
                                             <button class="btn btn-primary" type="submit" ng-disabled="isDisabled">Sign Up</button>
                                             <span class="text-error" ng-show="signup_error"><br>{{signup_error}}</span>
+                                            <span class="text-success" ng-show="success_message">
+                                                <br>Success! An email with a confirmation link has been sent to your email ID. Please click on it to verify your email.
+                                            </span>
                                         </div>
                                     </div>
                                 </fieldset>
