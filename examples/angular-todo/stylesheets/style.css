@@ -1,0 +1,55 @@
+body {
+  padding: 50px;
+  font: 14px "Lucida Grande", Helvetica, Arial, sans-serif;
+}
+.box {
+  border-radius: 5px;
+  -moz-box-shadow: 0 2px 7px #888;
+  -webkit-box-shadow: 0 2px 7px #888;
+  box-shadow: 0 2px 7px #888;
+}
+.todo-item {
+  margin-bottom: 10px;
+  border-bottom: 1px solid #e5e5e5;
+}
+.todo-item li {
+  display: inline;
+  padding: 10px;
+  -webkit-transition: all 0.4s;
+}
+.todo-item li.done {
+  text-decoration: line-through;
+  color: #a9a9a9;
+}
+.todo-item li:not(.item-name):hover {
+  -webkit-transform: scale(1.2);
+}
+.todo-item li:not(.item-name) {
+  cursor: pointer;
+}
+.item-name {
+  float: left;
+  font-size: 18px;
+}
+.hidden {
+  display: none !important;
+}
+a.disabled {
+  pointer-events: none;
+  color: #555;
+}
+#ok {
+  color: #468847;
+}
+#remove {
+  color: #b94a48;
+}
+#nav {
+  position: relative;
+  color: #a9a9a9;
+}
+#nav span {
+  position: absolute;
+  left: 0;
+  color: #888;
+}

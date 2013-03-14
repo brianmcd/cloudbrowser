@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en" ng-app="todo" ng-controller="TodoCtrl">
+  <head>
+    <title>ToDo</title> 
+    <meta name="viewport" content="width=device-width initial-scale=1.0">
+    <link rel='stylesheet' href='stylesheets/bootstrap.css'>
+    <link rel='stylesheet' href='stylesheets/bootstrap-responsive.css'>
+    <link rel='stylesheet' href='stylesheets/style.css'>
+    <link rel='stylesheet' href='stylesheets/font-awesome.css'>
+    <script type='text/javascript' src='javascripts/angular.js'></script>
+    <script type='text/javascript' src='javascripts/bootstrap.js'></script>
+    <script type='text/javascript' src='javascripts/controller.js'></script>
+  </head>
+  <body>
+    <div class="container-fluid">
+      <div class="row-fluid">
+        <div class="span4 offset4 box pagination-centered">
+          <form ng-submit="addItem()">
+            <fieldset>
+              <legend>ToDo List</legend>
+              <input class="span8" type="text" ng-model="newItem" placeholder="Add an item to do">
+            </fieldset>
+          </form>
+          <div ng-repeat="item in todoList" ng-controller="ItemCtrl" ng-class="{true:'hidden'}[(item.done && (state == 1)) || (!item.done && (state == 2))]" class="span10 offset1 todo-item">
+            <ul class="unstyled">
+              <li class="pull-left" id="ok" title="Completed" ng-click="toggleCompleted()"><i class="icon-ok icon-2x"></i></li>
+              <li class="item-name" ng-class="{true:'done'}[item.done]"><span>{{item.name}}</span></li>
+              <li class="pull-right" id="remove" title="Delete" ng-click="removeItem()"><i class="icon-remove-sign icon-2x"></i></li>
+            </ul>
+          </div>
+          <div class="span12" id="nav">
+            <span><b>{{remainingCount}}</b> item{{plural}} left</span>
+            <a ng-click="state=0" ng-class="{0:'disabled'}[state]">All</a> |
+            <a ng-click="state=1" ng-class="{1:'disabled'}[state]">Active</a> |
+            <a ng-click="state=2" ng-class="{2:'disabled'}[state]">Completed</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
