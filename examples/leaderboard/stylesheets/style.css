@@ -1,0 +1,64 @@
+body{
+  font-size:18px;
+}
+i{
+  cursor:pointer;
+}
+td,th{
+  position:relative;
+}
+thead i{
+  display:inline-block;
+  color:#08c;
+  -webkit-opacity:0.5;
+  -webkit-transition: all 0.4s;
+  padding:1px;
+}
+thead i:hover{
+  opacity:1;
+}
+thead i.formclose{
+  display:inline-block;
+  -webkit-transition: all 0.4s;
+  -webkit-transform:rotate(45deg);
+}
+td i{
+  display:none !important;
+  position:absolute;
+}
+td:hover i{
+  display:inline-block !important;
+}  
+td.name i{
+  color:#9d261d;
+  right:10px;
+}
+#addForm{
+  width:0 !important;
+  -webkit-transition: all 0.4s;
+  overflow:hidden;
+  display:inline-block;
+  margin-bottom:0;
+  height:24px;
+}
+#addForm input{
+  height:13px;
+  margin-bottom:0;
+}
+#addForm.visible{
+  width:220px !important;
+}
+.selected{
+  background-color:#d9edf7;
+}
+i#dock{
+  color:#9d261d;
+  display:inline-block;
+}
+i#add{
+  color:#46a546;
+  display:inline-block;
+}
+i#add:hover, i#dock:hover{
+  -webkit-transform: scale(1.4);
+}

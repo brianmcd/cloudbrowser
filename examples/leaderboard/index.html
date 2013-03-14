@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en" ng-app="leaderboard" ng-controller="LeaderboardCtrl">
+  <head>
+    <title>LeaderBoard</title> 
+    <meta name="viewport" content="width=device-width initial-scale=1.0">
+    <link rel='stylesheet' href='stylesheets/bootstrap.css'>
+    <link rel='stylesheet' href='stylesheets/bootstrap-responsive.css'>
+    <link rel='stylesheet' href='stylesheets/style.css'>
+    <link rel='stylesheet' href='stylesheets/font-awesome.css'>
+    <script type='text/javascript' src='javascripts/angular.js'></script>
+    <script type='text/javascript' src='javascripts/bootstrap.js'></script>
+    <script type='text/javascript' src='javascripts/controller.js'></script>
+  </head>
+  <body>
+    <div class="container-fluid">
+      <div class="row-fluid">
+        <div class="span4 offset4 pagination-centered">
+          <div class="page-header"><h2>LeaderBoard</h2></div>
+          <table class="table table-bordered">
+            <thead>
+              <th><span>Name&nbsp;&nbsp;</span><i ng-class="{false:'icon-plus-sign icon-large',true:'icon-plus-sign icon-large formclose'}[addState]" title="Add Contestant" ng-click="toggleAddForm()"></i>
+                <form ng-class="{false:'',true:'visible'}[addState]" id="addForm" ng-submit="addContestant()">
+                  <input ng-model="newContestant" type="text" class="input-small" placeholder="Contestant">
+                </form>
+              </th>
+              <th><span>Score</span></th>
+            </thead>
+            <tbody>
+              <tr ng-repeat="contestant in contestants| orderBy:'-score'" ng-controller="ContestantCtrl" ng-class="{true:'selected',false:''}[selected==contestant]" title="Select the row to add/dock points" ng-click="select()">
+                <td class="name">{{contestant.name}}<i class="icon-remove-sign icon-large" title="Remove Contestant" ng-click="removeContestant()"></i></td>
+                <td class="score">{{contestant.score}}</td>
+              </tr>
+            </tbody>
+          </table>
+          <span>{{selected.name}}</span>
+          <i class="icon-circle-arrow-down icon-large" id="add" title="Dock Points" ng-click="dockPoints()" ng-show="selected != null"></i>
+          <i class="icon-circle-arrow-up icon-large" id="dock" title="Dock Points" ng-click="addPoints()" ng-show="selected != null"></i>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
