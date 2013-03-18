@@ -30,12 +30,18 @@
                 -webkit-box-shadow: 0px 2px 10px #ccc;
                 -moz-box-shadow: 0px 2px 10px #ccc;
             }
+            .small{
+                font-size:12px;
+            }
+            #forgot{
+                cursor: pointer;
+            }
         </style>
     </head>
     <body>
         <div class="container-fluid">
-            <h1 class="page-header pagination-centered">CloudBrowser</h1>
             <div class="row-fluid">
+                <h1 class="page-header pagination-centered">CloudBrowser</h1>
                 <div class="tabbable span4 offset4" id="box">
                     <ul class="nav nav-tabs">
                         <li class="active"><a href="#tab1" data-toggle="tab">Log In</a></li>
@@ -43,11 +49,12 @@
                     </ul>
                     <div class="tab-content">
                         <div class="tab-pane active" ng-controller="LoginCtrl" id="tab1">
-                            <form id="login" ng-submit="login()">
+                            <form ng-submit="login()">
                                 <fieldset>
-                                    <div class="control-group pagination-centered">
+                                    <div class="control-group pagination-centered" ng-class="{true:'error'}[!!email_error]">
                                         <div class="controls">
                                             <input class="span8" type="text" placeholder="Email" ng-model="email">
+                                            <span class="help-inline" ng-show="email_error">{{email_error}}</span>
                                         </div>
                                     </div>
                                     <div class="control-group pagination-centered">
@@ -59,8 +66,11 @@
                                         <div class="controls">
                                             <button class="btn btn-primary" type="submit" ng-disabled="isDisabled">Log In</button>
                                             &nbsp;&nbsp;<input type="checkbox" name="PersistentCookie" value="yes" style="margin:0" ng-model="remember">
-                                            <span style="font-size:12px;"><strong>Keep me Logged In</strong></span>
+                                            <span class="small"><strong>Keep me Logged In</strong></span>
                                             <span class="text-error" ng-show="login_error"><br>{{login_error}}</span>
+                                            <br><div class="small" id="forgot" ng-click="show_email_button=!show_email_button"><u>Forgot your password?</u></div>
+                                            <br><button class="btn btn-success" ng-show="show_email_button" ng-click="sendResetLink()" ng-disabled="resetDisabled">Send a reset link</button>
+                                            <br><span class="text-success" ng-show="reset_success_msg">{{reset_success_msg}}</span>
                                         </div>
                                     </div>
                                 </fieldset>
@@ -74,7 +84,7 @@
                             </div>
                         </div>
                         <div class="tab-pane" ng-controller="SignupCtrl" id="tab2">
-                            <form id="signup" ng-submit="signup()">
+                            <form ng-submit="signup()">
                                 <fieldset>
                                     <div class="control-group pagination-centered" ng-class="{true:'error'}[!!email_error]">
                                         <div class="controls">
@@ -96,7 +106,7 @@
                                     </div>
                                     <div class="control-group pagination-centered">
                                         <div class="controls">
-                                            <button class="btn btn-primary" type="submit" ng-disabled="isDisabled">Sign Up</button>
+                                            <button class="btn btn-primary" type="submit" ng-disabled="isDisabled || (password != vpassword)">Sign Up</button>
                                             <span class="text-error" ng-show="signup_error"><br>{{signup_error}}</span>
                                             <span class="text-success" ng-show="success_message">
                                                 <br>Success! An email with a confirmation link has been sent to your email ID. Please click on it to verify your email.

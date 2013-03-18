@@ -55,7 +55,11 @@ class BrowserServer extends EventEmitter
 
     redirect : (URL) ->
         @broadcastEvent('Redirect', URL)
-        
+       
+    ###
+    updateCookie : (maxAge) ->
+        @broadcastEvent('UpdateCookie', maxAge)
+    ###
 
     # Returns cookies of all clients connected to the VB
     getSessions : () ->
@@ -66,8 +70,8 @@ class BrowserServer extends EventEmitter
         return sessionIDS
 
     # arg can be an Application or URL string.
-    load : (arg) ->
-        @browser.load(arg)
+    load : (arg, location) ->
+        @browser.load(arg, location)
 
     # For testing purposes, return an emulated client for this browser.
     createTestClient : () ->

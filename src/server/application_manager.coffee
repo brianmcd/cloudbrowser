@@ -38,9 +38,13 @@ class ApplicationManager
             require(path + "/" + opts.state).setApplicationState opts
         if opts.authenticationInterface
             authentication_opts = {}
-            authentication_opts.entryPoint = "authentication_interface/index.html"
+            authentication_opts.entryPoint = "src/server/applications/authentication_interface/index.html"
             authentication_opts.mountPoint = opts.mountPoint + "/authenticate"
             @applications[authentication_opts.mountPoint] = new Application(authentication_opts)
+            reset_password_opts = {}
+            reset_password_opts.entryPoint = "src/server/applications/password_reset/index.html"
+            reset_password_opts.mountPoint = opts.mountPoint + "/password_reset"
+            @applications[reset_password_opts.mountPoint] = new Application(reset_password_opts)
 
         @applications[opts.mountPoint] = new Application(opts)
 

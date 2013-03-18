@@ -68,24 +68,24 @@ class HTTPServer extends EventEmitter
         # a browser from a URL sent via POST).
 
 
-        @server.get mountPointNoSlash + "/logout", (req, res) ->
-            #Ashima - Verify if session is associated with application having this mountpoint
-            if req.session
-                req.session.destroy()
-                res.writeHead 302,
-                    {'Location' : mountPoint,'Cache-Control' : "max-age=0, must-revalidate"}
-                res.end()
-
         if app.authenticationInterface
+            @server.get mountPointNoSlash + "/logout", (req, res) ->
+                #Ashima - Verify if session is associated with application having this mountpoint
+                if req.session
+                    req.session.destroy()
+                    res.writeHead 302,
+                        {'Location' : mountPoint,'Cache-Control' : "max-age=0, must-revalidate"}
+                    res.end()
+
             #Ashima - Make a similar route for post
-            @server.get app.mountPoint + "/checkauth", (req, res) ->
+            #Verify validity of response
+            @server.get mountPointNoSlash + "/checkauth", (req, res) ->
                 #unsuccessful authentication
                 if req.query['openid\.mode']? and req.query['openid\.mode'] is "cancel"
-                    console.log "Authentication unsuccessful"
                     res.writeHead 302,
                         {'Location' : "/authenticate",'Cache-Control' : "max-age=0, must-revalidate"}
                     res.end()
-                else
+                else if req.query['openid\.ext1\.value\.email']?
                     #console.log req.query
                     req.session.user = req.query['openid\.ext1\.value\.email']
                     req.session.save()
@@ -102,6 +102,8 @@ class HTTPServer extends EventEmitter
                     res.writeHead 302,
                         {'Location' : mountPointNoSlash,'Cache-Control' : "max-age=0, must-revalidate"}
                     res.end()
+                else
+                    res.send("Invalid Request", 404)
 
             thisObj = this
             @server.get mountPointNoSlash + "/activate/:token", (req, res) ->
@@ -122,25 +124,39 @@ class HTTPServer extends EventEmitter
                         else res.render 'deactivate.jade'
 
             @server.get mountPoint, (req, res) =>
+                queryString = ""
+                if Object.keys(req.query).length isnt 0
+                    queryString = "?"
+                    for k,v of req.query
+                        queryString += k + "="
+                        queryString += v + "&"
+                    queryString = queryString.slice(0, -1)
                 if !req.session.user
                     res.writeHead 302,
-                        {'Location' : mountPointNoSlash + "/authenticate",'Cache-Control' : "max-age=0, must-revalidate"}
+                        {'Location' : mountPointNoSlash + "/authenticate" + queryString, 'Cache-Control' : "max-age=0, must-revalidate"}
                     res.end()
                 else
                     id = req.session.browserID
                     if !id? || !browsers.find(id)
-                      bserver = browsers.create(app)
+                      bserver = browsers.create(app, queryString)
                       id = req.session.browserID = bserver.id
                       #bserver.redirectURL = req.query.redirectto
                     #Ashima - What should be done if we can't find the browser?
                     res.writeHead 301,
-                        {'Location' : "#{mountPointNoSlash}/browsers/#{id}/index",'Cache-Control' : "max-age=0, must-revalidate"}
+                        {'Location' : "#{mountPointNoSlash}/browsers/#{id}/index" + queryString, 'Cache-Control' : "max-age=0, must-revalidate"}
                     res.end()
 
             # Route to connect to a virtual browser.
             @server.get "#{mountPointNoSlash}/browsers/:browserid/index", (req, res) ->
+                queryString = ""
+                if Object.keys(req.query).length isnt 0
+                    queryString = "?"
+                    for k,v of req.query
+                        queryString += k + "="
+                        queryString += v + "&"
+                    queryString = queryString.slice(0, -1)
                 if !req.session.user
-                    queryString = "?redirectto=" + "#{mountPointNoSlash}/browsers/" + req.params.browserid + "/index"
+                    #queryString = "?redirectto=" + "#{mountPointNoSlash}/browsers/" + req.params.browserid + "/index"
                     res.writeHead 302,
                         {'Location' : mountPointNoSlash + "/authenticate" + queryString, 'Cache-Control' : "max-age=0, must-revalidate"}
                     res.end()
@@ -153,8 +169,15 @@ class HTTPServer extends EventEmitter
 
             # Route for ResourceProxy
             @server.get "#{mountPointNoSlash}/browsers/:browserid/:resourceid", (req, res) =>
+                queryString = ""
+                if Object.keys(req.query).length isnt 0
+                    queryString = "?"
+                    for k,v of req.query
+                        queryString += k + "="
+                        queryString += v + "&"
+                    queryString = queryString.slice(0, -1)
                 if !req.session.user
-                    queryString = "?redirectto=" + "#{mountPointNoSlash}/browsers/" + req.params.browserid + "/" + req.params.resourceid
+                    #queryString = "?redirectto=" + "#{mountPointNoSlash}/browsers/" + req.params.browserid + "/" + req.params.resourceid
                     res.writeHead 302,
                         {'Location' : mountPointNoSlash + "/authenticate" + queryString, 'Cache-Control' : "max-age=0, must-revalidate"}
                     res.end()
@@ -167,13 +190,20 @@ class HTTPServer extends EventEmitter
 
         else
             @server.get mountPoint, (req, res) =>
+                queryString = ""
+                if Object.keys(req.query).length isnt 0
+                    queryString = "?"
+                    for k,v of req.query
+                        queryString += k + "="
+                        queryString += v + "&"
+                    queryString = queryString.slice(0, -1)
                 id = req.session.browserID
                 if !id? || !browsers.find(id)
-                  bserver = browsers.create(app)
+                  bserver = browsers.create(app, queryString)
                   id = req.session.browserID = bserver.id
                 #Ashima - What should be done if we can't find the browser?
                 res.writeHead 301,
-                    {'Location' : "#{mountPointNoSlash}/browsers/#{id}/index",'Cache-Control' : "max-age=0, must-revalidate"}
+                    {'Location' : "#{mountPointNoSlash}/browsers/#{id}/index" + queryString,'Cache-Control' : "max-age=0, must-revalidate"}
                 res.end()
 
             # Route to connect to a virtual browser.

@@ -110,7 +110,7 @@ class Server extends EventEmitter
                 referer = handshakeData.headers.referer.split('\/')
                 if referer
                     mountPoint = "/" + referer[3]
-                    isAuthenticationReq = (referer[4] == "authenticate")
+                    isAuthenticationReq = (referer[4] == "authenticate" or referer[4] == "password_reset")
                     app = applicationManager.find(mountPoint)
                     if app.authenticationInterface && not isAuthenticationReq
                         handshakeData.cookie = ParseCookie(handshakeData.headers.cookie)

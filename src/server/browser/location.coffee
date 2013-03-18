@@ -74,7 +74,7 @@ exports.LocationBuilder = (browser) ->
                     process.nextTick () ->
                         browser.window.dispatchEvent(event)
                 when 'pagechange'
-                    browser.load(@parsed.href)
+                    browser.load(@parsed.href, browser.window.location.search)
 
         replace : (url) ->
             console.log("Location#replace not yet implemented")
