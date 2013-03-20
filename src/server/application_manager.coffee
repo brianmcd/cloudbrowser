@@ -7,20 +7,24 @@ class ApplicationManager
         @applications = {}
         @loadApplicationsFromPath path if path?
 
+    #Recursive walk with multiple paths
     loadApplicationsFromPath : (path) ->
         appFileNames = FS.readdirSync path
         for name in appFileNames
             appPath = Path.resolve(path, name)
-            @create appPath
+            @add "src/server/applications/admin_interface"
+            @add appPath
 
-    create : (path) ->
+    add : (path) ->
         opts = {}
         appConfigPath = path + "/app_config\.json"
         deploymentConfigPath = path + "/deployment_config\.json"
+
         if FS.existsSync appConfigPath
             appConfig = JSON.parse FS.readFileSync appConfigPath
             for key,value of appConfig
                 opts[key] = value
+
         if FS.existsSync deploymentConfigPath
             deploymentConfig = JSON.parse FS.readFileSync deploymentConfigPath
             for key,value of deploymentConfig
@@ -29,13 +33,17 @@ class ApplicationManager
                     console.log "Keeping value " + key + "=" + opts[key] + " from " + appConfigPath
                 else
                     opts[key] = value
+
         opts.mountPoint = "/" + path.split('/').pop()
+
         if not opts.entryPoint?
             opts.entryPoint = path + "/index.html"
             #Log to file or at higher log level
             #console.log "No entryPoint configured for " + opts.mountPoint + ". Choosing entryPoint = " + opts.entryPoint
+
         if opts.state
             require(path + "/" + opts.state).setApplicationState opts
+
         if opts.authenticationInterface
             authentication_opts = {}
             authentication_opts.entryPoint = "src/server/applications/authentication_interface/index.html"

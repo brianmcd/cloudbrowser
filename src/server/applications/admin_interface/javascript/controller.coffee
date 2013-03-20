@@ -4,6 +4,7 @@ baseURL = "http://" + config.domain + ":" + config.port
 CBAdmin.controller "AppCtrl", ($scope, $timeout) ->
     $scope.domain = config.domain
     $scope.port = config.port
+    # Use node emit
     $scope.getApps = () ->
         $timeout ->
             $scope.apps = server.applicationManager.applications
