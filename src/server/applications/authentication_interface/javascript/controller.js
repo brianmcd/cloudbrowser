@@ -1,5 +1,5 @@
 (function() {
-  var CBAuthentication, CloudBrowserDb, CloudBrowserDb_server, Crypto, Express, HashPassword, Https, Mongo, MongoStore, Xml2JS, authentication_string, baseURL, defaults, getJSON, mongoStore, mountPoint, nodemailer, rootURL, sendEmail,
+  var CBAuthentication, CloudBrowserDb, CloudBrowserDb_server, Crypto, Express, HashPassword, Https, Mongo, MongoStore, Xml2JS, authentication_string, baseURL, defaults, getJSON, mongoStore, mountPoint, nodemailer, query, redirectURL, rootURL, search, searchStringtoJSON, sendEmail,
     __hasProp = Object.prototype.hasOwnProperty;
 
   Mongo = require("mongodb");
@@ -33,6 +33,32 @@
   rootURL = "http://" + config.domain + ":" + config.port;
 
   baseURL = rootURL + "/" + mountPoint;
+
+  searchStringtoJSON = function(searchString) {
+    var pair, query, s, search, _i, _len;
+    search = searchString.split("&");
+    query = {};
+    for (_i = 0, _len = search.length; _i < _len; _i++) {
+      s = search[_i];
+      pair = s.split("=");
+      query[pair[0]] = pair[1];
+    }
+    return query;
+  };
+
+  search = location.search;
+
+  console.log(search);
+
+  if (search[0] === "?") search = search.slice(1);
+
+  query = searchStringtoJSON(search);
+
+  redirectURL = query.redirectto;
+
+  console.log("REDIRECT URL");
+
+  console.log(redirectURL);
 
   defaults = {
     iterations: 10000,
@@ -83,8 +109,8 @@
     smtpTransport = nodemailer.createTransport("SMTP", {
       service: "Gmail",
       auth: {
-        user: "ashimaathri@gmail.com",
-        pass: "Jgilson*2716"
+        user: "",
+        pass: ""
       }
     });
     mailOptions = {
@@ -107,7 +133,7 @@
     if (err) return console.log(err);
   });
 
-  authentication_string = "?openid.ns=http://specs.openid.net/auth/2.0" + "&openid.ns.pape=http:\/\/specs.openid.net/extensions/pape/1.0" + "&openid.ns.max_auth_age=300" + "&openid.claimed_id=http:\/\/specs.openid.net/auth/2.0/identifier_select" + "&openid.identity=http:\/\/specs.openid.net/auth/2.0/identifier_select" + "&openid.return_to=" + baseURL + "/checkauth?redirectto=" + (bserver.redirectURL != null ? bserver.redirectURL : "") + "&openid.realm=" + rootURL + "&openid.mode=checkid_setup" + "&openid.ui.ns=http:\/\/specs.openid.net/extensions/ui/1.0" + "&openid.ui.mode=popup" + "&openid.ui.icon=true" + "&openid.ns.ax=http:\/\/openid.net/srv/ax/1.0" + "&openid.ax.mode=fetch_request" + "&openid.ax.type.email=http:\/\/axschema.org/contact/email" + "&openid.ax.type.language=http:\/\/axschema.org/pref/language" + "&openid.ax.required=email,language";
+  authentication_string = "?openid.ns=http://specs.openid.net/auth/2.0" + "&openid.ns.pape=http:\/\/specs.openid.net/extensions/pape/1.0" + "&openid.ns.max_auth_age=300" + "&openid.claimed_id=http:\/\/specs.openid.net/auth/2.0/identifier_select" + "&openid.identity=http:\/\/specs.openid.net/auth/2.0/identifier_select" + "&openid.return_to=" + baseURL + "/checkauth?redirectto=" + (redirectURL != null ? redirectURL : "") + "&openid.realm=" + rootURL + "&openid.mode=checkid_setup" + "&openid.ui.ns=http:\/\/specs.openid.net/extensions/ui/1.0" + "&openid.ui.mode=popup" + "&openid.ui.icon=true" + "&openid.ns.ax=http:\/\/openid.net/srv/ax/1.0" + "&openid.ax.mode=fetch_request" + "&openid.ax.type.email=http:\/\/axschema.org/contact/email" + "&openid.ax.type.language=http:\/\/axschema.org/pref/language" + "&openid.ax.required=email,language";
 
   getJSON = function(options, callback) {
     var request;
@@ -166,8 +192,8 @@
                             session.cookie.expires = false
                         */
                         return mongoStore.set(sessionID, session, function() {
-                          if (typeof redirectURL !== "undefined" && redirectURL !== null) {
-                            return bserver.redirect(baseURL + redirectURL);
+                          if (redirectURL != null) {
+                            return bserver.redirect(rootURL + redirectURL);
                           } else {
                             return bserver.redirect(baseURL);
                           }

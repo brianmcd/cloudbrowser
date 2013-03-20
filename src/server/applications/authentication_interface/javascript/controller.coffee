@@ -11,11 +11,29 @@ CloudBrowserDb_server   = new Mongo.Server(config.domain, 27017,
 )
 CloudBrowserDb          = new Mongo.Db("cloudbrowser", CloudBrowserDb_server)
 mongoStore              = new MongoStore(db: "cloudbrowser_sessions")
-#redirectURL            = bserver.redirectURL
-#console.log "REDIRECT" + redirectURL
 mountPoint              = bserver.mountPoint.split("/")[1]
 rootURL                 = "http://" + config.domain + ":" + config.port
 baseURL                 = rootURL + "/" + mountPoint
+
+#dictionary of all the query key value pairs
+searchStringtoJSON = (searchString) ->
+    search = searchString.split("&")
+    query = {}
+    for s in search
+        pair = s.split("=")
+        query[pair[0]] = pair[1]
+    return query
+
+search = location.search
+console.log search
+if search[0] == "?"
+    search = search.slice(1)
+query = searchStringtoJSON(search)
+
+redirectURL = query.redirectto
+
+console.log "REDIRECT URL"
+console.log redirectURL
 
 defaults =
     iterations : 10000
@@ -53,8 +71,8 @@ sendEmail = (toEmailID, subject, message, callback) ->
     smtpTransport = nodemailer.createTransport "SMTP",
         service: "Gmail"
         auth:
-            user: "ashimaathri@gmail.com"
-            pass: "Jgilson*2716"
+            user: ""
+            pass: ""
 
     mailOptions =
         from: "ashimaathri@gmail.com"
@@ -75,7 +93,7 @@ authentication_string = "?openid.ns=http://specs.openid.net/auth/2.0" +
     "&openid.ns.max_auth_age=300" +
     "&openid.claimed_id=http:\/\/specs.openid.net/auth/2.0/identifier_select" +
     "&openid.identity=http:\/\/specs.openid.net/auth/2.0/identifier_select" +
-    "&openid.return_to=" + baseURL + "/checkauth?redirectto=" + (if bserver.redirectURL? then bserver.redirectURL else "") +
+    "&openid.return_to=" + baseURL + "/checkauth?redirectto=" + (if redirectURL? then redirectURL else "") +
     "&openid.realm=" + rootURL +
     "&openid.mode=checkid_setup" +
     "&openid.ui.ns=http:\/\/specs.openid.net/extensions/ui/1.0" +
@@ -132,7 +150,7 @@ CBAuthentication.controller "LoginCtrl", ($scope) ->
                                                 session.cookie.expires = false
                                             ###
                                             mongoStore.set sessionID, session, ->
-                                                if redirectURL? then bserver.redirect baseURL + redirectURL
+                                                if redirectURL? then bserver.redirect rootURL + redirectURL
                                                 else bserver.redirect baseURL
                                         else
                                             console.log "Error in finding the session:" + sessionID + " Error:" + err
