@@ -109,12 +109,12 @@
     smtpTransport = nodemailer.createTransport("SMTP", {
       service: "Gmail",
       auth: {
-        user: "",
-        pass: ""
+        user: config.nodeMailerEmailID,
+        pass: config.nodeMailerPassword
       }
     });
     mailOptions = {
-      from: "ashimaathri@gmail.com",
+      from: config.nodeMailerEmailID,
       to: toEmailID,
       subject: subject,
       html: message
