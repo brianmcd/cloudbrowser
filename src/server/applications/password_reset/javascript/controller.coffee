@@ -7,7 +7,7 @@ CloudBrowserDb_server   = new Mongo.Server(config.domain, 27017,
 )
 CloudBrowserDb          = new Mongo.Db("cloudbrowser", CloudBrowserDb_server)
 CloudBrowserDb.open (err, Db) ->
-    if err then console.log err
+    if err then throw err
 
 defaults =
     iterations : 10000
@@ -20,23 +20,20 @@ HashPassword = (config={}, callback) ->
 
     if not config.password?
         Crypto.randomBytes config.randomPasswordStartLen, (err, buf) ->
-            if err
-                console.log err
+            if err then throw err
             else
                 config.password = buf.toString 'base64'
                 HashPassword config, callback
 
     else if not config.salt?
         Crypto.randomBytes config.saltLength, (err, buf) ->
-            if err
-                console.log err
+            if err then throw err
             else
                 config.salt = new Buffer buf
                 HashPassword config, callback
 
     else Crypto.pbkdf2 config.password, config.salt, config.iterations, config.saltLength, (err, key) ->
-        if err
-            console.log err
+        if err then throw err
         else
             config.key = key
             callback config
@@ -85,17 +82,15 @@ CBPasswordReset.controller "ResetCtrl", ($scope) ->
                 collection.findOne {email: username}, (err, user) ->
                     if user and user.status is "reset_password" and user.token is token
                         collection.update {email: username}, {$unset: {token: "", status: ""}}, {w:1}, (err, result) ->
-                            if err then console.log err
+                            if err then throw err
                             else HashPassword {password:password}, (result) ->
                                 collection.update {email: username}, {$set: {key: result.key.toString('hex'), salt: result.salt.toString('hex')}}, (err, result) ->
-                                    if err then console.log err
+                                    if err then throw err
                                     else
-                                        console.log "Success"
                                         $scope.$apply ->
                                             $scope.password_success = "The password has been successfully reset"
                     else
                         $scope.$apply ->
                             $scope.password_error = "Invalid reset request"
-            else
-                console.log err
-        $scope.isDisabled = false
+            else throw err
+       $scope.isDisabled = false

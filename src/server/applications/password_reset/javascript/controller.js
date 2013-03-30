@@ -17,7 +17,7 @@
   CloudBrowserDb = new Mongo.Db("cloudbrowser", CloudBrowserDb_server);
 
   CloudBrowserDb.open(function(err, Db) {
-    if (err) return console.log(err);
+    if (err) throw err;
   });
 
   defaults = {
@@ -37,7 +37,7 @@
     if (!(config.password != null)) {
       return Crypto.randomBytes(config.randomPasswordStartLen, function(err, buf) {
         if (err) {
-          return console.log(err);
+          throw err;
         } else {
           config.password = buf.toString('base64');
           return HashPassword(config, callback);
@@ -46,7 +46,7 @@
     } else if (!(config.salt != null)) {
       return Crypto.randomBytes(config.saltLength, function(err, buf) {
         if (err) {
-          return console.log(err);
+          throw err;
         } else {
           config.salt = new Buffer(buf);
           return HashPassword(config, callback);
@@ -55,7 +55,7 @@
     } else {
       return Crypto.pbkdf2(config.password, config.salt, config.iterations, config.saltLength, function(err, key) {
         if (err) {
-          return console.log(err);
+          throw err;
         } else {
           config.key = key;
           return callback(config);
@@ -92,16 +92,16 @@
       $scope.password_success = null;
       return $scope.isDisabled = false;
     });
-    return $scope.reset = function() {
+    $scope.reset = function() {
       var password, token;
       $scope.isDisabled = true;
       username = query['user'];
       token = query['token'];
       password = $scope.password;
       if (!(password != null) || !/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^\da-zA-Z])\S{8,15}$/.test(password)) {
-        $scope.password_error = "Password must be have a length between 8 - 15 characters, must contain atleast 1 uppercase, 1 lowercase, 1 digit and 1 special character. Spaces are not allowed.";
+        return $scope.password_error = "Password must be have a length between 8 - 15 characters, must contain atleast 1 uppercase, 1 lowercase, 1 digit and 1 special character. Spaces are not allowed.";
       } else {
-        CloudBrowserDb.collection("users", function(err, collection) {
+        return CloudBrowserDb.collection("users", function(err, collection) {
           if (!err) {
             return collection.findOne({
               email: username
@@ -118,7 +118,7 @@
                   w: 1
                 }, function(err, result) {
                   if (err) {
-                    return console.log(err);
+                    throw err;
                   } else {
                     return HashPassword({
                       password: password
@@ -132,9 +132,8 @@
                         }
                       }, function(err, result) {
                         if (err) {
-                          return console.log(err);
+                          throw err;
                         } else {
-                          console.log("Success");
                           return $scope.$apply(function() {
                             return $scope.password_success = "The password has been successfully reset";
                           });
@@ -150,12 +149,12 @@
               }
             });
           } else {
-            return console.log(err);
+            throw err;
           }
         });
       }
-      return $scope.isDisabled = false;
     };
+    return $scope.isDisabled = false;
   });
 
 }).call(this);
