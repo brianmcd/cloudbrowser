@@ -68,15 +68,6 @@
      } else {
        return false;
      }
-@@ -1005,7 +999,7 @@
-     if (attribute) {
-       return attribute.value;
-     }
--    return "";
-+    return null;
-   },
- 
-   /* returns string */
 --- lib/jsdom/level2/events.js	2012-10-12 09:28:48.083147218 -0400
 +++ cloudbrowser-jsdom/lib/jsdom/level2/events.js	2012-10-11 15:47:59.959533215 -0400
 @@ -196,10 +196,9 @@
