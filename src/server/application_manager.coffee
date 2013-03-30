@@ -56,7 +56,7 @@ class ApplicationManager
         if opts.authenticationInterface
             @addDirectory "src/server/applications/authentication_interface", opts.mountPoint + "/authenticate"
             @addDirectory "src/server/applications/password_reset", opts.mountPoint + "/password_reset"
-            @addDirectory "src/server/applications/landing_page", opts.mountPoint + "/landing_page"
+            #@addDirectory "src/server/applications/landing_page", opts.mountPoint + "/landing_page"
 
 
     # Reads the configuration files app_config.json and deployment_config.json
