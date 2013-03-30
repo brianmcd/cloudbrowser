@@ -14,6 +14,10 @@ Opts = require('nomnom')
 if Opts.deployment
     console.log "Server started in deployment mode"
 else
-    server = new Server(serverConfig)
+    paths = []
+    #List of all the unmatched positional args (the path names)
+    for item in Opts._
+        paths.push item
+    server = new Server(serverConfig, paths)
     server.once 'ready', ->
         console.log 'Server started in local mode'

@@ -10,6 +10,7 @@ Managers            = require('./browser_manager')
 AdminInterface      = require('./admin_interface')
 ParseCookie         = require('cookie').parse
 ApplicationManager  = require('./application_manager')
+require('ofe').call()
 
 {MultiProcessBrowserManager, InProcessBrowserManager} = Managers
 
@@ -56,11 +57,11 @@ defaults =
     useRouter       : false
 
 class Server extends EventEmitter
-    constructor : (@config = {}) ->
+    constructor : (@config = {}, paths) ->
         for own k, v of defaults
             @config[k] = if @config.hasOwnProperty k then @config[k] else v
 
-        @applicationManager = new ApplicationManager(@config.appDir)
+        @applicationManager = new ApplicationManager(paths)
         @httpServer = new HTTPServer @config,@applicationManager, () =>
             @emit('ready')
         @socketIOServer = @createSocketIOServer(@httpServer.server, @httpServer.mongoStore, @config.apps)
