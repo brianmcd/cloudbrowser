@@ -1,5 +1,7 @@
 {
     "knockout" : true,
     "instantiationLimit" : "oneperuser",
-    "state" : "chatboot.js"
+    "state" : "chatboot.js",
+    "comments" : "This file is provided by the developer. Override default mountpoint. allowedUsers=users.mongodb",
+    "entryPoint" : "index.html"
 }
