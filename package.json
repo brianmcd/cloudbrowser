@@ -39,7 +39,8 @@
     "mongodb"          : "1.2.12",
     "cookie"           : "0.0.5",
     "xml2js"           : "0.2.6",
-    "nodemailer"       : "0.3.44"
+    "nodemailer"       : "0.3.44",
+    "ofe"              : "0.1.1-2"
   },
   "devDependencies": {
     "nodeunit": "0.6.4"
