@@ -14,6 +14,5 @@ CBAdmin.controller "AppCtrl", ($scope, $timeout) ->
     $scope.click = (mountPoint) ->
         bserver.redirect(baseURL + mountPoint)
     $scope.deleteVB = (mountPoint, browserID) ->
-        console.log "Request to delete " + browserID + " of " + mountPoint
         vb = server.applicationManager.find(mountPoint).browsers.find(browserID)
         server.applicationManager.find(mountPoint).browsers.close(vb)

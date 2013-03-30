@@ -22,7 +22,6 @@
     };
     return $scope.deleteVB = function(mountPoint, browserID) {
       var vb;
-      console.log("Request to delete " + browserID + " of " + mountPoint);
       vb = server.applicationManager.find(mountPoint).browsers.find(browserID);
       return server.applicationManager.find(mountPoint).browsers.close(vb);
     };
