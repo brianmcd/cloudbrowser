@@ -4,7 +4,7 @@ var Path        = require('path'),
     User        = require('./model/local/user');
 
 module.exports = {
-  setApplicationState : function (options) {
+  initialize : function (options) {
         options.sharedState = {
             chats : new ChatManager()
         }
