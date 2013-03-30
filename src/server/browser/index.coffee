@@ -98,8 +98,7 @@ class Browser extends EventEmitter
         @window.Buffer  = Buffer
         @window.bserver = @bserver
         @window.config = @server.config
-        if app.mountPoint == "/admin_interface"
-            @window.server  = @server
+        @window.server  = @server
         EmbedAPI(this, @bserver)
         # If an app needs server-side knockout, we have to monkey patch
         # some ko functions.
