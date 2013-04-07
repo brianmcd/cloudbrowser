@@ -9,6 +9,7 @@ CBAdmin.controller "AppCtrl", ($scope, $timeout) ->
         $timeout ->
             $scope.apps = server.applicationManager.applications
             $scope.getApps()
+            null        # avoid memory leak, see https://github.com/angular/angular.js/issues/1522#issuecomment-15921753
         , 100
     $scope.getApps()
     $scope.click = (mountPoint) ->
