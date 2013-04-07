@@ -3,6 +3,8 @@ FS                  = require('fs')
 
 if FS.existsSync "server_config.json"
     serverConfig = JSON.parse FS.readFileSync "server_config.json"
+else
+    throw new Error "Missing required configuration file - server_config.json. Please run CloudBrowser from the project root directory."
 
 Opts = require('nomnom')
     .option 'deployment',
