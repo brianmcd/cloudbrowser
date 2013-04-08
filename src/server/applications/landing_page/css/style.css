@@ -1,0 +1,9 @@
+#remove {
+    color: #b94a48;
+    cursor: pointer;
+    display:inline-block;
+    -webkit-transition: all 0.2s;
+}
+#remove:hover {
+    -webkit-transform: scale(1.4);
+}

@@ -41,24 +41,10 @@
     for (_i = 0, _len = search.length; _i < _len; _i++) {
       s = search[_i];
       pair = s.split("=");
-      query[pair[0]] = pair[1];
+      query[decodeURIComponent(pair[0])] = decodeURIComponent(pair[1]);
     }
     return query;
   };
-
-  search = location.search;
-
-  console.log(search);
-
-  if (search[0] === "?") search = search.slice(1);
-
-  query = searchStringtoJSON(search);
-
-  redirectURL = query.redirectto;
-
-  console.log("REDIRECT URL");
-
-  console.log(redirectURL);
 
   defaults = {
     iterations: 10000,
@@ -76,30 +62,21 @@
     }
     if (!(config.password != null)) {
       return Crypto.randomBytes(config.randomPasswordStartLen, function(err, buf) {
-        if (err) {
-          return console.log(err);
-        } else {
-          config.password = buf.toString('base64');
-          return HashPassword(config, callback);
-        }
+        if (err) throw err;
+        config.password = buf.toString('base64');
+        return HashPassword(config, callback);
       });
     } else if (!(config.salt != null)) {
       return Crypto.randomBytes(config.saltLength, function(err, buf) {
-        if (err) {
-          return console.log(err);
-        } else {
-          config.salt = new Buffer(buf);
-          return HashPassword(config, callback);
-        }
+        if (err) throw err;
+        config.salt = new Buffer(buf);
+        return HashPassword(config, callback);
       });
     } else {
       return Crypto.pbkdf2(config.password, config.salt, config.iterations, config.saltLength, function(err, key) {
-        if (err) {
-          return console.log(err);
-        } else {
-          config.key = key;
-          return callback(config);
-        }
+        if (err) throw err;
+        config.key = key;
+        return callback(config);
       });
     }
   };
@@ -120,18 +97,23 @@
       html: message
     };
     return smtpTransport.sendMail(mailOptions, function(error, response) {
-      if (error) {
-        callback(error);
-      } else {
-        callback(null);
-      }
+      if (error) callback(error);
+      callback(null);
       return smtpTransport.close();
     });
   };
 
   CloudBrowserDb.open(function(err, Db) {
-    if (err) return console.log(err);
+    if (err) throw err;
   });
+
+  search = location.search;
+
+  if (search[0] === "?") search = search.slice(1);
+
+  query = searchStringtoJSON(search);
+
+  redirectURL = query.redirectto;
 
   authentication_string = "?openid.ns=http://specs.openid.net/auth/2.0" + "&openid.ns.pape=http:\/\/specs.openid.net/extensions/pape/1.0" + "&openid.ns.max_auth_age=300" + "&openid.claimed_id=http:\/\/specs.openid.net/auth/2.0/identifier_select" + "&openid.identity=http:\/\/specs.openid.net/auth/2.0/identifier_select" + "&openid.return_to=" + baseURL + "/checkauth?redirectto=" + (redirectURL != null ? redirectURL : "") + "&openid.realm=" + rootURL + "&openid.mode=checkid_setup" + "&openid.ui.ns=http:\/\/specs.openid.net/extensions/ui/1.0" + "&openid.ui.mode=popup" + "&openid.ui.icon=true" + "&openid.ns.ax=http:\/\/openid.net/srv/ax/1.0" + "&openid.ax.mode=fetch_request" + "&openid.ax.type.email=http:\/\/axschema.org/contact/email" + "&openid.ax.type.language=http:\/\/axschema.org/pref/language" + "&openid.ax.required=email,language";
 
@@ -168,55 +150,68 @@
       } else {
         $scope.isDisabled = true;
         CloudBrowserDb.collection("users", function(err, collection) {
-          if (!err) {
-            return collection.findOne({
-              email: $scope.email
-            }, function(err, user) {
-              if (user && user.status !== 'unverified') {
-                return HashPassword({
-                  password: $scope.password,
-                  salt: new Buffer(user.salt, 'hex')
-                }, function(result) {
-                  var sessionID;
-                  if (result.key.toString('hex') === user.key) {
-                    sessionID = decodeURIComponent(bserver.getSessions()[0]);
-                    return mongoStore.get(sessionID, function(err, session) {
-                      if (!err) {
-                        session.user = $scope.email;
-                        /* Remember me
-                        if $scope.remember
-                            session.cookie.maxAge = 24 * 60 * 60 * 1000
-                            #notify the client
-                            bserver.updateCookie(session.cookie.maxAge)
-                        else
-                            session.cookie.expires = false
-                        */
-                        return mongoStore.set(sessionID, session, function() {
-                          if (redirectURL != null) {
-                            return bserver.redirect(rootURL + redirectURL);
-                          } else {
-                            return bserver.redirect(baseURL);
+          if (err) throw err;
+          return collection.findOne({
+            email: $scope.email
+          }, function(err, user) {
+            if (user && user.status !== 'unverified') {
+              return HashPassword({
+                password: $scope.password,
+                salt: new Buffer(user.salt, 'hex')
+              }, function(result) {
+                var sessionID;
+                if (result.key.toString('hex') === user.key) {
+                  sessionID = decodeURIComponent(bserver.getSessions()[0]);
+                  return mongoStore.get(sessionID, function(err, session) {
+                    if (err) {
+                      throw new Error("Error in finding the session:" + sessionID + " Error:" + err);
+                    } else {
+                      if (!(session.user != null)) {
+                        session.user = [
+                          {
+                            app: "/" + mountPoint,
+                            email: $scope.email
                           }
-                        });
+                        ];
                       } else {
-                        return console.log("Error in finding the session:" + sessionID + " Error:" + err);
+                        session.user.push({
+                          app: "/" + mountPoint,
+                          email: $scope.email
+                        });
                       }
-                    });
-                  } else {
-                    return $scope.$apply(function() {
-                      return $scope.login_error = "Invalid Credentials";
-                    });
-                  }
-                });
-              } else {
-                return $scope.$apply(function() {
-                  return $scope.login_error = "Invalid Credentials";
-                });
-              }
-            });
-          } else {
-            return console.log(err);
-          }
+                      /* Remember me
+                      if $scope.remember
+                          session.cookie.maxAge = 24 * 60 * 60 * 1000
+                          #notify the client
+                          bserver.updateCookie(session.cookie.maxAge)
+                      else
+                          session.cookie.expires = false
+                      */
+                      return mongoStore.set(sessionID, session, function() {
+                        search = location.search;
+                        if (search[0] === "?") search = search.slice(1);
+                        query = searchStringtoJSON(search);
+                        redirectURL = query.redirectto;
+                        if (redirectURL != null) {
+                          return bserver.redirect(rootURL + redirectURL);
+                        } else {
+                          return bserver.redirect(baseURL);
+                        }
+                      });
+                    }
+                  });
+                } else {
+                  return $scope.$apply(function() {
+                    return $scope.login_error = "Invalid Credentials";
+                  });
+                }
+              });
+            } else {
+              return $scope.$apply(function() {
+                return $scope.login_error = "Invalid Credentials";
+              });
+            }
+          });
         });
         return $scope.isDisabled = false;
       }
@@ -250,54 +245,47 @@
         return $scope.email_error = "Please provide a valid email ID";
       } else {
         return CloudBrowserDb.collection("users", function(err, collection) {
-          if (err) {
-            return console.log(err);
-          } else {
-            return collection.findOne({
-              email: $scope.email
-            }, function(err, user) {
-              if (err) {
-                return console.log(err);
-              } else if (!user) {
-                return $scope.$apply(function() {
-                  return $scope.email_error = "This email ID is not registered with us.";
+          if (err) throw err;
+          return collection.findOne({
+            email: $scope.email
+          }, function(err, user) {
+            if (err) throw err;
+            if (!user) {
+              return $scope.$apply(function() {
+                return $scope.email_error = "This email ID is not registered with us.";
+              });
+            } else {
+              $scope.$apply(function() {
+                return $scope.resetDisabled = true;
+              });
+              return Crypto.randomBytes(32, function(err, buf) {
+                var esc_email, message, subject;
+                if (err) callback(err, null);
+                buf = buf.toString('hex');
+                esc_email = encodeURIComponent($scope.email);
+                subject = "Link to reset your CloudBrowser password";
+                message = "You have requested to change your password. If you want to continue click <a href='" + baseURL + "/password_reset?token=" + buf + "&user=" + esc_email + "'>reset</a>. If you have not requested a change in password then take no action.";
+                return sendEmail($scope.email, subject, message, function(err) {
+                  $scope.$apply(function() {
+                    $scope.resetDisabled = false;
+                    return $scope.reset_success_msg = "A password reset link has been sent to your email ID.";
+                  });
+                  return collection.update({
+                    email: user.email
+                  }, {
+                    $set: {
+                      status: "reset_password",
+                      token: buf
+                    }
+                  }, {
+                    w: 1
+                  }, function(err, result) {
+                    if (err) throw err;
+                  });
                 });
-              } else {
-                $scope.$apply(function() {
-                  return $scope.resetDisabled = true;
-                });
-                return Crypto.randomBytes(32, function(err, buf) {
-                  var esc_email, message, subject;
-                  if (err) {
-                    return callback(err, null);
-                  } else {
-                    buf = buf.toString('hex');
-                    esc_email = encodeURIComponent($scope.email);
-                    subject = "Link to reset your CloudBrowser password";
-                    message = "You have requested to change your password. If you want to continue click <a href='" + baseURL + "/password_reset?token=" + buf + "&user=" + esc_email + "'>reset</a>. If you have not requested a change in password then take no action.";
-                    return sendEmail($scope.email, subject, message, function(err) {
-                      $scope.$apply(function() {
-                        $scope.resetDisabled = false;
-                        return $scope.reset_success_msg = "A password reset link has been sent to your email ID.";
-                      });
-                      return collection.update({
-                        email: user.email
-                      }, {
-                        $set: {
-                          status: "reset_password",
-                          token: buf
-                        }
-                      }, {
-                        w: 1
-                      }, function(err, result) {
-                        if (err) return console.log(err);
-                      });
-                    });
-                  }
-                });
-              }
-            });
-          }
+              });
+            }
+          });
         });
       }
     };
@@ -318,20 +306,17 @@
       $scope.isDisabled = false;
       $scope.success_message = false;
       return CloudBrowserDb.collection("users", function(err, collection) {
-        if (!err) {
-          return collection.findOne({
-            email: nval
-          }, function(err, item) {
-            if (item) {
-              return $scope.$apply(function() {
-                $scope.email_error = "Account with this Email ID already exists!";
-                return $scope.isDisabled = true;
-              });
-            }
-          });
-        } else {
-          return console.log(err);
-        }
+        if (err) throw err;
+        return collection.findOne({
+          email: nval
+        }, function(err, item) {
+          if (item) {
+            return $scope.$apply(function() {
+              $scope.email_error = "Account with this Email ID already exists!";
+              return $scope.isDisabled = true;
+            });
+          }
+        });
       });
     });
     $scope.$watch("password+vpassword", function() {
@@ -350,46 +335,44 @@
       } else {
         return Crypto.randomBytes(32, function(err, buf) {
           var confirmationMsg, subject;
-          if (err) {
-            return callback(err, null);
-          } else {
-            buf = buf.toString('hex');
-            subject = "Activate your cloudbrowser account";
-            confirmationMsg = "Please click on the link below to verify your email address.<br>" + ("<p><a href='" + baseURL + "/activate/" + buf + "'>Activate your account</a></p>") + "<p>If you have received this message in error and did not sign up for a cloudbrowser account," + (" click <a href='" + baseURL + "/deactivate/" + buf + "'>not my account</a></p>");
-            return sendEmail($scope.email, subject, confirmationMsg, function(err) {
-              if (!err) {
-                return CloudBrowserDb.collection("users", function(err, collection) {
-                  if (!err) {
-                    return HashPassword({
-                      password: $scope.password
-                    }, function(result) {
-                      var user;
-                      user = {
-                        email: $scope.email,
-                        key: result.key.toString('hex'),
-                        salt: result.salt.toString('hex'),
-                        status: 'unverified',
-                        token: buf
-                      };
-                      collection.insert(user);
-                      return $scope.$apply(function() {
-                        return $scope.success_message = true;
-                      });
+          if (err) callback(err, null);
+          buf = buf.toString('hex');
+          subject = "Activate your cloudbrowser account";
+          confirmationMsg = "Please click on the link below to verify your email address.<br>" + ("<p><a href='" + baseURL + "/activate/" + buf + "'>Activate your account</a></p>") + "<p>If you have received this message in error and did not sign up for a cloudbrowser account," + (" click <a href='" + baseURL + "/deactivate/" + buf + "'>not my account</a></p>");
+          return sendEmail($scope.email, subject, confirmationMsg, function(err) {
+            if (err) {
+              throw err;
+              return $scope.$apply(function() {
+                return $scope.signup_error = "There was an error sending the confirmation email : " + err;
+              });
+            } else {
+              return CloudBrowserDb.collection("users", function(err, collection) {
+                if (err) {
+                  $scope.$apply(function() {
+                    return $scope.signup_error = "Our system encountered an error! Please try again later.";
+                  });
+                  throw err;
+                } else {
+                  return HashPassword({
+                    password: $scope.password
+                  }, function(result) {
+                    var user;
+                    user = {
+                      email: $scope.email,
+                      key: result.key.toString('hex'),
+                      salt: result.salt.toString('hex'),
+                      status: 'unverified',
+                      token: buf
+                    };
+                    collection.insert(user);
+                    return $scope.$apply(function() {
+                      return $scope.success_message = true;
                     });
-                  } else {
-                    $scope.$apply(function() {
-                      return $scope.signup_error = "Our system encountered an error! Please try again later.";
-                    });
-                    return console.log(err);
-                  }
-                });
-              } else {
-                return $scope.$apply(function() {
-                  return $scope.signup_error = "There was an error sending the confirmation email : " + err;
-                });
-              }
-            });
-          }
+                  });
+                }
+              });
+            }
+          });
         });
       }
     };

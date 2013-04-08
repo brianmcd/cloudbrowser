@@ -10,13 +10,15 @@ Managers            = require('./browser_manager')
 AdminInterface      = require('./admin_interface')
 ParseCookie         = require('cookie').parse
 ApplicationManager  = require('./application_manager')
+PermissionManager   = require('./permission_manager')
+Mongo               = require('mongodb')
+os                  = require('os')
 require('ofe').call()
 
 {MultiProcessBrowserManager, InProcessBrowserManager} = Managers
 
 # Server options:
 #   adminInterface  - bool - Enable the admin interface.
-#   appDir          - str  - Path of directory where all the applications are stored.
 #   compression     - bool - Enable protocol compression.
 #   compressJS      - bool - Pass socket.io client and client engine through
 #                            uglify and gzip.
@@ -38,12 +40,11 @@ require('ofe').call()
 #                            in its own process.
 defaults =
     adminInterface  : false
-    appDir          : "applications"
     compression     : true
     compressJS      : false
     debug           : false
     debugServer     : false
-    domain          : "localhost"
+    domain          : os.hostname()
     knockout        : false
     monitorTraffic  : false
     multiProcess    : false
@@ -59,14 +60,25 @@ defaults =
 class Server extends EventEmitter
     constructor : (@config = {}, paths) ->
         for own k, v of defaults
-            @config[k] = if @config.hasOwnProperty k then @config[k] else v
+            if not @config.hasOwnProperty k
+                @config[k] = v
+                if @config.debug
+                    console.log "Property '#{k}' not provided. Using default value '#{v}'"
+            else
+                if @config.debug
+                    console.log "#{k} : #{@config[k]}"
 
-        @applicationManager = new ApplicationManager(paths)
-        @httpServer = new HTTPServer @config,@applicationManager, () =>
+        @db_server = new Mongo.Server(@config.domain, 27017, {auto_reconnect:true})
+        @db = new Mongo.Db('cloudbrowser', @db_server)
+        @db.open (err, db) ->
+          if !err
+              console.log "Connection to Database cloudbrowser established"
+          else throw err
+        @applicationManager = new ApplicationManager(paths, this)
+        @permissionManager = new PermissionManager(@db)
+        @httpServer = new HTTPServer @config, @applicationManager, @db, this, () =>
             @emit('ready')
         @socketIOServer = @createSocketIOServer(@httpServer.server, @httpServer.mongoStore, @config.apps)
-        @mountMultiple(@applicationManager.applications) if @applicationManager.applications?
-        @mount(AdminInterface) if @config.adminInterface
         @setupEventTracker if @config.printEventStats
 
     setupEventTracker : () ->
@@ -84,9 +96,9 @@ class Server extends EventEmitter
             @emit('close')
         @httpServer.close()
 
-    mountMultiple : (apps) =>
+    mountMultiple: (apps) ->
         for mountPoint, app of apps
-          @mount(app)
+            @mount app
 
     mount : (app) ->
         console.log "Mounting " + app.mountPoint

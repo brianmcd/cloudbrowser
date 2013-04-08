@@ -21,19 +21,8 @@ searchStringtoJSON = (searchString) ->
     query = {}
     for s in search
         pair = s.split("=")
-        query[pair[0]] = pair[1]
+        query[decodeURIComponent(pair[0])] = decodeURIComponent(pair[1])
     return query
-
-search = location.search
-console.log search
-if search[0] == "?"
-    search = search.slice(1)
-query = searchStringtoJSON(search)
-
-redirectURL = query.redirectto
-
-console.log "REDIRECT URL"
-console.log redirectURL
 
 defaults =
     iterations : 10000
@@ -46,26 +35,20 @@ HashPassword = (config={}, callback) ->
 
     if not config.password?
         Crypto.randomBytes config.randomPasswordStartLen, (err, buf) ->
-            if err
-                console.log err
-            else
-                config.password = buf.toString 'base64'
-                HashPassword config, callback
+            if err then throw err
+            config.password = buf.toString 'base64'
+            HashPassword config, callback
 
     else if not config.salt?
         Crypto.randomBytes config.saltLength, (err, buf) ->
-            if err
-                console.log err
-            else
-                config.salt = new Buffer buf
-                HashPassword config, callback
+            if err then throw err
+            config.salt = new Buffer buf
+            HashPassword config, callback
 
     else Crypto.pbkdf2 config.password, config.salt, config.iterations, config.saltLength, (err, key) ->
-        if err
-            console.log err
-        else
-            config.key = key
-            callback config
+        if err then throw err
+        config.key = key
+        callback config
 
 sendEmail = (toEmailID, subject, message, callback) ->
     smtpTransport = nodemailer.createTransport "SMTP",
@@ -82,11 +65,18 @@ sendEmail = (toEmailID, subject, message, callback) ->
 
     smtpTransport.sendMail mailOptions, (error, response) ->
         if error then callback error
-        else callback null
+        callback null
         smtpTransport.close()
 
 CloudBrowserDb.open (err, Db) ->
-    if err then console.log err
+    if err then throw err
+
+search = location.search
+if search[0] == "?"
+    search = search.slice(1)
+
+query = searchStringtoJSON(search)
+redirectURL = query.redirectto
 
 authentication_string = "?openid.ns=http://specs.openid.net/auth/2.0" +
     "&openid.ns.pape=http:\/\/specs.openid.net/extensions/pape/1.0" +
@@ -132,34 +122,40 @@ CBAuthentication.controller "LoginCtrl", ($scope) ->
         else
             $scope.isDisabled = true
             CloudBrowserDb.collection "users", (err, collection) ->
-                unless err
-                    collection.findOne {email: $scope.email}, (err, user) ->
-                        if user and user.status isnt 'unverified'
-                            HashPassword {password : $scope.password, salt : new Buffer(user.salt, 'hex')}, (result) ->
-                                if result.key.toString('hex') == user.key
-                                    sessionID = decodeURIComponent(bserver.getSessions()[0])
-                                    mongoStore.get sessionID, (err, session) ->
-                                        unless err
-                                            session.user = $scope.email
-                                            ### Remember me
-                                            if $scope.remember
-                                                session.cookie.maxAge = 24 * 60 * 60 * 1000
-                                                #notify the client
-                                                bserver.updateCookie(session.cookie.maxAge)
-                                            else
-                                                session.cookie.expires = false
-                                            ###
-                                            mongoStore.set sessionID, session, ->
-                                                if redirectURL? then bserver.redirect rootURL + redirectURL
-                                                else bserver.redirect baseURL
+                if err then throw err
+                collection.findOne {email: $scope.email}, (err, user) ->
+                    if user and user.status isnt 'unverified'
+                        HashPassword {password : $scope.password, salt : new Buffer(user.salt, 'hex')}, (result) ->
+                            if result.key.toString('hex') == user.key
+                                sessionID = decodeURIComponent(bserver.getSessions()[0])
+                                mongoStore.get sessionID, (err, session) ->
+                                    if err then throw new Error "Error in finding the session:" + sessionID + " Error:" + err
+                                    else
+                                        if not session.user?
+                                            session.user = [{app:"/"+mountPoint, email:$scope.email}]
                                         else
-                                            console.log "Error in finding the session:" + sessionID + " Error:" + err
-                                else $scope.$apply ->
-                                    $scope.login_error = "Invalid Credentials"
-                        else $scope.$apply ->
-                            $scope.login_error = "Invalid Credentials"
-                else
-                    console.log err
+                                            session.user.push({app:"/"+mountPoint, email:$scope.email})
+                                        ### Remember me
+                                        if $scope.remember
+                                            session.cookie.maxAge = 24 * 60 * 60 * 1000
+                                            #notify the client
+                                            bserver.updateCookie(session.cookie.maxAge)
+                                        else
+                                            session.cookie.expires = false
+                                        ###
+                                        mongoStore.set sessionID, session, ->
+                                            search = location.search
+                                            if search[0] == "?"
+                                                search = search.slice(1)
+
+                                            query = searchStringtoJSON(search)
+                                            redirectURL = query.redirectto
+                                            if redirectURL? then bserver.redirect rootURL + redirectURL
+                                            else bserver.redirect baseURL
+                            else $scope.$apply ->
+                                $scope.login_error = "Invalid Credentials"
+                    else $scope.$apply ->
+                        $scope.login_error = "Invalid Credentials"
             $scope.isDisabled = false
 
     $scope.googleLogin = ->
@@ -183,27 +179,26 @@ CBAuthentication.controller "LoginCtrl", ($scope) ->
         if !$scope.email? or not /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}$/.test $scope.email.toUpperCase()
             $scope.email_error = "Please provide a valid email ID"
         else CloudBrowserDb.collection "users", (err, collection) ->
-            if err then console.log err
-            else collection.findOne {email: $scope.email}, (err, user) ->
-                if err then console.log err
-                else if not user then $scope.$apply ->
+            if err then throw err
+            collection.findOne {email: $scope.email}, (err, user) ->
+                if err then throw err
+                if not user then $scope.$apply ->
                     $scope.email_error = "This email ID is not registered with us."
                 else
                     $scope.$apply ->
                         $scope.resetDisabled = true
                     Crypto.randomBytes 32, (err, buf) ->
                         if err then callback err, null
-                        else
-                            buf = buf.toString 'hex'
-                            esc_email = encodeURIComponent($scope.email)
-                            subject = "Link to reset your CloudBrowser password"
-                            message = "You have requested to change your password. If you want to continue click <a href='#{baseURL}/password_reset?token=#{buf}&user=#{esc_email}'>reset</a>. If you have not requested a change in password then take no action."
-                            sendEmail $scope.email, subject, message, (err) ->
-                                $scope.$apply ->
-                                    $scope.resetDisabled = false
-                                    $scope.reset_success_msg = "A password reset link has been sent to your email ID."
-                                collection.update {email:user.email}, {$set:{status:"reset_password",token:buf}}, {w:1}, (err, result) ->
-                                    console.log err if err
+                        buf = buf.toString 'hex'
+                        esc_email = encodeURIComponent($scope.email)
+                        subject = "Link to reset your CloudBrowser password"
+                        message = "You have requested to change your password. If you want to continue click <a href='#{baseURL}/password_reset?token=#{buf}&user=#{esc_email}'>reset</a>. If you have not requested a change in password then take no action."
+                        sendEmail $scope.email, subject, message, (err) ->
+                            $scope.$apply ->
+                                $scope.resetDisabled = false
+                                $scope.reset_success_msg = "A password reset link has been sent to your email ID."
+                            collection.update {email:user.email}, {$set:{status:"reset_password",token:buf}}, {w:1}, (err, result) ->
+                                if err then throw err
 
 CBAuthentication.controller "SignupCtrl", ($scope) ->
     $scope.email = null
@@ -220,13 +215,11 @@ CBAuthentication.controller "SignupCtrl", ($scope) ->
         $scope.isDisabled = false
         $scope.success_message = false
         CloudBrowserDb.collection "users", (err, collection) ->
-            unless err
-                collection.findOne {email: nval}, (err, item) ->
-                    if item then $scope.$apply ->
-                        $scope.email_error = "Account with this Email ID already exists!"
-                        $scope.isDisabled = true
-            else
-                console.log err
+            if err then throw err
+            collection.findOne {email: nval}, (err, item) ->
+                if item then $scope.$apply ->
+                    $scope.email_error = "Account with this Email ID already exists!"
+                    $scope.isDisabled = true
 
     $scope.$watch "password+vpassword", ->
         $scope.signup_error = null
@@ -244,34 +237,35 @@ CBAuthentication.controller "SignupCtrl", ($scope) ->
         else
             Crypto.randomBytes 32, (err, buf) ->
                 if err then callback err, null
-                else
-                    buf = buf.toString 'hex'
-                    subject="Activate your cloudbrowser account"
-                    confirmationMsg = "Please click on the link below to verify your email address.<br>" +
-                    "<p><a href='#{baseURL}/activate/#{buf}'>Activate your account</a></p>" +
-                    "<p>If you have received this message in error and did not sign up for a cloudbrowser account," +
-                    " click <a href='#{baseURL}/deactivate/#{buf}'>not my account</a></p>"
-                    sendEmail $scope.email, subject, confirmationMsg, (err) ->
-                        unless err
-                            CloudBrowserDb.collection "users", (err, collection) ->
-                                unless err
-                                    HashPassword {password:$scope.password}, (result) ->
-                                        user =
-                                            email: $scope.email
-                                            key: result.key.toString('hex')
-                                            salt: result.salt.toString('hex')
-                                            status: 'unverified'
-                                            token: buf
-                                        collection.insert user
-                                        $scope.$apply ->
-                                            $scope.success_message = true
-                                else
+                buf = buf.toString 'hex'
+                subject="Activate your cloudbrowser account"
+                confirmationMsg = "Please click on the link below to verify your email address.<br>" +
+                "<p><a href='#{baseURL}/activate/#{buf}'>Activate your account</a></p>" +
+                "<p>If you have received this message in error and did not sign up for a cloudbrowser account," +
+                " click <a href='#{baseURL}/deactivate/#{buf}'>not my account</a></p>"
+                sendEmail $scope.email, subject, confirmationMsg, (err) ->
+                    if err
+                        throw err
+                        $scope.$apply ->
+                            $scope.signup_error = "There was an error sending the confirmation email : " + err
+                    else
+                        CloudBrowserDb.collection "users", (err, collection) ->
+                            if err
+                                $scope.$apply ->
+                                    $scope.signup_error = "Our system encountered an error! Please try again later."
+                                throw err
+                            else
+                                HashPassword {password:$scope.password}, (result) ->
+                                    user =
+                                        email: $scope.email
+                                        key: result.key.toString('hex')
+                                        salt: result.salt.toString('hex')
+                                        status: 'unverified'
+                                        token: buf
+                                    collection.insert user
+
                                     $scope.$apply ->
-                                        $scope.signup_error = "Our system encountered an error! Please try again later."
-                                    console.log err
-                        else
-                            $scope.$apply ->
-                                $scope.signup_error = "There was an error sending the confirmation email : " + err
+                                        $scope.success_message = true
 
     $scope.googleLogin = ->
         getJSON "https://www.google.com/accounts/o8/id", (statusCode, result) ->

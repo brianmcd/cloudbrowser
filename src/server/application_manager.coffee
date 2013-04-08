@@ -27,11 +27,12 @@ class Delayer
         if @count is 0 then @cb()
 
 class ApplicationManager
-    constructor : (paths, @mountMultiple) ->
+    constructor : (paths, @server) ->
         @applications = {}
         @load paths if paths?
-        @addDirectory "src/server/applications/admin_interface"
-        @delay = new Delayer(() => @mountMultiple(@applications))
+        if @server.config.adminInterface
+            @addDirectory "src/server/applications/admin_interface"
+        @delay = new Delayer(() => @server.mountMultiple(@applications))
 
     load : (paths) ->
         for path in paths
