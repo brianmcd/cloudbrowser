@@ -1,37 +1,15 @@
 CBLandingPage           = angular.module("CBLandingPage", [])
-baseURL                 = "http://" + config.domain + ":" + config.port
-Util                    = require('util')
+baseURL                 = "http://" + server.config.domain + ":" + server.config.port
 
 CBLandingPage.controller "UserCtrl", ($scope) ->
-    getAppMountPoint = (url) ->
-        urlComponents   = bserver.mountPoint.split("/")
-        componentIndex  = 1
-        mountPoint      = ""
-        while urlComponents[componentIndex] isnt "landing_page" and componentIndex < urlComponents.length
-            mountPoint += "/" + urlComponents[componentIndex++]
-        return mountPoint
-
-    $scope.domain       = config.domain
-    $scope.port         = config.port
-    $scope.mountPoint   = getAppMountPoint bserver.mountPoint
+    $scope.domain       = server.config.domain
+    $scope.port         = server.config.port
+    $scope.mountPoint   = Utils.getAppMountPoint bserver.mountPoint, "landing_page"
     $scope.browsers     = []
 
     app = server.applicationManager.find $scope.mountPoint
 
-    #dictionary of all the query key value pairs
-    searchStringtoJSON = (searchString) ->
-        search  = searchString.split("&")
-        query   = {}
-        for s in search
-            pair = s.split("=")
-            query[decodeURIComponent pair[0]] = decodeURIComponent pair[1]
-        return query
-
-    search = location.search
-    if search[0] == "?"
-        search = search.slice(1)
-
-    query = searchStringtoJSON(search)
+    query = Utils.searchStringtoJSON(location.search)
 
     $scope.email = query.user
 
@@ -41,14 +19,14 @@ CBLandingPage.controller "UserCtrl", ($scope) ->
             browsers[browserId] = browser
 
     $scope.deleteVB = (browserId) ->
-        console.log browsers[browserId]
-        if $scope.email and browsers[browserId].permissions.delete
-            server.permissionManager.rmBrowserPermRec $scope.email, $scope.mountPoint, browserID, () ->
-                console.log "Deleted"
-                vb = app.browsers.find(browserId)
-                app.browsers.close(vb)
-                browserIdx = $scope.browsers.indexOf browserId
-                $scope.browsers.splice(browserIdx, 1)
+        if $scope.email
+            server.permissionManager.findBrowserPermRec $scope.email, $scope.mountPoint, browserId, (userPermRec, appPermRec, browserPermRec) ->
+                if browserPermRec.permissions.delete
+                    server.permissionManager.rmBrowserPermRec $scope.email, $scope.mountPoint, browserId, () ->
+                        vb = app.browsers.find(browserId)
+                        app.browsers.close(vb)
+                        browserIdx = $scope.browsers.indexOf browserId
+                        $scope.browsers.splice(browserIdx, 1)
         else
             $scope.error = "Permission Denied"
 
@@ -59,7 +37,6 @@ CBLandingPage.controller "UserCtrl", ($scope) ->
                     bserver = app.browsers.create(app, "")
                     $scope.browsers.push(bserver.id)
                     server.permissionManager.addBrowserPermRec $scope.email, $scope.mountPoint, bserver.id, {owner:true, readwrite:true, delete:true}, () ->
-                        console.log "Browser added to perm record " + bserver.id
                 else
                     $scope.error = "Permission Denied"
         else

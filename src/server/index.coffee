@@ -12,6 +12,8 @@ ParseCookie         = require('cookie').parse
 ApplicationManager  = require('./application_manager')
 PermissionManager   = require('./permission_manager')
 Mongo               = require('mongodb')
+Express             = require("express")
+MongoStore          = require("connect-mongo")(Express)
 os                  = require('os')
 require('ofe').call()
 
@@ -74,11 +76,12 @@ class Server extends EventEmitter
           if !err
               console.log "Connection to Database cloudbrowser established"
           else throw err
+        @mongoStore = new MongoStore(db: "cloudbrowser_sessions", clear_interval: 600)
         @applicationManager = new ApplicationManager(paths, this)
         @permissionManager = new PermissionManager(@db)
-        @httpServer = new HTTPServer @config, @applicationManager, @db, this, () =>
+        @httpServer = new HTTPServer this, () =>
             @emit('ready')
-        @socketIOServer = @createSocketIOServer(@httpServer.server, @httpServer.mongoStore, @config.apps)
+        @socketIOServer = @createSocketIOServer(@httpServer.server, @config.apps)
         @setupEventTracker if @config.printEventStats
 
     setupEventTracker : () ->
@@ -109,7 +112,7 @@ class Server extends EventEmitter
             new InProcessBrowserManager(this, mountPoint, app)
         @httpServer.setupMountPoint(browsers, app)
 
-    createSocketIOServer : (http, mongoStore, apps) ->
+    createSocketIOServer : (http, apps) ->
         browserManagers = @httpServer.mountedBrowserManagers
         applicationManager = @applicationManager
         io = sio.listen(http)
@@ -118,7 +121,7 @@ class Server extends EventEmitter
                 io.set('browser client minification', true)
                 io.set('browser client gzip', true)
             io.set('log level', 1)
-            io.set 'authorization', (handshakeData, callback) ->
+            io.set 'authorization', (handshakeData, callback) =>
                 #Ashima - Browsers can turn off sending of the referer header and is this secure enough anyway?
                 referer = handshakeData.headers.referer.split('\/')
                 if referer
@@ -128,7 +131,7 @@ class Server extends EventEmitter
                     if app.authenticationInterface && not isAuthenticationReq
                         handshakeData.cookie = ParseCookie(handshakeData.headers.cookie)
                         handshakeData.sessionID = handshakeData.cookie['cb.id']
-                        mongoStore.get handshakeData.sessionID, (err, session) ->
+                        @mongoStore.get handshakeData.sessionID, (err, session) ->
                             if err
                                 callback(err.message, false)
                             else

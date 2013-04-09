@@ -1,43 +1,18 @@
 (function() {
-  var CBLandingPage, Util, baseURL;
+  var CBLandingPage, baseURL;
 
   CBLandingPage = angular.module("CBLandingPage", []);
 
-  baseURL = "http://" + config.domain + ":" + config.port;
-
-  Util = require('util');
+  baseURL = "http://" + server.config.domain + ":" + server.config.port;
 
   CBLandingPage.controller("UserCtrl", function($scope) {
-    var app, getAppMountPoint, query, search, searchStringtoJSON;
-    getAppMountPoint = function(url) {
-      var componentIndex, mountPoint, urlComponents;
-      urlComponents = bserver.mountPoint.split("/");
-      componentIndex = 1;
-      mountPoint = "";
-      while (urlComponents[componentIndex] !== "landing_page" && componentIndex < urlComponents.length) {
-        mountPoint += "/" + urlComponents[componentIndex++];
-      }
-      return mountPoint;
-    };
-    $scope.domain = config.domain;
-    $scope.port = config.port;
-    $scope.mountPoint = getAppMountPoint(bserver.mountPoint);
+    var app, query;
+    $scope.domain = server.config.domain;
+    $scope.port = server.config.port;
+    $scope.mountPoint = Utils.getAppMountPoint(bserver.mountPoint, "landing_page");
     $scope.browsers = [];
     app = server.applicationManager.find($scope.mountPoint);
-    searchStringtoJSON = function(searchString) {
-      var pair, query, s, search, _i, _len;
-      search = searchString.split("&");
-      query = {};
-      for (_i = 0, _len = search.length; _i < _len; _i++) {
-        s = search[_i];
-        pair = s.split("=");
-        query[decodeURIComponent(pair[0])] = decodeURIComponent(pair[1]);
-      }
-      return query;
-    };
-    search = location.search;
-    if (search[0] === "?") search = search.slice(1);
-    query = searchStringtoJSON(search);
+    query = Utils.searchStringtoJSON(location.search);
     $scope.email = query.user;
     server.permissionManager.getBrowserPermRecs($scope.email, $scope.mountPoint, function(browsers) {
       var browser, browserId, _results;
@@ -50,15 +25,17 @@
       return _results;
     });
     $scope.deleteVB = function(browserId) {
-      console.log(browsers[browserId]);
-      if ($scope.email && browsers[browserId].permissions["delete"]) {
-        return server.permissionManager.rmBrowserPermRec($scope.email, $scope.mountPoint, browserID, function() {
-          var browserIdx, vb;
-          console.log("Deleted");
-          vb = app.browsers.find(browserId);
-          app.browsers.close(vb);
-          browserIdx = $scope.browsers.indexOf(browserId);
-          return $scope.browsers.splice(browserIdx, 1);
+      if ($scope.email) {
+        return server.permissionManager.findBrowserPermRec($scope.email, $scope.mountPoint, browserId, function(userPermRec, appPermRec, browserPermRec) {
+          if (browserPermRec.permissions["delete"]) {
+            return server.permissionManager.rmBrowserPermRec($scope.email, $scope.mountPoint, browserId, function() {
+              var browserIdx, vb;
+              vb = app.browsers.find(browserId);
+              app.browsers.close(vb);
+              browserIdx = $scope.browsers.indexOf(browserId);
+              return $scope.browsers.splice(browserIdx, 1);
+            });
+          }
         });
       } else {
         return $scope.error = "Permission Denied";
@@ -75,9 +52,7 @@
               owner: true,
               readwrite: true,
               "delete": true
-            }, function() {
-              return console.log("Browser added to perm record " + bserver.id);
-            });
+            }, function() {});
           } else {
             return $scope.error = "Permission Denied";
           }

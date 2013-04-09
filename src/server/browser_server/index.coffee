@@ -19,7 +19,6 @@ ParseCookie          = require('cookie').parse
 # Serves 1 Browser to n clients.
 class BrowserServer extends EventEmitter
     constructor : (@server, @id, @mountPoint) ->
-        @domain = "theta.cs.vt.edu"
         if !@id? || !@mountPoint
             throw new Error("Missing required parameter")
         @browser = new Browser(@id, this, @server)

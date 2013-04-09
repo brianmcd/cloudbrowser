@@ -1,139 +1,29 @@
 (function() {
-  var CBAuthentication, CloudBrowserDb, CloudBrowserDb_server, Crypto, Express, HashPassword, Https, Mongo, MongoStore, Xml2JS, authentication_string, baseURL, defaults, getJSON, mongoStore, mountPoint, nodemailer, query, redirectURL, rootURL, search, searchStringtoJSON, sendEmail,
-    __hasProp = Object.prototype.hasOwnProperty;
-
-  Mongo = require("mongodb");
-
-  Express = require("express");
-
-  MongoStore = require("connect-mongo")(Express);
-
-  Https = require("https");
-
-  Xml2JS = require("xml2js");
-
-  Crypto = require("crypto");
-
-  nodemailer = require("nodemailer");
+  var CBAuthentication, CloudBrowserDb, baseURL, googleLogin, mongoStore, mountPoint, rootURL;
 
   CBAuthentication = angular.module("CBAuthentication", []);
 
-  CloudBrowserDb_server = new Mongo.Server(config.domain, 27017, {
-    auto_reconnect: true
-  });
+  CloudBrowserDb = server.db;
 
-  CloudBrowserDb = new Mongo.Db("cloudbrowser", CloudBrowserDb_server);
+  mongoStore = server.mongoStore;
 
-  mongoStore = new MongoStore({
-    db: "cloudbrowser_sessions"
-  });
+  mountPoint = Utils.getAppMountPoint(bserver.mountPoint, "authenticate");
 
-  mountPoint = bserver.mountPoint.split("/")[1];
+  rootURL = "http://" + server.config.domain + ":" + server.config.port;
 
-  rootURL = "http://" + config.domain + ":" + config.port;
+  baseURL = rootURL + mountPoint;
 
-  baseURL = rootURL + "/" + mountPoint;
-
-  searchStringtoJSON = function(searchString) {
-    var pair, query, s, search, _i, _len;
-    search = searchString.split("&");
-    query = {};
-    for (_i = 0, _len = search.length; _i < _len; _i++) {
-      s = search[_i];
-      pair = s.split("=");
-      query[decodeURIComponent(pair[0])] = decodeURIComponent(pair[1]);
-    }
-    return query;
-  };
-
-  defaults = {
-    iterations: 10000,
-    randomPasswordStartLen: 6,
-    saltLength: 64
-  };
-
-  HashPassword = function(config, callback) {
-    var k, v;
-    if (config == null) config = {};
-    for (k in defaults) {
-      if (!__hasProp.call(defaults, k)) continue;
-      v = defaults[k];
-      config[k] = config.hasOwnProperty(k) ? config[k] : v;
-    }
-    if (!(config.password != null)) {
-      return Crypto.randomBytes(config.randomPasswordStartLen, function(err, buf) {
-        if (err) throw err;
-        config.password = buf.toString('base64');
-        return HashPassword(config, callback);
-      });
-    } else if (!(config.salt != null)) {
-      return Crypto.randomBytes(config.saltLength, function(err, buf) {
-        if (err) throw err;
-        config.salt = new Buffer(buf);
-        return HashPassword(config, callback);
-      });
+  googleLogin = function() {
+    var query, search;
+    search = location.search;
+    query = Utils.searchStringtoJSON(search);
+    if (search[0] === "?") {
+      search += "&mountPoint=" + mountPoint;
     } else {
-      return Crypto.pbkdf2(config.password, config.salt, config.iterations, config.saltLength, function(err, key) {
-        if (err) throw err;
-        config.key = key;
-        return callback(config);
-      });
+      search = "?mountPoint=" + mountPoint;
     }
-  };
-
-  sendEmail = function(toEmailID, subject, message, callback) {
-    var mailOptions, smtpTransport;
-    smtpTransport = nodemailer.createTransport("SMTP", {
-      service: "Gmail",
-      auth: {
-        user: config.nodeMailerEmailID,
-        pass: config.nodeMailerPassword
-      }
-    });
-    mailOptions = {
-      from: config.nodeMailerEmailID,
-      to: toEmailID,
-      subject: subject,
-      html: message
-    };
-    return smtpTransport.sendMail(mailOptions, function(error, response) {
-      if (error) callback(error);
-      callback(null);
-      return smtpTransport.close();
-    });
-  };
-
-  CloudBrowserDb.open(function(err, Db) {
-    if (err) throw err;
-  });
-
-  search = location.search;
-
-  if (search[0] === "?") search = search.slice(1);
-
-  query = searchStringtoJSON(search);
-
-  redirectURL = query.redirectto;
-
-  authentication_string = "?openid.ns=http://specs.openid.net/auth/2.0" + "&openid.ns.pape=http:\/\/specs.openid.net/extensions/pape/1.0" + "&openid.ns.max_auth_age=300" + "&openid.claimed_id=http:\/\/specs.openid.net/auth/2.0/identifier_select" + "&openid.identity=http:\/\/specs.openid.net/auth/2.0/identifier_select" + "&openid.return_to=" + baseURL + "/checkauth?redirectto=" + (redirectURL != null ? redirectURL : "") + "&openid.realm=" + rootURL + "&openid.mode=checkid_setup" + "&openid.ui.ns=http:\/\/specs.openid.net/extensions/ui/1.0" + "&openid.ui.mode=popup" + "&openid.ui.icon=true" + "&openid.ns.ax=http:\/\/openid.net/srv/ax/1.0" + "&openid.ax.mode=fetch_request" + "&openid.ax.type.email=http:\/\/axschema.org/contact/email" + "&openid.ax.type.language=http:\/\/axschema.org/pref/language" + "&openid.ax.required=email,language";
-
-  getJSON = function(options, callback) {
-    var request;
-    request = Https.get(options, function(res) {
-      var output;
-      output = '';
-      res.setEncoding('utf8');
-      res.on('data', function(chunk) {
-        return output += chunk;
-      });
-      return res.on('end', function() {
-        return callback(res.statusCode, output);
-      });
-    });
-    request.on('error', function(err) {
-      return callback(-1, err);
-    });
-    return request.end;
+    if (!(query.redirectto != null)) search += "&redirectto=" + mountPoint;
+    return bserver.redirect(rootURL + '/googleAuth' + search);
   };
 
   CBAuthentication.controller("LoginCtrl", function($scope) {
@@ -169,13 +59,13 @@
                       if (!(session.user != null)) {
                         session.user = [
                           {
-                            app: "/" + mountPoint,
+                            app: mountPoint,
                             email: $scope.email
                           }
                         ];
                       } else {
                         session.user.push({
-                          app: "/" + mountPoint,
+                          app: mountPoint,
                           email: $scope.email
                         });
                       }
@@ -188,12 +78,10 @@
                           session.cookie.expires = false
                       */
                       return mongoStore.set(sessionID, session, function() {
-                        search = location.search;
-                        if (search[0] === "?") search = search.slice(1);
-                        query = searchStringtoJSON(search);
-                        redirectURL = query.redirectto;
-                        if (redirectURL != null) {
-                          return bserver.redirect(rootURL + redirectURL);
+                        var query;
+                        query = Utils.searchStringtoJSON(location.search);
+                        if (query.redirectto != null) {
+                          return bserver.redirect(rootURL + query.redirectto);
                         } else {
                           return bserver.redirect(baseURL);
                         }
@@ -216,22 +104,7 @@
         return $scope.isDisabled = false;
       }
     };
-    $scope.googleLogin = function() {
-      return getJSON("https://www.google.com/accounts/o8/id", function(statusCode, result) {
-        if (statusCode === -1) {
-          return $scope.$apply(function() {
-            return $scope.login_error = "There was a failure in contacting the google discovery service";
-          });
-        } else {
-          return Xml2JS.parseString(result, function(err, result) {
-            var path, uri;
-            uri = result["xrds:XRDS"].XRD[0].Service[0].URI[0];
-            path = uri.substring(uri.indexOf('\.com') + 4);
-            return bserver.redirect("https://www.google.com" + path + authentication_string);
-          });
-        }
-      });
-    };
+    $scope.googleLogin = googleLogin;
     $scope.$watch("email + password", function() {
       $scope.login_error = null;
       $scope.isDisabled = false;
@@ -362,7 +235,9 @@
                       key: result.key.toString('hex'),
                       salt: result.salt.toString('hex'),
                       status: 'unverified',
-                      token: buf
+                      token: buf,
+                      app: mountPoint,
+                      ns: 'local'
                     };
                     collection.insert(user);
                     return $scope.$apply(function() {
@@ -376,22 +251,7 @@
         });
       }
     };
-    return $scope.googleLogin = function() {
-      return getJSON("https://www.google.com/accounts/o8/id", function(statusCode, result) {
-        if (statusCode === -1) {
-          return $scope.$apply(function() {
-            return $scope.login_error = "There was a failure in contacting the google discovery service";
-          });
-        } else {
-          return Xml2JS.parseString(result, function(err, result) {
-            var path, uri;
-            uri = result["xrds:XRDS"].XRD[0].Service[0].URI[0];
-            path = uri.substring(uri.indexOf('\.com') + 4);
-            return bserver.redirect("https://www.google.com" + path + authentication_string);
-          });
-        }
-      });
-    };
+    return $scope.googleLogin = googleLogin;
   });
 
 }).call(this);

@@ -97,7 +97,6 @@ class Browser extends EventEmitter
         @window.process = process
         @window.Buffer  = Buffer
         @window.bserver = @bserver
-        @window.config = @server.config
         @window.server  = @server
         EmbedAPI(this, @bserver)
         # If an app needs server-side knockout, we have to monkey patch

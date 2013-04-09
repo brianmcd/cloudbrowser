@@ -1,10 +1,9 @@
 CBAdmin         = angular.module("CBAdmin", [])
-Util            = require('util')
-baseURL = "http://" + config.domain + ":" + config.port
+baseURL = "http://" + server.config.domain + ":" + server.config.port
+
 CBAdmin.controller "AppCtrl", ($scope, $timeout) ->
-    $scope.domain = config.domain
-    $scope.port = config.port
-    # Use node emit
+    $scope.domain = server.config.domain
+    $scope.port = server.config.port
     $scope.getApps = () ->
         $timeout ->
             $scope.apps = server.applicationManager.applications

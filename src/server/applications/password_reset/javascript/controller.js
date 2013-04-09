@@ -1,85 +1,13 @@
 (function() {
-  var CBPasswordReset, CloudBrowserDb, CloudBrowserDb_server, Crypto, HashPassword, Mongo, Util, defaults,
-    __hasProp = Object.prototype.hasOwnProperty;
+  var CBPasswordReset, CloudBrowserDb;
 
   CBPasswordReset = angular.module("CBPasswordReset", []);
 
-  Mongo = require("mongodb");
-
-  Util = require("util");
-
-  Crypto = require("crypto");
-
-  CloudBrowserDb_server = new Mongo.Server(config.domain, 27017, {
-    auto_reconnect: true
-  });
-
-  CloudBrowserDb = new Mongo.Db("cloudbrowser", CloudBrowserDb_server);
-
-  CloudBrowserDb.open(function(err, Db) {
-    if (err) throw err;
-  });
-
-  defaults = {
-    iterations: 10000,
-    randomPasswordStartLen: 6,
-    saltLength: 64
-  };
-
-  HashPassword = function(config, callback) {
-    var k, v;
-    if (config == null) config = {};
-    for (k in defaults) {
-      if (!__hasProp.call(defaults, k)) continue;
-      v = defaults[k];
-      config[k] = config.hasOwnProperty(k) ? config[k] : v;
-    }
-    if (!(config.password != null)) {
-      return Crypto.randomBytes(config.randomPasswordStartLen, function(err, buf) {
-        if (err) {
-          throw err;
-        } else {
-          config.password = buf.toString('base64');
-          return HashPassword(config, callback);
-        }
-      });
-    } else if (!(config.salt != null)) {
-      return Crypto.randomBytes(config.saltLength, function(err, buf) {
-        if (err) {
-          throw err;
-        } else {
-          config.salt = new Buffer(buf);
-          return HashPassword(config, callback);
-        }
-      });
-    } else {
-      return Crypto.pbkdf2(config.password, config.salt, config.iterations, config.saltLength, function(err, key) {
-        if (err) {
-          throw err;
-        } else {
-          config.key = key;
-          return callback(config);
-        }
-      });
-    }
-  };
+  CloudBrowserDb = server.db;
 
   CBPasswordReset.controller("ResetCtrl", function($scope) {
-    var query, search, searchStringtoJSON, username;
-    searchStringtoJSON = function(searchString) {
-      var pair, query, s, search, _i, _len;
-      search = searchString.split("&");
-      query = {};
-      for (_i = 0, _len = search.length; _i < _len; _i++) {
-        s = search[_i];
-        pair = s.split("=");
-        query[pair[0]] = pair[1];
-      }
-      return query;
-    };
-    search = location.search;
-    if (search[0] === "?") search = search.slice(1);
-    query = searchStringtoJSON(search);
+    var query, username;
+    query = Utils.searchStringtoJSON(location.search);
     username = query['user'].split("@")[0];
     $scope.username = username.charAt(0).toUpperCase() + username.slice(1);
     $scope.password = null;

@@ -1,111 +1,21 @@
-Mongo                   = require("mongodb")
-Express                 = require("express")
-MongoStore              = require("connect-mongo")(Express)
-Https                   = require("https")
-Xml2JS                  = require("xml2js")
-Crypto                  = require("crypto")
-nodemailer              = require("nodemailer")
 CBAuthentication        = angular.module("CBAuthentication", [])
-CloudBrowserDb_server   = new Mongo.Server(config.domain, 27017,
-    auto_reconnect: true
-)
-CloudBrowserDb          = new Mongo.Db("cloudbrowser", CloudBrowserDb_server)
-mongoStore              = new MongoStore(db: "cloudbrowser_sessions")
-mountPoint              = bserver.mountPoint.split("/")[1]
-rootURL                 = "http://" + config.domain + ":" + config.port
-baseURL                 = rootURL + "/" + mountPoint
 
-#dictionary of all the query key value pairs
-searchStringtoJSON = (searchString) ->
-    search = searchString.split("&")
-    query = {}
-    for s in search
-        pair = s.split("=")
-        query[decodeURIComponent(pair[0])] = decodeURIComponent(pair[1])
-    return query
+CloudBrowserDb          = server.db
+mongoStore              = server.mongoStore
+mountPoint              = Utils.getAppMountPoint bserver.mountPoint, "authenticate"
+rootURL                 = "http://" + server.config.domain + ":" + server.config.port
+baseURL                 = rootURL + mountPoint
 
-defaults =
-    iterations : 10000
-    randomPasswordStartLen : 6 #final password length after base64 encoding will be 8
-    saltLength : 64
-
-HashPassword = (config={}, callback) ->
-    for own k, v of defaults
-        config[k] = if config.hasOwnProperty k then config[k] else v
-
-    if not config.password?
-        Crypto.randomBytes config.randomPasswordStartLen, (err, buf) ->
-            if err then throw err
-            config.password = buf.toString 'base64'
-            HashPassword config, callback
-
-    else if not config.salt?
-        Crypto.randomBytes config.saltLength, (err, buf) ->
-            if err then throw err
-            config.salt = new Buffer buf
-            HashPassword config, callback
-
-    else Crypto.pbkdf2 config.password, config.salt, config.iterations, config.saltLength, (err, key) ->
-        if err then throw err
-        config.key = key
-        callback config
-
-sendEmail = (toEmailID, subject, message, callback) ->
-    smtpTransport = nodemailer.createTransport "SMTP",
-        service: "Gmail"
-        auth:
-            user: config.nodeMailerEmailID
-            pass: config.nodeMailerPassword
-
-    mailOptions =
-        from: config.nodeMailerEmailID
-        to: toEmailID
-        subject: subject
-        html: message
-
-    smtpTransport.sendMail mailOptions, (error, response) ->
-        if error then callback error
-        callback null
-        smtpTransport.close()
-
-CloudBrowserDb.open (err, Db) ->
-    if err then throw err
-
-search = location.search
-if search[0] == "?"
-    search = search.slice(1)
-
-query = searchStringtoJSON(search)
-redirectURL = query.redirectto
-
-authentication_string = "?openid.ns=http://specs.openid.net/auth/2.0" +
-    "&openid.ns.pape=http:\/\/specs.openid.net/extensions/pape/1.0" +
-    "&openid.ns.max_auth_age=300" +
-    "&openid.claimed_id=http:\/\/specs.openid.net/auth/2.0/identifier_select" +
-    "&openid.identity=http:\/\/specs.openid.net/auth/2.0/identifier_select" +
-    "&openid.return_to=" + baseURL + "/checkauth?redirectto=" + (if redirectURL? then redirectURL else "") +
-    "&openid.realm=" + rootURL +
-    "&openid.mode=checkid_setup" +
-    "&openid.ui.ns=http:\/\/specs.openid.net/extensions/ui/1.0" +
-    "&openid.ui.mode=popup" +
-    "&openid.ui.icon=true" +
-    "&openid.ns.ax=http:\/\/openid.net/srv/ax/1.0" +
-    "&openid.ax.mode=fetch_request" +
-    "&openid.ax.type.email=http:\/\/axschema.org/contact/email" +
-    "&openid.ax.type.language=http:\/\/axschema.org/pref/language" +
-    "&openid.ax.required=email,language"
-
-getJSON = (options, callback) ->
-    request = Https.get options, (res) ->
-        output = ''
-        res.setEncoding 'utf8'
-        res.on 'data', (chunk) ->
-            output += chunk
-        res.on 'end', ->
-            callback res.statusCode, output
-    request.on 'error', (err) ->
-        callback -1, err
-    request.end
+googleLogin = () ->
+    search = location.search
+    query = Utils.searchStringtoJSON(search)
+    if search[0] is "?"
+        search += "&mountPoint=" + mountPoint
+    else
+        search = "?mountPoint=" + mountPoint
+    if not query.redirectto?
+        search += "&redirectto=" + mountPoint
+    bserver.redirect(rootURL + '/googleAuth' + search)
 
 CBAuthentication.controller "LoginCtrl", ($scope) ->
     $scope.email = null
@@ -132,9 +42,9 @@ CBAuthentication.controller "LoginCtrl", ($scope) ->
                                     if err then throw new Error "Error in finding the session:" + sessionID + " Error:" + err
                                     else
                                         if not session.user?
-                                            session.user = [{app:"/"+mountPoint, email:$scope.email}]
+                                            session.user = [{app:mountPoint, email:$scope.email}]
                                         else
-                                            session.user.push({app:"/"+mountPoint, email:$scope.email})
+                                            session.user.push({app:mountPoint, email:$scope.email})
                                         ### Remember me
                                         if $scope.remember
                                             session.cookie.maxAge = 24 * 60 * 60 * 1000
@@ -144,13 +54,8 @@ CBAuthentication.controller "LoginCtrl", ($scope) ->
                                             session.cookie.expires = false
                                         ###
                                         mongoStore.set sessionID, session, ->
-                                            search = location.search
-                                            if search[0] == "?"
-                                                search = search.slice(1)
-
-                                            query = searchStringtoJSON(search)
-                                            redirectURL = query.redirectto
-                                            if redirectURL? then bserver.redirect rootURL + redirectURL
+                                            query = Utils.searchStringtoJSON(location.search)
+                                            if query.redirectto? then bserver.redirect rootURL + query.redirectto
                                             else bserver.redirect baseURL
                             else $scope.$apply ->
                                 $scope.login_error = "Invalid Credentials"
@@ -158,14 +63,7 @@ CBAuthentication.controller "LoginCtrl", ($scope) ->
                         $scope.login_error = "Invalid Credentials"
             $scope.isDisabled = false
 
-    $scope.googleLogin = ->
-        getJSON "https://www.google.com/accounts/o8/id", (statusCode, result) ->
-            if statusCode == -1 then $scope.$apply ->
-                $scope.login_error="There was a failure in contacting the google discovery service"
-            else Xml2JS.parseString result, (err, result) ->
-                uri = result["xrds:XRDS"].XRD[0].Service[0].URI[0]
-                path = uri.substring(uri.indexOf('\.com') + 4)
-                bserver.redirect("https://www.google.com" + path + authentication_string)
+    $scope.googleLogin = googleLogin
 
     $scope.$watch "email + password", ->
         $scope.login_error = null
@@ -262,17 +160,11 @@ CBAuthentication.controller "SignupCtrl", ($scope) ->
                                         salt: result.salt.toString('hex')
                                         status: 'unverified'
                                         token: buf
+                                        app: mountPoint
+                                        ns: 'local'
                                     collection.insert user
 
                                     $scope.$apply ->
                                         $scope.success_message = true
 
-    $scope.googleLogin = ->
-        getJSON "https://www.google.com/accounts/o8/id", (statusCode, result) ->
-            if statusCode == -1 then $scope.$apply ->
-                $scope.login_error="There was a failure in contacting the google discovery service"
-            else Xml2JS.parseString result, (err, result) ->
-                uri = result["xrds:XRDS"].XRD[0].Service[0].URI[0]
-                path = uri.substring(uri.indexOf('\.com') + 4)
-                bserver.redirect("https://www.google.com" + path + authentication_string)
-
+    $scope.googleLogin = googleLogin

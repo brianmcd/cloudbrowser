@@ -4,41 +4,82 @@ ZLib           = require('zlib')
 Path           = require('path')
 Uglify         = require('uglify-js')
 Browserify     = require('browserify')
-MongoStore     = require('connect-mongo')(express)
 QueryString    = require('querystring')
+Passport       = require('passport')
+GoogleStrategy = require('passport-google').Strategy
 
 class HTTPServer extends EventEmitter
-    constructor : (@config, @applicationManager, @db, @cbServer, callback) ->
+    constructor : (@cbServer, callback) ->
         server = @server = express.createServer()
         @clientEngineModified = new Date().toString()
         @clientEngineJS = null
         @mountedBrowserManagers = {}
-        @mongoStore = new MongoStore({db:'cloudbrowser_sessions', clear_interval: 3600})
 
         server.configure () =>
             if !process.env.TESTS_RUNNING
                 server.use(express.logger())
             server.use(express.bodyParser())
             server.use(express.cookieParser('secret'))
-            server.use(express.session({store: @mongoStore, secret: 'change me please', key:'cb.id'}))
+            server.use(express.session({store: @cbServer.mongoStore, secret: 'change me please', key:'cb.id'}))
             server.set('views', Path.join(__dirname, '..', '..', 'views'))
             server.set('view options', {layout: false})
+            server.use(Passport.initialize())
+
+        Passport.use new GoogleStrategy {returnURL:"http://" + @cbServer.config.domain + ":" + @cbServer.config.port + "/checkauth",
+        realm: "http://" + @cbServer.config.domain + ":" + @cbServer.config.port },
+        (identifier, profile, done) =>
+            done null, {identifier:identifier, email:profile.emails[0].value, displayName: profile.displayName}
+
+        Passport.serializeUser (user, done) ->
+            done null, user.identifier
+
+        Passport.deserializeUser (identifier, done) ->
+            done null, {identifier:identifier}
+
+        server.get '/googleAuth', (req, res, next) ->
+            req.session.query = req.query
+            next()
+        , Passport.authenticate('google')
+
+        server.get '/checkauth', Passport.authenticate('google'), (req, res) =>
+            req.query = req.session.query
+            if not req.user
+                res.writeHead 302,
+                    {'Location' : req.query.mountPoint,'Cache-Control' : "max-age=0, must-revalidate"}
+                res.end()
+            else @cbServer.db.collection "google_users", (err, collection) =>
+                if not req.session.user?
+                    req.session.user = []
+                collection.findOne {email:req.user.email, app: req.query.mountPoint, ns: 'google'}, (err, user) ->
+                    throw err if err
+                    if user
+                        req.session.user.push({email:user.email, app:user.app})
+                        req.session.save()
+                    else
+                        collection.insert {email:req.user.email, displayName:req.user.displayName, app: req.query.mountPoint, ns: 'google'}, (err, user) ->
+                            throw err if err
+                            req.session.user.push({email:user[0].email, app:user[0].app})
+                            req.session.save()
+                        
+                res.writeHead 302,
+                    {'Location' : req.query.redirectto,'Cache-Control' : "max-age=0, must-revalidate"}
+                res.end()
 
         server.get '/clientEngine.js', (req, res) =>
             res.statusCode = 200
             res.setHeader('Last-Modified', @clientEngineModified)
             res.setHeader('Content-Type', 'text/javascript')
-            if @config.compressJS
+            if @cbServer.config.compressJS
                 res.setHeader('Content-Encoding', 'gzip')
             res.end(@clientEngineJS)
-
-        if @config.compressJS
+            
+        if @cbServer.config.compressJS
             @gzipJS @bundleJS(), (js) =>
                 @clientEngineJS = js
-                server.listen(@config.port, callback)
+                server.listen(@cbServer.config.port, callback)
         else
             @clientEngineJS = @bundleJS()
-            server.listen(@config.port, callback)
+            server.listen(@cbServer.config.port, callback)
     
     close : (callback) ->
         @server.close(callback)
@@ -71,7 +112,7 @@ class HTTPServer extends EventEmitter
             req.queryString = QueryString.stringify(req.query)
             if req.queryString isnt ""
                 req.queryString = "?" + req.queryString
-            baseURL = "http://" + @config.domain + ":" + @config.port
+            baseURL = "http://" + @cbServer.config.domain + ":" + @cbServer.config.port
             mps = mountPointNoSlash.split('/')
             mp_hierarchy = []
             mp = ""
@@ -157,40 +198,9 @@ class HTTPServer extends EventEmitter
                         {'Location' : mountPoint,'Cache-Control' : "max-age=0, must-revalidate"}
                     res.end()
 
-            #Ashima - Make a similar route for post
-            #Verify validity of response
-            @server.get mountPointNoSlash + "/checkauth", (req, res) ->
-                #unsuccessful authentication
-                if req.query['openid\.mode']? and req.query['openid\.mode'] is "cancel"
-                    res.writeHead 302,
-                        {'Location' : "/authenticate",'Cache-Control' : "max-age=0, must-revalidate"}
-                    res.end()
-                else if req.query['openid\.ext1\.value\.email']?
-                    #console.log req.query
-                    if not req.session.user?
-                        req.session.user = [{app:mountPointNoSlash, email:req.query['openid\.ext1\.value\.email']}]
-                    else
-                        req.session.user.push {app:mountPointNoSlash, email:req.query['openid\.ext1\.value\.email']}
-                    req.session.save()
-                    ### Ashima - Fix redirection
-                    redirectURL = req.query['openid\.return_to'].split("?redirectto=")
-                    console.log "Redirect to " + redirectURL
-                    if redirectURL.length > 1
-                      console.log "Redirecting to " + redirectURL[1]
-                      res.writeHead 302,
-                          {'Location' : redirectURL[1],'Cache-Control' : "max-age=0, must-revalidate"}
-                      res.end()
-                    else
-                    ###
-                    res.writeHead 302,
-                        {'Location' : mountPointNoSlash,'Cache-Control' : "max-age=0, must-revalidate"}
-                    res.end()
-                else
-                    res.send("Invalid Request", 404)
-
             @server.get mountPointNoSlash + "/activate/:token", (req, res) =>
                 token = req.params.token
-                @db.collection "users", (err, collection) =>
+                @cbServer.db.collection "users", (err, collection) =>
                     if err then throw err
                     else
                         collection.findOne {token:token}, (err, user) =>
@@ -199,11 +209,11 @@ class HTTPServer extends EventEmitter
                             collection.update {token: token}, {$unset: {token: "", status: ""}}, {w:1}, (err, result) =>
                                 if err then throw err
                                 else res.render 'activate.jade',
-                                    url: "http://"+ @config.domain + ":" + @config.port + mountPoint
+                                    url: "http://"+ @cbServer.config.domain + ":" + @cbServer.config.port + mountPoint
 
             @server.get mountPointNoSlash + "/deactivate/:token", (req, res) =>
                 token = req.params.token
-                @db.collection "users", (err, collection) ->
+                @cbServer.db.collection "users", (err, collection) ->
                     if err then throw err
                     else collection.remove {token: token}, (err, result) ->
                         if err then throw err
@@ -272,7 +282,7 @@ class HTTPServer extends EventEmitter
             require : [Path.resolve(__dirname, '..', 'client', 'client_engine')]
             ignore : ['socket.io-client', 'weak']
             filter : (src) =>
-                if @config.compressJS
+                if @cbServer.config.compressJS
                     ugly = Uglify(src)
                 else
                     src

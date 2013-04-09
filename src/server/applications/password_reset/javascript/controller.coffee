@@ -1,59 +1,9 @@
 CBPasswordReset         = angular.module("CBPasswordReset", [])
-Mongo                   = require("mongodb")
-Util                    = require("util")
-Crypto                  = require("crypto")
-CloudBrowserDb_server   = new Mongo.Server(config.domain, 27017,
-    auto_reconnect: true
-)
-CloudBrowserDb          = new Mongo.Db("cloudbrowser", CloudBrowserDb_server)
-CloudBrowserDb.open (err, Db) ->
-    if err then throw err
-
-defaults =
-    iterations : 10000
-    randomPasswordStartLen : 6 #final password length after base64 encoding will be 8
-    saltLength : 64
-
-HashPassword = (config={}, callback) ->
-    for own k, v of defaults
-        config[k] = if config.hasOwnProperty k then config[k] else v
-
-    if not config.password?
-        Crypto.randomBytes config.randomPasswordStartLen, (err, buf) ->
-            if err then throw err
-            else
-                config.password = buf.toString 'base64'
-                HashPassword config, callback
-
-    else if not config.salt?
-        Crypto.randomBytes config.saltLength, (err, buf) ->
-            if err then throw err
-            else
-                config.salt = new Buffer buf
-                HashPassword config, callback
-
-    else Crypto.pbkdf2 config.password, config.salt, config.iterations, config.saltLength, (err, key) ->
-        if err then throw err
-        else
-            config.key = key
-            callback config
+CloudBrowserDb          = server.db
 
 CBPasswordReset.controller "ResetCtrl", ($scope) ->
 
-    #dictionary of all the query key value pairs
-    searchStringtoJSON = (searchString) ->
-        search = searchString.split("&")
-        query = {}
-        for s in search
-            pair = s.split("=")
-            query[pair[0]] = pair[1]
-        return query
-
-    search = location.search
-    if search[0] == "?"
-        search = search.slice(1)
-
-    query = searchStringtoJSON(search)
+    query = Utils.searchStringtoJSON(location.search)
 
     username = query['user'].split("@")[0]
     $scope.username = username.charAt(0).toUpperCase() + username.slice(1)
