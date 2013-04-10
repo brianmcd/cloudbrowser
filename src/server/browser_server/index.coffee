@@ -159,7 +159,6 @@ class BrowserServer extends EventEmitter
         # TODO: don't do this workaround
         oldApps = @server.config.apps
         @server.config.apps = null
-        @server.config.defaultApp = null
         socket.emit('SetConfig', @server.config)
         @server.config.apps = oldApps
 

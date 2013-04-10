@@ -95,41 +95,31 @@ class HTTPServer extends EventEmitter
             mountPoint.substring(0, mountPoint.length - 1)
         else mountPoint
 
-        #middleware to check if user is authenticated
+        # Middleware that allows only authenticated users to access the protected resource
         verify_authentication = (req, res, next) ->
+            console.log "SESSION"
+            console.log req.session
             req.queryString = QueryString.stringify(req.query)
-            if req.queryString isnt ""
-                req.queryString = "?" + req.queryString
-            if not req.session.user? or (req.session.user.filter (user) -> return user.app is mountPointNoSlash).length is 0
+            # An authenticated session has a user object associated with it.
+            # The user object has the form {email,app}. Access is granted only 
+            # if a user object for the requested app is associated
+            # with the current session.
+            if not req.session.user? or (user = req.session.user.filter (user) -> return user.app is mountPointNoSlash).length is 0
+                if req.queryString isnt ""
+                    req.queryString = "?" + req.queryString
+                    req.queryString += "&redirectto=" + req.url
+                else
+                    req.queryString = "?redirectto=" + req.url
+                # The redirectto query parameter is used to redirect to the resource that was
+                # originally requested for by an unauthenticated user.
                 res.writeHead 302,
                     {'Location' : mountPointNoSlash + "/authenticate" + req.queryString, 'Cache-Control' : "max-age=0, must-revalidate"}
                 res.end()
             else
-                next()
-
-        #middleware specific to landing page
-        landing_check = (req, res, next) =>
-            req.queryString = QueryString.stringify(req.query)
-            if req.queryString isnt ""
-                req.queryString = "?" + req.queryString
-            baseURL = "http://" + @cbServer.config.domain + ":" + @cbServer.config.port
-            mps = mountPointNoSlash.split('/')
-            mp_hierarchy = []
-            mp = ""
-            for i in [1...(mps.length - 1)]
-                mp += "/" + mps[i]
-                mp_hierarchy.push mp
-            if not req.session.user? or (user = req.session.user.filter (user) -> return user.app in mp_hierarchy).length is 0
+                # The user query parameter is used to identify the original
+                # user for whom this browser was created
                 if req.queryString is ""
-                    req.queryString += "?redirectto=" + mp_hierarchy[mp_hierarchy.length-1] + "/landing_page"
-                else
-                    req.queryString += "&redirectto=" + mp_hierarchy[mp_hierarchy.length-1] + "/landing_page"
-                res.writeHead 302,
-                    {'Location' : baseURL + mp_hierarchy[mp_hierarchy.length-1] + "/authenticate" + req.queryString, 'Cache-Control' : "max-age=0, must-revalidate"}
-                res.end()
-            else
-                if req.queryString is ""
-                    req.queryString = "?user=" + user[0].email
+                    req.queryString  = "?user=" + user[0].email
                 else
                     req.queryString += "&user=" + user[0].email
                 next()
@@ -138,7 +128,7 @@ class HTTPServer extends EventEmitter
         authorize = (req, res, next) =>
             if req.session? and
             (user = req.session.user.filter((user) -> return user.app is mountPointNoSlash)).length isnt 0
-                @cbServer.permissionManager.findBrowserPermRec user[0].email, mountPointNoSlash, req.params.browserid, (userPermRec, userAppPermRec, browserPermRec) ->
+                @cbServer.permissionManager.findBrowserPermRec user[0].email, mountPointNoSlash, req.params.browserid, (browserPermRec) ->
                     if browserPermRec isnt null and typeof browserPermRec isnt "undefined"
                         if browserPermRec.permissions isnt null and typeof browserPermRec.permissions isnt "undefined"
                             if browserPermRec.permissions.readwrite or browserPermRec.permissions.owner
@@ -159,37 +149,8 @@ class HTTPServer extends EventEmitter
         # strategies for creating browsers should be pluggable (e.g. creating
         # a browser from a URL sent via POST).
 
-        # Special routes for Landing Page of every app
-        mp = mountPointNoSlash.split('/')
-        if mp[mp.length - 1] == "landing_page"
-            @server.get mountPoint, landing_check, (req, res) =>
-                id = req.session.browserID
-                if !id? || !browsers.find(id)
-                  bserver = browsers.create(app, req.queryString)
-                  id = req.session.browserID = bserver.id
-                res.writeHead 301,
-                    {'Location' : "#{mountPointNoSlash}/browsers/#{id}/index" + req.queryString,'Cache-Control' : "max-age=0, must-revalidate"}
-                res.end()
-
-            # Route to connect to a virtual browser.
-            @server.get "#{mountPointNoSlash}/browsers/:browserid/index", landing_check, (req, res) ->
-                id = decodeURIComponent(req.params.browserid)
-                console.log "Joining: #{id}"
-                res.render 'base.jade',
-                    browserid : id #Ashima - Must remove
-                    appid : app.mountPoint
-
-            # Route for ResourceProxy
-            @server.get "#{mountPointNoSlash}/browsers/:browserid/:resourceid", landing_check, (req, res) =>
-                resourceid = req.params.resourceid
-                decoded = decodeURIComponent(req.params.browserid)
-                bserver = browsers.find(decoded)
-                # Note: fetch calls res.end()
-                bserver?.resources.fetch(resourceid, res)
-            
-
         # Routes for apps with authentication configured
-        else if app.authenticationInterface
+        if app.authenticationInterface
             @server.get mountPointNoSlash + "/logout", (req, res) ->
                 #Ashima - Verify if session is associated with application having this mountpoint
                 if req.session
@@ -228,11 +189,14 @@ class HTTPServer extends EventEmitter
             @server.get "#{mountPointNoSlash}/browsers/:browserid/index", verify_authentication, authorize, (req, res) ->
                 id = decodeURIComponent(req.params.browserid)
                 bserver = browsers.find(id)
-                bserver.browser.window.location.search = req.queryString
-                console.log "Joining: #{id}"
-                res.render 'base.jade',
-                    browserid : id #Ashima - Must remove
-                    appid : app.mountPoint
+                if bserver
+                    bserver.browser.window.location.search = req.queryString
+                    console.log "Joining: #{id}"
+                    res.render 'base.jade',
+                        browserid : id #Ashima - Must remove
+                        appid : app.mountPoint
+                else
+                    res.send "Not found", 403
 
             # Route for ResourceProxy
             # Ashima - Should we authorize access to the resource proxy too?

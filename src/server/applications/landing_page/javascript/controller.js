@@ -25,38 +25,29 @@
       return _results;
     });
     $scope.deleteVB = function(browserId) {
+      var browserIdx, err, vb;
       if ($scope.email) {
-        return server.permissionManager.findBrowserPermRec($scope.email, $scope.mountPoint, browserId, function(userPermRec, appPermRec, browserPermRec) {
-          if (browserPermRec.permissions["delete"]) {
-            return server.permissionManager.rmBrowserPermRec($scope.email, $scope.mountPoint, browserId, function() {
-              var browserIdx, vb;
-              vb = app.browsers.find(browserId);
-              app.browsers.close(vb);
-              browserIdx = $scope.browsers.indexOf(browserId);
-              return $scope.browsers.splice(browserIdx, 1);
-            });
-          }
-        });
+        vb = app.browsers.find(browserId);
+        err = app.browsers.close(vb, $scope.email);
+        if (!err) {
+          browserIdx = $scope.browsers.indexOf(browserId);
+          return $scope.browsers.splice(browserIdx, 1);
+        } else {
+          return $scope.error = "Permission Denied";
+        }
       } else {
         return $scope.error = "Permission Denied";
       }
     };
     $scope.createVB = function() {
+      var bserver;
       if ($scope.email) {
-        return server.permissionManager.findAppPermRec($scope.email, $scope.mountPoint, function(userPermRec, appPermRec) {
-          var bserver;
-          if (appPermRec.permissions.createbrowsers) {
-            bserver = app.browsers.create(app, "");
-            $scope.browsers.push(bserver.id);
-            return server.permissionManager.addBrowserPermRec($scope.email, $scope.mountPoint, bserver.id, {
-              owner: true,
-              readwrite: true,
-              "delete": true
-            }, function() {});
-          } else {
-            return $scope.error = "Permission Denied";
-          }
-        });
+        bserver = app.browsers.create(app, "", $scope.email);
+        if (bserver) {
+          return $scope.browsers.push(bserver.id);
+        } else {
+          return $scope.error = "Permission Denied";
+        }
       } else {
         return $scope.error = "Permission Denied";
       }
@@ -65,14 +56,5 @@
       return bserver.redirect(baseURL + $scope.mountPoint + "/logout");
     };
   });
-
-  /*
-  Doesn't work
-  app.browsers.on 'BrowserAdded', () ->
-  console.log "Got the event of browser added"
-  $scope.$apply ->
-      $scope.browsers = app.browsers.browsers
-      console.log Util.inspect $scope.browsers.browsers
-  */
 
 }).call(this);

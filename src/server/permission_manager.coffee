@@ -192,61 +192,69 @@ class UserPermissionManager
                         # Delete from cache
                         delete @cache[userPermRec.email]
                         callback()
-            else callback null
+            else callback()
 
     findAppPermRec : (user_email, mountPoint, callback) ->
         @findUserPermRec user_email, (userPermRec) ->
             if userPermRec?
-                callback userPermRec, userPermRec.findApp mountPoint
-            else throw new Error "Permission records for user " + user_email + " not found"
+                callback userPermRec.findApp mountPoint
+            else callback null
 
     addAppPermRec : (user_email, mountPoint, permissions, callback) ->
-        @findAppPermRec user_email, mountPoint, (userPermRec, userAppPermRec) =>
+        @findAppPermRec user_email, mountPoint, (userAppPermRec) =>
             if not userAppPermRec?
                 # Add to DB
                 @db_connection.collection "Permissions", (err, collection) =>
                     collection.update {email:user_email}, ($push: {apps:{mountPoint:mountPoint}}), (err, num_modified) =>
                         if err then throw err
                         # Add to cache
-                        userAppPermRec = userPermRec.addApp mountPoint
-                        if permissions? and Object.keys(permissions).length isnt 0
-                            @setAppPerm user_email, mountPoint, permissions, callback
-                        else callback userAppPermRec
+                        @findUserPermRec user_email, (userPermRec) =>
+                            userAppPermRec = userPermRec.addApp mountPoint
+                            if permissions? and Object.keys(permissions).length isnt 0
+                                @setAppPerm user_email, mountPoint, permissions, callback
+                            else callback userAppPermRec
             else callback userAppPermRec
             
     rmAppPermRec : (user_email, mountPoint, callback) ->
-        @findAppPermRec user_email, mountPoint, (userPermRec, userAppPermRec) =>
-            @db_connection.collection "Permissions", (err, collection) ->
+        @findAppPermRec user_email, mountPoint, (userAppPermRec) =>
+            @db_connection.collection "Permissions", (err, collection) =>
                 if err then throw err
-                collection.update {email:user_email}, ($pull: {apps:{mountPoint:mountPoint}}), (err, dbUserAppPermRec) ->
+                collection.update {email:user_email}, ($pull: {apps:{mountPoint:mountPoint}}), (err, dbUserAppPermRec) =>
                     if err then throw err
-                    userPermRec.removeApp mountPoint
-                    callback()
+                    @findUserPermRec user_email, (userPermRec) ->
+                        userPermRec.removeApp mountPoint
+                        callback()
 
     findBrowserPermRec: (user_email, mountPoint, browserId, callback) ->
-        @findAppPermRec user_email, mountPoint, (userPermRec, userAppPermRec) ->
+        @findAppPermRec user_email, mountPoint, (userAppPermRec) ->
             if userAppPermRec?
-                callback userPermRec, userAppPermRec, userAppPermRec.findBrowser browserId
-            else throw new Error "User " + user_email + " has no permission records associated with the application mounted at " + mountPoint
+                callback userAppPermRec.findBrowser browserId
+            else callback null
 
     getBrowserPermRecs: (user_email, mountPoint, callback) ->
-        @findAppPermRec user_email, mountPoint, (userPermRec, userAppPermRec) ->
+        @findAppPermRec user_email, mountPoint, (userAppPermRec) ->
             if userAppPermRec?
                 callback userAppPermRec.getBrowsers()
             else throw new Error "User " + user_email + " has no permission records associated with the application mounted at " + mountPoint
     
     addBrowserPermRec: (user_email, mountPoint, browserId, permissions, callback) ->
-        @findBrowserPermRec user_email, mountPoint, browserId, (userPermRec, userAppPermRec, userBrowserPermRec) ->
+        @findBrowserPermRec user_email, mountPoint, browserId, (userBrowserPermRec) =>
             if not userBrowserPermRec?
-                userBrowserPermRec = userAppPermRec.addBrowser browserId
-                if permissions? and Object.keys(permissions).length isnt 0
-                    userBrowserPermRec.set permissions
-            callback userBrowserPermRec
+                @findAppPermRec user_email, mountPoint, (userAppPermRec) ->
+                    userBrowserPermRec = userAppPermRec.addBrowser browserId
+                    if permissions? and Object.keys(permissions).length isnt 0
+                        userBrowserPermRec.set permissions
+                        callback userBrowserPermRec
+            else callback userBrowserPermRec
 
     rmBrowserPermRec: (user_email, mountPoint, browserId, callback) ->
-        @findBrowserPermRec user_email, mountPoint, browserId, (userPermRec, userAppPermRec, userBrowserPermRec) ->
-            userAppPermRec.removeBrowser browserId
-            callback()
+        @findBrowserPermRec user_email, mountPoint, browserId, (userBrowserPermRec) =>
+            if userBrowserPermRec?
+                @findAppPermRec user_email, mountPoint, (userAppPermRec) ->
+                    userAppPermRec.removeBrowser browserId
+                    callback()
+            else
+                throw new Error "User " + user_email + " has no permission records associated with browser " + browserId
 
     setSysPerm : (user_email, permissions, callback) ->
         @findUserPermRec user_email, (userPermRec) =>
@@ -259,7 +267,7 @@ class UserPermissionManager
                     callback userPermRec
 
     setAppPerm : (user_email, mountPoint, permissions, callback) ->
-        @findAppPermRec user_email, mountPoint, (userPermRec, userAppPermRec) =>
+        @findAppPermRec user_email, mountPoint, (userAppPermRec) =>
             if not userAppPermRec
                 throw new Error "User " + user_email + " has no permission records associated with the application mounted at " + mountPoint
             permissions = userAppPermRec.set permissions
@@ -270,7 +278,7 @@ class UserPermissionManager
                     callback userAppPermRec
         
     setBrowserPerm: (user_email, mountPoint, browserId, permissions, callback) ->
-        @findBrowserPermRec user_email, mountPoint, browserId, (userPermRec, userAppPermRec, userBrowserPermRec) ->
+        @findBrowserPermRec user_email, mountPoint, browserId, (userBrowserPermRec) ->
             if not userBrowserPermRec
                 throw new Error "User " + user_email + " has no permissions records associated with the browser " + browserId
             permissions = userBrowserPermRec.set permissions
