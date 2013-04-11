@@ -1,30 +1,7 @@
 Application = require('./application')
+Barrier     = require('./barrier')
 Fs          = require('fs')
 Path        = require('path')
-
-
-###
-    Delayer Class written by Godmar Back for CS 3214 Fall 2009
-    A Delayer object invokes a callback passed to the constructor
-    after the following two conditions are true:
-    - every function returned from a call to add() has been called
-    - the ready() method has been called.
-###
-
-class Delayer
-    constructor : (@cb) ->
-        @count = 0
-        @finalized = false
-
-    add : () ->
-        @count++
-        return () =>
-            @count--
-            if @count is 0 and @finalized then @cb()
-
-    ready : () ->
-        @finalized = true
-        if @count is 0 then @cb()
 
 class ApplicationManager
     constructor : (paths, @server) ->
@@ -32,7 +9,8 @@ class ApplicationManager
         @load paths if paths?
         if @server.config.adminInterface
             @addDirectory "src/server/applications/admin_interface"
-        @delay = new Delayer(() => @server.mountMultiple(@applications))
+        @barrier = new Barrier () =>
+            @server.mountMultiple(@applications)
 
     load : (paths) ->
         for path in paths
@@ -45,7 +23,6 @@ class ApplicationManager
                     @addFile path
                 else if stats.isDirectory()
                     @walk path
-                @delay.ready()
                 
     # Adds an html application to the application manager
     addFile : (path) ->
@@ -58,7 +35,7 @@ class ApplicationManager
     #Walks a path recursively and finds all CloudBrowser applications
     walk : (path) =>
 
-        readDirDelay = @delay.add()
+        outstandingReadDir = @barrier.add()
 
         friendlyLstat = (filename, cb) ->
             Fs.lstat filename, (err, stats) ->
@@ -67,21 +44,21 @@ class ApplicationManager
                 else cb err, stats
 
         statDirEntry = (filename) =>
-            lstatDelay = @delay.add()
+            outstandingLstat = @barrier.add()
             friendlyLstat filename, (err, stats) =>
                 if err then throw err
                 if stats.isDirectory()
                     @walk stats.filename
                 else if /app_config\.json$/.test stats.filename
                     @addDirectory path
-                lstatDelay()
+                outstandingLstat.finish()
 
         Fs.readdir path, (err, list) =>
             if err then throw err
             for filename in list
                 filename = Path.resolve path, filename
                 statDirEntry filename
-            readDirDelay()
+            outstandingReadDir.finish()
                         
 
     # Configures and adds a CloudBrowser application to the application manager 
