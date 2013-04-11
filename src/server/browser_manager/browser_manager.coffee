@@ -26,10 +26,10 @@ class BrowserManager
     find : () ->
         throw new Error("BrowserManager subclass must implement find.")
 
-    create : (app, id) ->
+    create : (app, query, user, id) ->
         throw new Error("BrowserManager subclass must implement create.")
 
-    close : () ->
+    close : (browser, user) ->
         throw new Error("BrowserManager subclass must implement close.")
 
     generateUUID : () ->

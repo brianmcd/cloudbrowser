@@ -6,7 +6,7 @@
   CloudBrowserDb = server.db;
 
   CBPasswordReset.controller("ResetCtrl", function($scope) {
-    var query, username;
+    var app, mountPoint, query, username;
     query = Utils.searchStringtoJSON(location.search);
     username = query['user'].split("@")[0];
     $scope.username = username.charAt(0).toUpperCase() + username.slice(1);
@@ -15,6 +15,8 @@
     $scope.isDisabled = false;
     $scope.password_error = null;
     $scope.password_success = null;
+    mountPoint = Utils.getAppMountPoint(bserver.mountPoint, "password_reset");
+    app = server.applicationManager.find(mountPoint);
     $scope.$watch("password", function() {
       $scope.password_error = null;
       $scope.password_success = null;
@@ -29,10 +31,11 @@
       if (!(password != null) || !/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^\da-zA-Z])\S{8,15}$/.test(password)) {
         return $scope.password_error = "Password must be have a length between 8 - 15 characters, must contain atleast 1 uppercase, 1 lowercase, 1 digit and 1 special character. Spaces are not allowed.";
       } else {
-        return CloudBrowserDb.collection("users", function(err, collection) {
+        return CloudBrowserDb.collection(app.dbName, function(err, collection) {
           if (!err) {
             return collection.findOne({
-              email: username
+              email: username,
+              ns: 'local'
             }, function(err, user) {
               if (user && user.status === "reset_password" && user.token === token) {
                 return collection.update({

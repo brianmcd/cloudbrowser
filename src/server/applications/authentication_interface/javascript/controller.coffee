@@ -1,8 +1,10 @@
 CBAuthentication        = angular.module("CBAuthentication", [])
+Crypto                  = require('crypto')
 
 CloudBrowserDb          = server.db
 mongoStore              = server.mongoStore
 mountPoint              = Utils.getAppMountPoint bserver.mountPoint, "authenticate"
+app                     = server.applicationManager.find(mountPoint)
 rootURL                 = "http://" + server.config.domain + ":" + server.config.port
 baseURL                 = rootURL + mountPoint
 
@@ -31,9 +33,9 @@ CBAuthentication.controller "LoginCtrl", ($scope) ->
             $scope.login_error = "Please provide both the Email ID and the password to login"
         else
             $scope.isDisabled = true
-            CloudBrowserDb.collection "users", (err, collection) ->
+            CloudBrowserDb.collection app.dbName, (err, collection) ->
                 if err then throw err
-                collection.findOne {email: $scope.email}, (err, user) ->
+                collection.findOne {email: $scope.email, ns: 'local'}, (err, user) ->
                     if user and user.status isnt 'unverified'
                         HashPassword {password : $scope.password, salt : new Buffer(user.salt, 'hex')}, (result) ->
                             if result.key.toString('hex') == user.key
@@ -42,9 +44,9 @@ CBAuthentication.controller "LoginCtrl", ($scope) ->
                                     if err then throw new Error "Error in finding the session:" + sessionID + " Error:" + err
                                     else
                                         if not session.user?
-                                            session.user = [{app:mountPoint, email:$scope.email}]
+                                            session.user = [{app:mountPoint, email:$scope.email, ns:'local'}]
                                         else
-                                            session.user.push({app:mountPoint, email:$scope.email})
+                                            session.user.push({app:mountPoint, email:$scope.email, ns:'local'})
                                         ### Remember me
                                         if $scope.remember
                                             session.cookie.maxAge = 24 * 60 * 60 * 1000
@@ -76,9 +78,9 @@ CBAuthentication.controller "LoginCtrl", ($scope) ->
     $scope.sendResetLink = ->
         if !$scope.email? or not /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}$/.test $scope.email.toUpperCase()
             $scope.email_error = "Please provide a valid email ID"
-        else CloudBrowserDb.collection "users", (err, collection) ->
+        else CloudBrowserDb.collection app.dbName, (err, collection) ->
             if err then throw err
-            collection.findOne {email: $scope.email}, (err, user) ->
+            collection.findOne {email: $scope.email, ns: 'local'}, (err, user) ->
                 if err then throw err
                 if not user then $scope.$apply ->
                     $scope.email_error = "This email ID is not registered with us."
@@ -91,7 +93,7 @@ CBAuthentication.controller "LoginCtrl", ($scope) ->
                         esc_email = encodeURIComponent($scope.email)
                         subject = "Link to reset your CloudBrowser password"
                         message = "You have requested to change your password. If you want to continue click <a href='#{baseURL}/password_reset?token=#{buf}&user=#{esc_email}'>reset</a>. If you have not requested a change in password then take no action."
-                        sendEmail $scope.email, subject, message, (err) ->
+                        sendEmail $scope.email, subject, message, server.config.nodeMailerEmailID, server.config.nodeMailerPassword, (err) ->
                             $scope.$apply ->
                                 $scope.resetDisabled = false
                                 $scope.reset_success_msg = "A password reset link has been sent to your email ID."
@@ -112,9 +114,9 @@ CBAuthentication.controller "SignupCtrl", ($scope) ->
         $scope.signup_error = null
         $scope.isDisabled = false
         $scope.success_message = false
-        CloudBrowserDb.collection "users", (err, collection) ->
+        CloudBrowserDb.collection app.dbName, (err, collection) ->
             if err then throw err
-            collection.findOne {email: nval}, (err, item) ->
+            collection.findOne {email: nval, ns: 'local'}, (err, item) ->
                 if item then $scope.$apply ->
                     $scope.email_error = "Account with this Email ID already exists!"
                     $scope.isDisabled = true
@@ -141,13 +143,13 @@ CBAuthentication.controller "SignupCtrl", ($scope) ->
                 "<p><a href='#{baseURL}/activate/#{buf}'>Activate your account</a></p>" +
                 "<p>If you have received this message in error and did not sign up for a cloudbrowser account," +
                 " click <a href='#{baseURL}/deactivate/#{buf}'>not my account</a></p>"
-                sendEmail $scope.email, subject, confirmationMsg, (err) ->
+                sendEmail $scope.email, subject, confirmationMsg, server.config.nodeMailerEmailID, server.config.nodeMailerPassword, (err) ->
                     if err
                         throw err
                         $scope.$apply ->
                             $scope.signup_error = "There was an error sending the confirmation email : " + err
                     else
-                        CloudBrowserDb.collection "users", (err, collection) ->
+                        CloudBrowserDb.collection app.dbName, (err, collection) ->
                             if err
                                 $scope.$apply ->
                                     $scope.signup_error = "Our system encountered an error! Please try again later."

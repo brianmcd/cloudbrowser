@@ -3,17 +3,17 @@
 
   nodemailer = require("nodemailer");
 
-  window.sendEmail = function(toEmailID, subject, message, callback) {
+  window.sendEmail = function(toEmailID, subject, message, fromEmailID, fromPassword, callback) {
     var mailOptions, smtpTransport;
     smtpTransport = nodemailer.createTransport("SMTP", {
       service: "Gmail",
       auth: {
-        user: config.nodeMailerEmailID,
-        pass: config.nodeMailerPassword
+        user: fromEmailID,
+        pass: fromPassword
       }
     });
     mailOptions = {
-      from: config.nodeMailerEmailID,
+      from: fromEmailID,
       to: toEmailID,
       subject: subject,
       html: message

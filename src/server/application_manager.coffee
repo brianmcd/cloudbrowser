@@ -86,6 +86,16 @@ class ApplicationManager
 
     # Configures and adds a CloudBrowser application to the application manager 
     addDirectory : (path, mountPoint) ->
+
+        constructDbName = (mountPoint) ->
+            if mountPoint[mountPoint.length-1] is "\/"
+                mountPoint = mountPoint.pop()
+            if mountPoint[0] is "\/"
+                mountPoint = mountPoint.substring(1)
+            mountPoint = mountPoint.replace('\/', '\.')
+            mountPoint += ".users"
+            return mountPoint
+            
         opts = @configure path
 
         if mountPoint
@@ -96,12 +106,13 @@ class ApplicationManager
         if opts.state
             require(Path.resolve path + "/" + opts.state).initialize opts
 
-        @add opts
-
         if opts.authenticationInterface
+            opts.dbName = constructDbName opts.mountPoint
             @addDirectory "src/server/applications/authentication_interface", opts.mountPoint + "/authenticate"
             @addDirectory "src/server/applications/password_reset", opts.mountPoint + "/password_reset"
             @addDirectory "src/server/applications/landing_page", opts.mountPoint + "/landing_page"
+
+        @add opts
 
     # Reads the configuration files app_config.json and deployment_config.json
     configure : (path) ->

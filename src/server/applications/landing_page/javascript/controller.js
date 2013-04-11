@@ -6,7 +6,7 @@
   baseURL = "http://" + server.config.domain + ":" + server.config.port;
 
   CBLandingPage.controller("UserCtrl", function($scope) {
-    var app, query;
+    var app, namespace, query;
     $scope.domain = server.config.domain;
     $scope.port = server.config.port;
     $scope.mountPoint = Utils.getAppMountPoint(bserver.mountPoint, "landing_page");
@@ -14,7 +14,8 @@
     app = server.applicationManager.find($scope.mountPoint);
     query = Utils.searchStringtoJSON(location.search);
     $scope.email = query.user;
-    server.permissionManager.getBrowserPermRecs($scope.email, $scope.mountPoint, function(browsers) {
+    namespace = query.ns;
+    server.permissionManager.getBrowserPermRecs($scope.email, $scope.mountPoint, namespace, function(browsers) {
       var browser, browserId, _results;
       _results = [];
       for (browserId in browsers) {
@@ -28,7 +29,10 @@
       var browserIdx, err, vb;
       if ($scope.email) {
         vb = app.browsers.find(browserId);
-        err = app.browsers.close(vb, $scope.email);
+        err = app.browsers.close(vb, {
+          id: $scope.email,
+          ns: namespace
+        });
         if (!err) {
           browserIdx = $scope.browsers.indexOf(browserId);
           return $scope.browsers.splice(browserIdx, 1);
@@ -40,11 +44,14 @@
       }
     };
     $scope.createVB = function() {
-      var bserver;
+      var bsvr;
       if ($scope.email) {
-        bserver = app.browsers.create(app, "", $scope.email);
-        if (bserver) {
-          return $scope.browsers.push(bserver.id);
+        bsvr = app.browsers.create(app, "", {
+          id: $scope.email,
+          ns: namespace
+        });
+        if (bsvr) {
+          return $scope.browsers.push(bsvr.id);
         } else {
           return $scope.error = "Permission Denied";
         }

@@ -1,13 +1,17 @@
 (function() {
-  var CBAuthentication, CloudBrowserDb, baseURL, googleLogin, mongoStore, mountPoint, rootURL;
+  var CBAuthentication, CloudBrowserDb, Crypto, app, baseURL, googleLogin, mongoStore, mountPoint, rootURL;
 
   CBAuthentication = angular.module("CBAuthentication", []);
+
+  Crypto = require('crypto');
 
   CloudBrowserDb = server.db;
 
   mongoStore = server.mongoStore;
 
   mountPoint = Utils.getAppMountPoint(bserver.mountPoint, "authenticate");
+
+  app = server.applicationManager.find(mountPoint);
 
   rootURL = "http://" + server.config.domain + ":" + server.config.port;
 
@@ -39,10 +43,11 @@
         return $scope.login_error = "Please provide both the Email ID and the password to login";
       } else {
         $scope.isDisabled = true;
-        CloudBrowserDb.collection("users", function(err, collection) {
+        CloudBrowserDb.collection(app.dbName, function(err, collection) {
           if (err) throw err;
           return collection.findOne({
-            email: $scope.email
+            email: $scope.email,
+            ns: 'local'
           }, function(err, user) {
             if (user && user.status !== 'unverified') {
               return HashPassword({
@@ -60,13 +65,15 @@
                         session.user = [
                           {
                             app: mountPoint,
-                            email: $scope.email
+                            email: $scope.email,
+                            ns: 'local'
                           }
                         ];
                       } else {
                         session.user.push({
                           app: mountPoint,
-                          email: $scope.email
+                          email: $scope.email,
+                          ns: 'local'
                         });
                       }
                       /* Remember me
@@ -117,10 +124,11 @@
       if (!($scope.email != null) || !/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}$/.test($scope.email.toUpperCase())) {
         return $scope.email_error = "Please provide a valid email ID";
       } else {
-        return CloudBrowserDb.collection("users", function(err, collection) {
+        return CloudBrowserDb.collection(app.dbName, function(err, collection) {
           if (err) throw err;
           return collection.findOne({
-            email: $scope.email
+            email: $scope.email,
+            ns: 'local'
           }, function(err, user) {
             if (err) throw err;
             if (!user) {
@@ -138,7 +146,7 @@
                 esc_email = encodeURIComponent($scope.email);
                 subject = "Link to reset your CloudBrowser password";
                 message = "You have requested to change your password. If you want to continue click <a href='" + baseURL + "/password_reset?token=" + buf + "&user=" + esc_email + "'>reset</a>. If you have not requested a change in password then take no action.";
-                return sendEmail($scope.email, subject, message, function(err) {
+                return sendEmail($scope.email, subject, message, server.config.nodeMailerEmailID, server.config.nodeMailerPassword, function(err) {
                   $scope.$apply(function() {
                     $scope.resetDisabled = false;
                     return $scope.reset_success_msg = "A password reset link has been sent to your email ID.";
@@ -178,10 +186,11 @@
       $scope.signup_error = null;
       $scope.isDisabled = false;
       $scope.success_message = false;
-      return CloudBrowserDb.collection("users", function(err, collection) {
+      return CloudBrowserDb.collection(app.dbName, function(err, collection) {
         if (err) throw err;
         return collection.findOne({
-          email: nval
+          email: nval,
+          ns: 'local'
         }, function(err, item) {
           if (item) {
             return $scope.$apply(function() {
@@ -212,14 +221,14 @@
           buf = buf.toString('hex');
           subject = "Activate your cloudbrowser account";
           confirmationMsg = "Please click on the link below to verify your email address.<br>" + ("<p><a href='" + baseURL + "/activate/" + buf + "'>Activate your account</a></p>") + "<p>If you have received this message in error and did not sign up for a cloudbrowser account," + (" click <a href='" + baseURL + "/deactivate/" + buf + "'>not my account</a></p>");
-          return sendEmail($scope.email, subject, confirmationMsg, function(err) {
+          return sendEmail($scope.email, subject, confirmationMsg, server.config.nodeMailerEmailID, server.config.nodeMailerPassword, function(err) {
             if (err) {
               throw err;
               return $scope.$apply(function() {
                 return $scope.signup_error = "There was an error sending the confirmation email : " + err;
               });
             } else {
-              return CloudBrowserDb.collection("users", function(err, collection) {
+              return CloudBrowserDb.collection(app.dbName, function(err, collection) {
                 if (err) {
                   $scope.$apply(function() {
                     return $scope.signup_error = "Our system encountered an error! Please try again later.";

@@ -12,6 +12,8 @@ CBPasswordReset.controller "ResetCtrl", ($scope) ->
     $scope.isDisabled = false
     $scope.password_error = null
     $scope.password_success = null
+    mountPoint              = Utils.getAppMountPoint bserver.mountPoint, "password_reset"
+    app                     = server.applicationManager.find mountPoint
 
     $scope.$watch "password", ->
         $scope.password_error = null
@@ -27,9 +29,9 @@ CBPasswordReset.controller "ResetCtrl", ($scope) ->
             $scope.password_error = "Password must be have a length between 8 - 15 characters, must contain atleast 1 uppercase, 1 lowercase, 1 digit and 1 special character. Spaces are not allowed."
 
         #verify validity of the request by comparing the token
-        else CloudBrowserDb.collection "users", (err, collection) ->
+        else CloudBrowserDb.collection app.dbName, (err, collection) ->
             unless err
-                collection.findOne {email: username}, (err, user) ->
+                collection.findOne {email: username, ns: 'local'}, (err, user) ->
                     if user and user.status is "reset_password" and user.token is token
                         collection.update {email: username}, {$unset: {token: "", status: ""}}, {w:1}, (err, result) ->
                             if err then throw err

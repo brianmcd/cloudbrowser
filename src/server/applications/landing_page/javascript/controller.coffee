@@ -13,9 +13,10 @@ CBLandingPage.controller "UserCtrl", ($scope) ->
 
     # Email is assigned at the time of creation of this virtual browser 
     $scope.email = query.user
+    namespace = query.ns
 
     # Get all the virtual browsers owned by this user
-    server.permissionManager.getBrowserPermRecs $scope.email, $scope.mountPoint, (browsers) ->
+    server.permissionManager.getBrowserPermRecs $scope.email, $scope.mountPoint, namespace, (browsers) ->
         for browserId, browser of browsers
             $scope.browsers.push browserId
             browsers[browserId] = browser
@@ -24,7 +25,7 @@ CBLandingPage.controller "UserCtrl", ($scope) ->
     $scope.deleteVB = (browserId) ->
         if $scope.email
             vb = app.browsers.find(browserId)
-            err = app.browsers.close(vb, $scope.email)
+            err = app.browsers.close(vb, {id:$scope.email, ns:namespace})
             if not err
                 browserIdx = $scope.browsers.indexOf browserId
                 $scope.browsers.splice(browserIdx, 1)
@@ -36,9 +37,9 @@ CBLandingPage.controller "UserCtrl", ($scope) ->
     # Create a virtual browser
     $scope.createVB = () ->
         if $scope.email
-            bserver = app.browsers.create(app, "", $scope.email)
-            if bserver
-                $scope.browsers.push(bserver.id)
+            bsvr = app.browsers.create(app, "", {id:$scope.email, ns:namespace})
+            if bsvr
+                $scope.browsers.push(bsvr.id)
             else
                 $scope.error = "Permission Denied"
         else

@@ -25,45 +25,8 @@ class HTTPServer extends EventEmitter
             server.set('view options', {layout: false})
             server.use(Passport.initialize())
 
-        Passport.use new GoogleStrategy {returnURL:"http://" + @cbServer.config.domain + ":" + @cbServer.config.port + "/checkauth",
-        realm: "http://" + @cbServer.config.domain + ":" + @cbServer.config.port },
-        (identifier, profile, done) =>
-            done null, {identifier:identifier, email:profile.emails[0].value, displayName: profile.displayName}
-
-        Passport.serializeUser (user, done) ->
-            done null, user.identifier
-
-        Passport.deserializeUser (identifier, done) ->
-            done null, {identifier:identifier}
-
-        server.get '/googleAuth', (req, res, next) ->
-            req.session.query = req.query
-            next()
-        , Passport.authenticate('google')
-
-        server.get '/checkauth', Passport.authenticate('google'), (req, res) =>
-            req.query = req.session.query
-            if not req.user
-                res.writeHead 302,
-                    {'Location' : req.query.mountPoint,'Cache-Control' : "max-age=0, must-revalidate"}
-                res.end()
-            else @cbServer.db.collection "google_users", (err, collection) =>
-                if not req.session.user?
-                    req.session.user = []
-                collection.findOne {email:req.user.email, app: req.query.mountPoint, ns: 'google'}, (err, user) ->
-                    throw err if err
-                    if user
-                        req.session.user.push({email:user.email, app:user.app})
-                        req.session.save()
-                    else
-                        collection.insert {email:req.user.email, displayName:req.user.displayName, app: req.query.mountPoint, ns: 'google'}, (err, user) ->
-                            throw err if err
-                            req.session.user.push({email:user[0].email, app:user[0].app})
-                            req.session.save()
-                        
-                res.writeHead 302,
-                    {'Location' : req.query.redirectto,'Cache-Control' : "max-age=0, must-revalidate"}
-                res.end()
+        # Must set up routes only after session middleware has been initialized
+        @setupGoogleAuthentication()
 
         server.get '/clientEngine.js', (req, res) =>
             res.statusCode = 200
@@ -80,10 +43,68 @@ class HTTPServer extends EventEmitter
         else
             @clientEngineJS = @bundleJS()
             server.listen(@cbServer.config.port, callback)
+
     
     close : (callback) ->
         @server.close(callback)
         @emit('close')
+
+    setupGoogleAuthentication : () ->
+
+        Passport.use new GoogleStrategy {returnURL:"http://" + @cbServer.config.domain + ":" + @cbServer.config.port + "/checkauth",
+        realm: "http://" + @cbServer.config.domain + ":" + @cbServer.config.port },
+        (identifier, profile, done) =>
+            done null, {identifier:identifier, email:profile.emails[0].value, displayName: profile.displayName}
+
+        Passport.serializeUser (user, done) ->
+            done null, user.identifier
+
+        Passport.deserializeUser (identifier, done) ->
+            done null, {identifier:identifier}
+
+        # This is the URL that the user must access to be authenticated
+        # by the Google OpenID protocol
+        @server.get '/googleAuth', (req, res, next) ->
+            # Propograting the query parameters to the chechauth route.
+            # Query parameters includes the url the user must be redirected
+            # to after successful authentication
+            req.session.query = req.query
+            next()
+        , Passport.authenticate('google')
+
+        # This is the URL Google redirects the user to after authentication
+        @server.get '/checkauth', Passport.authenticate('google'), (req, res) =>
+
+            saveSessionAndRedirect = (req, user) ->
+                if not req.session.user?
+                    req.session.user = []
+                req.session.user.push({email:user.email, app:req.query.mountPoint, ns: user.ns})
+                req.session.save()
+                res.writeHead 302,
+                    {'Location' : req.query.redirectto,'Cache-Control' : "max-age=0, must-revalidate"}
+                res.end()
+
+            req.query = req.session.query
+
+            # Authentication unsuccessful
+            if not req.user
+                res.writeHead 302,
+                    {'Location' : req.query.mountPoint,'Cache-Control' : "max-age=0, must-revalidate"}
+                res.end()
+
+            # Authentication successful
+            else @cbServer.db.collection @cbServer.applicationManager.find(req.query.mountPoint).dbName, (err, collection) =>
+                collection.findOne {email:req.user.email, ns: 'google'}, (err, user) =>
+                    throw err if err
+                    if user then saveSessionAndRedirect(req, user)
+                    else
+                        collection.insert {email:req.user.email,
+                        displayName:req.user.displayName, ns: 'google'},
+                        (err, user) =>
+                            throw err if err
+                            @cbServer.permissionManager.addUserPermRec user[0].email, {}, user[0].ns, (userPermRec) =>
+                                @cbServer.permissionManager.addAppPermRec user[0].email, req.query.mountPoint, {createbrowsers:true}, user[0].ns, (appPermRec) ->
+                                    saveSessionAndRedirect(req, user[0])
 
     # Sets up a server endpoint at mountpoint that serves browsers from the
     # browsers BrowserManager.
@@ -97,8 +118,6 @@ class HTTPServer extends EventEmitter
 
         # Middleware that allows only authenticated users to access the protected resource
         verify_authentication = (req, res, next) ->
-            console.log "SESSION"
-            console.log req.session
             req.queryString = QueryString.stringify(req.query)
             # An authenticated session has a user object associated with it.
             # The user object has the form {email,app}. Access is granted only 
@@ -119,16 +138,16 @@ class HTTPServer extends EventEmitter
                 # The user query parameter is used to identify the original
                 # user for whom this browser was created
                 if req.queryString is ""
-                    req.queryString  = "?user=" + user[0].email
+                    req.queryString  = "?user=" + user[0].email + "&ns=" + user[0].ns
                 else
-                    req.queryString += "&user=" + user[0].email
+                    req.queryString += "&user=" + user[0].email + "&ns=" + user[0].ns
                 next()
 
         #middleware to provide authorized access to virtual browsers
         authorize = (req, res, next) =>
             if req.session? and
             (user = req.session.user.filter((user) -> return user.app is mountPointNoSlash)).length isnt 0
-                @cbServer.permissionManager.findBrowserPermRec user[0].email, mountPointNoSlash, req.params.browserid, (browserPermRec) ->
+                @cbServer.permissionManager.findBrowserPermRec user[0].email, mountPointNoSlash, req.params.browserid, user[0].ns, (browserPermRec) ->
                     if browserPermRec isnt null and typeof browserPermRec isnt "undefined"
                         if browserPermRec.permissions isnt null and typeof browserPermRec.permissions isnt "undefined"
                             if browserPermRec.permissions.readwrite or browserPermRec.permissions.owner
@@ -161,12 +180,12 @@ class HTTPServer extends EventEmitter
 
             @server.get mountPointNoSlash + "/activate/:token", (req, res) =>
                 token = req.params.token
-                @cbServer.db.collection "users", (err, collection) =>
+                @cbServer.db.collection app.dbName, (err, collection) =>
                     if err then throw err
                     else
                         collection.findOne {token:token}, (err, user) =>
-                            @cbServer.permissionManager.addUserPermRec user.email, {}, (userPermRec) =>
-                                @cbServer.permissionManager.addAppPermRec user.email, mountPointNoSlash, {createbrowsers:true}, (appPermRec) ->
+                            @cbServer.permissionManager.addUserPermRec user.email, {}, user.ns, (userPermRec) =>
+                                @cbServer.permissionManager.addAppPermRec user.email, mountPointNoSlash, {createbrowsers:true}, user.ns, (appPermRec) ->
                             collection.update {token: token}, {$unset: {token: "", status: ""}}, {w:1}, (err, result) =>
                                 if err then throw err
                                 else res.render 'activate.jade',
@@ -174,7 +193,7 @@ class HTTPServer extends EventEmitter
 
             @server.get mountPointNoSlash + "/deactivate/:token", (req, res) =>
                 token = req.params.token
-                @cbServer.db.collection "users", (err, collection) ->
+                @cbServer.db.collection app.dbName, (err, collection) ->
                     if err then throw err
                     else collection.remove {token: token}, (err, result) ->
                         if err then throw err

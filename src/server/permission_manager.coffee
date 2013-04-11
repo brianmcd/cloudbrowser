@@ -145,140 +145,169 @@ class UserPermissionManager
     constructor : (@db_connection) ->
         @cache = {}    # cache to store permission records
 
-    findUserPermRec : (user_email, callback) ->
+    findUserPermRec : (user_email, ns, callback) ->
         if @cache[user_email]?
             # If entry is in cache, use cache entry
-            callback @cache[user_email]
-        else
-            # Else hit the DB
-            @db_connection.collection "Permissions", (err, collection) =>
+            # Cache entry per email ID is of the form
+            # [{ns, userPermRec}, {ns, userPermRec}, ...]
+            rec = @cache[user_email].filter (rec) -> return rec.ns is ns
+            if rec[0] and rec[0].userPermRec
+                callback rec[0].userPermRec
+            else @db_connection.collection "Permissions", (err, collection) =>
                 throw err if err
-                collection.findOne {email:user_email}, (err, dbUserPermRec) =>
+                collection.findOne {email:user_email, ns:ns}, (err, dbUserPermRec) =>
                     throw err if err
                     if dbUserPermRec
-                        userPermRec = @cache[user_email] = new UserSystemPermissionManager(dbUserPermRec.email)
+                        rec = {ns:ns, userPermRec: new UserSystemPermissionManager(dbUserPermRec.email)}
+                        if not @cache[user_email]
+                            @cache[user_email] = [rec]
+                        else
+                            @cache[user_email].push rec
                         if dbUserPermRec.permissions and Object.keys(dbUserPermRec.permissions).length isnt 0
-                            userPermRec.set dbUserPermRec.permissions
+                            rec.userPermRec.set dbUserPermRec.permissions
                         if dbUserPermRec.apps
                             for app in dbUserPermRec.apps
-                                userAppPermRec = userPermRec.addApp app.mountPoint
+                                userAppPermRec = rec.userPermRec.addApp app.mountPoint
                                 if app.permissions and Object.keys(app.permissions).length isnt 0
                                     userAppPermRec.set app.permissions
-                        callback userPermRec
+                        callback rec.userPermRec
                     else callback null
+        # Else hit the DB
+        else @db_connection.collection "Permissions", (err, collection) =>
+            throw err if err
+            collection.findOne {email:user_email, ns:ns}, (err, dbUserPermRec) =>
+                throw err if err
+                if dbUserPermRec
+                    rec = {ns:ns, userPermRec: new UserSystemPermissionManager(dbUserPermRec.email)}
+                    if not @cache[user_email]
+                        @cache[user_email] = [rec]
+                    else
+                        @cache[user_email].push rec
+                    if dbUserPermRec.permissions and Object.keys(dbUserPermRec.permissions).length isnt 0
+                        rec.userPermRec.set dbUserPermRec.permissions
+                    if dbUserPermRec.apps
+                        for app in dbUserPermRec.apps
+                            userAppPermRec = rec.userPermRec.addApp app.mountPoint
+                            if app.permissions and Object.keys(app.permissions).length isnt 0
+                                userAppPermRec.set app.permissions
+                    callback rec.userPermRec
+                else callback null
 
-    addUserPermRec : (user_email, permissions, callback) ->
-        @findUserPermRec user_email, (userPermRec) =>
+    addUserPermRec : (user_email, permissions, ns, callback) ->
+        @findUserPermRec user_email, ns, (userPermRec) =>
             if not userPermRec? then @db_connection.collection "Permissions", (err, collection) =>
                 throw err if err
                 # Add to DB
-                collection.insert {email:user_email}, (err, dbUserPermRec) =>
+                collection.insert {email:user_email, ns:ns}, (err, dbUserPermRec) =>
                     throw err if err
                     # Add to cache
-                    @cache[user_email] = new UserSystemPermissionManager(user_email)
+                    rec = {ns:ns, userPermRec: new UserSystemPermissionManager(user_email)}
+                    if not @cache[user_email]
+                        @cache[user_email] = [rec]
+                    else
+                        @cache[user_email].push rec
                     if permissions? and Object.keys(permissions).length isnt 0
-                        @setSysPerm user_email, permissions, callback
-                    else callback @cache[user_email]
+                        @setSysPerm user_email, permissions, ns, callback
+                    else callback rec.userPermRec
             else callback userPermRec
                     
-    rmUserPermRec : (user_email, callback) ->
-        @findUserPermRec user_email, (userPermRec) =>
+    rmUserPermRec : (user_email, ns, callback) ->
+        @findUserPermRec user_email, ns, (userPermRec) =>
             if userPermRec?
                 @db_connection.collection "Permissions", (err, collection) =>
                     throw err if err
                     # Delete from DB
-                    collection.remove {email:userPermRec.email}, (err, dbUserPermRec) =>
+                    collection.remove {email:userPermRec.email, ns:ns}, (err, dbUserPermRec) =>
                         throw err if err
                         # Delete from cache
-                        delete @cache[userPermRec.email]
+                        index = @cache[userPermRec.email].indexOf {ns:ns, userPermRec:userPermRec}
+                        delete @cache[userPermRec.email].splice(index, 1)
                         callback()
             else callback()
 
-    findAppPermRec : (user_email, mountPoint, callback) ->
-        @findUserPermRec user_email, (userPermRec) ->
+    findAppPermRec : (user_email, mountPoint, ns, callback) ->
+        @findUserPermRec user_email, ns, (userPermRec) ->
             if userPermRec?
                 callback userPermRec.findApp mountPoint
             else callback null
 
-    addAppPermRec : (user_email, mountPoint, permissions, callback) ->
-        @findAppPermRec user_email, mountPoint, (userAppPermRec) =>
+    addAppPermRec : (user_email, mountPoint, permissions, ns, callback) ->
+        @findAppPermRec user_email, mountPoint, ns, (userAppPermRec) =>
             if not userAppPermRec?
                 # Add to DB
                 @db_connection.collection "Permissions", (err, collection) =>
-                    collection.update {email:user_email}, ($push: {apps:{mountPoint:mountPoint}}), (err, num_modified) =>
+                    collection.update {email:user_email, ns:ns}, ($push: {apps:{mountPoint:mountPoint}}), (err, num_modified) =>
                         if err then throw err
-                        # Add to cache
-                        @findUserPermRec user_email, (userPermRec) =>
+                        @findUserPermRec user_email, ns, (userPermRec) =>
                             userAppPermRec = userPermRec.addApp mountPoint
                             if permissions? and Object.keys(permissions).length isnt 0
-                                @setAppPerm user_email, mountPoint, permissions, callback
+                                @setAppPerm user_email, mountPoint, permissions, ns, callback
                             else callback userAppPermRec
             else callback userAppPermRec
             
-    rmAppPermRec : (user_email, mountPoint, callback) ->
-        @findAppPermRec user_email, mountPoint, (userAppPermRec) =>
+    rmAppPermRec : (user_email, mountPoint, ns, callback) ->
+        @findAppPermRec user_email, mountPoint, ns, (userAppPermRec) =>
             @db_connection.collection "Permissions", (err, collection) =>
                 if err then throw err
-                collection.update {email:user_email}, ($pull: {apps:{mountPoint:mountPoint}}), (err, dbUserAppPermRec) =>
+                collection.update {email:user_email, ns:ns}, ($pull: {apps:{mountPoint:mountPoint}}), (err, dbUserAppPermRec) =>
                     if err then throw err
-                    @findUserPermRec user_email, (userPermRec) ->
+                    @findUserPermRec user_email, ns, (userPermRec) ->
                         userPermRec.removeApp mountPoint
                         callback()
 
-    findBrowserPermRec: (user_email, mountPoint, browserId, callback) ->
-        @findAppPermRec user_email, mountPoint, (userAppPermRec) ->
+    findBrowserPermRec: (user_email, mountPoint, browserId, ns, callback) ->
+        @findAppPermRec user_email, mountPoint, ns, (userAppPermRec) ->
             if userAppPermRec?
                 callback userAppPermRec.findBrowser browserId
             else callback null
 
-    getBrowserPermRecs: (user_email, mountPoint, callback) ->
-        @findAppPermRec user_email, mountPoint, (userAppPermRec) ->
+    getBrowserPermRecs: (user_email, mountPoint, ns, callback) ->
+        @findAppPermRec user_email, mountPoint, ns, (userAppPermRec) ->
             if userAppPermRec?
                 callback userAppPermRec.getBrowsers()
-            else throw new Error "User " + user_email + " has no permission records associated with the application mounted at " + mountPoint
+            else callback null
     
-    addBrowserPermRec: (user_email, mountPoint, browserId, permissions, callback) ->
-        @findBrowserPermRec user_email, mountPoint, browserId, (userBrowserPermRec) =>
+    addBrowserPermRec: (user_email, mountPoint, browserId, permissions, ns, callback) ->
+        @findBrowserPermRec user_email, mountPoint, browserId, ns, (userBrowserPermRec) =>
             if not userBrowserPermRec?
-                @findAppPermRec user_email, mountPoint, (userAppPermRec) ->
+                @findAppPermRec user_email, mountPoint, ns, (userAppPermRec) =>
                     userBrowserPermRec = userAppPermRec.addBrowser browserId
                     if permissions? and Object.keys(permissions).length isnt 0
-                        userBrowserPermRec.set permissions
-                        callback userBrowserPermRec
+                        @setBrowserPerm user_email, mountPoint, browserId, permissions, ns, callback
+                    else callback userBrowserPermRec
             else callback userBrowserPermRec
 
-    rmBrowserPermRec: (user_email, mountPoint, browserId, callback) ->
-        @findBrowserPermRec user_email, mountPoint, browserId, (userBrowserPermRec) =>
+    rmBrowserPermRec: (user_email, mountPoint, browserId, ns, callback) ->
+        @findBrowserPermRec user_email, mountPoint, browserId, ns, (userBrowserPermRec) =>
             if userBrowserPermRec?
-                @findAppPermRec user_email, mountPoint, (userAppPermRec) ->
+                @findAppPermRec user_email, mountPoint, ns, (userAppPermRec) ->
                     userAppPermRec.removeBrowser browserId
                     callback()
-            else
-                throw new Error "User " + user_email + " has no permission records associated with browser " + browserId
+            else callback null
 
-    setSysPerm : (user_email, permissions, callback) ->
-        @findUserPermRec user_email, (userPermRec) =>
+    setSysPerm : (user_email, permissions, ns, callback) ->
+        @findUserPermRec user_email, ns, (userPermRec) =>
             if not userPermRec? then throw new Error "Permission records for user " + user_email + " not found"
             permissions = userPermRec.set permissions
             @db_connection.collection "Permissions", (err, collection) ->
                 if err then throw err
-                collection.update {email:user_email}, {$set : {permissions:permissions}}, {w:1}, (err, result) ->
+                collection.update {email:user_email, ns:ns}, {$set : {permissions:permissions}}, {w:1}, (err, result) ->
                     throw err if err
                     callback userPermRec
 
-    setAppPerm : (user_email, mountPoint, permissions, callback) ->
-        @findAppPermRec user_email, mountPoint, (userAppPermRec) =>
+    setAppPerm : (user_email, mountPoint, permissions, ns, callback) ->
+        @findAppPermRec user_email, mountPoint, ns, (userAppPermRec) =>
             if not userAppPermRec
                 throw new Error "User " + user_email + " has no permission records associated with the application mounted at " + mountPoint
             permissions = userAppPermRec.set permissions
             @db_connection.collection "Permissions", (err, collection) =>
                 if err then throw err
-                collection.update {email:user_email, apps:{'$elemMatch':{mountPoint:mountPoint}}}, {$set: {'apps.$.permissions':permissions}}, {w:1}, (err, dbUserAppPermRec) ->
+                collection.update {email:user_email, ns:ns, apps:{'$elemMatch':{mountPoint:mountPoint}}}, {$set: {'apps.$.permissions':permissions}}, {w:1}, (err, dbUserAppPermRec) ->
                     throw err if err
                     callback userAppPermRec
         
-    setBrowserPerm: (user_email, mountPoint, browserId, permissions, callback) ->
-        @findBrowserPermRec user_email, mountPoint, browserId, (userBrowserPermRec) ->
+    setBrowserPerm: (user_email, mountPoint, browserId, permissions, ns, callback) ->
+        @findBrowserPermRec user_email, mountPoint, browserId, ns, (userBrowserPermRec) ->
             if not userBrowserPermRec
                 throw new Error "User " + user_email + " has no permissions records associated with the browser " + browserId
             permissions = userBrowserPermRec.set permissions

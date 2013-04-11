@@ -1,14 +1,14 @@
 nodemailer              = require("nodemailer")
 
-window.sendEmail = (toEmailID, subject, message, callback) ->
+window.sendEmail = (toEmailID, subject, message, fromEmailID, fromPassword, callback) ->
     smtpTransport = nodemailer.createTransport "SMTP",
         service: "Gmail"
         auth:
-            user: config.nodeMailerEmailID
-            pass: config.nodeMailerPassword
+            user: fromEmailID
+            pass: fromPassword
 
     mailOptions =
-        from: config.nodeMailerEmailID
+        from: fromEmailID
         to: toEmailID
         subject: subject
         html: message
