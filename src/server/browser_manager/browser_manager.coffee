@@ -26,7 +26,7 @@ class BrowserManager
     find : () ->
         throw new Error("BrowserManager subclass must implement find.")
 
-    create : (app, query, user, id) ->
+    create : (app, id) ->
         throw new Error("BrowserManager subclass must implement create.")
 
     close : (browser, user) ->

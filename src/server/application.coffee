@@ -8,6 +8,8 @@ class Application
          @localState,
          @authenticationInterface,
          @dbName,
+         @description,
+         @browserLimit,
          @browserStrategy} = opts
 
         @remoteBrowsing = /^http/.test(@entryPoint)
@@ -23,4 +25,16 @@ class Application
         else
             return Path.resolve(process.cwd(), @entryPoint)
 
+    getPerUserBrowserLimit : () ->
+        if not @browserLimit or not @browserLimit.user
+            return 0
+        else
+            return @browserLimit.user
+    
+    getPerAppBrowserLimit : () ->
+        if not @browserLimit or not @browserLimit.app
+            return 0
+        else
+            return @browserLimit.app
+    
 module.exports = Application

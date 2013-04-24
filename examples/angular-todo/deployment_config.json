@@ -1,0 +1,4 @@
+{
+    "authenticationInterface"   : true,
+    "browserLimit"              : {"user":1}
+}

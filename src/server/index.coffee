@@ -10,7 +10,7 @@ Managers            = require('./browser_manager')
 AdminInterface      = require('./admin_interface')
 ParseCookie         = require('cookie').parse
 ApplicationManager  = require('./application_manager')
-PermissionManager   = require('./permission_manager')
+PermissionManager   = require('./user_permission_manager')
 Mongo               = require('mongodb')
 Express             = require("express")
 MongoStore          = require("connect-mongo")(Express)
@@ -149,6 +149,7 @@ class Server extends EventEmitter
         io.sockets.on 'connection', (socket) =>
             @addLatencyToClient(socket) if @config.simulateLatency
             socket.on 'auth', (app, browserID) =>
+                # app, browserID are provided by the client and cannot be trusted
                 decoded = decodeURIComponent(browserID)
                 bserver = browserManagers[app].find(decoded)
                 bserver?.addSocket(socket)

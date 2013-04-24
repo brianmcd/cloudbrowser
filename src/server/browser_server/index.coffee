@@ -22,6 +22,7 @@ class BrowserServer extends EventEmitter
         if !@id? || !@mountPoint
             throw new Error("Missing required parameter")
         @browser = new Browser(@id, this, @server)
+        @dateCreated = new Date()
 
         @browser.on 'PageLoaded', () =>
             @browser.window.addEventListener 'hashchange', (event) =>

@@ -1,0 +1,4 @@
+{
+    "authenticationInterface"   : true,
+    "browserLimit"              : {"app":1}
+}

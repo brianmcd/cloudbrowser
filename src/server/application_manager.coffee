@@ -64,6 +64,8 @@ class ApplicationManager
     # Configures and adds a CloudBrowser application to the application manager 
     addDirectory : (path, mountPoint) ->
 
+        #Remove src/server/applications from the paths to be traversed.
+
         constructDbName = (mountPoint) ->
             if mountPoint[mountPoint.length-1] is "\/"
                 mountPoint = mountPoint.pop()
@@ -84,10 +86,11 @@ class ApplicationManager
             require(Path.resolve path + "/" + opts.state).initialize opts
 
         if opts.authenticationInterface
-            opts.dbName = constructDbName opts.mountPoint
+            opts.dbName = constructDbName(opts.mountPoint)
             @addDirectory "src/server/applications/authentication_interface", opts.mountPoint + "/authenticate"
             @addDirectory "src/server/applications/password_reset", opts.mountPoint + "/password_reset"
-            @addDirectory "src/server/applications/landing_page", opts.mountPoint + "/landing_page"
+            if opts.browserLimit.user and opts.browserLimit.user > 1
+                @addDirectory "src/server/applications/landing_page", opts.mountPoint + "/landing_page"
 
         @add opts
 
@@ -104,6 +107,20 @@ class ApplicationManager
         appConfig = JSON.parse Fs.readFileSync appConfigPath
         for key,value of appConfig
             opts[key] = value
+
+        if opts.authenticationInterface
+            if not opts.browserLimit
+                # Should there be a default?
+                throw new Error "Missing required parameter browserLimit in " + path
+
+            if (opts.browserLimit.user and isNaN(opts.browserLimit.user))
+                throw new Error "browserLimit must be a valid number in " + path
+
+        if (opts.browserLimit and opts.browserlimit.app)
+            if isNaN(opts.browserlimit.app)
+                throw new Error "Per application browserLimit must be a valid number in " + path
+            else if opts.browserLimit.app > 1
+                throw new Error "Per application browserLimit greater than 1 is not supported. In " + path
 
         opts.entryPoint = path + "/" + opts.entryPoint
 
@@ -132,6 +149,7 @@ class ApplicationManager
 
     add : (opts) ->
         @applications[opts.mountPoint] = new Application opts
+        return @applications[opts.mountPoint]
         
     remove : (mountPoint) ->
         console.log "Unmount all the routes and remove all VBs"

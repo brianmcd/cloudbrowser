@@ -1,9 +1,13 @@
-#remove {
-    color: #b94a48;
-    cursor: pointer;
-    display:inline-block;
-    -webkit-transition: all 0.2s;
+.margin-bottom{margin-bottom:20px;}
+.margin-right{margin-right:15px;}
+.highlight{background-color:#bdbdbd;}
+.box{
+    border-radius:5px;
+    border: 1px solid #ccc;
+    padding:30px;
+    -webkit-box-shadow: 0px 2px 10px #ccc;
+    -moz-box-shadow: 0px 2px 10px #ccc;
 }
-#remove:hover {
-    -webkit-transform: scale(1.4);
+.pointer{
+    cursor:pointer;
 }

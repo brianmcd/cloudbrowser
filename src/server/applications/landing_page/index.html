@@ -4,6 +4,8 @@
         <script type="text/javascript" src="../tools/utils.js"></script>
         <script type="text/javascript" src='javascript/angular.js'></script>
         <script type="text/javascript" src='javascript/controller.js'></script>
+        <script type="text/javascript" src='javascript/jquery.js'></script>
+        <script type="text/javascript" src='javascript/bootstrap.js'></script>
         <link href="css/bootstrap.css" rel="stylesheet">
         <link href="css/bootstrap-responsive.css" rel="stylesheet">
         <link rel='stylesheet' href='css/font-awesome.css'>
@@ -12,32 +14,177 @@
     <body>
         <div class="container-fluid">
             <div class="row-fluid">
-                <div class="span8 offset2" ng-controller="UserCtrl">
+                <div class="span10 offset1" ng-controller="UserCtrl">
                     <div class="page-header pagination-centered">
-                        <h3>{{mountPoint}}</h3>
+                        <h3>{{mountPoint|removeSlash}}</h3>
                     </div>
-                    <div class="pull-right">{{email}} | <a href="#" ng-click="logout()">Logout</a></div>
-                    <table class="table table-bordered">
-                        <thead>
-                            <th>Link</th>
-                            <th>Delete</th>
-                            <th>Grant/Deny Permission</th>
-                        </thead>
-                        <tbody>
-                        <tr ng-repeat="id in browsers">
-                            <td>
-                                <a href="http://{{domain}}:{{port}}{{mountPoint}}/browsers/{{id}}/index">{{id}}</a>
-                            </td>
-                            <td>
-                                <div><i id="remove" class="icon-remove-sign icon-large" ng-click="deleteVB(id)"></i></div>
-                            </td>
-                            <td>
-                                Grant Access to other users                                
-                            </td>
-                        </tr> 
-                        </tbody>
-                    </table>
-                    <button class="btn btn-success" ng-click="createVB()">Create</button>
+
+                    <div class="span11">
+                        <div class="pagination-centered">
+                            {{email}} &nbsp;| &nbsp;<a href="#" ng-click="logout()">Logout</a>
+                        </div>
+                    </div>
+
+                    <div class="well pagination-centered span7 offset2 pagination-centered"
+                    ng-show="description">
+                        {{description}}
+                    </div>
+
+                    <div class="span7 hero-unit offset2 pagination-centered"
+                    ng-show="!(browserList|isNotEmpty)">
+                        <h2>Hi {{email}}</h2>
+                        <p>Welcome to {{mountPoint|removeSlash}}. You don't have any browsers yet.</p> 
+                        <p><button class="btn btn-success" ng-click="createVB()">Create</button> one now!</p>
+                    </div>
+
+                    <div class="span11 margin-bottom pagination-centered" ng-show="browserList|isNotEmpty">
+
+                        <button class="btn btn-default"
+                        ng-disabled="isDisabled.open" ng-click="open()">
+                            Open <i class="icon-external-link"></i>
+                        </button>
+
+                        <div class="btn-group">
+
+                            <a class="btn dropdown-toggle"
+                            data-toggle="dropdown" ng-class="{true:'disabled'}[isDisabled.share]">
+                                Share <i class="icon-group"></i>
+                                <span class="caret" ></span>
+                            </a>
+
+                            <ul class="dropdown-menu" style="text-align:left">
+                                <li><a tabindex="-1"
+                                ng-click="openCollaborateForm()">
+                                    Grant Read/Write Access
+                                </a></li>
+
+                                <li><a tabindex="-1"
+                                ng-click="openAddOwnerForm()">
+                                    Grant Ownership
+                                </a></li>
+                            </ul>
+
+                        </div>
+
+                        <button class="btn btn-default"
+                        ng-disabled="isDisabled.rename" ng-click="rename()">
+                            Rename <i class="icon-edit"></i>
+                        </button>
+
+                        <button class="btn btn-default"
+                        ng-disabled="isDisabled.del" ng-click="remove()">
+                            Delete <i class="icon-trash"></i>
+                        </button>
+
+                    </div>
+
+                    <div class="span11" ng-show="addingCollaborator">
+                        <form class="form-horizontal span4 offset4 box" ng-submit="addCollaborator()">
+                            <button type="button" class="close" ng-click="addingCollaborator = false">×</button>
+
+                            <fieldset>
+                                <legend>Add Collaborator</legend>
+
+                                <div ng-show="!collaborators.length">There are no users to collaborate with.</div>
+
+                                <select ng-model="selectedCollaborator"
+                                ng-show="collaborators.length"
+                                ng-options="collaborator.email+' (' + collaborator.ns + ')' for collaborator in collaborators">
+                                </select>
+
+                                <button type="submit" class="btn btn-primary"
+                                ng-show="collaborators.length" ng-disabled="!selectedCollaborator">
+                                    Add
+                                </button>
+
+                            </fieldset>
+
+                        </form>
+                    </div>
+
+                    <div class="span11" ng-show="addingOwner">
+                        <form class="form-inline span4 offset4 box" ng-submit="addOwner()">
+                            <button type="button" class="close" ng-click="addingOwner = false">×</button>
+
+                            <fieldset>
+                                <legend>Add Owner</legend>
+
+                                <div ng-show="!owners.length">There are no users to collaborate with.</div>
+
+                                <select ng-model="selectedOwner"
+                                ng-show="owners.length"
+                                ng-options="owner.email+' (' + owner.ns + ')' for owner in owners">
+                                </select>
+
+                                <button type="submit" class="btn btn-primary"
+                                ng-show="owners.length" ng-disabled="!selectedOwner">
+                                    Add
+                                </button>
+
+                            </fieldset>
+                        </form>
+                    </div>
+
+                    <div class="span1" ng-show="browserList|isNotEmpty">
+                        <button class="btn btn-success" ng-click="createVB()">Create</button>
+                    </div>
+                    <div class="span9" ng-show="browserList|isNotEmpty">
+                        <table class="table table-bordered">
+
+                            <thead>
+                                <th><input type="checkbox"
+                                    ng-click="selectAll($event)"
+                                    ng-checked="areAllSelected()">
+                                </th>
+                                <!--Add anchor tag or the pointer class when using orderBy-->
+                                <th><ng-click="predicate='name';reverse=!reverse">Name</a></th>
+                                <th><ng-click="predicate='date';reverse=!reverse">Date Created</a></th>
+                                <th>Owner(s)</th>
+                                <th>Collaborator(s)</th>
+                            </thead>
+
+                            <tbody>
+                            <!-- Angular orderBy doesn't work on objects. Must use underscore.js _map to convert object to array and then filter-->
+                            <!--https://github.com/angular/angular.js/issues/1286-->
+                                <tr ng-repeat="(browserId, browser) in browserList | orderBy:predicate:reverse | filter:option"
+                                    ng-class="getSelectedClass(browserId)">
+
+                                    <td>
+                                        <input type="checkbox"
+                                        ng-click="select($event, browserId)"
+                                        ng-checked="isSelected(browserId)">
+                                    </td>
+
+                                    <td>
+                                        <span ng-show="!browser.editing"
+                                        ng-click="clickRename(browserId)" class="pointer">
+                                            {{browser.name}}
+                                        </span>
+                                        <form ng-submit="browser.editing=false" ng-show="browser.editing">
+                                            <input type="text" class="span11" ng-model="browser.name">
+                                        </form>
+                                    </td>
+
+                                    <td>
+                                        {{browser.date}}
+                                    </td>
+
+                                    <td>
+                                        <div ng-repeat="sysRec in browser.own">
+                                            {{sysRec.user.email}} ({{sysRec.user.ns}})
+                                        </div>
+                                    </td>
+
+                                    <td>
+                                        <div ng-repeat="collaborator in browser.collaborators">
+                                            {{collaborator.email}} ({{collaborator.ns}})
+                                        </div>
+                                    </td>
+
+                                </tr> 
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div> 

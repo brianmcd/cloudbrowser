@@ -8,6 +8,7 @@ QueryString    = require('querystring')
 Passport       = require('passport')
 GoogleStrategy = require('passport-google').Strategy
 
+# Must refactor the code
 class HTTPServer extends EventEmitter
     constructor : (@cbServer, callback) ->
         server = @server = express.createServer()
@@ -102,9 +103,23 @@ class HTTPServer extends EventEmitter
                         displayName:req.user.displayName, ns: 'google'},
                         (err, user) =>
                             throw err if err
-                            @cbServer.permissionManager.addUserPermRec user[0].email, {}, user[0].ns, (userPermRec) =>
-                                @cbServer.permissionManager.addAppPermRec user[0].email, req.query.mountPoint, {createbrowsers:true}, user[0].ns, (appPermRec) ->
-                                    saveSessionAndRedirect(req, user[0])
+                            @cbServer.permissionManager.addSysPermRec user[0], {}, (sysRec) =>
+                                if sysRec
+                                    @cbServer.permissionManager.addAppPermRec user[0],
+                                    req.query.mountPoint, {createbrowsers:true}, (appRec) ->
+                                        if appRec
+                                            saveSessionAndRedirect(req, user[0])
+                                        else
+                                            console.log("Could not add application permission record for " + req.query.mountpoint)
+                                            res.writeHead 302,
+                                                {'Location' : req.query.mountPoint,'Cache-Control' : "max-age=0, must-revalidate"}
+                                            res.end()
+                                else
+                                    console.log("Could not add sytem permission record for " + user[0].email + "(" + user.ns + ")")
+                                    res.writeHead 302,
+                                        {'Location' : req.query.mountPoint,'Cache-Control' : "max-age=0, must-revalidate"}
+                                    res.end()
+                                        
 
     # Sets up a server endpoint at mountpoint that serves browsers from the
     # browsers BrowserManager.
@@ -147,10 +162,10 @@ class HTTPServer extends EventEmitter
         authorize = (req, res, next) =>
             if req.session? and
             (user = req.session.user.filter((user) -> return user.app is mountPointNoSlash)).length isnt 0
-                @cbServer.permissionManager.findBrowserPermRec user[0].email, mountPointNoSlash, req.params.browserid, user[0].ns, (browserPermRec) ->
+                @cbServer.permissionManager.findBrowserPermRec user[0], mountPointNoSlash, req.params.browserid, (browserPermRec) ->
                     if browserPermRec isnt null and typeof browserPermRec isnt "undefined"
                         if browserPermRec.permissions isnt null and typeof browserPermRec.permissions isnt "undefined"
-                            if browserPermRec.permissions.readwrite or browserPermRec.permissions.owner
+                            if browserPermRec.permissions.readwrite or browserPermRec.permissions.own
                                 next()
                             else
                                 res.send("Permission Denied", 403)
@@ -184,12 +199,24 @@ class HTTPServer extends EventEmitter
                     if err then throw err
                     else
                         collection.findOne {token:token}, (err, user) =>
-                            @cbServer.permissionManager.addUserPermRec user.email, {}, user.ns, (userPermRec) =>
-                                @cbServer.permissionManager.addAppPermRec user.email, mountPointNoSlash, {createbrowsers:true}, user.ns, (appPermRec) ->
-                            collection.update {token: token}, {$unset: {token: "", status: ""}}, {w:1}, (err, result) =>
-                                if err then throw err
-                                else res.render 'activate.jade',
-                                    url: "http://"+ @cbServer.config.domain + ":" + @cbServer.config.port + mountPoint
+                            @cbServer.permissionManager.addSysPermRec user, {}, (sysRec) =>
+                                if sysRec
+                                    @cbServer.permissionManager.addAppPermRec user, mountPointNoSlash, {createbrowsers:true}, (appRec) ->
+                                        if appRec
+                                            collection.update {token: token}, {$unset: {token: "", status: ""}}, {w:1}, (err, result) =>
+                                                if err then throw err
+                                                else res.render 'activate.jade',
+                                                    url: "http://"+ @cbServer.config.domain + ":" + @cbServer.config.port + mountPoint
+                                        else
+                                            console.log("Could not add application permission record for " + mountPointNoSlash)
+                                            res.writeHead 302,
+                                                {'Location' : mountPoint,'Cache-Control' : "max-age=0, must-revalidate"}
+                                            res.end()
+                                else
+                                    console.log("Could not add system permission record for " + user.email + "(" + user.ns + ")")
+                                    res.writeHead 302,
+                                        {'Location' : mountPoint,'Cache-Control' : "max-age=0, must-revalidate"}
+                                    res.end()
 
             @server.get mountPointNoSlash + "/deactivate/:token", (req, res) =>
                 token = req.params.token
@@ -200,9 +227,18 @@ class HTTPServer extends EventEmitter
                         else res.render 'deactivate.jade'
 
             @server.get mountPoint, verify_authentication, (req, res) =>
-                res.writeHead 301,
-                    {'Location' : "#{mountPointNoSlash}/landing_page" + req.queryString, 'Cache-Control' : "max-age=0, must-revalidate"}
-                res.end()
+                if app.getPerUserBrowserLimit() > 1
+                    res.writeHead 301,
+                        {'Location' : "#{mountPointNoSlash}/landing_page" + req.queryString, 'Cache-Control' : "max-age=0, must-revalidate"}
+                    res.end()
+
+                else
+                    user = req.session.user.filter (user) -> return user.app is mountPointNoSlash
+                    browsers.create app, req.queryString, {email:user[0].email, ns:user[0].ns}, (bserver) ->
+                        id = bserver.id
+                        res.writeHead 301,
+                            {'Location' : "#{mountPointNoSlash}/browsers/#{id}/index" + req.queryString,'Cache-Control' : "max-age=0, must-revalidate"}
+                        res.end()
 
             # Route to connect to a virtual browser.
             @server.get "#{mountPointNoSlash}/browsers/:browserid/index", verify_authentication, authorize, (req, res) ->
