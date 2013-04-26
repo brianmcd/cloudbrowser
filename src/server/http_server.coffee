@@ -188,10 +188,18 @@ class HTTPServer extends EventEmitter
             @server.get mountPointNoSlash + "/logout", (req, res) ->
                 #Ashima - Verify if session is associated with application having this mountpoint
                 if req.session
-                    req.session.destroy()
-                    res.writeHead 302,
-                        {'Location' : mountPoint,'Cache-Control' : "max-age=0, must-revalidate"}
-                    res.end()
+                    if req.session.user
+                        index = 0
+                        while index < req.session.user.length
+                            if req.session.user[index].app is mountPointNoSlash
+                                break
+                        if index < req.session.user.length
+                            req.session.user.splice(index, 1)
+                    if req.session.user.length is 0
+                        req.session.destroy()
+                res.writeHead 302,
+                    {'Location' : mountPoint,'Cache-Control' : "max-age=0, must-revalidate"}
+                res.end()
 
             @server.get mountPointNoSlash + "/activate/:token", (req, res) =>
                 token = req.params.token
