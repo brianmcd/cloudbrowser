@@ -122,38 +122,55 @@ class Server extends EventEmitter
                 io.set('browser client gzip', true)
             io.set('log level', 1)
             io.set 'authorization', (handshakeData, callback) =>
-                #Ashima - Browsers can turn off sending of the referer header and is this secure enough anyway?
-                referer = handshakeData.headers.referer.split('\/')
-                if referer
-                    mountPoint = "/" + referer[3]
-                    isAuthenticationReq = (referer[4] == "authenticate" or referer[4] == "password_reset")
-                    app = applicationManager.find(mountPoint)
-                    if app.authenticationInterface && not isAuthenticationReq
-                        handshakeData.cookie = ParseCookie(handshakeData.headers.cookie)
-                        handshakeData.sessionID = handshakeData.cookie['cb.id']
-                        @mongoStore.get handshakeData.sessionID, (err, session) ->
-                            if err
-                                callback(err.message, false)
-                            else
-                                if session.user
-                                    handshakeData.session = session
-                                    #Using anything other than null sends 500 instead of 403
-                                    callback(null, true)
-                                else
-                                    callback(null, false)
-                    else
-                        callback null, true
-                else
-                    callback null, false
+                handshakeData.cookie = ParseCookie(handshakeData.headers.cookie)
+                handshakeData.sessionID = handshakeData.cookie['cb.id']
+                @mongoStore.get handshakeData.sessionID, (err, session) ->
+                    if err then callback(null, false)
+                    else if session.user
+                        handshakeData.session = session
+                    callback(null, true)
 
         io.sockets.on 'connection', (socket) =>
             @addLatencyToClient(socket) if @config.simulateLatency
             socket.on 'auth', (app, browserID) =>
                 # app, browserID are provided by the client and cannot be trusted
                 decoded = decodeURIComponent(browserID)
-                bserver = browserManagers[app].find(decoded)
-                bserver?.addSocket(socket)
+                if browserManagers[app] and @isAuthorized(socket.handshake.session, app, browserID)
+                    bserver = browserManagers[app].find(decoded)
+                    bserver?.addSocket(socket)
+                else
+                    socket.disconnect()
         return io
+
+    isAuthorized : (session, mountPoint, browserID) ->
+
+        if /landing_page$/.test(mountPoint)
+            mountPoint  = mountPoint.split("/")
+            mountPoint.pop()
+            mountPoint = mountPoint.join('/')
+            appUser = session.user.filter (item) ->
+                item.app is mountPoint
+            if appUser[0] then return true
+            else return false
+
+        app = @applicationManager.find(mountPoint)
+
+        if not app
+            return false
+        else if not app.authenticationInterface
+            return true
+        else if not session.user
+            return false
+        else
+            appUser = session.user.filter (item) ->
+                item.app is mountPoint
+            if appUser[0]
+                @permissionManager.findBrowserPermRec appUser[0],
+                mountPoint, browserID, (browserRec) ->
+                    if browserRec and Object.keys(browserRec).length isnt 0
+                        return true
+                    else return false
+            else return false
     
     addLatencyToClient : (socket) ->
         if typeof @config.simulateLatency == 'number'
