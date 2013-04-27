@@ -29,7 +29,7 @@ class InProcessBrowserManager extends BrowserManager
 
         if appOrUrl? and appOrUrl.authenticationInterface
             if not user?
-                callback(new Error("Permission Denied"))
+                callback(new Error("Permission Denied"), null)
 
             # Remove nested functions like this one
             grantBrowserPerm = (id, permissions, callback) =>
@@ -51,7 +51,7 @@ class InProcessBrowserManager extends BrowserManager
                         callback(true)
                     else callback(false)
 
-            # Checking the instantiation limit configured for the application
+            # Checking the browser limit configured for the application
             checkPermissions {createbrowsers:true}, (isActionPermitted) =>
 
                 if isActionPermitted
@@ -69,27 +69,32 @@ class InProcessBrowserManager extends BrowserManager
 
                             if not browserRecs or
                             Object.keys(browserRecs).length < userLimit
-                                grantBrowserPerm id, {own:true, readwrite:true, remove:true}, (browserRec) =>
-                                    callback(@createBrowser(BrowserServerSecure, id, query, user, browserRec.permissions))
+                                permissions = {own:true, readwrite:true, remove:true}
+                                browser = @createBrowser(BrowserServerSecure, id, query, user, permissions)
+                                grantBrowserPerm id, permissions, (browserRec) =>
+                                    callback(null, browser)
 
                             else
-                                for browserId, browser of browserRecs
-                                    callback(@find(browserId))
-                                    break
+                                if userLimit is 1
+                                    for browserId, browser of browserRecs
+                                        callback(null, @find(browserId))
+                                        break
+                                else
+                                    callback(new Error("Browser limit reached"), null)
 
                     else if appLimit is 1
 
                         if not appOrUrl.browser
-                            grantBrowserPerm id, {readwrite:true}, (browserRec) =>
-                                appOrUrl.browser = @createBrowser(BrowserServerSecure, id, query, user, browserRec.permissions)
-                                callback(appOrUrl.browser)
+                            permissions = {readwrite:true}
+                            appOrUrl.browser = @createBrowser(BrowserServerSecure, id, query, user, permissions)
+                            grantBrowserPerm id, permissions, (browserRec) =>
+                                callback(null, appOrUrl.browser)
 
                         else
                             grantBrowserPerm appOrUrl.browser.id, {readwrite:true}, (browserRec) ->
-                                callback(appOrUrl.browser)
+                                callback(null, appOrUrl.browser)
 
-                # Action not permitted for this user
-                else callback(null)
+                else callback(new Error("You are not permitted to perform this action."))
 
         else
             # Authentication is disabled

@@ -186,19 +186,19 @@ class HTTPServer extends EventEmitter
         # Routes for apps with authentication configured
         if app.authenticationInterface
             @server.get mountPointNoSlash + "/logout", (req, res) ->
-                #Ashima - Verify if session is associated with application having this mountpoint
                 if req.session
                     if req.session.user
                         index = 0
                         while index < req.session.user.length
                             if req.session.user[index].app is mountPointNoSlash
                                 break
+                            else index++
                         if index < req.session.user.length
                             req.session.user.splice(index, 1)
                     if req.session.user.length is 0
                         req.session.destroy()
                 res.writeHead 302,
-                    {'Location' : mountPoint,'Cache-Control' : "max-age=0, must-revalidate"}
+                    {'Location' : mountPointNoSlash,'Cache-Control' : "max-age=0, must-revalidate"}
                 res.end()
 
             @server.get mountPointNoSlash + "/activate/:token", (req, res) =>
@@ -242,7 +242,8 @@ class HTTPServer extends EventEmitter
 
                 else
                     user = req.session.user.filter (user) -> return user.app is mountPointNoSlash
-                    browsers.create app, req.queryString, {email:user[0].email, ns:user[0].ns}, (bserver) ->
+                    browsers.create app, req.queryString, {email:user[0].email, ns:user[0].ns}, (err, bserver) ->
+                        if err then console.log(err)
                         id = bserver.id
                         res.writeHead 301,
                             {'Location' : "#{mountPointNoSlash}/browsers/#{id}/index" + req.queryString,'Cache-Control' : "max-age=0, must-revalidate"}

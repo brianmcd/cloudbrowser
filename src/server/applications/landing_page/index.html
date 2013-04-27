@@ -21,7 +21,7 @@
 
                     <div class="span11">
                         <div class="pagination-centered">
-                            {{email}} &nbsp;| &nbsp;<a href="#" ng-click="logout()">Logout</a>
+                            {{user.email}} &nbsp;| &nbsp;<a href="#" ng-click="logout()">Logout</a>
                         </div>
                     </div>
 
@@ -31,13 +31,13 @@
                     </div>
 
                     <div class="span7 hero-unit offset2 pagination-centered"
-                    ng-show="!(browserList|isNotEmpty)">
-                        <h2>Hi {{email}}</h2>
+                    ng-show="!(browserList.length)">
+                        <h2>Hi {{user.email}}</h2>
                         <p>Welcome to {{mountPoint|removeSlash}}. You don't have any browsers yet.</p> 
                         <p><button class="btn btn-success" ng-click="createVB()">Create</button> one now!</p>
                     </div>
 
-                    <div class="span11 margin-bottom pagination-centered" ng-show="browserList|isNotEmpty">
+                    <div class="span11 margin-bottom pagination-centered" ng-show="browserList.length">
 
                         <button class="btn btn-default"
                         ng-disabled="isDisabled.open" ng-click="open()">
@@ -72,7 +72,7 @@
                         </button>
 
                         <button class="btn btn-default"
-                        ng-disabled="isDisabled.del" ng-click="remove()">
+                        ng-disabled="isDisabled.del" ng-click="confirmDelete = true">
                             Delete <i class="icon-trash"></i>
                         </button>
 
@@ -125,10 +125,69 @@
                         </form>
                     </div>
 
-                    <div class="span1" ng-show="browserList|isNotEmpty">
-                        <button class="btn btn-success" ng-click="createVB()">Create</button>
+
+                    <div class="span11">
+                        <div class="span6 offset3">
+                            <div class="alert alert-success pagination-centered" ng-show="boxMessage">
+                                <button type="button" class="close" ng-click="boxMessage=null">&times;</button>
+                                <strong>Success!</strong> {{boxMessage}}.
+                            </div>
+
+                            <div class="alert alert-error pagination-centered" ng-show="error">
+                                <button type="button" class="close" ng-click="error=null">&times;</button>
+                                <strong>Error!</strong> Can not perform requested action. {{error}}.
+                            </div>
+
+                            <div class="alert alert-error pagination-centered" ng-show="confirmDelete">
+                                <button type="button" class="close" ng-click="confirmDelete=false">&times;</button>
+                                <strong>Warning!</strong> The selected browsers will be permanently deleted.<br>
+                                <button class="btn btn-danger" ng-click="remove()">Continue</button>
+                            </div>
+                        </div>
                     </div>
-                    <div class="span9" ng-show="browserList|isNotEmpty">
+
+                    <div class="span1">
+                        <div ng-show="browserList.length">
+                            <button class="btn btn-success" ng-click="createVB()">
+                                Create</i>
+                            </button>
+                        </div><br>
+                        <div ng-show="browserList.length" class="btn-group">
+                            <a class="btn dropdown-toggle"
+                            data-toggle="dropdown">
+                                Filter <i class="icon-filter"></i>
+                                <span class="caret" ></span>
+                            </a>
+                            <ul class="dropdown-menu" style="text-align:left">
+                                <li><a tabindex="-1"
+                                ng-click="filterType='shared'">
+                                    Shared
+                                </a></li>
+
+                                <li><a tabindex="-1"
+                                ng-click="filterType='notShared'">
+                                    Not shared 
+                                </a></li>
+
+                                <li><a tabindex="-1"
+                                ng-click="filterType='owned'">
+                                    Owned by me
+                                </a></li>
+
+                                <li><a tabindex="-1"
+                                ng-click="filterType='notOwned'">
+                                    Not owned by me
+                                </a></li>
+
+                                <li><a tabindex="-1"
+                                ng-click="filterType='all'">
+                                    All 
+                                </a></li>
+
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="span9" ng-show="browserList.length">
                         <table class="table table-bordered">
 
                             <thead>
@@ -137,27 +196,33 @@
                                     ng-checked="areAllSelected()">
                                 </th>
                                 <!--Add anchor tag or the pointer class when using orderBy-->
-                                <th><ng-click="predicate='name';reverse=!reverse">Name</a></th>
-                                <th><ng-click="predicate='date';reverse=!reverse">Date Created</a></th>
+                                <th>
+                                    <span ng-click="predicate = 'name'; reverse = !reverse" class="pointer">Name</span>
+                                    <span ng-show="predicate == 'name' && reverse"><i class="icon-caret-down icon-large"></i></span>
+                                    <span ng-show="predicate == 'name' && !reverse"><i class="icon-caret-up icon-large"></i></span>
+                                </th>
+                                <th>
+                                    <span ng-click="predicate = 'date'; reverse = !reverse" class="pointer">Date Created</span>
+                                    <span ng-show="predicate == 'date' && reverse"><i class="icon-caret-down icon-large"></i></span>
+                                    <span ng-show="predicate == 'date' && !reverse"><i class="icon-caret-up icon-large"></i></span>
+                                </th>
                                 <th>Owner(s)</th>
                                 <th>Collaborator(s)</th>
                             </thead>
 
                             <tbody>
-                            <!-- Angular orderBy doesn't work on objects. Must use underscore.js _map to convert object to array and then filter-->
-                            <!--https://github.com/angular/angular.js/issues/1286-->
-                                <tr ng-repeat="(browserId, browser) in browserList | orderBy:predicate:reverse | filter:option"
-                                    ng-class="getSelectedClass(browserId)">
+                                <tr ng-repeat="browser in browserList | browserFilter:{user:user,type:filterType} | orderBy:predicate:reverse"
+                                    ng-class="getSelectedClass(browser.id)">
 
                                     <td>
                                         <input type="checkbox"
-                                        ng-click="select($event, browserId)"
-                                        ng-checked="isSelected(browserId)">
+                                        ng-click="select($event, browser.id)"
+                                        ng-checked="isSelected(browser.id)">
                                     </td>
 
                                     <td>
                                         <span ng-show="!browser.editing"
-                                        ng-click="clickRename(browserId)" class="pointer">
+                                        ng-click="clickRename(browser.id)" class="pointer">
                                             {{browser.name}}
                                         </span>
                                         <form ng-submit="browser.editing=false" ng-show="browser.editing">

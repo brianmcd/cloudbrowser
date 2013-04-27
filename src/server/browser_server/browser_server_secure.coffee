@@ -10,7 +10,7 @@ class BrowserServerSecure extends BrowserServer
         @readwrite  = []
         @readonly   = []
         @remove     = []
-        @name       = "browser" + @constructor.nameCount++
+        @name       = @mountPoint.substring(1) + "-browser" + @constructor.nameCount++
 
         @addUserToLists(user, permissions)
 
@@ -20,6 +20,7 @@ class BrowserServerSecure extends BrowserServer
                 if v and @.hasOwnProperty(k) and
                 not @findUserInList(user, k)
                     @[k].push(sysRec)
+                    @emit('UserAddedToList', sysRec.getUser(), k)
 
             if callback? then callback()
 

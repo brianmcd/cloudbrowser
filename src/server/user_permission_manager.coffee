@@ -1,3 +1,4 @@
+{EventEmitter}      = require('events')
 ###
 Permission Types:
     Common
@@ -39,7 +40,7 @@ Every user is associated with one permission record of the form
 
 ###
 
-class PermissionManager
+class PermissionManager extends EventEmitter
     constructor : () ->
         @permissions = {}
         @containedItems = {}
@@ -62,9 +63,13 @@ class PermissionManager
         Object.keys(permissions).length isnt 0
             item.set(permissions)
 
+        @emit('ItemAdded', key)
+        return item
+
     removeItem : (key) ->
         if @findItem key
             delete @containedItems[key]
+            @emit('ItemRemoved', key)
             return(null)
         else return new Error("Key " + key + " not found.")
 
@@ -91,6 +96,8 @@ class BrowserPermissionManager extends PermissionManager
         super
         @set permissions if permissions?
         @containedItems = null
+
+    getId : () -> return @id
 
     findItem : () ->
         throw new Error("BrowserPermissionManager does not support findItem")
@@ -123,6 +130,8 @@ class AppPermissionManager extends PermissionManager
     constructor : (@mountPoint) ->
         super
 
+    getMountPoint : () -> return @mountPoint
+
     set : (permissions) ->
 
         @verifyAndSetPerm(permissions,
@@ -134,6 +143,8 @@ class AppPermissionManager extends PermissionManager
 class SystemPermissionManager extends PermissionManager
     constructor : (@user) ->
         super
+
+    getUser : () -> return @user
 
     set : (permissions) ->
         @verifyAndSetPerm(permissions,
@@ -344,21 +355,16 @@ class UserPermissionManager extends CacheManager
             else callback(null)
     
     addBrowserPermRec: (user, mountPoint, browserId, permissions, callback) ->
-        setPerm = (user, mountPoint, browserId, permissions, rec, callback) =>
-            if permissions? and Object.keys(permissions).length isnt 0
-                @setBrowserPerm(user, mountPoint, browserId, permissions, callback)
-            else callback(rec)
-            
         @findBrowserPermRec user, mountPoint, browserId, (browserRec) =>
             if not browserRec?
                 @findAppPermRec user, mountPoint, (appRec) =>
                     if appRec
-                        browserRec = appRec.addItem(browserId, BrowserPermissionManager)
-                        setPerm(user, mountPoint, browserId, permissions, browserRec, callback)
+                        browserRec = appRec.addItemAndSetPerm(browserId, BrowserPermissionManager, permissions)
+                        callback(browserRec)
                     else callback(null)
-
             else
-                setPerm(user, mountPoint, browserId, permissions, browserRec, callback)
+                browserRec.set(permissions)
+                callback(browserRec)
 
     rmBrowserPermRec: (user, mountPoint, browserId, callback) ->
         @findBrowserPermRec user, mountPoint, browserId, (browserRec) =>
@@ -401,7 +407,6 @@ class UserPermissionManager extends CacheManager
     setBrowserPerm: (user, mountPoint, browserId, permissions, callback) ->
         @findBrowserPermRec user, mountPoint, browserId, (browserRec) ->
             if not browserRec then callback(null)
-
             permissions = browserRec.set(permissions)
             callback(browserRec)
 
