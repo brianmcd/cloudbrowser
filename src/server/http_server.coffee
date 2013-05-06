@@ -289,13 +289,9 @@ class HTTPServer extends EventEmitter
 
     terminateUserAppSession : (req, app) ->
         if not (req.session and req.session.user) then return
-        console.log "before"
-        console.log req.session.user
         list = []
         list.push(user) for user in req.session.user when user.app isnt app
         req.session.user = list
-        console.log "after"
-        console.log list
         req.session.save()
         if req.session.user.length is 0
             req.session.destroy()
