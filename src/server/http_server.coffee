@@ -122,7 +122,7 @@ class HTTPServer extends EventEmitter
         browserRoute = "#{mountPointNoSlash}/browsers/:browserID/index"
 
         # Middleware that protects access to browsers
-        verifyAuthentication = (req, res, next) =>
+        isAuthenticated = (req, res, next) =>
             components  = mountPointNoSlash.split("/")
             index       = 1
             mp          = ""
@@ -141,6 +141,18 @@ class HTTPServer extends EventEmitter
                         next()
                 else
                     res.send("Permission Denied", 403)
+
+        # Middleware to reroute authenticated users when they request for
+        # the authentication_interface
+        isNotAuthenticated = (req, res, next) =>
+            components  = mountPointNoSlash.split("/")
+            index       = 1
+            mp          = ""
+            while components[index] isnt "authenticate" and index < components.length
+                mp += "/" + components[index++]
+            if @findAppUser(req, mp)
+                @redirect(res, "#{mp}#{@constructQueryString(req)}")
+            else next()
 
         # Route handler for resource proxy request
         resourceProxyRouteHandler = (req, res) ->
@@ -173,21 +185,18 @@ class HTTPServer extends EventEmitter
         # a browser from a URL sent via POST).
 
         if /landing_page$/.test(mountPointNoSlash)
-            @server.get mountPoint, verifyAuthentication, (req, res) =>
+            @server.get mountPoint, isAuthenticated, (req, res) =>
                 components  = mountPointNoSlash.split("/")
-                index       = 1
-                mp          = ""
-                while components[index] isnt "landing_page" and index < components.length
-                    mp += "/" + components[index++]
+                components.pop()
+                mp = components.join("/")
                 user = @findAppUser(req, mp)
                 queryString = @constructQueryString(req)
                 browsers.create app, queryString, user, (err, bserver) =>
                     throw err if err
                     @redirect(res, "#{mountPointNoSlash}/browsers/#{bserver.id}/index#{queryString}")
 
-            @server.get browserRoute, verifyAuthentication, browserRouteHandler
-
-            @server.get resourceProxyRoute, verifyAuthentication, resourceProxyRouteHandler
+            @server.get browserRoute, isAuthenticated, browserRouteHandler
+            @server.get resourceProxyRoute, isAuthenticated, resourceProxyRouteHandler
 
         else if app.authenticationInterface
 
@@ -213,7 +222,7 @@ class HTTPServer extends EventEmitter
                         throw err if err
                         res.render 'deactivate.jade'
 
-            @server.get mountPoint, verifyAuthentication, (req, res) =>
+            @server.get mountPoint, isAuthenticated, (req, res) =>
                 queryString = @constructQueryString(req)
                 if app.getPerUserBrowserLimit() > 1
                     @redirect(res, "#{mountPointNoSlash}/landing_page#{queryString}")
@@ -222,9 +231,21 @@ class HTTPServer extends EventEmitter
                     browsers.create app, queryString, user, (err, bserver) =>
                         @redirect(res, "#{mountPointNoSlash}/browsers/#{bserver.id}/index#{queryString}")
 
-            @server.get browserRoute, verifyAuthentication, authorize, browserRouteHandler
+            @server.get browserRoute, isAuthenticated, authorize, browserRouteHandler
+            @server.get resourceProxyRoute, isAuthenticated, resourceProxyRouteHandler
 
-            @server.get resourceProxyRoute, verifyAuthentication, resourceProxyRouteHandler
+        else if /authenticate$/.test(mountPointNoSlash)
+            @server.get mountPoint, isNotAuthenticated, (req, res) =>
+                id = req.session.browserID
+                queryString = @constructQueryString(req)
+                if !id? || !browsers.find(id)
+                  bserver = browsers.create(app, queryString)
+                  # Makes the browser stick to a particular client to prevent creation of too many browsers
+                  id = req.session.browserID = bserver.id
+                  @redirect(res, "#{mountPointNoSlash}/browsers/#{id}/index#{queryString}")
+
+            @server.get browserRoute, isNotAuthenticated, browserRouteHandler
+            @server.get resourceProxyRoute, isNotAuthenticated, resourceProxyRouteHandler
 
         else
             @server.get mountPoint, (req, res) =>
