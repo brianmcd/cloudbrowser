@@ -42,8 +42,7 @@
     "nodemailer"       : "0.3.44",
     "ofe"              : "0.1.1-2",
     "passport"         : "0.1.16",
-    "passport-google"  : "0.3.0",
-    "docco"            : ">=0.6.2"
+    "passport-google"  : "0.3.0"
   },
   "devDependencies": {
     "nodeunit": "0.6.4"
