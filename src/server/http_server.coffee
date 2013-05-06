@@ -8,7 +8,6 @@ QueryString    = require('querystring')
 Passport       = require('passport')
 GoogleStrategy = require('passport-google').Strategy
 
-# Must refactor the code
 class HTTPServer extends EventEmitter
     constructor : (@cbServer, callback) ->
         server = @server = express.createServer()
@@ -52,16 +51,16 @@ class HTTPServer extends EventEmitter
 
     setupGoogleAuthentication : () ->
 
-        Passport.use new GoogleStrategy {returnURL:"http://" + @cbServer.config.domain + ":" + @cbServer.config.port + "/checkauth",
-        realm: "http://" + @cbServer.config.domain + ":" + @cbServer.config.port },
+        Passport.use new GoogleStrategy {returnURL:"http://#{@cbServer.config.domain}:#{@cbServer.config.port}/checkauth",
+        realm: "http://#{@cbServer.config.domain}:#{@cbServer.config.port}" },
         (identifier, profile, done) =>
-            done null, {identifier:identifier, email:profile.emails[0].value, displayName: profile.displayName}
+            done(null, {identifier:identifier, email:profile.emails[0].value, displayName: profile.displayName})
 
         Passport.serializeUser (user, done) ->
-            done null, user.identifier
+            done(null, user.identifier)
 
         Passport.deserializeUser (identifier, done) ->
-            done null, {identifier:identifier}
+            done(null, {identifier:identifier})
 
         # This is the URL that the user must access to be authenticated
         # by the Google OpenID protocol
@@ -75,107 +74,97 @@ class HTTPServer extends EventEmitter
 
         # This is the URL Google redirects the user to after authentication
         @server.get '/checkauth', Passport.authenticate('google'), (req, res) =>
-
-            saveSessionAndRedirect = (req, user) ->
-                if not req.session.user?
-                    req.session.user = []
-                req.session.user.push({email:user.email, app:req.query.mountPoint, ns: user.ns})
-                req.session.save()
-                res.writeHead 302,
-                    {'Location' : req.query.redirectto,'Cache-Control' : "max-age=0, must-revalidate"}
-                res.end()
-
             req.query = req.session.query
+            if not req.query.mountPoint then res.send(500)
 
             # Authentication unsuccessful
-            if not req.user
-                res.writeHead 302,
-                    {'Location' : req.query.mountPoint,'Cache-Control' : "max-age=0, must-revalidate"}
-                res.end()
+            else if not req.user
+                @redirect(res, req.query.mountPoint)
 
             # Authentication successful
-            else @cbServer.db.collection @cbServer.applicationManager.find(req.query.mountPoint).dbName, (err, collection) =>
-                collection.findOne {email:req.user.email, ns: 'google'}, (err, user) =>
-                    throw err if err
-                    if user then saveSessionAndRedirect(req, user)
-                    else
-                        collection.insert {email:req.user.email,
-                        displayName:req.user.displayName, ns: 'google'},
-                        (err, user) =>
-                            throw err if err
-                            @cbServer.permissionManager.addSysPermRec user[0], {}, (sysRec) =>
-                                if sysRec
-                                    @cbServer.permissionManager.addAppPermRec user[0],
-                                    req.query.mountPoint, {createbrowsers:true}, (appRec) ->
-                                        if appRec
-                                            saveSessionAndRedirect(req, user[0])
-                                        else
-                                            console.log("Could not add application permission record for " + req.query.mountpoint)
-                                            res.writeHead 302,
-                                                {'Location' : req.query.mountPoint,'Cache-Control' : "max-age=0, must-revalidate"}
-                                            res.end()
-                                else
-                                    console.log("Could not add sytem permission record for " + user[0].email + "(" + user.ns + ")")
-                                    res.writeHead 302,
-                                        {'Location' : req.query.mountPoint,'Cache-Control' : "max-age=0, must-revalidate"}
-                                    res.end()
-                                        
+            else if not (app = @cbServer.applicationManager.find(req.query.mountPoint))?
+                res.send(500)
 
-    # Sets up a server endpoint at mountpoint that serves browsers from the
+            else
+                @cbServer.db.collection app.dbName, (err, collection) =>
+                    # Check if the user is one of the registered users of the application
+                    collection.findOne {email:req.user.email, ns: 'google'}, (err, user) =>
+                        throw err if err
+                        # If so, update the session to indicate that the user has been authenticated
+                        # And redirect the client to the location specified in the query parameter - "redirectto"
+                        if user
+                            @updateSession(req, user, req.query.mountPoint)
+                            @redirect(res, req.query.redirectto)
+                        else
+                            # Insert user into list of registered users of the application
+                            collection.insert {email:req.user.email,
+                            displayName:req.user.displayName, ns: 'google'},
+                            (err, user) =>
+                                throw err if err
+                                # Update user permissions
+                                @addPermRec user[0], req.query.mountPoint, () =>
+                                    @updateSession(req, user[0], req.query.mountPoint)
+                                    @redirect(res, req.query.redirectto)
+
+    # Sets up a server endpoints that serves browsers from the
     # browsers BrowserManager.
     setupMountPoint : (browsers, app) ->
         {mountPoint} = browsers
         @mountedBrowserManagers[mountPoint] = browsers
+
         # Remove trailing slash if it exists
         mountPointNoSlash = if mountPoint.indexOf('/') == mountPoint.length - 1
             mountPoint.substring(0, mountPoint.length - 1)
         else mountPoint
 
-        # Middleware that allows only authenticated users to access the protected resource
-        verify_authentication = (req, res, next) ->
-            req.queryString = QueryString.stringify(req.query)
-            # An authenticated session has a user object associated with it.
-            # The user object has the form {email,app}. Access is granted only 
-            # if a user object for the requested app is associated
-            # with the current session.
-            if not req.session.user? or (user = req.session.user.filter (user) -> return user.app is mountPointNoSlash).length is 0
-                if req.queryString isnt ""
-                    req.queryString = "?" + req.queryString
-                    req.queryString += "&redirectto=" + req.url
-                else
-                    req.queryString = "?redirectto=" + req.url
-                # The redirectto query parameter is used to redirect to the resource that was
-                # originally requested for by an unauthenticated user.
-                res.writeHead 302,
-                    {'Location' : mountPointNoSlash + "/authenticate" + req.queryString, 'Cache-Control' : "max-age=0, must-revalidate"}
-                res.end()
-            else
-                # The user query parameter is used to identify the original
-                # user for whom this browser was created
-                if req.queryString is ""
-                    req.queryString  = "?user=" + user[0].email + "&ns=" + user[0].ns
-                else
-                    req.queryString += "&user=" + user[0].email + "&ns=" + user[0].ns
-                next()
+        # Routes
+        resourceProxyRoute = "#{mountPointNoSlash}/browsers/:browserID/:resourceID"
+        browserRoute = "#{mountPointNoSlash}/browsers/:browserID/index"
 
-        #middleware to provide authorized access to virtual browsers
+        # Middleware that protects access to browsers
+        verifyAuthentication = (req, res, next) =>
+            components  = mountPointNoSlash.split("/")
+            index       = 1
+            mp          = ""
+            while components[index] isnt "landing_page" and index < components.length
+                mp += "/" + components[index++]
+            if not @findAppUser(req, mp)
+                @redirect(res, "#{mp}/authenticate#{@constructQueryString(req)}")
+            else next()
+
+        # Middleware that authorizes access to browsers
         authorize = (req, res, next) =>
-            if req.session? and
-            (user = req.session.user.filter((user) -> return user.app is mountPointNoSlash)).length isnt 0
-                @cbServer.permissionManager.findBrowserPermRec user[0], mountPointNoSlash, req.params.browserid, (browserPermRec) ->
-                    if browserPermRec isnt null and typeof browserPermRec isnt "undefined"
-                        if browserPermRec.permissions isnt null and typeof browserPermRec.permissions isnt "undefined"
-                            if browserPermRec.permissions.readwrite or browserPermRec.permissions.own
-                                next()
-                            else
-                                res.send("Permission Denied", 403)
-                        else
-                            res.send("Permission Denied", 403)
-                    else
-                        res.send("Permission Denied", 403)
-            else
-                res.send("Permission Denied", 403)
+            @cbServer.permissionManager.findBrowserPermRec @findAppUser(req, mountPointNoSlash), mountPointNoSlash,
+            req.params.browserID, (browserPermRec) ->
+                # Replace with call to checkPermissions
+                if browserPermRec? and browserPermRec.permissions.readwrite or browserPermRec.permissions.own
+                        next()
+                else
+                    res.send("Permission Denied", 403)
 
+        # Route handler for resource proxy request
+        resourceProxyRouteHandler = (req, res) ->
+            resourceID = req.params.resourceID
+            decoded = decodeURIComponent(req.params.browserID)
+            bserver = browsers.find(decoded)
+            # Note: fetch calls res.end()
+            bserver?.resources.fetch(resourceID, res)
+
+        # Route handler for browser request
+        browserRouteHandler = (req, res) =>
+            id = decodeURIComponent(req.params.browserID)
+            bserver = browsers.find(id)
+            if bserver
+                # Not the right way!
+                bserver.browser.window.location.search = @constructQueryString(req)
+                console.log "Joining: #{id}"
+                res.render 'base.jade',
+                    browserID : id
+                    appid : mountPointNoSlash
+            else
+                res.send("The requested browser #{id} was not found", 403)
+
+    
         # Route to reserve a virtual browser.
         # TODO: It would be nice to extract this, since it's useful just to
         # provide endpoints for serving browsers without providing routes for
@@ -183,127 +172,75 @@ class HTTPServer extends EventEmitter
         # strategies for creating browsers should be pluggable (e.g. creating
         # a browser from a URL sent via POST).
 
-        # Routes for apps with authentication configured
-        if app.authenticationInterface
-            @server.get mountPointNoSlash + "/logout", (req, res) ->
-                if req.session
-                    if req.session.user
-                        index = 0
-                        while index < req.session.user.length
-                            if req.session.user[index].app is mountPointNoSlash
-                                break
-                            else index++
-                        if index < req.session.user.length
-                            req.session.user.splice(index, 1)
-                    if req.session.user.length is 0
-                        req.session.destroy()
-                res.writeHead 302,
-                    {'Location' : mountPointNoSlash,'Cache-Control' : "max-age=0, must-revalidate"}
-                res.end()
+        if /landing_page$/.test(mountPointNoSlash)
+            @server.get mountPoint, verifyAuthentication, (req, res) =>
+                components  = mountPointNoSlash.split("/")
+                index       = 1
+                mp          = ""
+                while components[index] isnt "landing_page" and index < components.length
+                    mp += "/" + components[index++]
+                user = @findAppUser(req, mp)
+                queryString = @constructQueryString(req)
+                browsers.create app, queryString, user, (err, bserver) =>
+                    throw err if err
+                    @redirect(res, "#{mountPointNoSlash}/browsers/#{bserver.id}/index#{queryString}")
 
-            @server.get mountPointNoSlash + "/activate/:token", (req, res) =>
-                token = req.params.token
+            @server.get browserRoute, verifyAuthentication, browserRouteHandler
+
+            @server.get resourceProxyRoute, verifyAuthentication, resourceProxyRouteHandler
+
+        else if app.authenticationInterface
+
+            @server.get "#{mountPointNoSlash}/logout", (req, res) =>
+                @terminateUserAppSession(req, mountPointNoSlash)
+                @redirect(res, mountPointNoSlash)
+
+            @server.get "#{mountPointNoSlash}/activate/:token", (req, res) =>
                 @cbServer.db.collection app.dbName, (err, collection) =>
-                    if err then throw err
-                    else
-                        collection.findOne {token:token}, (err, user) =>
-                            @cbServer.permissionManager.addSysPermRec user, {}, (sysRec) =>
-                                if sysRec
-                                    @cbServer.permissionManager.addAppPermRec user, mountPointNoSlash, {createbrowsers:true}, (appRec) ->
-                                        if appRec
-                                            collection.update {token: token}, {$unset: {token: "", status: ""}}, {w:1}, (err, result) =>
-                                                if err then throw err
-                                                else res.render 'activate.jade',
-                                                    url: "http://"+ @cbServer.config.domain + ":" + @cbServer.config.port + mountPoint
-                                        else
-                                            console.log("Could not add application permission record for " + mountPointNoSlash)
-                                            res.writeHead 302,
-                                                {'Location' : mountPoint,'Cache-Control' : "max-age=0, must-revalidate"}
-                                            res.end()
-                                else
-                                    console.log("Could not add system permission record for " + user.email + "(" + user.ns + ")")
-                                    res.writeHead 302,
-                                        {'Location' : mountPoint,'Cache-Control' : "max-age=0, must-revalidate"}
-                                    res.end()
+                    throw err if err
+                    collection.findOne {token:req.params.token}, (err, user) =>
+                        @addPermRec user, mountPointNoSlash, () =>
+                            collection.update {token: req.params.token}, {$unset: {token: "", status: ""}},
+                            {w:1}, (err, result) =>
+                                throw err if err
+                                res.render 'activate.jade',
+                                    url: "http://#{@cbServer.config.domain}:#{@cbServer.config.port}#{mountPointNoSlash}"
 
-            @server.get mountPointNoSlash + "/deactivate/:token", (req, res) =>
-                token = req.params.token
+            @server.get "#{mountPointNoSlash}/deactivate/:token", (req, res) ->
                 @cbServer.db.collection app.dbName, (err, collection) ->
-                    if err then throw err
-                    else collection.remove {token: token}, (err, result) ->
-                        if err then throw err
-                        else res.render 'deactivate.jade'
+                    throw err if err
+                    collection.remove {token: req.params.token}, (err, result) ->
+                        throw err if err
+                        res.render 'deactivate.jade'
 
-            @server.get mountPoint, verify_authentication, (req, res) =>
+            @server.get mountPoint, verifyAuthentication, (req, res) =>
+                queryString = @constructQueryString(req)
                 if app.getPerUserBrowserLimit() > 1
-                    res.writeHead 301,
-                        {'Location' : "#{mountPointNoSlash}/landing_page" + req.queryString, 'Cache-Control' : "max-age=0, must-revalidate"}
-                    res.end()
-
+                    @redirect(res, "#{mountPointNoSlash}/landing_page#{queryString}")
                 else
-                    user = req.session.user.filter (user) -> return user.app is mountPointNoSlash
-                    browsers.create app, req.queryString, {email:user[0].email, ns:user[0].ns}, (err, bserver) ->
-                        if err then console.log(err)
-                        id = bserver.id
-                        res.writeHead 301,
-                            {'Location' : "#{mountPointNoSlash}/browsers/#{id}/index" + req.queryString,'Cache-Control' : "max-age=0, must-revalidate"}
-                        res.end()
+                    user = @findAppUser(req, mountPointNoSlash)
+                    browsers.create app, queryString, user, (err, bserver) =>
+                        @redirect(res, "#{mountPointNoSlash}/browsers/#{bserver.id}/index#{queryString}")
 
-            # Route to connect to a virtual browser.
-            @server.get "#{mountPointNoSlash}/browsers/:browserid/index", verify_authentication, authorize, (req, res) ->
-                id = decodeURIComponent(req.params.browserid)
-                bserver = browsers.find(id)
-                if bserver
-                    bserver.browser.window.location.search = req.queryString
-                    console.log "Joining: #{id}"
-                    res.render 'base.jade',
-                        browserid : id #Ashima - Must remove
-                        appid : app.mountPoint
-                else
-                    res.send "Not found", 403
+            @server.get browserRoute, verifyAuthentication, authorize, browserRouteHandler
 
-            # Route for ResourceProxy
-            # Ashima - Should we authorize access to the resource proxy too?
-            @server.get "#{mountPointNoSlash}/browsers/:browserid/:resourceid", verify_authentication, (req, res) =>
-                resourceid = req.params.resourceid
-                decoded = decodeURIComponent(req.params.browserid)
-                bserver = browsers.find(decoded)
-                # Note: fetch calls res.end()
-                bserver?.resources.fetch(resourceid, res)
+            @server.get resourceProxyRoute, verifyAuthentication, resourceProxyRouteHandler
 
         else
             @server.get mountPoint, (req, res) =>
-                req.queryString = QueryString.stringify(req.query)
-                if req.queryString isnt ""
-                    req.queryString = "?" + req.queryString
                 id = req.session.browserID
+                queryString = @constructQueryString(req)
                 if !id? || !browsers.find(id)
-                  bserver = browsers.create(app, req.queryString)
+                  bserver = browsers.create(app, queryString)
+                  # Makes the browser stick to a particular client to prevent creation of too many browsers
                   id = req.session.browserID = bserver.id
-                res.writeHead 301,
-                    {'Location' : "#{mountPointNoSlash}/browsers/#{id}/index" + req.queryString,'Cache-Control' : "max-age=0, must-revalidate"}
-                res.end()
+                  @redirect(res, "#{mountPointNoSlash}/browsers/#{id}/index#{queryString}")
 
             # Route to connect to a virtual browser.
-            @server.get "#{mountPointNoSlash}/browsers/:browserid/index", (req, res) ->
-                req.queryString = QueryString.stringify(req.query)
-                if req.queryString isnt ""
-                    req.queryString = "?" + req.queryString
-                id = decodeURIComponent(req.params.browserid)
-                bserver = browsers.find(id)
-                bserver.browser.window.location.search = req.queryString
-                console.log "Joining: #{id}"
-                res.render 'base.jade',
-                    browserid : id #Ashima - Must remove
-                    appid : app.mountPoint
+            @server.get browserRoute, browserRouteHandler
 
             # Route for ResourceProxy
-            @server.get "#{mountPointNoSlash}/browsers/:browserid/:resourceid", (req, res) =>
-                resourceid = req.params.resourceid
-                decoded = decodeURIComponent(req.params.browserid)
-                bserver = browsers.find(decoded)
-                # Note: fetch calls res.end()
-                bserver?.resources.fetch(resourceid, res)
+            @server.get resourceProxyRoute, resourceProxyRouteHandler
 
     bundleJS : () ->
         b = Browserify
@@ -320,5 +257,53 @@ class HTTPServer extends EventEmitter
         ZLib.gzip js, (err, data) ->
             throw err if err
             callback(data)
+
+    updateSession : (req, user, mountPoint) ->
+        if not req.session.user
+            req.session.user = []
+        req.session.user.push({email:user.email, app:mountPoint, ns: user.ns})
+        req.session.save()
+
+    redirect : (res, url) ->
+        if url?
+            res.writeHead 302,
+                {'Location' : url, 'Cache-Control' : "max-age=0, must-revalidate"}
+            res.end()
+        else res.send(500)
+
+    addPermRec : (user, mountPoint, callback) ->
+        # Wrong way of doing it!
+        # Add a user permission record associated with the system
+        @cbServer.permissionManager.addSysPermRec user, {}, (sysRec) =>
+            # Add a user permission record associated with the application
+            @cbServer.permissionManager.addAppPermRec user,
+            mountPoint, {createbrowsers:true}, (appRec) =>
+                @cbServer.permissionManager.addAppPermRec user,
+                "#{mountPoint}/landing_page", {createbrowsers:true}, (appRec) ->
+                    callback()
+
+    findAppUser : (req, app) ->
+        if not (req.session and req.session.user) then return null
+        user = rec for rec in req.session.user when rec.app is app
+        if user? then return user else return null
+
+    terminateUserAppSession : (req, app) ->
+        if not (req.session and req.session.user) then return
+        console.log "before"
+        console.log req.session.user
+        list = []
+        list.push(user) for user in req.session.user when user.app isnt app
+        req.session.user = list
+        console.log "after"
+        console.log list
+        req.session.save()
+        if req.session.user.length is 0
+            req.session.destroy()
+
+    constructQueryString : (req) ->
+        queryString = QueryString.stringify(req.query)
+        if queryString isnt ""
+            queryString = "?" + queryString
+        return queryString
 
 module.exports = HTTPServer

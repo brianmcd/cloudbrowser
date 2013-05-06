@@ -4,13 +4,11 @@ FS                  = require('fs')
 express             = require('express')
 sio                 = require('socket.io')
 DebugServer         = require('./debug_server')
-Application         = require('./application')
 HTTPServer          = require('./http_server')
 Managers            = require('./browser_manager')
-AdminInterface      = require('./admin_interface')
 ParseCookie         = require('cookie').parse
 ApplicationManager  = require('./application_manager')
-PermissionManager   = require('./user_permission_manager')
+PermissionManager   = require('./permission_manager')
 Mongo               = require('mongodb')
 Express             = require("express")
 MongoStore          = require("connect-mongo")(Express)
@@ -82,7 +80,7 @@ class Server extends EventEmitter
         @httpServer = new HTTPServer this, () =>
             @emit('ready')
         @socketIOServer = @createSocketIOServer(@httpServer.server, @config.apps)
-        @setupEventTracker if @config.printEventStats
+        @setupEventTracker() if @config.printEventStats
 
     setupEventTracker : () ->
         @processedEvents = 0
@@ -148,6 +146,7 @@ class Server extends EventEmitter
             mountPoint  = mountPoint.split("/")
             mountPoint.pop()
             mountPoint = mountPoint.join('/')
+            if not session or not session.user then return false
             appUser = session.user.filter (item) ->
                 item.app is mountPoint
             if appUser[0] then return true

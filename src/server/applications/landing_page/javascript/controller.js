@@ -1,14 +1,12 @@
 (function() {
-  var CBLandingPage, Util, baseURL;
+  var CBLandingPage, Util;
 
   CBLandingPage = angular.module("CBLandingPage", []);
 
   Util = require('util');
 
-  baseURL = "http://" + server.config.domain + ":" + server.config.port;
-
   CBLandingPage.controller("UserCtrl", function($scope, $timeout) {
-    var Months, addToBrowserList, addToSelected, app, findAndRemove, findInBrowserList, formatDate, getCollaborators, isOwner, query, removeFromBrowserList, removeFromSelected, toggleEnabledDisabled;
+    var Months, addToInstanceList, addToSelected, findAndRemove, findInInstanceList, formatDate, removeFromInstanceList, removeFromSelected, toggleEnabledDisabled;
     Months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     $scope.safeApply = function(fn) {
       var phase;
@@ -35,97 +33,51 @@
       date = day + " " + month + " " + year + " (" + time + ")";
       return date;
     };
-    findInBrowserList = function(id) {
-      var browser;
-      browser = $.grep($scope.browserList, function(element, index) {
+    findInInstanceList = function(id) {
+      var instance;
+      instance = $.grep($scope.instanceList, function(element, index) {
         return element.id === id;
       });
-      return browser[0];
+      return instance[0];
     };
-    addToBrowserList = function(browserId) {
-      var browser;
-      if (!findInBrowserList(browserId)) {
-        browser = app.browsers.find(browserId);
-        browser.date = formatDate(browser.dateCreated);
-        browser.collaborators = getCollaborators(browser);
-        browser.on('UserAddedToList', function(user, list) {
+    addToInstanceList = function(instanceID) {
+      var instance;
+      if (!findInInstanceList(instanceID)) {
+        instance = CloudBrowser.app.getInstanceInfo(instanceID);
+        instance.date = formatDate(instance.date);
+        instance.owners = CloudBrowser.permissionManager.getInstanceOwners(instance.id);
+        instance.collaborators = CloudBrowser.permissionManager.getInstanceReaderWriters(instance.id);
+        CloudBrowser.app.registerListenerOnInstanceEvent(instance.id, 'InstanceShared', function() {
           return $scope.safeApply(function() {
-            return browser.collaborators = getCollaborators(browser);
+            instance.collaborators = CloudBrowser.permissionManager.getInstanceReaderWriters(instance.id);
+            return instance.owners = CloudBrowser.permissionManager.getInstanceOwners(instance.id);
           });
         });
         return $scope.safeApply(function() {
-          return $scope.browserList.push(browser);
+          return $scope.instanceList.push(instance);
         });
       }
     };
-    removeFromBrowserList = function(id) {
+    removeFromInstanceList = function(id) {
       return $scope.safeApply(function() {
-        $scope.browserList = $.grep($scope.browserList, function(element, index) {
+        var oldLength;
+        oldLength = $scope.instanceList.length;
+        $scope.instanceList = $.grep($scope.instanceList, function(element, index) {
           return element.id !== id;
         });
-        return removeFromSelected(id);
+        if (oldLength > $scope.instanceList.length) return removeFromSelected(id);
       });
     };
-    getCollaborators = function(browser) {
-      var collaborators, inList, readwriterRec, usr, _i, _len, _ref;
-      inList = function(user, list) {
-        var userInList;
-        userInList = list.filter(function(item) {
-          return item.ns === user.ns && item.email === user.email;
-        });
-        if (userInList[0]) {
-          return userInList[0];
-        } else {
-          return null;
-        }
-      };
-      collaborators = [];
-      _ref = browser.getUsersInList('readwrite');
-      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-        readwriterRec = _ref[_i];
-        usr = browser.findUserInList(readwriterRec.user, 'own');
-        if (!usr && !inList(readwriterRec.user, collaborators)) {
-          collaborators.push(readwriterRec.user);
-        }
-      }
-      return collaborators;
-    };
     toggleEnabledDisabled = function(newValue, oldValue) {
-      var canRemove, isOwner;
-      isOwner = function(callback) {
-        var browserID, outstanding, _i, _len, _ref;
+      var checkPermission;
+      checkPermission = function(type, callback) {
+        var instanceID, outstanding, _i, _len, _ref;
         outstanding = $scope.selected.length;
         _ref = $scope.selected;
         for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-          browserID = _ref[_i];
-          server.permissionManager.findBrowserPermRec($scope.user, $scope.mountPoint, browserID, function(browserRec) {
-            if (!browserRec || !browserRec.permissions.own) {
-              return $scope.safeApply(function() {
-                return callback(false);
-              });
-            } else {
-              return outstanding--;
-            }
-          });
-        }
-        return process.nextTick(function() {
-          if (!outstanding) {
-            return $scope.safeApply(function() {
-              return callback(true);
-            });
-          } else {
-            return process.nextTick(arguments.callee);
-          }
-        });
-      };
-      canRemove = function(callback) {
-        var browserID, outstanding, _i, _len, _ref;
-        outstanding = $scope.selected.length;
-        _ref = $scope.selected;
-        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-          browserID = _ref[_i];
-          server.permissionManager.findBrowserPermRec($scope.user, $scope.mountPoint, browserID, function(browserRec) {
-            if (!browserRec || !(browserRec.permissions.own || browserRec.permissions.remove)) {
+          instanceID = _ref[_i];
+          CloudBrowser.permissionManager.checkInstancePermissions(type, instanceID, CloudBrowser.app.getCreator(), function(hasPermission) {
+            if (!hasPermission) {
               return $scope.safeApply(function() {
                 return callback(false);
               });
@@ -146,21 +98,16 @@
       };
       if (newValue > 0) {
         $scope.isDisabled.open = false;
-        canRemove(function(val) {
-          if (val) {
-            return $scope.isDisabled.del = false;
-          } else {
-            return $scope.isDisabled.del = true;
-          }
+        checkPermission({
+          remove: true
+        }, function(canRemove) {
+          return $scope.isDisabled.del = !canRemove;
         });
-        return isOwner(function(val) {
-          if (val) {
-            $scope.isDisabled.share = false;
-            return $scope.isDisabled.rename = false;
-          } else {
-            $scope.isDisabled.share = true;
-            return $scope.isDisabled.rename = true;
-          }
+        return checkPermission({
+          own: true
+        }, function(isOwner) {
+          $scope.isDisabled.share = !isOwner;
+          return $scope.isDisabled.rename = !isOwner;
         });
       } else {
         $scope.isDisabled.open = true;
@@ -169,100 +116,77 @@
         return $scope.isDisabled.share = true;
       }
     };
-    query = Utils.searchStringtoJSON(location.search);
-    $scope.domain = server.config.domain;
-    $scope.port = server.config.port;
-    $scope.mountPoint = Utils.getAppMountPoint(bserver.mountPoint, "landing_page");
-    app = server.applicationManager.find($scope.mountPoint);
-    $scope.description = app.description;
+    $scope.description = CloudBrowser.app.getDescription();
+    $scope.user = CloudBrowser.app.getCreator();
+    $scope.mountPoint = CloudBrowser.app.getMountPoint();
     $scope.isDisabled = {
       open: true,
       share: true,
       del: true,
       rename: true
     };
-    $scope.browserList = [];
+    $scope.instanceList = [];
     $scope.selected = [];
     $scope.addingCollaborator = false;
+    $scope.confirmDelete = false;
+    $scope.addingOwner = false;
     $scope.predicate = 'date';
     $scope.reverse = true;
     $scope.filterType = 'all';
-    $scope.user = {
-      email: query.user,
-      ns: query.ns
-    };
-    server.permissionManager.getBrowserPermRecs($scope.user, $scope.mountPoint, function(browserRecs) {
-      var browserId, browserRec, _results;
+    CloudBrowser.app.getInstanceIDs($scope.user, function(instanceIDs) {
+      var instanceID, _i, _len, _results;
       _results = [];
-      for (browserId in browserRecs) {
-        browserRec = browserRecs[browserId];
-        _results.push(addToBrowserList(browserId));
+      for (_i = 0, _len = instanceIDs.length; _i < _len; _i++) {
+        instanceID = instanceIDs[_i];
+        _results.push(addToInstanceList(instanceID));
       }
       return _results;
     });
-    server.permissionManager.findAppPermRec($scope.user, $scope.mountPoint, function(appRec) {
-      appRec.on('ItemAdded', function(id) {
-        return addToBrowserList(id);
-      });
-      return appRec.on('ItemRemoved', function(id) {
-        return removeFromBrowserList(id);
-      });
+    CloudBrowser.app.registerListenerOnEvent('ItemAdded', function(id) {
+      return addToInstanceList(id);
+    });
+    CloudBrowser.app.registerListenerOnEvent('ItemRemoved', function(id) {
+      return removeFromInstanceList(id);
     });
     $scope.$watch('selected.length', function(newValue, oldValue) {
       return toggleEnabledDisabled(newValue, oldValue);
     });
     $scope.createVB = function() {
-      if (($scope.user.email != null) && ($scope.user.ns != null)) {
-        return app.browsers.create(app, "", $scope.user, function(err, bsvr) {
-          if (err) {
-            return $scope.safeApply(function() {
-              return $scope.error = err.message;
-            });
-          }
-        });
-      } else {
-        return bserver.redirect(baseURL + $scope.mountPoint + "/logout");
-      }
+      return CloudBrowser.app.createInstance(function(err) {
+        if (err) {
+          return $scope.safeApply(function() {
+            return $scope.error = err.message;
+          });
+        }
+      });
     };
     $scope.logout = function() {
-      return bserver.redirect(baseURL + $scope.mountPoint + "/logout");
+      return CloudBrowser.app.logout();
     };
     $scope.open = function() {
-      var browserID, openNewTab, _i, _len, _ref, _results;
-      openNewTab = function(browserID) {
+      var instanceID, openNewTab, _i, _len, _ref, _results;
+      openNewTab = function(instanceID) {
         var url, win;
-        url = baseURL + $scope.mountPoint + "/browsers/" + browserID + "/index";
+        url = CloudBrowser.app.getUrl() + "/browsers/" + instanceID + "/index";
         win = window.open(url, '_blank');
       };
       _ref = $scope.selected;
       _results = [];
       for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-        browserID = _ref[_i];
-        _results.push(openNewTab(browserID));
+        instanceID = _ref[_i];
+        _results.push(openNewTab(instanceID));
       }
       return _results;
     };
     $scope.remove = function() {
-      var browserToBeDeleted, findBrowser, rm;
-      findBrowser = function(app, browserID) {
-        var vb;
-        vb = app.browsers.find(browserID);
-        return vb;
-      };
-      rm = function(browserID, user) {
-        return app.browsers.close(findBrowser(app, browserID), user, function(err) {
-          if (!err) {
-            return removeFromBrowserList(browserID);
-          } else {
+      while ($scope.selected.length > 0) {
+        CloudBrowser.app.closeInstance($scope.selected[0], $scope.user, function(err) {
+          if (err) {
             return $scope.error = "You do not have the permission to perform this action";
+          } else if ($scope.selected[0] != null) {
+            return removeFromInstanceList($scope.selected[0]);
           }
         });
-      };
-      while ($scope.selected.length > 0) {
-        browserToBeDeleted = $scope.selected[0];
-        if (($scope.user.email != null) && ($scope.user.ns != null)) {
-          rm(browserToBeDeleted, $scope.user);
-        }
       }
       return $scope.confirmDelete = false;
     };
@@ -274,81 +198,45 @@
       if (i < list.length) return list.splice(i, 1);
     };
     $scope.openCollaborateForm = function() {
-      var getProspectiveCollaborators;
-      getProspectiveCollaborators = function() {
-        return server.db.collection(app.dbName, function(err, collection) {
-          return collection.find({}, function(err, cursor) {
-            return cursor.toArray(function(err, users) {
-              var browserID, ownerRec, readwriterRec, _i, _j, _k, _len, _len2, _len3, _ref, _ref2, _ref3;
-              if (err) throw err;
-              if (users != null) {
-                _ref = $scope.selected;
-                for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-                  browserID = _ref[_i];
-                  _ref2 = findInBrowserList(browserID).getUsersInList('own');
-                  for (_j = 0, _len2 = _ref2.length; _j < _len2; _j++) {
-                    ownerRec = _ref2[_j];
-                    if (users.length) {
-                      findAndRemove(ownerRec.user, users);
-                    } else {
-                      break;
-                    }
-                  }
-                  _ref3 = findInBrowserList(browserID).getUsersInList('readwrite');
-                  for (_k = 0, _len3 = _ref3.length; _k < _len3; _k++) {
-                    readwriterRec = _ref3[_k];
-                    if (users.length) {
-                      findAndRemove(readwriterRec.user, users);
-                    } else {
-                      break;
-                    }
-                  }
-                }
-              }
-              return $scope.safeApply(function() {
-                return $scope.collaborators = users;
-              });
-            });
-          });
-        });
-      };
       $scope.addingCollaborator = !$scope.addingCollaborator;
       if ($scope.addingCollaborator) {
         $scope.addingOwner = false;
-        return getProspectiveCollaborators();
-      }
-    };
-    isOwner = function(browser, user) {
-      if (browser.findUserInList(user, 'own')) {
-        return true;
-      } else {
-        return false;
+        return CloudBrowser.app.getUsers(function(users) {
+          var index, instanceID, _i, _len, _ref;
+          if (users != null) {
+            _ref = $scope.selected;
+            for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+              instanceID = _ref[_i];
+              index = 0;
+              while (index < users.length) {
+                if (CloudBrowser.permissionManager.isInstanceOwner(instanceID, users[index]) || CloudBrowser.permissionManager.isInstanceReaderWriter(instanceID, users[index])) {
+                  findAndRemove(users[index], users);
+                } else {
+                  index++;
+                }
+              }
+            }
+          }
+          return $scope.safeApply(function() {
+            return $scope.collaborators = users;
+          });
+        });
       }
     };
     $scope.addCollaborator = function() {
-      var browser, browserID, _i, _len, _ref, _results;
+      var instanceID, _i, _len, _ref, _results;
       _ref = $scope.selected;
       _results = [];
       for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-        browserID = _ref[_i];
-        browser = findInBrowserList(browserID);
-        if (isOwner(browser, $scope.user)) {
-          _results.push(server.permissionManager.addBrowserPermRec($scope.selectedCollaborator, $scope.mountPoint, browserID, {
+        instanceID = _ref[_i];
+        if (CloudBrowser.permissionManager.isInstanceOwner(instanceID, $scope.user)) {
+          _results.push(CloudBrowser.permissionManager.grantInstancePermissions({
             readwrite: true
-          }, function(browserRec) {
-            if (browserRec) {
-              browser = findInBrowserList(browserRec.id);
-              return browser.addUserToLists($scope.selectedCollaborator, {
-                readwrite: true
-              }, function() {
-                return $scope.safeApply(function() {
-                  $scope.boxMessage = "The selected browsers are now shared with " + $scope.selectedCollaborator.email + " (" + $scope.selectedCollaborator.ns + ")";
-                  return $scope.addingCollaborator = false;
-                });
-              });
-            } else {
-              throw new Error("Browser permission record for user " + $scope.user.email + " (" + $scope.user.ns + ") and browser " + browserID + " not found");
-            }
+          }, $scope.selectedCollaborator, instanceID, function() {
+            return $scope.safeApply(function() {
+              $scope.boxMessage = "The selected instances are now shared with " + $scope.selectedCollaborator.email + " (" + $scope.selectedCollaborator.ns + ")";
+              return $scope.addingCollaborator = false;
+            });
           }));
         } else {
           _results.push($scope.error = "You do not have the permission to perform this action.");
@@ -357,69 +245,47 @@
       return _results;
     };
     $scope.openAddOwnerForm = function() {
-      var getProspectiveOwners;
-      getProspectiveOwners = function() {
-        return server.db.collection(app.dbName, function(err, collection) {
-          return collection.find({}, function(err, cursor) {
-            return cursor.toArray(function(err, users) {
-              var browserID, ownerRec, _i, _j, _len, _len2, _ref, _ref2;
-              if (err) throw err;
-              if (users != null) {
-                _ref = $scope.selected;
-                for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-                  browserID = _ref[_i];
-                  _ref2 = findInBrowserList(browserID).getUsersInList('own');
-                  for (_j = 0, _len2 = _ref2.length; _j < _len2; _j++) {
-                    ownerRec = _ref2[_j];
-                    if (users.length) {
-                      findAndRemove(ownerRec.user, users);
-                    } else {
-                      break;
-                    }
-                  }
-                }
-              }
-              return $scope.safeApply(function() {
-                return $scope.owners = users;
-              });
-            });
-          });
-        });
-      };
       $scope.addingOwner = !$scope.addingOwner;
       if ($scope.addingOwner) {
         $scope.addingCollaborator = false;
-        return getProspectiveOwners();
+        return CloudBrowser.app.getUsers(function(users) {
+          var index, instanceID, _i, _len, _ref;
+          if (users != null) {
+            _ref = $scope.selected;
+            for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+              instanceID = _ref[_i];
+              index = 0;
+              while (index < users.length) {
+                if (CloudBrowser.permissionManager.isInstanceOwner(instanceID, users[index])) {
+                  findAndRemove(users[index], users);
+                } else {
+                  index++;
+                }
+              }
+            }
+          }
+          return $scope.safeApply(function() {
+            return $scope.owners = users;
+          });
+        });
       }
     };
     $scope.addOwner = function() {
-      var browser, browserID, _i, _len, _ref, _results;
+      var instanceID, _i, _len, _ref, _results;
       _ref = $scope.selected;
       _results = [];
       for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-        browserID = _ref[_i];
-        browser = findInBrowserList(browserID);
-        if (isOwner(browser, $scope.user)) {
-          _results.push(server.permissionManager.addBrowserPermRec($scope.selectedOwner, $scope.mountPoint, browserID, {
+        instanceID = _ref[_i];
+        if (CloudBrowser.permissionManager.isInstanceOwner(instanceID, $scope.user)) {
+          _results.push(CloudBrowser.permissionManager.grantInstancePermissions({
             own: true,
             remove: true,
             readwrite: true
-          }, function(browserRec) {
-            if (browserRec) {
-              browser = findInBrowserList(browserRec.id);
-              return browser.addUserToLists($scope.selectedOwner, {
-                own: true,
-                remove: true,
-                readwrite: true
-              }, function() {
-                return $scope.safeApply(function() {
-                  $scope.boxMessage = "The selected browsers are now co-owned with " + $scope.selectedOwner.email + " (" + $scope.selectedOwner.ns + ")";
-                  return $scope.addingOwner = false;
-                });
-              });
-            } else {
-              throw new Error("Browser permission record for user " + $scope.user.email + " (" + $scope.user.ns + ") and browser " + browserID + " not found");
-            }
+          }, $scope.selectedOwner, instanceID, function() {
+            return $scope.safeApply(function() {
+              $scope.boxMessage = "The selected instances are now co-owned with " + $scope.selectedOwner.email + " (" + $scope.selectedOwner.ns + ")";
+              return $scope.addingOwner = false;
+            });
           }));
         } else {
           _results.push($scope.error = "You do not have the permission to perform this action.");
@@ -427,64 +293,64 @@
       }
       return _results;
     };
-    addToSelected = function(browserID) {
-      if ($scope.selected.indexOf(browserID) === -1) {
-        return $scope.selected.push(browserID);
+    addToSelected = function(instanceID) {
+      if ($scope.selected.indexOf(instanceID) === -1) {
+        return $scope.selected.push(instanceID);
       }
     };
-    removeFromSelected = function(browserID) {
-      if ($scope.selected.indexOf(browserID) !== -1) {
-        return $scope.selected.splice($scope.selected.indexOf(browserID), 1);
+    removeFromSelected = function(instanceID) {
+      if ($scope.selected.indexOf(instanceID) !== -1) {
+        return $scope.selected.splice($scope.selected.indexOf(instanceID), 1);
       }
     };
-    $scope.select = function($event, browserID) {
+    $scope.select = function($event, instanceID) {
       var checkbox;
       checkbox = $event.target;
       if (checkbox.checked) {
-        return addToSelected(browserID);
+        return addToSelected(instanceID);
       } else {
-        return removeFromSelected(browserID);
+        return removeFromSelected(instanceID);
       }
     };
     $scope.selectAll = function($event) {
-      var action, browser, checkbox, _i, _len, _ref, _results;
+      var action, checkbox, instance, _i, _len, _ref, _results;
       checkbox = $event.target;
       action = checkbox.checked ? addToSelected : removeFromSelected;
-      _ref = $scope.browserList;
+      _ref = $scope.instanceList;
       _results = [];
       for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-        browser = _ref[_i];
-        _results.push(action(browser.id));
+        instance = _ref[_i];
+        _results.push(action(instance.id));
       }
       return _results;
     };
-    $scope.getSelectedClass = function(browserID) {
-      if ($scope.isSelected(browserID)) {
+    $scope.getSelectedClass = function(instanceID) {
+      if ($scope.isSelected(instanceID)) {
         return 'highlight';
       } else {
         return '';
       }
     };
-    $scope.isSelected = function(browserID) {
-      return $scope.selected.indexOf(browserID) >= 0;
+    $scope.isSelected = function(instanceID) {
+      return $scope.selected.indexOf(instanceID) >= 0;
     };
     $scope.areAllSelected = function() {
-      return $scope.selected.length === $scope.browserList.length;
+      return $scope.selected.length === $scope.instanceList.length;
     };
     $scope.rename = function() {
-      var browserID, _i, _len, _ref, _results;
+      var instanceID, _i, _len, _ref, _results;
       _ref = $scope.selected;
       _results = [];
       for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-        browserID = _ref[_i];
-        _results.push(findInBrowserList(browserID).editing = true);
+        instanceID = _ref[_i];
+        _results.push(findInInstanceList(instanceID).editing = true);
       }
       return _results;
     };
-    return $scope.clickRename = function(browserID) {
-      var browser;
-      browser = findInBrowserList(browserID);
-      if (isOwner(browser, $scope.user)) return browser.editing = true;
+    return $scope.clickRename = function(instanceID) {
+      var instance;
+      instance = findInInstanceList(instanceID);
+      if (isInstanceOwner(instance, $scope.user)) return instance.editing = true;
     };
   });
 
@@ -496,40 +362,42 @@
     };
   });
 
-  CBLandingPage.filter("browserFilter", function() {
+  CBLandingPage.filter("instanceFilter", function() {
     var _this = this;
     return function(list, arg) {
-      var browser, filterType, modifiedList, user, _i, _j, _k, _l, _len, _len2, _len3, _len4;
+      var filterType, instance, modifiedList, user, _i, _j, _k, _l, _len, _len2, _len3, _len4;
       filterType = arg.type;
       user = arg.user;
       modifiedList = [];
       if (filterType === 'owned') {
         for (_i = 0, _len = list.length; _i < _len; _i++) {
-          browser = list[_i];
-          if (browser.findUserInList(user, 'own')) modifiedList.push(browser);
+          instance = list[_i];
+          if (CloudBrowser.permissionManager.isInstanceOwner(instance.id, user)) {
+            modifiedList.push(instance);
+          }
         }
       }
       if (filterType === 'notOwned') {
         for (_j = 0, _len2 = list.length; _j < _len2; _j++) {
-          browser = list[_j];
-          if (browser.findUserInList(user, 'readwrite') && !browser.findUserInList(user, 'own')) {
-            modifiedList.push(browser);
+          instance = list[_j];
+          if (!CloudBrowser.permissionManager.isInstanceOwner(instance.id, user)) {
+            modifiedList.push(instance);
           }
         }
       }
       if (filterType === 'shared') {
         for (_k = 0, _len3 = list.length; _k < _len3; _k++) {
-          browser = list[_k];
-          if (browser.getUsersInList('readwrite').length > 1 || browser.getUsersInList('own').length > 1) {
-            modifiedList.push(browser);
+          instance = list[_k];
+          if (CloudBrowser.permissionManager.getInstanceReaderWriters(instance.id).length || CloudBrowser.permissionManager.getInstanceOwners(instance.id).length > 1) {
+            modifiedList.push(instance);
           }
         }
       }
       if (filterType === 'notShared') {
         for (_l = 0, _len4 = list.length; _l < _len4; _l++) {
-          browser = list[_l];
-          if (browser.getUsersInList('own').length === 1 && browser.getUsersInList('readwrite').length === 1) {
-            modifiedList.push(browser);
+          instance = list[_l];
+          if (CloudBrowser.permissionManager.getInstanceOwners(instance.id).length === 1 && !CloudBrowser.permissionManager.getInstanceReaderWriters(instance.id).length) {
+            modifiedList.push(instance);
           }
         }
       }

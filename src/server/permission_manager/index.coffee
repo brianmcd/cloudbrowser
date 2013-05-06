@@ -205,7 +205,7 @@ class CacheManager
         if @cache[user.email]?
             rec = @cache[user.email].filter (rec) ->
                 return rec.ns is user.ns
-            if rec then return rec[0].sysRec
+            if rec.length then return rec[0].sysRec
             else return null
         else
             return null

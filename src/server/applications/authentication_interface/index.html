@@ -54,10 +54,10 @@
                         <div class="tab-pane active" ng-controller="LoginCtrl" id="tab1">
                             <form ng-submit="login()">
                                 <fieldset>
-                                    <div class="control-group pagination-centered" ng-class="{true:'error'}[!!email_error]">
+                                    <div class="control-group pagination-centered" ng-class="{true:'error'}[!!emailError]">
                                         <div class="controls">
                                             <input class="span8" type="text" placeholder="Email" ng-model="email">
-                                            <span class="help-inline" ng-show="email_error">{{email_error}}</span>
+                                            <span class="help-inline" ng-show="emailError">{{emailError}}</span>
                                         </div>
                                     </div>
                                     <div class="control-group pagination-centered">
@@ -70,10 +70,10 @@
                                             <button class="btn btn-primary" type="submit" ng-disabled="isDisabled">Log In</button>
                                             &nbsp;&nbsp;<input type="checkbox" name="PersistentCookie" value="yes" style="margin:0" ng-model="remember">
                                             <span class="small"><strong>Keep me Logged In</strong></span>
-                                            <span class="text-error" ng-show="login_error"><br>{{login_error}}</span>
-                                            <br><div class="small" id="forgot" ng-click="show_email_button=!show_email_button"><u>Forgot your password?</u></div>
-                                            <br><button class="btn btn-success" ng-show="show_email_button" ng-click="sendResetLink()" ng-disabled="resetDisabled">Send a reset link</button>
-                                            <br><span class="text-success" ng-show="reset_success_msg">{{reset_success_msg}}</span>
+                                            <span class="text-error" ng-show="loginError"><br>{{loginError}}</span>
+                                            <br><div class="small" id="forgot" ng-click="showEmailButton=!showEmailButton"><u>Forgot your password?</u></div>
+                                            <br><button class="btn btn-success" ng-show="showEmailButton" ng-click="sendResetLink()" ng-disabled="resetDisabled">Send a reset link</button>
+                                            <br><span class="text-success" ng-show="resetSuccessMsg">{{resetSuccessMsg}}</span>
                                         </div>
                                     </div>
                                 </fieldset>
@@ -89,16 +89,16 @@
                         <div class="tab-pane" ng-controller="SignupCtrl" id="tab2">
                             <form ng-submit="signup()">
                                 <fieldset>
-                                    <div class="control-group pagination-centered" ng-class="{true:'error'}[!!email_error]">
+                                    <div class="control-group pagination-centered" ng-class="{true:'error'}[!!emailError]">
                                         <div class="controls">
                                             <input class="span8" type="text" placeholder="Email" ng-model="email">
-                                            <span class="help-inline" ng-show="email_error">{{email_error}}</span>
+                                            <span class="help-inline" ng-show="emailError">{{emailError}}</span>
                                         </div>
                                     </div>
-                                    <div class="control-group pagination-centered" ng-class="{true:'error'}[!!password_error]">
+                                    <div class="control-group pagination-centered" ng-class="{true:'error'}[!!passwordError]">
                                         <div class="controls">
                                             <input class="span8" type="password" placeholder="Password" ng-model="password">
-                                            <span class="help-inline" ng-show="password_error">{{password_error}}</span>
+                                            <span class="help-inline" ng-show="passwordError">{{passwordError}}</span>
                                         </div>
                                     </div>
                                     <div class="control-group pagination-centered" ng-class="{true:'error'}[password != vpassword]">
@@ -110,8 +110,8 @@
                                     <div class="control-group pagination-centered">
                                         <div class="controls">
                                             <button class="btn btn-primary" type="submit" ng-disabled="isDisabled || (password != vpassword)">Sign Up</button>
-                                            <span class="text-error" ng-show="signup_error"><br>{{signup_error}}</span>
-                                            <span class="text-success" ng-show="success_message">
+                                            <span class="text-error" ng-show="signupError"><br>{{signupError}}</span>
+                                            <span class="text-success" ng-show="successMessage">
                                                 <br>Success! An email with a confirmation link has been sent to your email ID. Please click on it to verify your email.
                                             </span>
                                         </div>

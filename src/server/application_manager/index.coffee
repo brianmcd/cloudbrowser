@@ -1,5 +1,5 @@
 Application = require('./application')
-Barrier     = require('./barrier')
+Barrier     = require('../../shared/barrier')
 Fs          = require('fs')
 Path        = require('path')
 
@@ -113,14 +113,14 @@ class ApplicationManager
                 # Should there be a default?
                 throw new Error "Missing required parameter browserLimit in " + path
 
-            if (opts.browserLimit.user and isNaN(opts.browserLimit.user))
+        if opts.browserLimit
+            if opts.browserLimit.app
+                if isNaN(opts.browserLimit.app)
+                    throw new Error "Per application browserLimit must be a valid number in " + path
+                else if opts.browserLimit.app > 1
+                    throw new Error "Per application browserLimit greater than 1 is not supported. In " + path
+            if opts.browserLimit.user and isNaN(opts.browserLimit.user)
                 throw new Error "browserLimit must be a valid number in " + path
-
-        if (opts.browserLimit and opts.browserlimit.app)
-            if isNaN(opts.browserlimit.app)
-                throw new Error "Per application browserLimit must be a valid number in " + path
-            else if opts.browserLimit.app > 1
-                throw new Error "Per application browserLimit greater than 1 is not supported. In " + path
 
         opts.entryPoint = path + "/" + opts.entryPoint
 
@@ -157,5 +157,11 @@ class ApplicationManager
 
     find : (mountPoint) ->
         @applications[mountPoint]
+
+    create : (path) ->
+        throw new Error("Creating new applications from the API has not been implemented yet")
+
+    get : () ->
+        return @applications
 
 module.exports = ApplicationManager

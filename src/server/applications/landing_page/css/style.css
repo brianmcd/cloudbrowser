@@ -1,5 +1,4 @@
-.margin-bottom{margin-bottom:20px;}
-.margin-right{margin-right:15px;}
+.margin-bottom{margin-bottom:20px !important;}
 .highlight{background-color:#bdbdbd;}
 .box{
     border-radius:5px;

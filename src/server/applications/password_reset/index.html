@@ -30,11 +30,10 @@
                 <div class="span4 offset4" id="box" ng-controller="ResetCtrl">
                     <h3 class="page-header pagination-centered">CloudBrowser Password Reset</h3>
                     <form ng-submit="reset()">
-                        <div class="pagination-centered well well-small">Hi {{username}}. Enter your new password below.</div>
-                        <div class="control-group pagination-centered" ng-class="{true:'error'}[!!password_error]">
+                        <div class="pagination-centered well well-small">Hi {{email}}. Enter your new password below.</div>
+                        <div class="control-group pagination-centered">
                             <div class="controls">
                                 <input class="span8" type="password" placeholder="New Password" ng-model="password">
-                                <span class="help-inline" ng-show="password_error">{{password_error}}</span>
                             </div>
                         </div>
                         <div class="control-group pagination-centered" ng-class="{true:'error'}[password != vpassword]">
@@ -46,7 +45,9 @@
                         <div class="control-group pagination-centered">
                             <div class="controls">
                                 <button class="btn btn-primary" type="submit" ng-disabled="isDisabled || (password != vpassword)">Reset</button>
-                                <span class="text-success" ng-show="password_success">{{password_success}}</span>
+                                <br>
+                                <span class="text-success" ng-show="passwordSuccess">{{passwordSuccess}}</span>
+                                <span class="text-error" ng-show="passwordError">{{passwordError}}</span>
                             </div>
                         </div>
                     </form>

@@ -1,17 +1,12 @@
 (function() {
-  var CBAdmin, baseURL;
+  var CBAdmin;
 
   CBAdmin = angular.module("CBAdmin", []);
-
-  baseURL = "http://" + server.config.domain + ":" + server.config.port;
 
   CBAdmin.controller("AppCtrl", function($scope, $timeout) {
     var query;
     query = Utils.searchStringtoJSON(location.search);
-    $scope.email = query.user;
-    $scope.namespace = query.ns;
-    $scope.domain = server.config.domain;
-    $scope.port = server.config.port;
+    $scope.user = cloudBrowser.app.getCreator();
     $scope.getApps = function() {
       return $timeout(function() {
         $scope.apps = server.applicationManager.applications;
@@ -20,17 +15,8 @@
       }, 100);
     };
     $scope.getApps();
-    $scope.click = function(mountPoint) {
-      return bserver.redirect(baseURL + mountPoint);
-    };
     return $scope.deleteVB = function(mountPoint, browserID) {
-      var err, vb;
-      vb = server.applicationManager.find(mountPoint).browsers.find(browserID);
-      err = server.applicationManager.find(mountPoint).browsers.close(vb, {
-        id: $scope.email,
-        ns: namespace
-      });
-      if (err) return console.log("Error detected " + err);
+      return cloudbrowser.app.closeInstance(browserID, $scope.user, function() {});
     };
   });
 

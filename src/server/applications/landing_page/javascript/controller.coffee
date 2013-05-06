@@ -1,7 +1,5 @@
 CBLandingPage           = angular.module("CBLandingPage", [])
 Util                    = require('util')
-#API
-baseURL                 = "http://" + server.config.domain + ":" + server.config.port
 
 CBLandingPage.controller "UserCtrl", ($scope, $timeout) ->
 
@@ -30,72 +28,40 @@ CBLandingPage.controller "UserCtrl", ($scope, $timeout) ->
         date        = day + " " + month + " " + year + " (" + time + ")"
         return date
 
-    findInBrowserList = (id) ->
-        browser = $.grep $scope.browserList, (element, index) ->
+    findInInstanceList = (id) ->
+        instance = $.grep $scope.instanceList, (element, index) ->
            (element.id is id)
-        return browser[0]
+        return instance[0]
 
-    addToBrowserList = (browserId) ->
-        if not findInBrowserList(browserId)
-            browser = app.browsers.find(browserId)
-            browser.date = formatDate(browser.dateCreated)
-            browser.collaborators = getCollaborators(browser)
-            browser.on 'UserAddedToList', (user, list) ->
+    addToInstanceList = (instanceID) ->
+        if not findInInstanceList(instanceID)
+            instance        = CloudBrowser.app.getInstanceInfo(instanceID)
+            instance.date   = formatDate(instance.date)
+            instance.owners = CloudBrowser.permissionManager.getInstanceOwners(instance.id)
+            instance.collaborators = CloudBrowser.permissionManager.getInstanceReaderWriters(instance.id)
+            CloudBrowser.app.registerListenerOnInstanceEvent instance.id, 'InstanceShared', () ->
                 $scope.safeApply ->
-                    browser.collaborators = getCollaborators(browser)
+                    instance.collaborators = CloudBrowser.permissionManager.getInstanceReaderWriters(instance.id)
+                    instance.owners        = CloudBrowser.permissionManager.getInstanceOwners(instance.id)
             $scope.safeApply ->
-                $scope.browserList.push(browser)
+                $scope.instanceList.push(instance)
 
-    removeFromBrowserList = (id) ->
+    removeFromInstanceList = (id) ->
         $scope.safeApply ->
-            $scope.browserList = $.grep $scope.browserList, (element, index) ->
+            oldLength = $scope.instanceList.length
+            $scope.instanceList = $.grep $scope.instanceList, (element, index) ->
                 return(element.id isnt id)
-            removeFromSelected(id)
-
-    getCollaborators = (browser) ->
-        # Must be in Utils
-        inList = (user, list) ->
-            userInList = list.filter (item) ->
-                return(item.ns is user.ns and item.email is user.email)
-            if userInList[0] then return userInList[0] else return null
-
-        collaborators = []
-
-        for readwriterRec in browser.getUsersInList('readwrite')
-
-            #rename find to is?
-            usr = browser.findUserInList(readwriterRec.user, 'own')
-
-            if not usr and not inList(readwriterRec.user, collaborators)
-                collaborators.push(readwriterRec.user)
-
-        return collaborators
+            if oldLength > $scope.instanceList.length
+                removeFromSelected(id)
 
     toggleEnabledDisabled = (newValue, oldValue) ->
-        # Make browserRec.permissions private
-        isOwner = (callback) ->
-            outstanding = $scope.selected.length
-            for browserID in $scope.selected
-                server.permissionManager.findBrowserPermRec $scope.user,
-                $scope.mountPoint, browserID, (browserRec) ->
-                    if not browserRec or not browserRec.permissions.own
-                        $scope.safeApply ->
-                            callback(false)
-                    else outstanding--
 
-            process.nextTick () ->
-                if not outstanding
-                    $scope.safeApply ->
-                        callback(true)
-                else process.nextTick(arguments.callee)
-
-        # combine both isOwner and canRemove to one function
-        canRemove = (callback) ->
+        checkPermission = (type, callback) ->
             outstanding = $scope.selected.length
-            for browserID in $scope.selected
-                server.permissionManager.findBrowserPermRec $scope.user,
-                $scope.mountPoint, browserID, (browserRec) ->
-                    if not browserRec or not (browserRec.permissions.own or browserRec.permissions.remove)
+            for instanceID in $scope.selected
+                CloudBrowser.permissionManager.checkInstancePermissions type, instanceID,
+                CloudBrowser.app.getCreator(), (hasPermission) ->
+                    if not hasPermission
                         $scope.safeApply ->
                             callback(false)
                     else outstanding--
@@ -107,104 +73,75 @@ CBLandingPage.controller "UserCtrl", ($scope, $timeout) ->
                 else process.nextTick(arguments.callee)
 
         if newValue > 0
-            $scope.isDisabled.open          = false
-            canRemove (val) ->
-                if val
-                    $scope.isDisabled.del           = false
-                else
-                    $scope.isDisabled.del           = true
-            isOwner (val) ->
-                if val
-                    $scope.isDisabled.share         = false
-                    $scope.isDisabled.rename        = false
-                else
-                    $scope.isDisabled.share         = true
-                    $scope.isDisabled.rename        = true
+            $scope.isDisabled.open = false
+            checkPermission {remove:true}, (canRemove) ->
+                $scope.isDisabled.del           = not canRemove
+            checkPermission {own:true}, (isOwner) ->
+                $scope.isDisabled.share         = not isOwner
+                $scope.isDisabled.rename        = not isOwner
         else
             $scope.isDisabled.open          = true
             $scope.isDisabled.del           = true
             $scope.isDisabled.rename        = true
             $scope.isDisabled.share         = true
 
-    # API
-    query               = Utils.searchStringtoJSON(location.search)
-    $scope.domain       = server.config.domain
-    $scope.port         = server.config.port
-    $scope.mountPoint   = Utils.getAppMountPoint bserver.mountPoint, "landing_page"
-    app                 = server.applicationManager.find $scope.mountPoint
-    $scope.description  = app.description
+    $scope.description  = CloudBrowser.app.getDescription()
+    $scope.user         = CloudBrowser.app.getCreator()
+    $scope.mountPoint   = CloudBrowser.app.getMountPoint()
     $scope.isDisabled   = {open:true, share:true, del:true, rename:true}
-    $scope.browserList  = []
+    $scope.instanceList = []
     $scope.selected     = []
     $scope.addingCollaborator = false
+    $scope.confirmDelete      = false
+    $scope.addingOwner  = false
     $scope.predicate    = 'date'
     $scope.reverse      = true
     $scope.filterType   = 'all'
-    # Email is obtained from the query parameters of the url
-    # User details can not be obtained at the time of creation
-    # as the user connects to the virtual browser only after
-    # the browser has been created and initialized
-    $scope.user         = {email:query.user, ns:query.ns}
 
-    # Get the browsers associated with the user
-    server.permissionManager.getBrowserPermRecs $scope.user, $scope.mountPoint, (browserRecs) ->
-        for browserId, browserRec of browserRecs
-            addToBrowserList(browserId)
+    # Get the instances associated with the user
+    CloudBrowser.app.getInstanceIDs $scope.user, (instanceIDs) ->
+        for instanceID in instanceIDs
+            addToInstanceList(instanceID)
 
-    server.permissionManager.findAppPermRec $scope.user, $scope.mountPoint, (appRec) ->
-        appRec.on 'ItemAdded', (id) ->
-            addToBrowserList(id)
-        appRec.on 'ItemRemoved', (id) ->
-            removeFromBrowserList(id)
+    CloudBrowser.app.registerListenerOnEvent 'ItemAdded', (id) ->
+        addToInstanceList(id)
+
+    CloudBrowser.app.registerListenerOnEvent 'ItemRemoved', (id) ->
+        removeFromInstanceList(id)
 
     $scope.$watch 'selected.length', (newValue, oldValue) ->
         toggleEnabledDisabled(newValue, oldValue)
 
-    # Create a virtual browser
+    # Create a virtual instance
     $scope.createVB = () ->
-        if $scope.user.email? and $scope.user.ns?
-            # Make an object for current user using API
-            app.browsers.create app, "", $scope.user, (err, bsvr) ->
-                if err
-                    $scope.safeApply ->
-                        $scope.error = err.message
-        else
-            bserver.redirect baseURL + $scope.mountPoint + "/logout"
+        CloudBrowser.app.createInstance (err) ->
+            if err
+                $scope.safeApply () ->
+                    $scope.error = err.message
 
-    # API
     $scope.logout = () ->
-        bserver.redirect baseURL + $scope.mountPoint + "/logout"
+        CloudBrowser.app.logout()
 
     # Change behaviour based on type of click
     $scope.open = () ->
 
-        openNewTab = (browserID) ->
-            url = baseURL + $scope.mountPoint + "/browsers/" + browserID + "/index"
+        openNewTab = (instanceID) ->
+            url = CloudBrowser.app.getUrl() + "/browsers/" + instanceID + "/index"
             win = window.open(url, '_blank')
             return
 
-        for browserID in $scope.selected
-            openNewTab(browserID)
+        for instanceID in $scope.selected
+            openNewTab(instanceID)
 
     $scope.remove = () ->
 
-        findBrowser = (app, browserID) ->
-            vb = app.browsers.find(browserID)
-            return vb
-
-        rm = (browserID, user)->
-            app.browsers.close findBrowser(app, browserID), user, (err) ->
-                if not err
-                    removeFromBrowserList(browserID)
-                else
-                    $scope.error = "You do not have the permission to perform this action"
-
         while $scope.selected.length > 0
-            browserToBeDeleted = $scope.selected[0]
-            if $scope.user.email? and $scope.user.ns?
-                rm(browserToBeDeleted, $scope.user)
+            CloudBrowser.app.closeInstance $scope.selected[0], $scope.user, (err) ->
+                if err
+                    $scope.error = "You do not have the permission to perform this action"
+                else if $scope.selected[0]? then removeFromInstanceList($scope.selected[0])
         $scope.confirmDelete = false
-
+                        
     findAndRemove = (user, list) ->
         for i in [0..list.length-1]
             if list[i].email is user.email and
@@ -215,168 +152,132 @@ CBLandingPage.controller "UserCtrl", ($scope, $timeout) ->
 
     $scope.openCollaborateForm = () ->
 
-        getProspectiveCollaborators = () ->
-            server.db.collection app.dbName, (err, collection) ->
-                collection.find {}, (err, cursor) ->
-                    cursor.toArray (err, users) ->
-                        throw err if err
-                        if users?
-                            for browserID in $scope.selected
-                                for ownerRec in findInBrowserList(browserID).getUsersInList('own')
-                                    if users.length then findAndRemove(ownerRec.user, users)
-                                    else break
-                                for readwriterRec in findInBrowserList(browserID).getUsersInList('readwrite')
-                                    if users.length then findAndRemove(readwriterRec.user, users)
-                                    else break
-                        
-                        $scope.safeApply ->
-                            $scope.collaborators = users
-
-        #toggle form
         $scope.addingCollaborator = !$scope.addingCollaborator
-        if $scope.addingCollaborator
-            $scope.addingOwner = false
-            getProspectiveCollaborators()
 
-    isOwner = (browser, user) ->
-        if browser.findUserInList(user, 'own')
-            return true
-        else return false
+        if $scope.addingCollaborator
+
+            $scope.addingOwner = false
+
+            CloudBrowser.app.getUsers (users) ->
+                if users?
+                    for instanceID in $scope.selected
+                        index = 0
+                        while index < users.length
+                            if CloudBrowser.permissionManager.isInstanceOwner(instanceID, users[index]) or
+                            CloudBrowser.permissionManager.isInstanceReaderWriter(instanceID, users[index])
+                                findAndRemove(users[index], users)
+                            else index++
+                
+                $scope.safeApply ->
+                    $scope.collaborators = users
+
 
     $scope.addCollaborator = () ->
-        for browserID in $scope.selected
-            browser = findInBrowserList(browserID)
-            # Only if the user owns the browser allow adding of collaborators
-            if isOwner(browser, $scope.user)
-                server.permissionManager.addBrowserPermRec $scope.selectedCollaborator,
-                $scope.mountPoint, browserID, {readwrite:true},
-                (browserRec) ->
-                    if browserRec
-                        browser = findInBrowserList(browserRec.id)
-                        browser.addUserToLists $scope.selectedCollaborator, {readwrite:true}, () ->
-                            $scope.safeApply ->
-                                $scope.boxMessage = "The selected browsers are now shared with " +
-                                $scope.selectedCollaborator.email + " (" + $scope.selectedCollaborator.ns + ")"
-                                $scope.addingCollaborator = false
-                    else
-                        throw new Error("Browser permission record for user " + $scope.user.email +
-                        " (" + $scope.user.ns + ") and browser " + browserID + " not found")
+        for instanceID in $scope.selected
+            if CloudBrowser.permissionManager.isInstanceOwner(instanceID, $scope.user)
+                CloudBrowser.permissionManager.grantInstancePermissions {readwrite:true}, $scope.selectedCollaborator, instanceID, () ->
+                    $scope.safeApply ->
+                        $scope.boxMessage = "The selected instances are now shared with " +
+                        $scope.selectedCollaborator.email + " (" + $scope.selectedCollaborator.ns + ")"
+                        $scope.addingCollaborator = false
             else
                 $scope.error = "You do not have the permission to perform this action."
 
-    # Combine openAddOwnerForm and openCollaborateForm
     $scope.openAddOwnerForm = () ->
-        #toggle form
-        getProspectiveOwners = () ->
-            server.db.collection app.dbName, (err, collection) ->
-                collection.find {}, (err, cursor) ->
-                    cursor.toArray (err, users) ->
-                        throw err if err
-                        if users?
-                            for browserID in $scope.selected
-                                for ownerRec in findInBrowserList(browserID).getUsersInList('own')
-                                    if users.length then findAndRemove(ownerRec.user, users)
-                                    else break
-                        
-                        $scope.safeApply ->
-                            $scope.owners = users
-
-        #toggle form
         $scope.addingOwner = !$scope.addingOwner
         if $scope.addingOwner
             $scope.addingCollaborator = false
-            getProspectiveOwners()
+            CloudBrowser.app.getUsers (users) ->
+                if users?
+                    for instanceID in $scope.selected
+                        index = 0
+                        while index < users.length
+                            if CloudBrowser.permissionManager.isInstanceOwner(instanceID, users[index])
+                                findAndRemove(users[index], users)
+                            else index++
+                            
+                $scope.safeApply ->
+                    $scope.owners = users
 
-    #combine addOwner addCollaborator
     $scope.addOwner = () ->
-        for browserID in $scope.selected
-            browser = findInBrowserList(browserID)
-            # Only if the user owns the browser allow adding of owners
-            if isOwner(browser, $scope.user)
-                server.permissionManager.addBrowserPermRec $scope.selectedOwner,
-                $scope.mountPoint, browserID, {own:true, remove:true, readwrite:true},
-                (browserRec) ->
-                    if browserRec
-                        browser = findInBrowserList(browserRec.id)
-                        browser.addUserToLists $scope.selectedOwner, {own:true, remove:true, readwrite:true}, () ->
-                            $scope.safeApply ->
-                                $scope.boxMessage = "The selected browsers are now co-owned with " +
-                                $scope.selectedOwner.email + " (" + $scope.selectedOwner.ns + ")"
-                                $scope.addingOwner = false
-                    else
-                        throw new Error("Browser permission record for user " + $scope.user.email +
-                        " (" + $scope.user.ns + ") and browser " + browserID + " not found")
+        for instanceID in $scope.selected
+            if CloudBrowser.permissionManager.isInstanceOwner(instanceID, $scope.user)
+                CloudBrowser.permissionManager.grantInstancePermissions {own:true, remove:true, readwrite:true},
+                $scope.selectedOwner, instanceID, () ->
+                    $scope.safeApply ->
+                        $scope.boxMessage = "The selected instances are now co-owned with " +
+                        $scope.selectedOwner.email + " (" + $scope.selectedOwner.ns + ")"
+                        $scope.addingOwner = false
             else
                 $scope.error = "You do not have the permission to perform this action."
 
-    addToSelected = (browserID) ->
-        if $scope.selected.indexOf(browserID) is -1
-            $scope.selected.push(browserID)
+    addToSelected = (instanceID) ->
+        if $scope.selected.indexOf(instanceID) is -1
+            $scope.selected.push(instanceID)
 
-    removeFromSelected = (browserID) ->
-        if $scope.selected.indexOf(browserID) isnt -1
-            $scope.selected.splice($scope.selected.indexOf(browserID), 1)
+    removeFromSelected = (instanceID) ->
+        if $scope.selected.indexOf(instanceID) isnt -1
+            $scope.selected.splice($scope.selected.indexOf(instanceID), 1)
 
-    $scope.select = ($event, browserID) ->
+    $scope.select = ($event, instanceID) ->
         checkbox = $event.target
-        if checkbox.checked then addToSelected(browserID) else removeFromSelected(browserID)
+        if checkbox.checked then addToSelected(instanceID) else removeFromSelected(instanceID)
 
     $scope.selectAll = ($event) ->
         checkbox = $event.target
         action = if checkbox.checked then addToSelected else removeFromSelected
-        for browser in $scope.browserList
-            action(browser.id)
+        for instance in $scope.instanceList
+            action(instance.id)
 
-    $scope.getSelectedClass = (browserID) ->
-        if $scope.isSelected(browserID)
+    $scope.getSelectedClass = (instanceID) ->
+        if $scope.isSelected(instanceID)
             return 'highlight'
         else
             return ''
 
-    $scope.isSelected = (browserID) ->
-        return ($scope.selected.indexOf(browserID) >= 0)
+    $scope.isSelected = (instanceID) ->
+        return ($scope.selected.indexOf(instanceID) >= 0)
 
     $scope.areAllSelected = () ->
-        return $scope.selected.length is $scope.browserList.length
+        return $scope.selected.length is $scope.instanceList.length
 
     $scope.rename = () ->
-        for browserID in $scope.selected
-            findInBrowserList(browserID).editing = true
+        for instanceID in $scope.selected
+            findInInstanceList(instanceID).editing = true
 
-    $scope.clickRename = (browserID) ->
-        browser = findInBrowserList(browserID)
-        if isOwner(browser, $scope.user)
-            browser.editing = true
+    $scope.clickRename = (instanceID) ->
+        instance = findInInstanceList(instanceID)
+        if isInstanceOwner(instance, $scope.user)
+            instance.editing = true
         
 CBLandingPage.filter "removeSlash", () ->
     return (input) ->
         mps = input.split('/')
         return mps[mps.length - 1]
 
-CBLandingPage.filter "browserFilter", () ->
+CBLandingPage.filter "instanceFilter", () ->
     return (list, arg) =>
         filterType = arg.type
         user = arg.user
         modifiedList = []
         if filterType is 'owned'
-            for browser in list
-                if browser.findUserInList(user, 'own')
-                    modifiedList.push(browser)
+            for instance in list
+                if CloudBrowser.permissionManager.isInstanceOwner(instance.id, user)
+                    modifiedList.push(instance)
         if filterType is 'notOwned'
-            for browser in list
-                if browser.findUserInList(user, 'readwrite') and
-                not browser.findUserInList(user, 'own')
-                    modifiedList.push(browser)
+            for instance in list
+                if not CloudBrowser.permissionManager.isInstanceOwner(instance.id, user)
+                    modifiedList.push(instance)
         if filterType is 'shared'
-            for browser in list
-                if browser.getUsersInList('readwrite').length > 1 or
-                browser.getUsersInList('own').length > 1
-                    modifiedList.push(browser)
+            for instance in list
+                if CloudBrowser.permissionManager.getInstanceReaderWriters(instance.id).length or
+                CloudBrowser.permissionManager.getInstanceOwners(instance.id).length > 1
+                    modifiedList.push(instance)
         if filterType is 'notShared'
-            for browser in list
-                if browser.getUsersInList('own').length is 1 and
-                browser.getUsersInList('readwrite').length is 1
-                    modifiedList.push(browser)
+            for instance in list
+                if CloudBrowser.permissionManager.getInstanceOwners(instance.id).length is 1 and
+                not CloudBrowser.permissionManager.getInstanceReaderWriters(instance.id).length
+                    modifiedList.push(instance)
         if filterType is 'all'
             modifiedList = list
         return modifiedList

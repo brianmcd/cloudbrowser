@@ -1,7 +1,6 @@
 BrowserServer       = require('../browser_server')
 BrowserManager      = require('./browser_manager')
 BrowserServerSecure = require('../browser_server/browser_server_secure')
-Barrier             = require('../barrier')
 Util                = require('util')
 
 # Do we even need defaultApp? It can be found now from application_manager.find(@mountPoint)
@@ -27,7 +26,8 @@ class InProcessBrowserManager extends BrowserManager
     # Do we need appOrUrl?
     create : (appOrUrl = @defaultApp, query, user, callback, id = @generateUUID()) ->
 
-        if appOrUrl? and appOrUrl.authenticationInterface
+        if appOrUrl? and appOrUrl.authenticationInterface or
+        /landing_page$/.test(appOrUrl.mountPoint)
             if not user?
                 callback(new Error("Permission Denied"), null)
 
@@ -45,9 +45,11 @@ class InProcessBrowserManager extends BrowserManager
             checkPermissions = (permTypes, callback) =>
                 @server.permissionManager.findAppPermRec user, @mountPoint, (appRec) ->
                     if appRec
-                        for type in permTypes
-                            if not appRec.permissions[type]
+                        for type,v of permTypes
+                            if not appRec.permissions[type] or
+                            typeof appRec.permissions[type] is "undefined"
                                 callback(false)
+                                return
                         callback(true)
                     else callback(false)
 
@@ -126,9 +128,11 @@ class InProcessBrowserManager extends BrowserManager
             checkPermissions = (permTypes, callback) =>
                 @server.permissionManager.findBrowserPermRec user, @mountPoint, browser.id, (browserRec) ->
                     if browserRec
-                        for type in permTypes
-                            if not browserRec.permissions[type]
+                        for type,v of permTypes
+                            if not browserRec.permissions[type] or
+                            typeof browserRec.permissions[type] is "undefined"
                                 callback(false)
+                                return
                         callback(true)
                     else callback(false)
 

@@ -2,7 +2,7 @@ BrowserServer = require('./index')
 
 class BrowserServerSecure extends BrowserServer
     @nameCount:0
-    constructor: (@server, @id, @mountPoint, user, permissions) ->
+    constructor: (@server, @id, @mountPoint, @creator, permissions) ->
         super
         # Lists of users with corresponding permissions
         # for this browser
@@ -12,7 +12,7 @@ class BrowserServerSecure extends BrowserServer
         @remove     = []
         @name       = @mountPoint.substring(1) + "-browser" + @constructor.nameCount++
 
-        @addUserToLists(user, permissions)
+        @addUserToLists(@creator, permissions)
 
     addUserToLists : (user, listTypes, callback) ->
         @server.permissionManager.findSysPermRec user, (sysRec) =>
@@ -20,7 +20,7 @@ class BrowserServerSecure extends BrowserServer
                 if v and @.hasOwnProperty(k) and
                 not @findUserInList(user, k)
                     @[k].push(sysRec)
-                    @emit('UserAddedToList', sysRec.getUser(), k)
+                    @emit('InstanceShared', sysRec.getUser(), k)
 
             if callback? then callback()
 

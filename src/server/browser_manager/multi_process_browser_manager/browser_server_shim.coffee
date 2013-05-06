@@ -1,6 +1,6 @@
 Fork        = require('child_process').fork
 Path        = require('path')
-Application = require('../../application')
+Application = require('../../application_manager/application')
 
 #TODO: 
 #   ResourceProxy
