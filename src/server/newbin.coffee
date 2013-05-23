@@ -57,6 +57,15 @@ Opts = require('nomnom')
     .option 'adminInterface',
         full    : 'admin-interface'
         help    : "Enable the admin interface."
+    .option 'homePage',
+        full    : 'home-page'
+        help    : "Enable mounting of the home page application at '/'"
+    .option 'nodeMailerEmailID',
+        full    : 'node-mailer-email-ID'
+        help    : "The password required to send mails through the Nodemailer module"
+    .option 'nodeMailerPassword',
+        full    : 'node-mailer-password'
+        help    : "The password required to send mails through the Nodemailer module"
     .option 'simulateLatency',
         full    : 'simulate-latency'
         help    : "Simulate latency for clients in ms (if not given assign uniform randomly in 20-120 ms range."

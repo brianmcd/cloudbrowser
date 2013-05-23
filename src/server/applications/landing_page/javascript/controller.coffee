@@ -1,5 +1,5 @@
-CBLandingPage           = angular.module("CBLandingPage", [])
-Util                    = require('util')
+CBLandingPage = angular.module("CBLandingPage", [])
+Util = require('util')
 
 CBLandingPage.controller "UserCtrl", ($scope, $timeout) ->
 
@@ -8,8 +8,7 @@ CBLandingPage.controller "UserCtrl", ($scope, $timeout) ->
     $scope.safeApply = (fn) ->
         phase = this.$root.$$phase
         if phase == '$apply' or phase == '$digest'
-            if fn
-                fn()
+            if fn then fn()
         else
             this.$apply(fn)
 
@@ -33,16 +32,18 @@ CBLandingPage.controller "UserCtrl", ($scope, $timeout) ->
            (element.id is id)
         return instance[0]
 
-    addToInstanceList = (instanceID) ->
-        if not findInInstanceList(instanceID)
-            instance        = CloudBrowser.app.getInstanceInfo(instanceID)
-            instance.date   = formatDate(instance.date)
-            instance.owners = CloudBrowser.permissionManager.getInstanceOwners(instance.id)
-            instance.collaborators = CloudBrowser.permissionManager.getInstanceReaderWriters(instance.id)
-            CloudBrowser.app.registerListenerOnInstanceEvent instance.id, 'InstanceShared', () ->
-                $scope.safeApply ->
-                    instance.collaborators = CloudBrowser.permissionManager.getInstanceReaderWriters(instance.id)
-                    instance.owners        = CloudBrowser.permissionManager.getInstanceOwners(instance.id)
+    addToInstanceList = (instance) ->
+        if not findInInstanceList(instance.id)
+            instance.dateCreated = formatDate(instance.dateCreated)
+            instance.registerListenerOnEvent 'Shared', (err) ->
+                if not err then $scope.safeApply ->
+                    instance.owners = instance.getOwners()
+                    instance.collaborators = instance.getReaderWriters()
+                else console.log(err)
+            instance.registerListenerOnEvent 'Renamed', (err, name) ->
+                if not err then $scope.safeApply ->
+                    instance.name = name
+                else console.log(err)
             $scope.safeApply ->
                 $scope.instanceList.push(instance)
 
@@ -59,8 +60,7 @@ CBLandingPage.controller "UserCtrl", ($scope, $timeout) ->
         checkPermission = (type, callback) ->
             outstanding = $scope.selected.length
             for instanceID in $scope.selected
-                CloudBrowser.permissionManager.checkInstancePermissions type, instanceID,
-                CloudBrowser.app.getCreator(), (hasPermission) ->
+                findInInstanceList(instanceID).checkPermissions type, (hasPermission) ->
                     if not hasPermission
                         $scope.safeApply ->
                             callback(false)
@@ -94,33 +94,33 @@ CBLandingPage.controller "UserCtrl", ($scope, $timeout) ->
     $scope.addingCollaborator = false
     $scope.confirmDelete      = false
     $scope.addingOwner  = false
-    $scope.predicate    = 'date'
+    $scope.predicate    = 'dateCreated'
     $scope.reverse      = true
     $scope.filterType   = 'all'
 
     # Get the instances associated with the user
-    CloudBrowser.app.getInstanceIDs $scope.user, (instanceIDs) ->
-        for instanceID in instanceIDs
-            addToInstanceList(instanceID)
+    CloudBrowser.app.getInstances (instances) ->
+        for instance in instances
+            addToInstanceList(instance)
 
-    CloudBrowser.app.registerListenerOnEvent 'ItemAdded', (id) ->
-        addToInstanceList(id)
+    CloudBrowser.app.registerListenerOnEvent 'Added', (instance) ->
+        addToInstanceList(instance)
 
-    CloudBrowser.app.registerListenerOnEvent 'ItemRemoved', (id) ->
+    CloudBrowser.app.registerListenerOnEvent 'Removed', (id) ->
         removeFromInstanceList(id)
 
     $scope.$watch 'selected.length', (newValue, oldValue) ->
         toggleEnabledDisabled(newValue, oldValue)
+        $scope.addingCollaborator = false
+        $scope.addingOwner        = false
 
     # Create a virtual instance
     $scope.createVB = () ->
         CloudBrowser.app.createInstance (err) ->
-            if err
-                $scope.safeApply () ->
-                    $scope.error = err.message
+            if err then $scope.safeApply () -> $scope.error = err.message
 
     $scope.logout = () ->
-        CloudBrowser.app.logout()
+        CloudBrowser.auth.logout()
 
     # Change behaviour based on type of click
     $scope.open = () ->
@@ -136,20 +136,11 @@ CBLandingPage.controller "UserCtrl", ($scope, $timeout) ->
     $scope.remove = () ->
 
         while $scope.selected.length > 0
-            CloudBrowser.app.closeInstance $scope.selected[0], $scope.user, (err) ->
+            findInInstanceList($scope.selected[0]).close (err) ->
                 if err
                     $scope.error = "You do not have the permission to perform this action"
-                else if $scope.selected[0]? then removeFromInstanceList($scope.selected[0])
         $scope.confirmDelete = false
                         
-    findAndRemove = (user, list) ->
-        for i in [0..list.length-1]
-            if list[i].email is user.email and
-            list[i].ns is user.ns
-                break
-        if i < list.length
-            list.splice(i, 1)
-
     $scope.openCollaborateForm = () ->
 
         $scope.addingCollaborator = !$scope.addingCollaborator
@@ -159,27 +150,48 @@ CBLandingPage.controller "UserCtrl", ($scope, $timeout) ->
             $scope.addingOwner = false
 
             CloudBrowser.app.getUsers (users) ->
-                if users?
-                    for instanceID in $scope.selected
-                        index = 0
-                        while index < users.length
-                            if CloudBrowser.permissionManager.isInstanceOwner(instanceID, users[index]) or
-                            CloudBrowser.permissionManager.isInstanceReaderWriter(instanceID, users[index])
-                                findAndRemove(users[index], users)
-                            else index++
+                for instanceID in $scope.selected
+                    instance = findInInstanceList(instanceID)
+                    index = 0
+                    while index < users.length
+                        if instance.isOwner(users[index]) or
+                        instance.isReaderWriter(users[index])
+                            users.splice(index, 1)
+                        else index++
                 
                 $scope.safeApply ->
                     $scope.collaborators = users
 
-
     $scope.addCollaborator = () ->
         for instanceID in $scope.selected
-            if CloudBrowser.permissionManager.isInstanceOwner(instanceID, $scope.user)
-                CloudBrowser.permissionManager.grantInstancePermissions {readwrite:true}, $scope.selectedCollaborator, instanceID, () ->
+            instance = findInInstanceList(instanceID)
+            if instance.isOwner($scope.user)
+                instance.grantPermissions {readwrite:true}, $scope.selectedCollaborator, (err) ->
                     $scope.safeApply ->
-                        $scope.boxMessage = "The selected instances are now shared with " +
-                        $scope.selectedCollaborator.email + " (" + $scope.selectedCollaborator.ns + ")"
-                        $scope.addingCollaborator = false
+                        if not err
+                            $scope.boxMessage = "The selected instances are now shared with " +
+                            $scope.selectedCollaborator.getEmail() + " (" + $scope.selectedCollaborator.getNameSpace() + ")"
+                            $scope.addingCollaborator = false
+                        else $scope.error = err
+            else
+                $scope.error = "You do not have the permission to perform this action."
+
+    $scope.addGoogleCollaborator = () ->
+        for instanceID in $scope.selected
+            instance = findInInstanceList(instanceID)
+            if instance.isOwner($scope.user)
+                user    = new CloudBrowser.User($scope.selectedGoogleCollaborator, "google")
+                subject = "CloudBrowser - #{$scope.user.getEmail()} shared an instance with you."
+                msg     = "Hi #{user.getEmail()}<br>To view the instance, visit <a href='#{CloudBrowser.app.getUrl()}'>#{$scope.mountPoint}</a>"+
+                          " and login with your google account."
+                instance.grantPermissions {readwrite:true}, user, (err) ->
+                    if not err
+                        CloudBrowser.auth.sendEmail user.getEmail(), subject, msg, () ->
+                            $scope.safeApply ->
+                                $scope.boxMessage = "The selected instances are now shared with " +
+                                $scope.selectedGoogleCollaborator + " (google)"
+                                $scope.addingCollaborator = false
+                    else $scope.safeApply -> $scope.error = err
             else
                 $scope.error = "You do not have the permission to perform this action."
 
@@ -188,26 +200,47 @@ CBLandingPage.controller "UserCtrl", ($scope, $timeout) ->
         if $scope.addingOwner
             $scope.addingCollaborator = false
             CloudBrowser.app.getUsers (users) ->
-                if users?
-                    for instanceID in $scope.selected
-                        index = 0
-                        while index < users.length
-                            if CloudBrowser.permissionManager.isInstanceOwner(instanceID, users[index])
-                                findAndRemove(users[index], users)
-                            else index++
+                for instanceID in $scope.selected
+                    instance = findInInstanceList(instanceID)
+                    index = 0
+                    while index < users.length
+                        if instance.isOwner(users[index])
+                            users.splice(index, 1)
+                        else index++
                             
                 $scope.safeApply ->
                     $scope.owners = users
 
     $scope.addOwner = () ->
         for instanceID in $scope.selected
-            if CloudBrowser.permissionManager.isInstanceOwner(instanceID, $scope.user)
-                CloudBrowser.permissionManager.grantInstancePermissions {own:true, remove:true, readwrite:true},
-                $scope.selectedOwner, instanceID, () ->
+            instance = findInInstanceList(instanceID)
+            if instance.isOwner($scope.user)
+                instance.grantPermissions {own:true, remove:true, readwrite:true},
+                $scope.selectedOwner, (err) ->
                     $scope.safeApply ->
-                        $scope.boxMessage = "The selected instances are now co-owned with " +
-                        $scope.selectedOwner.email + " (" + $scope.selectedOwner.ns + ")"
-                        $scope.addingOwner = false
+                        if not err
+                            $scope.boxMessage = "The selected instances are now co-owned with " +
+                            $scope.selectedOwner.getEmail() + " (" + $scope.selectedOwner.getNameSpace() + ")"
+                            $scope.addingOwner = false
+                        else $scope.error = err
+            else
+                $scope.error = "You do not have the permission to perform this action."
+
+    $scope.addGoogleOwner = () ->
+        for instanceID in $scope.selected
+            instance = findInInstanceList(instanceID)
+            if instance.isOwner($scope.user)
+                user    = new CloudBrowser.User($scope.selectedGoogleOwner+"@gmail.com", "google")
+                subject = "CloudBrowser - #{$scope.user.getEmail()} shared an instance with you."
+                msg     = "Hi #{user.getEmail()}<br>To view the instance, visit <a href='#{CloudBrowser.app.getUrl()}'>#{$scope.mountPoint}</a>"
+                instance.grantPermissions {own:true, remove:true, readwrite:true}, user, (err) ->
+                    if not err
+                        CloudBrowser.auth.sendEmail user.getEmail(), subject, msg, () ->
+                            $scope.safeApply ->
+                                $scope.boxMessage = "The selected instances are now co-owned with " +
+                                $scope.selectedGoogleOwner + " (google)"
+                                $scope.addingOwner = false
+                    else $scope.safeApply -> $scope.error = err
             else
                 $scope.error = "You do not have the permission to perform this action."
 
@@ -247,7 +280,7 @@ CBLandingPage.controller "UserCtrl", ($scope, $timeout) ->
 
     $scope.clickRename = (instanceID) ->
         instance = findInInstanceList(instanceID)
-        if isInstanceOwner(instance, $scope.user)
+        if instance.isOwner($scope.user)
             instance.editing = true
         
 CBLandingPage.filter "removeSlash", () ->
@@ -262,23 +295,33 @@ CBLandingPage.filter "instanceFilter", () ->
         modifiedList = []
         if filterType is 'owned'
             for instance in list
-                if CloudBrowser.permissionManager.isInstanceOwner(instance.id, user)
+                if instance.isOwner(user)
                     modifiedList.push(instance)
         if filterType is 'notOwned'
             for instance in list
-                if not CloudBrowser.permissionManager.isInstanceOwner(instance.id, user)
+                if not instance.isOwner(user)
                     modifiedList.push(instance)
         if filterType is 'shared'
             for instance in list
-                if CloudBrowser.permissionManager.getInstanceReaderWriters(instance.id).length or
-                CloudBrowser.permissionManager.getInstanceOwners(instance.id).length > 1
+                if instance.getReaderWriters().length or
+                instance.getOwners().length > 1
                     modifiedList.push(instance)
         if filterType is 'notShared'
             for instance in list
-                if CloudBrowser.permissionManager.getInstanceOwners(instance.id).length is 1 and
-                not CloudBrowser.permissionManager.getInstanceReaderWriters(instance.id).length
+                if instance.getOwners().length is 1 and
+                not instance.getReaderWriters().length
                     modifiedList.push(instance)
         if filterType is 'all'
             modifiedList = list
         return modifiedList
 
+CBLandingPage.directive 'ngHasfocus', () ->
+    return (scope, element, attrs) ->
+        scope.$watch attrs.ngHasfocus, (nVal, oVal) ->
+            if (nVal)
+                element[0].focus()
+        element.bind 'blur', () ->
+            scope.$apply(attrs.ngHasfocus + " = false";scope.instance.rename(scope.instance.name))
+        element.bind 'keydown', (e) ->
+            if e.which is 13
+                scope.$apply(attrs.ngHasfocus + " = false";scope.instance.rename(scope.instance.name))

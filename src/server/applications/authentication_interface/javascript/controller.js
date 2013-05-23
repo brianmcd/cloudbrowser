@@ -22,28 +22,15 @@
       return $scope.emailError = null;
     });
     $scope.googleLogin = function() {
-      return CloudBrowser.app.googleLogin(location);
+      return CloudBrowser.auth.googleLogin(location.search);
     };
     $scope.login = function() {
-      var _this = this;
       if (!$scope.email || !$scope.password) {
         return $scope.loginError = "Please provide both the Email ID and the password to login";
       } else {
         $scope.isDisabled = true;
-        return CloudBrowser.app.login({
-          email: $scope.email,
-          ns: 'local'
-        }, $scope.password, function(success) {
-          var query;
-          if (success) {
-            query = Utils.searchStringtoJSON(location.search);
-            if (query.redirectto != null) {
-              CloudBrowser.app.redirect(CloudBrowser.server.getUrl() + query.redirectto);
-            } else {
-              console.log("Redirecting to " + CloudBrowser.app.getUrl());
-              CloudBrowser.app.redirect(CloudBrowser.app.getUrl());
-            }
-          } else {
+        return CloudBrowser.auth.login(new CloudBrowser.User($scope.email, 'local'), $scope.password, location.search, function(success) {
+          if (!success) {
             $scope.$apply(function() {
               return $scope.loginError = "Invalid Credentials";
             });
@@ -57,10 +44,7 @@
         return $scope.emailError = "Please provide a valid email ID";
       } else {
         $scope.resetDisabled = true;
-        return CloudBrowser.app.sendResetLink({
-          email: $scope.email,
-          ns: 'local'
-        }, function(success) {
+        return CloudBrowser.auth.sendResetLink(new CloudBrowser.User($scope.email, 'local'), function(success) {
           if (success) {
             $scope.resetSuccessMsg = "A password reset link has been sent to your email ID.";
           } else {
@@ -90,10 +74,7 @@
       $scope.signupError = null;
       $scope.isDisabled = false;
       $scope.successMessage = false;
-      return CloudBrowser.app.userExists({
-        email: $scope.email,
-        ns: 'local'
-      }, function(exists) {
+      return CloudBrowser.app.userExists(new CloudBrowser.User($scope.email, 'local'), function(exists) {
         if (exists) {
           return $scope.$apply(function() {
             $scope.emailError = "Account with this Email ID already exists!";
@@ -108,7 +89,7 @@
       return $scope.isDisabled = false;
     });
     $scope.googleLogin = function() {
-      return CloudBrowser.app.googleLogin(location);
+      return CloudBrowser.auth.googleLogin(location.search);
     };
     return $scope.signup = function() {
       $scope.isDisabled = true;
@@ -119,10 +100,7 @@
       } else if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^\da-zA-Z])\S{8,15}$/.test($scope.password)) {
         return $scope.passwordError = "Password must be have a length between 8 - 15 characters," + " must contain atleast 1 uppercase, 1 lowercase, 1 digit and 1 special character." + " Spaces are not allowed.";
       } else {
-        return CloudBrowser.app.signup({
-          email: $scope.email,
-          ns: 'local'
-        }, $scope.password, function() {
+        return CloudBrowser.auth.signup(new CloudBrowser.User($scope.email, 'local'), $scope.password, function() {
           return $scope.$apply(function() {
             return $scope.successMessage = true;
           });

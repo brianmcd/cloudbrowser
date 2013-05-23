@@ -18,44 +18,52 @@ require('ofe').call()
 {MultiProcessBrowserManager, InProcessBrowserManager} = Managers
 
 # Server options:
-#   adminInterface  - bool - Enable the admin interface.
-#   compression     - bool - Enable protocol compression.
-#   compressJS      - bool - Pass socket.io client and client engine through
-#                            uglify and gzip.
-#   debug           - bool - Enable debug mode.
-#   debugServer     - bool - Enable the debug server.
-#   domain          - str  - Domain name of server.
-#   knockout        - bool - Enable server-side knockout.js bindings.
-#   monitorTraffic  - bool - Monitor/log traffic to/from socket.io clients.
-#   multiProcess    - bool - Run each browser in its own process.
-#   noLogs          - bool - Disable all logging to files.
-#   port            - integer - Port to use for the server.
-#   resourceProxy   - bool - Enable the resource proxy.
-#   simulateLatency - bool | number - Simulate latency for clients in ms.
-#   strict          - bool - Enable strict mode - uncaught exceptions exit the
-#                            program.
-#   traceMem        - bool - Trace memory usage.
-#   traceProtocol   - bool - Log protocol messages to #{browserid}-rpc.log.
-#   useRouter       - bool - Use a front-end router process with each app server
-#                            in its own process.
+#   adminInterface      - bool - Enable the admin interface.
+#   compression         - bool - Enable protocol compression.
+#   compressJS          - bool - Pass socket.io client and client engine through
+#                                uglify and gzip.
+#   debug               - bool - Enable debug mode.
+#   debugServer         - bool - Enable the debug server.
+#   domain              - str  - Domain name of server.
+#   homePage            - bool - Enable mounting of the home page application at "/".
+#   knockout            - bool - Enable server-side knockout.js bindings.
+#   monitorTraffic      - bool - Monitor/log traffic to/from socket.io clients.
+#   multiProcess        - bool - Run each browser in its own process.
+#   nodeMailerEmailID   - str  - The email ID required to send mails through
+#                                the Nodemailer module.
+#   nodeMailerPassword  - str  - The password required to send mails through
+#                                the Nodemailer module.
+#   noLogs              - bool - Disable all logging to files.
+#   port                - int  - Port to use for the server.
+#   resourceProxy       - bool - Enable the resource proxy.
+#   simulateLatency     - bool | number - Simulate latency for clients in ms.
+#   strict              - bool - Enable strict mode - uncaught exceptions exit the
+#                                program.
+#   traceMem            - bool - Trace memory usage.
+#   traceProtocol       - bool - Log protocol messages to #{browserid}-rpc.log.
+#   useRouter           - bool - Use a front-end router process with each app server
+#                                in its own process.
 defaults =
-    adminInterface  : false
-    compression     : true
-    compressJS      : false
-    debug           : false
-    debugServer     : false
-    domain          : os.hostname()
-    knockout        : false
-    monitorTraffic  : false
-    multiProcess    : false
-    noLogs          : true
-    port            : 3000
-    resourceProxy   : true
-    simulateLatency : false
-    strict          : false
-    traceMem        : false
-    traceProtocol   : false
-    useRouter       : false
+    adminInterface      : false
+    compression         : true
+    compressJS          : false
+    debug               : false
+    debugServer         : false
+    domain              : os.hostname()
+    homePage            : true
+    knockout            : false
+    monitorTraffic      : false
+    multiProcess        : false
+    nodeMailerEmailID   : ""
+    nodeMailerPassword  : ""
+    noLogs              : true
+    port                : 3000
+    resourceProxy       : true
+    simulateLatency     : false
+    strict              : false
+    traceMem            : false
+    traceProtocol       : false
+    useRouter           : false
 
 class Server extends EventEmitter
     constructor : (@config = {}, paths) ->
@@ -132,6 +140,7 @@ class Server extends EventEmitter
             @addLatencyToClient(socket) if @config.simulateLatency
             socket.on 'auth', (app, browserID) =>
                 # app, browserID are provided by the client and cannot be trusted
+                if app is "" then app = "/"
                 decoded = decodeURIComponent(browserID)
                 if browserManagers[app] and @isAuthorized(socket.handshake.session, app, browserID)
                     bserver = browserManagers[app].find(decoded)

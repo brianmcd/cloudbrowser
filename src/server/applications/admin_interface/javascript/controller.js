@@ -4,8 +4,6 @@
   CBAdmin = angular.module("CBAdmin", []);
 
   CBAdmin.controller("AppCtrl", function($scope, $timeout) {
-    var query;
-    query = Utils.searchStringtoJSON(location.search);
     $scope.user = cloudBrowser.app.getCreator();
     $scope.getApps = function() {
       return $timeout(function() {

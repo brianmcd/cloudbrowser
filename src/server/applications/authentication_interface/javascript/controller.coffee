@@ -1,4 +1,3 @@
-Util = require('util')
 CBAuthentication = angular.module("CBAuthentication", [])
 
 CBAuthentication.controller "LoginCtrl", ($scope) ->
@@ -19,7 +18,7 @@ CBAuthentication.controller "LoginCtrl", ($scope) ->
     $scope.$watch "email", ->
         $scope.emailError = null
 
-    $scope.googleLogin = () -> CloudBrowser.app.googleLogin(location)
+    $scope.googleLogin = () -> CloudBrowser.auth.googleLogin(location.search)
 
     $scope.login = () ->
 
@@ -28,16 +27,9 @@ CBAuthentication.controller "LoginCtrl", ($scope) ->
 
         else
             $scope.isDisabled = true
-            CloudBrowser.app.login {email:$scope.email, ns:'local'}, $scope.password,
-            (success) =>
-                if success
-                    query = Utils.searchStringtoJSON(location.search)
-                    if query.redirectto?
-                        CloudBrowser.app.redirect(CloudBrowser.server.getUrl() + query.redirectto)
-                    else
-                        console.log "Redirecting to " + CloudBrowser.app.getUrl()
-                        CloudBrowser.app.redirect(CloudBrowser.app.getUrl())
-                else
+            CloudBrowser.auth.login new CloudBrowser.User($scope.email, 'local'), $scope.password, location.search,
+            (success) ->
+                if not success
                     $scope.$apply ->
                         $scope.loginError = "Invalid Credentials"
                 $scope.isDisabled = false
@@ -49,7 +41,7 @@ CBAuthentication.controller "LoginCtrl", ($scope) ->
 
         else
             $scope.resetDisabled = true
-            CloudBrowser.app.sendResetLink {email:$scope.email, ns:'local'}, (success) ->
+            CloudBrowser.auth.sendResetLink new CloudBrowser.User($scope.email, 'local'), (success) ->
                 if success
                     $scope.resetSuccessMsg = "A password reset link has been sent to your email ID."
                 else
@@ -74,7 +66,7 @@ CBAuthentication.controller "SignupCtrl", ($scope) ->
         $scope.isDisabled       = false
         $scope.successMessage   = false
 
-        CloudBrowser.app.userExists {email:$scope.email, ns:'local'}, (exists) ->
+        CloudBrowser.app.userExists new CloudBrowser.User($scope.email, 'local'), (exists) ->
             if exists then $scope.$apply ->
                 $scope.emailError = "Account with this Email ID already exists!"
                 $scope.isDisabled = true
@@ -84,7 +76,7 @@ CBAuthentication.controller "SignupCtrl", ($scope) ->
         $scope.passwordError    = null
         $scope.isDisabled       = false
 
-    $scope.googleLogin = () -> CloudBrowser.app.googleLogin(location)
+    $scope.googleLogin = () -> CloudBrowser.auth.googleLogin(location.search)
 
     $scope.signup = ->
         $scope.isDisabled = true
@@ -100,8 +92,6 @@ CBAuthentication.controller "SignupCtrl", ($scope) ->
             " must contain atleast 1 uppercase, 1 lowercase, 1 digit and 1 special character." +
             " Spaces are not allowed."
         else
-            CloudBrowser.app.signup {email:$scope.email, ns:'local'}, $scope.password,
-            () ->
+            CloudBrowser.auth.signup new CloudBrowser.User($scope.email, 'local'), $scope.password, () ->
                 $scope.$apply ->
                     $scope.successMessage = true
-                    

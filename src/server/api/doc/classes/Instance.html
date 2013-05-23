@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html>
+  <head>
+  <meta charset='UTF-8'>
+  <title>CoffeeScript API Documentation</title>
+  <link rel='stylesheet' href='../assets/codo.css' type='text/css'>
+  <script src='../assets/codo.js'></script>
+  <script src='../assets/search_data.js'></script>
+</head>
+  <body>
+    <div id='base' data-path='../'></div>
+<div id='header'>
+  <div id='menu'>
+    <a href='../class_index.html' title='Index'>Index</a>
+    &raquo;
+    <span class='title'>Instance</span>
+    <nav>
+      <ul>
+        <li class='noframes'>
+          (<a class='noframes' href='#'>no frames</a>)
+        </li>
+      </ul>
+    </nav>
+    <div id='search'>
+      <a id='class_list_link' href='../class_list.html'>Classes</a>
+      <a id='file_list_link' href='../file_list.html'>Files</a>
+      <a id='method_list_link' href='../method_list.html'>Methods</a>
+      <a id='extra_list_link' href='../extra_list.html'>Extras</a>
+    </div>
+  </div>
+  <iframe id='search_frame'></iframe>
+  <div id='fuzzySearch'>
+    <input type='text'>
+    <ol></ol>
+  </div>
+  <div id='help'>
+    <p>
+      Quickly fuzzy find classes, mixins, methods, file:
+    </p>
+    <ul>
+      <li>
+        <span>Ctrl-T</span>
+        Open fuzzy finder dialog
+      </li>
+    </ul>
+    <p>
+      In frame mode you can toggle the list naviation frame on the left side:
+    </p>
+    <ul>
+      <li>
+        <span>Ctrl-L</span>
+        Toggle list view
+      </li>
+    </ul>
+    <p>
+      You can focus a list in frame mode or toggle a tab in frameless mode:
+    </p>
+    <ul>
+      <li>
+        <span>Ctrl-C</span>
+        Class list
+      </li>
+      <li>
+        <span>Ctrl-I</span>
+        Mixin list
+      </li>
+      <li>
+        <span>Ctrl-F</span>
+        File list
+      </li>
+      <li>
+        <span>Ctrl-M</span>
+        Method list
+      </li>
+      <li>
+        <span>Ctrl-E</span>
+        Extras list
+      </li>
+    </ul>
+    <p>
+      You can focus and blur the search input:
+    </p>
+    <ul>
+      <li>
+        <span>Ctrl-S</span>
+        Focus search input
+      </li>
+      <li>
+        <span>Esc</span>
+        Blur search input
+      </li>
+    </ul>
+    <p>
+      In frameless mode you can close the list tab:
+    </p>
+    <ul>
+      <li>
+        <span>Esc</span>
+        Close list tab
+      </li>
+    </ul>
+  </div>
+</div>
+    <div id='content'>
+      <h1>
+        Class:
+        Instance
+      </h1>
+      <table class='box'>
+        <tr>
+          <td>Defined in:</td>
+          <td>index.coffee</td>
+        </tr>
+      </table>
+      <h2>Overview</h2>
+      <div class='docstring'>
+  <p>CloudBrowser application instances a.k.a. virtual browsers.   </p><h2>Instance Variables</h2><p><code>id</code>           - The (hash) ID of the instance.<br><code>name</code>         - The name of the instance.<br><code>dateCreated</code>  - The date of creation of the instance.<br><code>owners</code>  - The owners of the instance.<br><code>collaborators</code> - The users that can read and write to the instance.   </p>
+</div>
+<div class='tags'>
+</div>
+      <h2>Instance Method Summary</h2>
+      <ul class='summary'>
+  <li>
+    <span class='signature'>
+      <a href='#getCreator-instance'>
+        - (User) <strong>getCreator</strong>()
+      </a>
+    </span>
+    <span class='desc'>
+      Gets the user that created the instance.
+    </span>
+  </li>
+  <li>
+    <span class='signature'>
+      <a href='#close-instance'>
+        - (void) <strong>close</strong>(callback)
+      </a>
+    </span>
+    <span class='desc'>
+      Closes the instance.
+    </span>
+  </li>
+  <li>
+    <span class='signature'>
+      <a href='#registerListenerOnEvent-instance'>
+        - (void) <strong>registerListenerOnEvent</strong>(event, callback)
+      </a>
+    </span>
+    <span class='desc'>
+      Registers a listener on the instance for an event.
+    </span>
+  </li>
+  <li>
+    <span class='signature'>
+      <a href='#getReaderWriters-instance'>
+        - (Array&lt;User&gt;) <strong>getReaderWriters</strong>()
+      </a>
+    </span>
+    <span class='desc'>
+      Gets all users that have the permission only to read and write to the instance.
+    </span>
+  </li>
+  <li>
+    <span class='signature'>
+      <a href='#getOwners-instance'>
+        - (Array&lt;User&gt;) <strong>getOwners</strong>()
+      </a>
+    </span>
+    <span class='desc'>
+      Gets all users that are the owners of the instance
+    </span>
+  </li>
+  <li>
+    <span class='signature'>
+      <a href='#isReaderWriter-instance'>
+        - (Bool) <strong>isReaderWriter</strong>(user)
+      </a>
+    </span>
+    <span class='desc'>
+      Checks if the user is a reader-writer of the instance.
+    </span>
+  </li>
+  <li>
+    <span class='signature'>
+      <a href='#isOwner-instance'>
+        - (Bool) <strong>isOwner</strong>(user)
+      </a>
+    </span>
+    <span class='desc'>
+      Checks if the user is an owner of the instance
+    </span>
+  </li>
+  <li>
+    <span class='signature'>
+      <a href='#checkPermissions-instance'>
+        - (void) <strong>checkPermissions</strong>(permTypes, callback)
+      </a>
+    </span>
+    <span class='desc'>
+      Checks if the user has permissions to perform a set of actions on the instance.
+    </span>
+  </li>
+  <li>
+    <span class='signature'>
+      <a href='#grantPermissions-instance'>
+        - (void) <strong>grantPermissions</strong>(permTypes, user, callback)
+      </a>
+    </span>
+    <span class='desc'>
+      Grants the user a set of permissions on the instance.
+    </span>
+  </li>
+  <li>
+    <span class='signature'>
+      <a href='#rename-instance'>
+        - (void) <strong>rename</strong>()
+      </a>
+    </span>
+    <span class='desc'>
+      Renames the instance and emits an event &quot;Renamed&quot; that can be listened for by registering a listener on the instance.
+    </span>
+  </li>
+  <li>
+    <span class='signature'>
+      <a href='#constructor-instance'>
+        - (void) <strong>constructor</strong>(browser, userContext)
+      </a>
+    </span>
+    <span class='constructor note title'>Constructor</span>
+    <span class='desc'>
+      Creates an instance of Instance.
+    </span>
+  </li>
+</ul>
+      <h2>Constructor Details</h2>
+      <div class='methods'>
+  <div class='method_details'>
+    <p class='signature' id='constructor-instance'>
+      - (void) <strong>constructor</strong>(browser, userContext)
+    </p>
+    <div class='docstring'>
+  <p>Creates an instance of Instance.</p>
+</div>
+<div class='tags'>
+  <h3>Parameters:</h3>
+  <ul class='param'>
+    <li>
+      <span class='name'>browser</span>
+      <span class='type'>
+        (<tt>BrowserServer</tt>)
+      </span>
+      &mdash;
+      <span class='desc'>The corresponding browser object.</span>
+    </li>
+    <li>
+      <span class='name'>user</span>
+      <span class='type'>
+        (<tt><a href='../classes/User.html'>User</a></tt>)
+      </span>
+      &mdash;
+      <span class='desc'>The user that is going to communicate with the instance.</span>
+    </li>
+  </ul>
+</div>
+  </div>
+</div>
+      <h2>Instance Method Details</h2>
+      <div class='methods'>
+  <div class='method_details'>
+    <p class='signature' id='getCreator-instance'>
+      - (User) <strong>getCreator</strong>()
+    </p>
+    <div class='docstring'>
+  <p>Gets the user that created the instance.</p>
+</div>
+<div class='tags'>
+  <h3>Returns:</h3>
+  <ul class='return'>
+    <li>
+      <span class='type'></span>
+      (<tt><a href='../classes/User.html'>User</a></tt>)
+      &mdash;
+      <span class='desc'>The creator of the instance.</span>
+    </li>
+  </ul>
+</div>
+  </div>
+  <div class='method_details'>
+    <p class='signature' id='close-instance'>
+      - (void) <strong>close</strong>(callback)
+    </p>
+    <div class='docstring'>
+  <p>Closes the instance.</p>
+</div>
+<div class='tags'>
+  <h3>Parameters:</h3>
+  <ul class='param'>
+    <li>
+      <span class='name'>callback</span>
+      <span class='type'>
+        (<tt>Function</tt>)
+      </span>
+      &mdash;
+      <span class='desc'>Any error is passed as an argument</span>
+    </li>
+  </ul>
+</div>
+  </div>
+  <div class='method_details'>
+    <p class='signature' id='registerListenerOnEvent-instance'>
+      - (void) <strong>registerListenerOnEvent</strong>(event, callback)
+    </p>
+    <div class='docstring'>
+  <p>Registers a listener on the instance for an event. </p>
+</div>
+<div class='tags'>
+  <h3>Parameters:</h3>
+  <ul class='param'>
+    <li>
+      <span class='name'>event</span>
+      <span class='type'>
+        (<tt>String</tt>)
+      </span>
+      &mdash;
+      <span class='desc'>The event to be listened for. The system supported events are &quot;Shared&quot; and &quot;Renamed&quot;.</span>
+    </li>
+    <li>
+      <span class='name'>callback</span>
+      <span class='type'>
+        (<tt>Function</tt>)
+      </span>
+      &mdash;
+      <span class='desc'>The error is passed as an argument.</span>
+    </li>
+  </ul>
+</div>
+  </div>
+  <div class='method_details'>
+    <p class='signature' id='getReaderWriters-instance'>
+      - (Array&lt;User&gt;) <strong>getReaderWriters</strong>()
+    </p>
+    <div class='docstring'>
+  <p>Gets all users that have the permission only 
+to read and write to the instance.</p>
+</div>
+<div class='tags'>
+  <h3>Returns:</h3>
+  <ul class='return'>
+    <li>
+      <span class='type'></span>
+      (<tt>Array&lt;<a href='../classes/User.html'>User</a>&gt;</tt>)
+      &mdash;
+      <span class='desc'>List of all reader writers of the instance. Null if the creator does not have any permissions associated with the instance.</span>
+    </li>
+  </ul>
+</div>
+  </div>
+  <div class='method_details'>
+    <p class='signature' id='getOwners-instance'>
+      - (Array&lt;User&gt;) <strong>getOwners</strong>()
+    </p>
+    <div class='docstring'>
+  <p>Gets all users that are the owners of the instance</p>
+</div>
+<div class='tags'>
+  <h3>Returns:</h3>
+  <ul class='return'>
+    <li>
+      <span class='type'></span>
+      (<tt>Array&lt;<a href='../classes/User.html'>User</a>&gt;</tt>)
+      &mdash;
+      <span class='desc'>List of all owners of the instance. Null if the creator does not have any permissions associated with the instance.</span>
+    </li>
+  </ul>
+</div>
+  </div>
+  <div class='method_details'>
+    <p class='signature' id='isReaderWriter-instance'>
+      - (Bool) <strong>isReaderWriter</strong>(user)
+    </p>
+    <div class='docstring'>
+  <p>Checks if the user is a reader-writer of the instance.</p>
+</div>
+<div class='tags'>
+  <h3>Parameters:</h3>
+  <ul class='param'>
+    <li>
+      <span class='name'>user</span>
+      <span class='type'>
+        (<tt><a href='../classes/User.html'>User</a></tt>)
+      </span>
+      &mdash;
+      <span class='desc'>The user to be tested.</span>
+    </li>
+  </ul>
+  <h3>Returns:</h3>
+  <ul class='return'>
+    <li>
+      <span class='type'></span>
+      (<tt>Bool</tt>)
+      &mdash;
+      <span class='desc'>Indicates whether the user is a reader writer of the instance or not. Null if the creator does not have any permissions associated with the instance.</span>
+    </li>
+  </ul>
+</div>
+  </div>
+  <div class='method_details'>
+    <p class='signature' id='isOwner-instance'>
+      - (Bool) <strong>isOwner</strong>(user)
+    </p>
+    <div class='docstring'>
+  <p>Checks if the user is an owner of the instance</p>
+</div>
+<div class='tags'>
+  <h3>Parameters:</h3>
+  <ul class='param'>
+    <li>
+      <span class='name'>user</span>
+      <span class='type'>
+        (<tt><a href='../classes/User.html'>User</a></tt>)
+      </span>
+      &mdash;
+      <span class='desc'>The user to be tested.</span>
+    </li>
+  </ul>
+  <h3>Returns:</h3>
+  <ul class='return'>
+    <li>
+      <span class='type'></span>
+      (<tt>Bool</tt>)
+      &mdash;
+      <span class='desc'>Indicates whether the user is an owner of the instance or not. Null if the creator does not have any permissions associated with the instance.</span>
+    </li>
+  </ul>
+</div>
+  </div>
+  <div class='method_details'>
+    <p class='signature' id='checkPermissions-instance'>
+      - (void) <strong>checkPermissions</strong>(permTypes, callback)
+    </p>
+    <div class='docstring'>
+  <p>Checks if the user has permissions to perform a set of actions on the instance.</p>
+</div>
+<div class='tags'>
+  <h3>Parameters:</h3>
+  <ul class='param'>
+    <li>
+      <span class='name'>permTypes</span>
+      <span class='type'>
+        (<tt>Object</tt>)
+      </span>
+      &mdash;
+      <span class='desc'>Permissible members are &#39;own&#39;, &#39;remove&#39;, &#39;readwrite&#39;, &#39;readonly&#39;. The values of these properties must be set to true to check for the corresponding permission.</span>
+    </li>
+    <li>
+      <span class='name'>callback</span>
+      <span class='type'>
+        (<tt>Function</tt>)
+      </span>
+      &mdash;
+      <span class='desc'>A boolean indicating whether the user has permissions or not is passed as an argument.</span>
+    </li>
+  </ul>
+</div>
+  </div>
+  <div class='method_details'>
+    <p class='signature' id='grantPermissions-instance'>
+      - (void) <strong>grantPermissions</strong>(permTypes, user, callback)
+    </p>
+    <div class='docstring'>
+  <p>Grants the user a set of permissions on the instance.</p>
+</div>
+<div class='tags'>
+  <h3>Parameters:</h3>
+  <ul class='param'>
+    <li>
+      <span class='name'>permTypes</span>
+      <span class='type'>
+        (<tt>Object</tt>)
+      </span>
+      &mdash;
+      <span class='desc'>Permissible members are &#39;own&#39;, &#39;remove&#39;, &#39;readwrite&#39;, &#39;readonly&#39;. The values of these properties must be set to true to check for the corresponding permission.</span>
+    </li>
+    <li>
+      <span class='name'>user</span>
+      <span class='type'>
+        (<tt><a href='../classes/User.html'>User</a></tt>)
+      </span>
+      &mdash;
+      <span class='desc'>The user to be granted permission to.</span>
+    </li>
+    <li>
+      <span class='name'>callback</span>
+      <span class='type'>
+        (<tt>Function</tt>)
+      </span>
+      &mdash;
+      <span class='desc'>The error is passed as an argument to the callback.</span>
+    </li>
+  </ul>
+</div>
+  </div>
+  <div class='method_details'>
+    <p class='signature' id='rename-instance'>
+      - (void) <strong>rename</strong>()
+    </p>
+    <div class='docstring'>
+  <p>Renames the instance and emits an event &quot;Renamed&quot; that can be listened for by registering a listener on the instance.</p>
+</div>
+<div class='tags'>
+</div>
+  </div>
+</div>
+    </div>
+    <div id='footer'>
+  Generated on
+  Thu May 23 2013 12:02:02 GMT-0400 (EDT)
+  by
+  <a href='https://github.com/netzpirat/codo' title='CoffeeScript API documentation generator'>Codo</a>
+  v1.6.1
+  (Node.js v0.8.9).
+  &#10034;
+  Press Ctrl-h to see the keyboard shortcuts
+  &#10034;
+  <a href='http://twitter.com/#!/netzpirat'>@netzpirat</a>
+  &#10034;
+  <a href='https://mksoft.ch'>mksoft.ch</a>
+</div>
+  </body>
+</html>

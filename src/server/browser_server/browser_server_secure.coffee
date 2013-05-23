@@ -20,7 +20,7 @@ class BrowserServerSecure extends BrowserServer
                 if v and @.hasOwnProperty(k) and
                 not @findUserInList(user, k)
                     @[k].push(sysRec)
-                    @emit('InstanceShared', sysRec.getUser(), k)
+                    @emit('Shared', sysRec.getUser(), k)
 
             if callback? then callback()
 

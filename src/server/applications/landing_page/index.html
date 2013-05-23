@@ -1,7 +1,6 @@
 <html ng-app="CBLandingPage">
     <head>
         <title>{{mountPoint}}</title>
-        <script type="text/javascript" src="../tools/utils.js"></script>
         <script type="text/javascript" src='javascript/angular.js'></script>
         <script type="text/javascript" src='javascript/controller.js'></script>
         <script type="text/javascript" src='javascript/jquery.js'></script>
@@ -18,7 +17,7 @@
                     {{mountPoint|removeSlash}}
                 </h3>
                 <div class="span5 offset3">
-                    {{user.email}} &nbsp;| &nbsp;<a ng-click="logout()">Logout</a>
+                    {{user.getEmail()}} &nbsp;| &nbsp;<a ng-click="logout()">Logout</a>
 
                     <div class="well" ng-show="description">
                         {{description}}
@@ -123,36 +122,91 @@
                         <button class="btn btn-danger" ng-click="remove()">Continue</button>
                     </div>
 
-                    <form class="form-horizontal span8 offset2 box" ng-show="addingCollaborator && instanceList.length"
-                    ng-submit="addCollaborator()">
+                    <div class="span8 offset2 box margin-bottom" ng-show="addingCollaborator && instanceList.length">
                         <button type="button" class="close" ng-click="addingCollaborator = false">×</button>
-                        <fieldset>
-                            <legend>Add Collaborator</legend>
-                            <div ng-show="!collaborators.length">There are no users to collaborate with.</div>
-                            <select ng-model="selectedCollaborator" ng-show="collaborators.length" class="margin-bottom"
-                            ng-options="collaborator.email+' (' + collaborator.ns + ')' for collaborator in collaborators">
-                            </select>
-                            <button type="submit" class="btn btn-primary margin-bottom"
-                            ng-show="collaborators.length" ng-disabled="!selectedCollaborator">
-                                Add
-                            </button>
-                        </fieldset>
-                    </form>
+                        <legend>Add Collaborator</legend>
+                        <div class="tabbable">
+                            <ul class="nav nav-tabs">
+                                <li class="active"><a href="#tab1" data-toggle="tab">{{mountPoint|removeSlash}} users</a></li>
+                                <li><a href="#tab2" data-toggle="tab">Google Users</a></li>
+                            </ul>
+                            <div class="tab-content">
+                                <div class="tab-pane active" id="tab1">
+                                    <form class="form" ng-submit="addCollaborator()">
+                                        <div ng-hide="collaborators.length">
+                                            There are no users to collaborate with.
+                                        </div>
+                                        <label ng-show="collaborators.length">
+                                            Select from existing users of {{mountPoint|removeSlash}}
+                                        </label>
+                                        <select ng-model="selectedCollaborator" ng-show="collaborators.length"
+                                        ng-options="collaborator.getEmail() + ' (' + collaborator.getNameSpace() + ')'
+                                        for collaborator in collaborators">
+                                        </select><br>
+                                        <button type="submit" class="btn btn-primary"
+                                        ng-show="collaborators.length" ng-disabled="!selectedCollaborator">
+                                            Add
+                                        </button>
+                                    </form>
+                                </div>
+                                <div class="tab-pane" id="tab2">
+                                    <form class="form" ng-submit="addGoogleCollaborator()">
+                                        <label>Type in a google ID</label>
+                                        <input type="text" ng-model="selectedGoogleCollaborator"><br>
+                                        <button type="submit" class="btn btn-primary"
+                                        ng-disabled="!selectedGoogleCollaborator">
+                                            Add
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
-                    <form class="form-horizontal box span8 offset2" ng-show="addingOwner && instanceList.length" ng-submit="addOwner()">
+                    <div class="box span8 offset2" ng-show="addingOwner && instanceList.length">
                         <button type="button" class="close" ng-click="addingOwner = false">×</button>
-                        <fieldset>
-                            <legend>Add Owner</legend>
-                            <div ng-show="!owners.length">There are no users to collaborate with.</div>
-                            <select ng-model="selectedOwner" ng-show="owners.length" class="margin-bottom"
-                            ng-options="owner.email+' (' + owner.ns + ')' for owner in owners">
-                            </select>
-                            <button type="submit" class="btn btn-primary margin-bottom"
-                            ng-show="owners.length" ng-disabled="!selectedOwner">
-                                Add
-                            </button>
-                        </fieldset>
-                    </form>
+                        <legend>Add Owner</legend>
+                        <div class="tabbable">
+                            <ul class="nav nav-tabs">
+                                <li class="active"><a href="#tab3" data-toggle="tab">{{mountPoint|removeSlash}} users</a></li>
+                                <li><a href="#tab4" data-toggle="tab">Google Users</a></li>
+                            </ul>
+                            <div class="tab-content">
+                                <div class="tab-pane active" id="tab3">
+                                    <form class="form" ng-submit="addOwner()">
+                                        <div ng-hide="owners.length">
+                                            There are no users to collaborate with.
+                                        </div>
+                                        <label ng-show="owners.length">
+                                            Select from existing users of {{mountPoint|removeSlash}}
+                                        </label>
+                                        <select ng-model="selectedOwner" ng-show="owners.length"
+                                        ng-options="owner.getEmail() + ' (' + owner.getNameSpace() + ')'
+                                        for owner in owners">
+                                        </select><br>
+                                        <button type="submit" class="btn btn-primary"
+                                        ng-show="owners.length" ng-disabled="!selectedOwner">
+                                            Add
+                                        </button>
+                                    </form>
+                                </div>
+                                <div class="tab-pane" id="tab4">
+                                    <form class="form" ng-submit="addGoogleOwner()">
+                                        <label>Type in a google ID</label>
+                                        <div class="input-append">
+                                            <input id="appendedInput" type="text"
+                                            ng-model="selectedGoogleOwner">
+                                            <span class="add-on">@gmail.com</span>
+                                        </div>
+                                        <button type="submit" class="btn btn-primary"
+                                        ng-disabled="!selectedGoogleOwner">
+                                            Add
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
                 </div>
 
@@ -169,9 +223,9 @@
                                 <span ng-show="predicate == 'name' && !reverse"><i class="icon-caret-up icon-large"></i></span>
                             </th>
                             <th>
-                                <span ng-click="predicate = 'date'; reverse = !reverse" class="pointer">Date Created</span>
-                                <span ng-show="predicate == 'date' && reverse"><i class="icon-caret-down icon-large"></i></span>
-                                <span ng-show="predicate == 'date' && !reverse"><i class="icon-caret-up icon-large"></i></span>
+                                <span ng-click="predicate = 'dateCreated'; reverse = !reverse" class="pointer">Date Created</span>
+                                <span ng-show="predicate == 'dateCreated' && reverse"><i class="icon-caret-down icon-large"></i></span>
+                                <span ng-show="predicate == 'dateCreated' && !reverse"><i class="icon-caret-up icon-large"></i></span>
                             </th>
                             <th>Owner(s)</th>
                             <th>Collaborator(s)</th>
@@ -185,25 +239,23 @@
                                     ng-checked="isSelected(instance.id)">
                                 </td>
                                 <td>
-                                    <span ng-show="!instance.editing"
+                                    <span ng-hide="instance.editing"
                                     ng-click="clickRename(instance.id)" class="pointer">
                                         {{instance.name}}
                                     </span>
-                                    <form ng-submit="instance.editing=false" ng-show="instance.editing">
-                                        <input type="text" class="span11" ng-model="instance.name">
-                                    </form>
+                                    <input ng-show="instance.editing" ng-hasfocus="instance.editing" type="text" class="span11" ng-model="instance.name">
                                 </td>
                                 <td>
-                                    {{instance.date}}
+                                    {{instance.dateCreated}}
                                 </td>
                                 <td>
                                     <div ng-repeat="owner in instance.owners">
-                                        {{owner.email}} ({{owner.ns}})
+                                        {{owner.getEmail()}} ({{owner.getNameSpace()}})
                                     </div>
                                 </td>
                                 <td>
                                     <div ng-repeat="collaborator in instance.collaborators">
-                                        {{collaborator.email}} ({{collaborator.ns}})
+                                        {{collaborator.getEmail()}} ({{collaborator.getNameSpace()}})
                                     </div>
                                 </td>
                             </tr> 

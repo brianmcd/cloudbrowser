@@ -1,7 +1,6 @@
 CBAdmin         = angular.module("CBAdmin", [])
 
 CBAdmin.controller "AppCtrl", ($scope, $timeout) ->
-    query = Utils.searchStringtoJSON(location.search)
     $scope.user = cloudBrowser.app.getCreator()
     #change to event based model
     $scope.getApps = () ->

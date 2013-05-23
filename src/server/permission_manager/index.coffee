@@ -63,13 +63,13 @@ class PermissionManager extends EventEmitter
         Object.keys(permissions).length isnt 0
             item.set(permissions)
 
-        @emit('ItemAdded', key)
+        @emit('Added', key)
         return item
 
     removeItem : (key) ->
         if @findItem key
             delete @containedItems[key]
-            @emit('ItemRemoved', key)
+            @emit('Removed', key)
             return(null)
         else return new Error("Key " + key + " not found.")
 

@@ -1,9 +1,8 @@
 CBPasswordReset         = angular.module("CBPasswordReset", [])
-query = Utils.searchStringtoJSON(location.search)
 
 CBPasswordReset.controller "ResetCtrl", ($scope) ->
 
-    email                   = query['user'].split("@")[0]
+    email                   = CloudBrowser.auth.getResetEmail(location.search).split("@")[0]
     $scope.email            = email.charAt(0).toUpperCase() + email.slice(1)
     $scope.password         = null
     $scope.vpassword        = null
@@ -19,8 +18,6 @@ CBPasswordReset.controller "ResetCtrl", ($scope) ->
     $scope.reset = () ->
 
         $scope.isDisabled   = true
-        email               = query['user']
-        token               = query['token']
 
         if not $scope.password? or
         not /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^\da-zA-Z])\S{8,15}$/.test($scope.password)
@@ -29,10 +26,10 @@ CBPasswordReset.controller "ResetCtrl", ($scope) ->
             " Spaces are not allowed."
 
         else
-            CloudBrowser.app.resetPassword {email:query['user'], ns:'local'}, $scope.password, token, (success) ->
+            CloudBrowser.auth.resetPassword location.search, $scope.password, (success) ->
                 $scope.$apply ->
                     if success
                             $scope.passwordSuccess = "The password has been successfully reset"
                     else
-                            $scope.passwordError = "Password can not be changed as the link has expired."
-                $scope.isDisabled = false
+                            $scope.passwordError = "Password can not be changed as the reset link is invalid."
+                    $scope.isDisabled = false

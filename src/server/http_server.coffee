@@ -129,7 +129,8 @@ class HTTPServer extends EventEmitter
             while components[index] isnt "landing_page" and index < components.length
                 mp += "/" + components[index++]
             if not @findAppUser(req, mp)
-                @redirect(res, "#{mp}/authenticate#{@constructQueryString(req)}")
+                req.query.redirectto = "http://#{@cbServer.config.domain}:#{@cbServer.config.port}#{req.url}"
+                @redirect(res, "#{mp}/authenticate#{@constructQueryString(req.query)}")
             else next()
 
         # Middleware that authorizes access to browsers
@@ -137,7 +138,8 @@ class HTTPServer extends EventEmitter
             @cbServer.permissionManager.findBrowserPermRec @findAppUser(req, mountPointNoSlash), mountPointNoSlash,
             req.params.browserID, (browserPermRec) ->
                 # Replace with call to checkPermissions
-                if browserPermRec? and browserPermRec.permissions.readwrite or browserPermRec.permissions.own
+                if browserPermRec?
+                    if browserPermRec.permissions.readwrite or browserPermRec.permissions.own
                         next()
                 else
                     res.send("Permission Denied", 403)
@@ -151,8 +153,9 @@ class HTTPServer extends EventEmitter
             while components[index] isnt "authenticate" and index < components.length
                 mp += "/" + components[index++]
             if @findAppUser(req, mp)
-                @redirect(res, "#{mp}#{@constructQueryString(req)}")
-            else next()
+                @redirect(res, "#{mp}#{@constructQueryString(req.query)}")
+            else
+                next()
 
         # Route handler for resource proxy request
         resourceProxyRouteHandler = (req, res) ->
@@ -163,12 +166,12 @@ class HTTPServer extends EventEmitter
             bserver?.resources.fetch(resourceID, res)
 
         # Route handler for browser request
-        browserRouteHandler = (req, res) =>
+        browserRouteHandler = (req, res, next) =>
             id = decodeURIComponent(req.params.browserID)
             bserver = browsers.find(id)
             if bserver
                 # Not the right way!
-                bserver.browser.window.location.search = @constructQueryString(req)
+                bserver.browser.window.location.search = @constructQueryString(req.query)
                 console.log "Joining: #{id}"
                 res.render 'base.jade',
                     browserID : id
@@ -190,7 +193,7 @@ class HTTPServer extends EventEmitter
                 components.pop()
                 mp = components.join("/")
                 user = @findAppUser(req, mp)
-                queryString = @constructQueryString(req)
+                queryString = @constructQueryString(req.query)
                 browsers.create app, queryString, user, (err, bserver) =>
                     throw err if err
                     @redirect(res, "#{mountPointNoSlash}/browsers/#{bserver.id}/index#{queryString}")
@@ -223,7 +226,7 @@ class HTTPServer extends EventEmitter
                         res.render 'deactivate.jade'
 
             @server.get mountPoint, isAuthenticated, (req, res) =>
-                queryString = @constructQueryString(req)
+                queryString = @constructQueryString(req.query)
                 if app.getPerUserBrowserLimit() > 1
                     @redirect(res, "#{mountPointNoSlash}/landing_page#{queryString}")
                 else
@@ -237,12 +240,12 @@ class HTTPServer extends EventEmitter
         else if /authenticate$/.test(mountPointNoSlash)
             @server.get mountPoint, isNotAuthenticated, (req, res) =>
                 id = req.session.browserID
-                queryString = @constructQueryString(req)
+                queryString = @constructQueryString(req.query)
                 if !id? || !browsers.find(id)
                   bserver = browsers.create(app, queryString)
                   # Makes the browser stick to a particular client to prevent creation of too many browsers
                   id = req.session.browserID = bserver.id
-                  @redirect(res, "#{mountPointNoSlash}/browsers/#{id}/index#{queryString}")
+                @redirect(res, "#{mountPointNoSlash}/browsers/#{id}/index#{queryString}")
 
             @server.get browserRoute, isNotAuthenticated, browserRouteHandler
             @server.get resourceProxyRoute, isNotAuthenticated, resourceProxyRouteHandler
@@ -250,7 +253,7 @@ class HTTPServer extends EventEmitter
         else
             @server.get mountPoint, (req, res) =>
                 id = req.session.browserID
-                queryString = @constructQueryString(req)
+                queryString = @constructQueryString(req.query)
                 if !id? || !browsers.find(id)
                   bserver = browsers.create(app, queryString)
                   # Makes the browser stick to a particular client to prevent creation of too many browsers
@@ -299,6 +302,7 @@ class HTTPServer extends EventEmitter
             # Add a user permission record associated with the application
             @cbServer.permissionManager.addAppPermRec user,
             mountPoint, {createbrowsers:true}, (appRec) =>
+                #TODO Add this only if app has a landing_page
                 @cbServer.permissionManager.addAppPermRec user,
                 "#{mountPoint}/landing_page", {createbrowsers:true}, (appRec) ->
                     callback()
@@ -317,8 +321,8 @@ class HTTPServer extends EventEmitter
         if req.session.user.length is 0
             req.session.destroy()
 
-    constructQueryString : (req) ->
-        queryString = QueryString.stringify(req.query)
+    constructQueryString : (query) ->
+        queryString = QueryString.stringify(query)
         if queryString isnt ""
             queryString = "?" + queryString
         return queryString

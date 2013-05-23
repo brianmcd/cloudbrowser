@@ -2,13 +2,16 @@ Application = require('./application')
 Barrier     = require('../../shared/barrier')
 Fs          = require('fs')
 Path        = require('path')
+{EventEmitter} = require('events')
 
-class ApplicationManager
+class ApplicationManager extends EventEmitter
     constructor : (paths, @server) ->
         @applications = {}
         @load paths if paths?
+        if @server.config.homePage
+            @addDirectory("src/server/applications/home_page", "/")
         if @server.config.adminInterface
-            @addDirectory "src/server/applications/admin_interface"
+            @addDirectory("src/server/applications/admin_interface")
         @barrier = new Barrier () =>
             @server.mountMultiple(@applications)
 
@@ -149,11 +152,13 @@ class ApplicationManager
 
     add : (opts) ->
         @applications[opts.mountPoint] = new Application opts
+        @emit("Added", @applications[opts.mountPoint])
         return @applications[opts.mountPoint]
         
     remove : (mountPoint) ->
         console.log "Unmount all the routes and remove all VBs"
         delete @applications[mountPoint]
+        @emit("Removed", @applications[opts.mountPoint])
 
     find : (mountPoint) ->
         @applications[mountPoint]
