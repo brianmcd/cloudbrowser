@@ -7,6 +7,7 @@ class Application
          @sharedState,
          @localState,
          @authenticationInterface,
+         @instantiationStrategy,
          @dbName,
          @description,
          @browserLimit,
@@ -25,16 +26,13 @@ class Application
         else
             return Path.resolve(process.cwd(), @entryPoint)
 
-    getPerUserBrowserLimit : () ->
-        if not @browserLimit or not @browserLimit.user
-            return 0
-        else
-            return @browserLimit.user
-    
-    getPerAppBrowserLimit : () ->
-        if not @browserLimit or not @browserLimit.app
-            return 0
-        else
-            return @browserLimit.app
+    getInstantiationStrategy : () ->
+        validStategies = ["singleAppInstance", "singleUserInstance", "multiInstance"]
+        if @instantiationStrategy? and validStategies.indexOf(@instantiationStrategy) isnt -1
+            return @instantiationStrategy
+        else return null
+
+    getBrowserLimit : () ->
+        if @browserLimit then return @browserLimit else return 0
     
 module.exports = Application

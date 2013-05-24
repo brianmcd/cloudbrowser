@@ -1,4 +1,4 @@
 {
     "authenticationInterface"   : true,
-    "browserLimit"              : {"app":1}
+    "instantiationStrategy"     : "singleAppInstance"
 }

@@ -1,4 +1,4 @@
 {
     "entryPoint" : "index.html",
-    "browserLimit" : {"app":1}
+    "instantiationStrategy" : "singleAppInstance"
 }

@@ -57,51 +57,52 @@ class InProcessBrowserManager extends BrowserManager
             checkPermissions {createbrowsers:true}, (isActionPermitted) =>
 
                 if isActionPermitted
-                    appLimit = appOrUrl.getPerAppBrowserLimit()
+                    instantiationStrategy = appOrUrl.getInstantiationStrategy()
 
-                    if not appLimit
+                    if instantiationStrategy is "singleAppInstance"
+                        if not appOrUrl.browser
+                            permissions = {readwrite:true}
+                            appOrUrl.browser = @createBrowser(BrowserServerSecure, id, query, user, permissions)
+                            grantBrowserPerm id, permissions, (browserRec) =>
+                                callback(null, appOrUrl.browser)
+                        else
+                            grantBrowserPerm appOrUrl.browser.id, {readwrite:true}, (browserRec) ->
+                                callback(null, appOrUrl.browser)
 
-                        userLimit = appOrUrl.getPerUserBrowserLimit()
-
-                        if not userLimit
-                            throw new Error("BrowserLimit for app " + @mountPoint + " not specified")
-
+                    else if instantiationStrategy is "singleUserInstance"
                         @server.permissionManager.getBrowserPermRecs user,
                         @mountPoint, (browserRecs) =>
+                            if not browserRecs or
+                            Object.keys(browserRecs).length < 1
+                                permissions = {own:true, readwrite:true, remove:true}
+                                browser = @createBrowser(BrowserServerSecure, id, query, user, permissions)
+                                grantBrowserPerm id, permissions, (browserRec) =>
+                                    callback(null, browser)
+                            else
+                                for browserId, browser of browserRecs
+                                    callback(null, @find(browserId))
+                                    break
 
+                    else if instantiationStrategy is "multiInstance"
+                        userLimit = appOrUrl.getBrowserLimit()
+                        if not userLimit
+                            throw new Error("BrowserLimit for app " + @mountPoint + " not specified")
+                        @server.permissionManager.getBrowserPermRecs user,
+                        @mountPoint, (browserRecs) =>
                             if not browserRecs or
                             Object.keys(browserRecs).length < userLimit
                                 permissions = {own:true, readwrite:true, remove:true}
                                 browser = @createBrowser(BrowserServerSecure, id, query, user, permissions)
                                 grantBrowserPerm id, permissions, (browserRec) =>
                                     callback(null, browser)
-
-                            else
-                                if userLimit is 1
-                                    for browserId, browser of browserRecs
-                                        callback(null, @find(browserId))
-                                        break
-                                else
-                                    callback(new Error("Browser limit reached"), null)
-
-                    else if appLimit is 1
-
-                        if not appOrUrl.browser
-                            permissions = {readwrite:true}
-                            appOrUrl.browser = @createBrowser(BrowserServerSecure, id, query, user, permissions)
-                            grantBrowserPerm id, permissions, (browserRec) =>
-                                callback(null, appOrUrl.browser)
-
-                        else
-                            grantBrowserPerm appOrUrl.browser.id, {readwrite:true}, (browserRec) ->
-                                callback(null, appOrUrl.browser)
+                            else callback(new Error("Browser limit reached"), null)
 
                 else callback(new Error("You are not permitted to perform this action."))
 
         else
             # Authentication is disabled
 
-            if appOrUrl.getPerAppBrowserLimit() is 1
+            if appOrUrl.getInstantiationStrategy() is "singleAppInstance"
                 if not appOrUrl.browser
                     appOrUrl.browser = @createBrowser(BrowserServer, id, query)
                 return appOrUrl.browser

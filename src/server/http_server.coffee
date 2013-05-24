@@ -227,7 +227,7 @@ class HTTPServer extends EventEmitter
 
             @server.get mountPoint, isAuthenticated, (req, res) =>
                 queryString = @constructQueryString(req.query)
-                if app.getPerUserBrowserLimit() > 1
+                if app.getInstantiationStrategy() is "multiInstance"
                     @redirect(res, "#{mountPointNoSlash}/landing_page#{queryString}")
                 else
                     user = @findAppUser(req, mountPointNoSlash)

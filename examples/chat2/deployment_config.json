@@ -1,6 +1,7 @@
 {
     "authenticationInterface"   : true,
-    "browserLimit"              : {"user":"5"},
+    "instantiationStrategy"     : "multiInstance",
+    "browserLimit"              : 5,
     "readOnlyUsers"             : ["ALL"],
     "comments" : "This file is provided by the developer. Override default mountpoint. allowedUsers=users.mongodb"
 }

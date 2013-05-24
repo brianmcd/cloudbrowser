@@ -1,4 +1,4 @@
 {
     "authenticationInterface"   : true,
-    "browserLimit"              : {"user":1}
+    "instantiationStrategy"     : "singleUserInstance"
 }
