@@ -1,11 +1,19 @@
-Server              = require('./index')
-FS                  = require('fs')
-Util                = require('util')
+Server  = require('./index')
+FS      = require('fs')
+Util    = require('util')
+Path    = require('path')
 
 serverConfig = {}
 
-if FS.existsSync "server_config.json"
-    serverConfig = JSON.parse FS.readFileSync "server_config.json"
+projectRoot = process.argv[1]
+projectRoot = projectRoot.split("/")
+projectRoot.pop();projectRoot.pop()
+projectRoot = projectRoot.join("/")
+
+configPath  = Path.resolve(projectRoot, "server_config.json")
+
+if FS.existsSync configPath
+    serverConfig = JSON.parse FS.readFileSync configPath
 
 Opts = require('nomnom')
     .option 'deployment',
@@ -81,6 +89,7 @@ else
     #List of all the unmatched positional args (the path names)
     for item in Opts._
         paths.push item
-    server = new Server(serverConfig, paths)
+    
+    server = new Server(serverConfig, paths, projectRoot)
     server.once 'ready', ->
         console.log 'Server started in local mode'

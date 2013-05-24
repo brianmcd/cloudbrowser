@@ -5,13 +5,14 @@ Path        = require('path')
 {EventEmitter} = require('events')
 
 class ApplicationManager extends EventEmitter
-    constructor : (paths, @server) ->
+    constructor : (paths, @server, projectRoot) ->
+        @appDir = Path.resolve(projectRoot, "src/server/applications")
         @applications = {}
         @load paths if paths?
         if @server.config.homePage
-            @addDirectory("src/server/applications/home_page", "/")
+            @addDirectory(Path.resolve(@appDir, "home_page"), "/")
         if @server.config.adminInterface
-            @addDirectory("src/server/applications/admin_interface")
+            @addDirectory(Path.resolve(@appDir, "admin_interface"))
         @barrier = new Barrier () =>
             @server.mountMultiple(@applications)
 
@@ -37,7 +38,6 @@ class ApplicationManager extends EventEmitter
 
     #Walks a path recursively and finds all CloudBrowser applications
     walk : (path) =>
-
         outstandingReadDir = @barrier.add()
 
         friendlyLstat = (filename, cb) ->
@@ -63,12 +63,9 @@ class ApplicationManager extends EventEmitter
                 statDirEntry filename
             outstandingReadDir.finish()
                         
-
     # Configures and adds a CloudBrowser application to the application manager 
     addDirectory : (path, mountPoint) ->
-
         #Remove src/server/applications from the paths to be traversed.
-
         constructDbName = (mountPoint) ->
             if mountPoint[mountPoint.length-1] is "\/"
                 mountPoint = mountPoint.pop()
@@ -90,10 +87,10 @@ class ApplicationManager extends EventEmitter
 
         if opts.authenticationInterface
             opts.dbName = constructDbName(opts.mountPoint)
-            @addDirectory "src/server/applications/authentication_interface", opts.mountPoint + "/authenticate"
-            @addDirectory "src/server/applications/password_reset", opts.mountPoint + "/password_reset"
+            @addDirectory Path.resolve(@appDir, "authentication_interface"), opts.mountPoint + "/authenticate"
+            @addDirectory Path.resolve(@appDir, "password_reset"), opts.mountPoint + "/password_reset"
             if opts.instantiationStrategy is "multiInstance"
-                @addDirectory "src/server/applications/landing_page", opts.mountPoint + "/landing_page"
+                @addDirectory Path.resolve(@appDir, "landing_page"), opts.mountPoint + "/landing_page"
 
         @add opts
 

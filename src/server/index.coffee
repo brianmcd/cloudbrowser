@@ -66,7 +66,7 @@ defaults =
     useRouter           : false
 
 class Server extends EventEmitter
-    constructor : (@config = {}, paths) ->
+    constructor : (@config = {}, paths, projectRoot) ->
         for own k, v of defaults
             if not @config.hasOwnProperty k
                 @config[k] = v
@@ -83,7 +83,7 @@ class Server extends EventEmitter
               console.log "Connection to Database cloudbrowser established"
           else throw err
         @mongoStore = new MongoStore(db: "cloudbrowser_sessions", clear_interval: 600)
-        @applicationManager = new ApplicationManager(paths, this)
+        @applicationManager = new ApplicationManager(paths, this, projectRoot)
         @permissionManager = new PermissionManager(@db)
         @httpServer = new HTTPServer this, () =>
             @emit('ready')
