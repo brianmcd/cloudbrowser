@@ -503,6 +503,9 @@ class CloudBrowser
                                                 bserver.redirect(query.redirectto)
                                             else
                                                 bserver.redirect(appUrl)
+                                                setTimeout () ->
+                                                    bserver.server.applicationManager.find(bserver.mountPoint).browsers.close(bserver)
+                                                , 500
                                 else callback(false)
                         else callback(false)
 
@@ -516,6 +519,9 @@ class CloudBrowser
                 if not query.redirectto?
                     search += "&redirectto=" + appUrl
                 bserver.redirect( "http://" + config.domain + ":" + config.port + '/googleAuth' + search)
+                setTimeout () ->
+                    bserver.server.applicationManager.find(bserver.mountPoint).browsers.close(bserver)
+                , 500
 
             sendEmail : (toEmailID, subject, message, callback) ->
                 smtpTransport = Nodemailer.createTransport "SMTP",
