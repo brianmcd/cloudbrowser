@@ -16,7 +16,6 @@ CBHomePage.filter "mountPointFilter", () ->
     return (list) ->
         index = 0
         while index < list.length
-            console.log list[index].mountPoint
             if list[index].mountPoint is '/'
                 list.splice(index,1)
             mps = list[index].mountPoint.split("/")

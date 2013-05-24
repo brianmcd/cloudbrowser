@@ -1,8 +1,9 @@
-Path        = require('path')
-Weak        = require('weak')
-Components  = require('../server/components')
+Path         = require('path')
+Weak         = require('weak')
+Components   = require('../server/components')
+CloudBrowser = require('./cloudbrowser')
 
-module.exports = EmbedAPI = (browser) ->
+module.exports = EmbedAPI = (browser, bserver) ->
     cleaned = false
     # TODO: is this weak ref required?
     window = Weak(browser.window, () -> cleaned = true)
@@ -32,3 +33,5 @@ module.exports = EmbedAPI = (browser) ->
 
             browser.emit('CreateComponent', clientComponent)
             return target
+
+    window.CloudBrowser = new CloudBrowser(bserver)

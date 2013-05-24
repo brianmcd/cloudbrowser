@@ -7,7 +7,6 @@ EmbedAPI               = require('../../api')
 KO                     = require('../../api/ko')
 DOMWindowFactory       = require('./DOMWindowFactory')
 Application            = require('../application_manager/application')
-CloudBrowser           = require('../api')
 
 TESTS_RUNNING = process.env.TESTS_RUNNING
 if TESTS_RUNNING
@@ -96,7 +95,6 @@ class Browser extends EventEmitter
         # based on a package.json manifest.
         @window.require = require
         @window.process = process
-        @window.CloudBrowser = new CloudBrowser(@bserver)
         EmbedAPI(this, @bserver)
         # If an app needs server-side knockout, we have to monkey patch
         # some ko functions.

@@ -1,7 +1,5 @@
 (function() {
-  var CBHomePage, Util;
-
-  Util = require('util');
+  var CBHomePage;
 
   CBHomePage = angular.module("CBHomePage", []);
 
@@ -28,7 +26,6 @@
       var index, mps;
       index = 0;
       while (index < list.length) {
-        console.log(list[index].mountPoint);
         if (list[index].mountPoint === '/') list.splice(index, 1);
         mps = list[index].mountPoint.split("/");
         if (endings.indexOf(mps[mps.length - 1]) !== -1) {
