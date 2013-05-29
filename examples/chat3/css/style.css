@@ -1,0 +1,44 @@
+.page-header{
+    font-family: museo !important;
+}
+
+.margin-bottom{
+    margin-bottom: 25px;
+}
+
+@font-face{
+    font-family : museo;
+    src: url("../font/museo/Museo_Slab_500_2-webfont.eot");
+    src: url("../font/museo/Museo_Slab_500_2-webfont.eot") format('embedded-opentype'),
+         url("../font/museo/Museo_Slab_500_2-webfont.woff") format('woff'),
+         url("../font/museo/Museo_Slab_500_2-webfont.ttf") format('truetype');
+
+}
+
+#chat-box{
+    border: 1px solid #bbb;
+    background-color: #fff;
+    height: 350px;
+    overflow: scroll;
+    overflow-x:hidden;
+}
+
+#chat-text{
+    resize: none;
+    maxLength: 10000;
+}
+
+#create{
+    display:inline-block;
+    -webkit-transition : all 0.4s;
+       -moz-transition : all 0.4s;
+}
+
+.active{
+    -webkit-transform  : rotate(45deg);
+       -moz-transform  : rotate(45deg);
+}
+
+.pointer{
+    cursor: pointer
+}

@@ -1,0 +1,5 @@
+{
+    "state"      : "chatboot.js",
+    "entryPoint" : "index.html",
+    "instantiationStrategy" : "singleUserInstance"
+}
