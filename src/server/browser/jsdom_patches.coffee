@@ -4,7 +4,7 @@ exports.applyPatches = (level3) ->
     addDefaultHandlers(level3.html)
     addKeyboardEvents(level3)
     patchScriptTag(level3)
-    addCustomCssPropertySupport('relativePosition', level3.html.CSSStyleDeclaration)
+    addCustomCssPropertySupport('cloudbrowserRelativePosition', level3.html.CSSStyleDeclaration)
 
 patchScriptTag = (level3) ->
     html = level3.html
@@ -195,7 +195,7 @@ addKeyboardEvents = (level3) ->
         return new events.Event(eventType)
 
 addCustomCssPropertySupport = (property, CSSStyleDeclaration) ->
-    propertyName = property.replace /([a-z]+)([A-Z])/g, (match, p1, p2) ->
+    propertyName = "-" + property.replace /([a-z]+)([A-Z])/g, (match, p1, p2) ->
         return "#{p1}-#{p2.toLowerCase()}"
     Object.defineProperty CSSStyleDeclaration.prototype, property,
         get: ->

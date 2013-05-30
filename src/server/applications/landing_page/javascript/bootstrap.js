@@ -1889,7 +1889,7 @@
         .css({
           top: pos.top + pos.height
         , left: pos.left
-        , relativePosition: "bottom-left"
+        , cloudbrowserRelativePosition: "bottom-left"
         }).css('display', 'block')
 
       this.shown = true

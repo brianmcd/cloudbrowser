@@ -25,7 +25,7 @@ class ClientEngine
         
         @customCssAttrHldrs = {}
 
-        @addCustomCssAttrHldr 'relative-position', (target, position) ->
+        @addCustomCssAttrHldr '-cloudbrowser-relative-position', (target, position) ->
             prevSibling = $(target).prev()
             pos = $.extend {}, prevSibling.position(), {height: prevSibling[0].offsetHeight}
             positionComponents = position.split('-')
