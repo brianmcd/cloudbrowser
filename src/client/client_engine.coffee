@@ -22,6 +22,30 @@ class ClientEngine
         @nodes = null
 
         @renderingPaused = false
+        
+        @customCssAttrHldrs = {}
+
+        @addCustomCssAttrHldr 'relative-position', (target, position) ->
+            prevSibling = $(target).prev()
+            pos = $.extend {}, prevSibling.position(), {height: prevSibling[0].offsetHeight}
+            positionComponents = position.split('-')
+            top  = 0; left = 0
+
+            switch positionComponents[0]
+                when "bottom"
+                    top = pos.top + pos.height
+                when "top"
+                    top = pos.top - $(target).outerHeight()
+            switch positionComponents[1]
+                when "left"
+                    left = pos.left
+                when "right"
+                    left = pos.left + prevSibling.outerWidth() - $(target).outerWidth()
+
+            $(target).insertAfter(prevSibling).css(
+                top  : top
+                left : left
+            ).show()
 
     connectSocket : () ->
         socket = null
@@ -76,6 +100,12 @@ class ClientEngine
                         func.apply(this, arguments)
                         @window.testClient?.emit(name, arguments)
 
+    # Handler must take the target node and attribute value as arguments
+    addCustomCssAttrHldr : (attribute, handler) ->
+        if @customCssAttrHldrs[attribute]
+            throw new Error("Handler already exists for the custom css attribute #{attribute}")
+        @customCssAttrHldrs[attribute] = handler
+
 RPCMethods =
     SetConfig : (config) ->
         for own key, value of config
@@ -100,7 +130,9 @@ RPCMethods =
 
     DOMStyleChanged : (targetId, attribute, value) ->
         target = @nodes.get(targetId)
-        target.style[attribute] = value
+        if attribute of @customCssAttrHldrs
+            @customCssAttrHldrs[attribute](target, value)
+        else target.style[attribute] = value
 
     DOMPropertyModified : (targetId, property, value) ->
         target = @nodes.get(targetId)

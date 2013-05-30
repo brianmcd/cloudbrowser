@@ -98,7 +98,6 @@ CBLandingPage.controller "UserCtrl", ($scope, $timeout) ->
     $scope.reverse      = true
     $scope.filterType   = 'all'
 
-    # Get the instances associated with the user
     CloudBrowser.app.getInstances (instances) ->
         for instance in instances
             addToInstanceList(instance)
@@ -114,7 +113,6 @@ CBLandingPage.controller "UserCtrl", ($scope, $timeout) ->
         $scope.addingCollaborator = false
         $scope.addingOwner        = false
 
-    # Create a virtual instance
     $scope.createVB = () ->
         CloudBrowser.app.createInstance (err) ->
             if err then $scope.safeApply () -> $scope.error = err.message
@@ -122,7 +120,6 @@ CBLandingPage.controller "UserCtrl", ($scope, $timeout) ->
     $scope.logout = () ->
         CloudBrowser.auth.logout()
 
-    # Change behaviour based on type of click
     $scope.open = () ->
 
         openNewTab = (instanceID) ->
@@ -134,115 +131,67 @@ CBLandingPage.controller "UserCtrl", ($scope, $timeout) ->
             openNewTab(instanceID)
 
     $scope.remove = () ->
-
         while $scope.selected.length > 0
             findInInstanceList($scope.selected[0]).close (err) ->
                 if err
                     $scope.error = "You do not have the permission to perform this action"
         $scope.confirmDelete = false
                         
-    $scope.openCollaborateForm = () ->
-
-        $scope.addingCollaborator = !$scope.addingCollaborator
-
-        if $scope.addingCollaborator
-
-            $scope.addingOwner = false
-
-            CloudBrowser.app.getUsers (users) ->
-                for instanceID in $scope.selected
-                    instance = findInInstanceList(instanceID)
-                    index = 0
-                    while index < users.length
-                        if instance.isOwner(users[index]) or
-                        instance.isReaderWriter(users[index])
-                            users.splice(index, 1)
-                        else index++
-                
-                $scope.safeApply ->
-                    $scope.collaborators = users
-
-    $scope.addCollaborator = () ->
+    grantPermAndSendMail = (user, perm) ->
+        subject = "CloudBrowser - #{$scope.user.getEmail()} shared an instance with you."
+        msg = "Hi #{user.getEmail()}<br>To view the instance, visit <a href='#{CloudBrowser.app.getUrl()}'>#{$scope.mountPoint}</a>" +
+              " and login to your existing account or use your google ID to login if you do not have an account already."
         for instanceID in $scope.selected
             instance = findInInstanceList(instanceID)
             if instance.isOwner($scope.user)
-                instance.grantPermissions {readwrite:true}, $scope.selectedCollaborator, (err) ->
-                    $scope.safeApply ->
-                        if not err
-                            $scope.boxMessage = "The selected instances are now shared with " +
-                            $scope.selectedCollaborator.getEmail() + " (" + $scope.selectedCollaborator.getNameSpace() + ")"
-                            $scope.addingCollaborator = false
-                        else $scope.error = err
-            else
-                $scope.error = "You do not have the permission to perform this action."
-
-    $scope.addGoogleCollaborator = () ->
-        for instanceID in $scope.selected
-            instance = findInInstanceList(instanceID)
-            if instance.isOwner($scope.user)
-                user    = new CloudBrowser.User($scope.selectedGoogleCollaborator, "google")
-                subject = "CloudBrowser - #{$scope.user.getEmail()} shared an instance with you."
-                msg     = "Hi #{user.getEmail()}<br>To view the instance, visit <a href='#{CloudBrowser.app.getUrl()}'>#{$scope.mountPoint}</a>"+
-                          " and login with your google account."
-                instance.grantPermissions {readwrite:true}, user, (err) ->
+                instance.grantPermissions perm, user, (err) ->
                     if not err
                         CloudBrowser.auth.sendEmail user.getEmail(), subject, msg, () ->
-                            $scope.safeApply ->
-                                $scope.boxMessage = "The selected instances are now shared with " +
-                                $scope.selectedGoogleCollaborator + " (google)"
-                                $scope.addingCollaborator = false
+                        $scope.safeApply ->
+                            $scope.boxMessage = "The selected instances are now shared with " +
+                            user.getEmail() + " (" + user.getNameSpace() + ")"
+                            $scope.addingOwner        = false
+                            $scope.addingCollaborator = false
                     else $scope.safeApply -> $scope.error = err
             else
                 $scope.error = "You do not have the permission to perform this action."
+
+    addCollaborator = (selectedUser, perm) ->
+        lParIdx = selectedUser.indexOf("(")
+        rParIdx = selectedUser.indexOf(")")
+
+        if lParIdx isnt -1 and rParIdx isnt -1
+            emailID   = selectedUser.substring(0, lParIdx-1)
+            namespace = selectedUser.substring(lParIdx+1, rParIdx)
+            user      = new CloudBrowser.User(emailID, namespace)
+            CloudBrowser.app.userExists user, (exists) ->
+                    if exists then grantPermAndSendMail(user, perm)
+                    else $scope.safeApply -> $scope.error = "Invalid Collaborator Selected"
+
+        else if lParIdx is -1 and rParIdx is -1 and
+        /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}$/.test(selectedUser.toUpperCase())
+            user = new CloudBrowser.User(selectedUser, "google")
+            grantPermAndSendMail(user, perm)
+
+        else $scope.error = "Invalid Collaborator Selected"
+
+    $scope.openCollaborateForm = () ->
+        $scope.addingCollaborator = !$scope.addingCollaborator
+        if $scope.addingCollaborator
+            $scope.addingOwner = false
+
+    $scope.addCollaborator = () ->
+        addCollaborator($scope.selectedCollaborator, {readwrite:true})
+        $scope.selectedCollaborator = null
 
     $scope.openAddOwnerForm = () ->
         $scope.addingOwner = !$scope.addingOwner
         if $scope.addingOwner
             $scope.addingCollaborator = false
-            CloudBrowser.app.getUsers (users) ->
-                for instanceID in $scope.selected
-                    instance = findInInstanceList(instanceID)
-                    index = 0
-                    while index < users.length
-                        if instance.isOwner(users[index])
-                            users.splice(index, 1)
-                        else index++
-                            
-                $scope.safeApply ->
-                    $scope.owners = users
 
     $scope.addOwner = () ->
-        for instanceID in $scope.selected
-            instance = findInInstanceList(instanceID)
-            if instance.isOwner($scope.user)
-                instance.grantPermissions {own:true, remove:true, readwrite:true},
-                $scope.selectedOwner, (err) ->
-                    $scope.safeApply ->
-                        if not err
-                            $scope.boxMessage = "The selected instances are now co-owned with " +
-                            $scope.selectedOwner.getEmail() + " (" + $scope.selectedOwner.getNameSpace() + ")"
-                            $scope.addingOwner = false
-                        else $scope.error = err
-            else
-                $scope.error = "You do not have the permission to perform this action."
-
-    $scope.addGoogleOwner = () ->
-        for instanceID in $scope.selected
-            instance = findInInstanceList(instanceID)
-            if instance.isOwner($scope.user)
-                user    = new CloudBrowser.User($scope.selectedGoogleOwner+"@gmail.com", "google")
-                subject = "CloudBrowser - #{$scope.user.getEmail()} shared an instance with you."
-                msg     = "Hi #{user.getEmail()}<br>To view the instance, visit <a href='#{CloudBrowser.app.getUrl()}'>#{$scope.mountPoint}</a>"
-                instance.grantPermissions {own:true, remove:true, readwrite:true}, user, (err) ->
-                    if not err
-                        CloudBrowser.auth.sendEmail user.getEmail(), subject, msg, () ->
-                            $scope.safeApply ->
-                                $scope.boxMessage = "The selected instances are now co-owned with " +
-                                $scope.selectedGoogleOwner + " (google)"
-                                $scope.addingOwner = false
-                    else $scope.safeApply -> $scope.error = err
-            else
-                $scope.error = "You do not have the permission to perform this action."
+        addCollaborator($scope.selectedOwner, {own:true, remove:true, readwrite:true})
+        $scope.selectedOwner = null
 
     addToSelected = (instanceID) ->
         if $scope.selected.indexOf(instanceID) is -1
@@ -325,3 +274,34 @@ CBLandingPage.directive 'ngHasfocus', () ->
         element.bind 'keydown', (e) ->
             if e.which is 13
                 scope.$apply(attrs.ngHasfocus + " = false";scope.instance.rename(scope.instance.name))
+
+CBLandingPage.directive 'typeahead', () ->
+    directive =
+        restrict : 'A',
+        link : (scope, element, attrs) ->
+            args =
+                source : (query, process) ->
+                    data = []
+                    CloudBrowser.app.getUsers (users) ->
+                        for instanceID in scope.selected
+                            instance = $.grep scope.instanceList, (element, index) ->
+                               (element.id is instanceID)
+                            instance = instance[0]; index = 0
+                            if attrs.typeahead is "selectedCollaborator"
+                                while index < users.length
+                                    if instance.isOwner(users[index]) or
+                                    instance.isReaderWriter(users[index])
+                                        users.splice(index, 1)
+                                    else index++
+                            else if attrs.typeahead is "selectedOwner"
+                                while index < users.length
+                                    if instance.isOwner(users[index])
+                                        users.splice(index, 1)
+                                    else index++
+                        for collaborator in users
+                            data.push(collaborator.getEmail() + ' (' + collaborator.getNameSpace() + ')')
+                        process(data)
+                updater : (item) ->
+                    scope.$apply(attrs.typeahead + " = '#{item}'")
+                    return item
+            $(element).typeahead(args)

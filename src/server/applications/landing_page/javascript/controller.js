@@ -6,7 +6,7 @@
   Util = require('util');
 
   CBLandingPage.controller("UserCtrl", function($scope, $timeout) {
-    var Months, addToInstanceList, addToSelected, findInInstanceList, formatDate, removeFromInstanceList, removeFromSelected, toggleEnabledDisabled;
+    var Months, addCollaborator, addToInstanceList, addToSelected, findInInstanceList, formatDate, grantPermAndSendMail, removeFromInstanceList, removeFromSelected, toggleEnabledDisabled;
     Months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     $scope.safeApply = function(fn) {
       var phase;
@@ -199,77 +199,23 @@
       }
       return $scope.confirmDelete = false;
     };
-    $scope.openCollaborateForm = function() {
-      $scope.addingCollaborator = !$scope.addingCollaborator;
-      if ($scope.addingCollaborator) {
-        $scope.addingOwner = false;
-        return CloudBrowser.app.getUsers(function(users) {
-          var index, instance, instanceID, _i, _len, _ref;
-          _ref = $scope.selected;
-          for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-            instanceID = _ref[_i];
-            instance = findInInstanceList(instanceID);
-            index = 0;
-            while (index < users.length) {
-              if (instance.isOwner(users[index]) || instance.isReaderWriter(users[index])) {
-                users.splice(index, 1);
-              } else {
-                index++;
-              }
-            }
-          }
-          return $scope.safeApply(function() {
-            return $scope.collaborators = users;
-          });
-        });
-      }
-    };
-    $scope.addCollaborator = function() {
-      var instance, instanceID, _i, _len, _ref, _results;
+    grantPermAndSendMail = function(user, perm) {
+      var instance, instanceID, msg, subject, _i, _len, _ref, _results;
+      subject = "CloudBrowser - " + ($scope.user.getEmail()) + " shared an instance with you.";
+      msg = ("Hi " + (user.getEmail()) + "<br>To view the instance, visit <a href='" + (CloudBrowser.app.getUrl()) + "'>" + $scope.mountPoint + "</a>") + " and login to your existing account or use your google ID to login if you do not have an account already.";
       _ref = $scope.selected;
       _results = [];
       for (_i = 0, _len = _ref.length; _i < _len; _i++) {
         instanceID = _ref[_i];
         instance = findInInstanceList(instanceID);
         if (instance.isOwner($scope.user)) {
-          _results.push(instance.grantPermissions({
-            readwrite: true
-          }, $scope.selectedCollaborator, function(err) {
-            return $scope.safeApply(function() {
-              if (!err) {
-                $scope.boxMessage = "The selected instances are now shared with " + $scope.selectedCollaborator.getEmail() + " (" + $scope.selectedCollaborator.getNameSpace() + ")";
-                return $scope.addingCollaborator = false;
-              } else {
-                return $scope.error = err;
-              }
-            });
-          }));
-        } else {
-          _results.push($scope.error = "You do not have the permission to perform this action.");
-        }
-      }
-      return _results;
-    };
-    $scope.addGoogleCollaborator = function() {
-      var instance, instanceID, msg, subject, user, _i, _len, _ref, _results;
-      _ref = $scope.selected;
-      _results = [];
-      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-        instanceID = _ref[_i];
-        instance = findInInstanceList(instanceID);
-        if (instance.isOwner($scope.user)) {
-          user = new CloudBrowser.User($scope.selectedGoogleCollaborator, "google");
-          subject = "CloudBrowser - " + ($scope.user.getEmail()) + " shared an instance with you.";
-          msg = ("Hi " + (user.getEmail()) + "<br>To view the instance, visit <a href='" + (CloudBrowser.app.getUrl()) + "'>" + $scope.mountPoint + "</a>") + " and login with your google account.";
-          _results.push(instance.grantPermissions({
-            readwrite: true
-          }, user, function(err) {
+          _results.push(instance.grantPermissions(perm, user, function(err) {
             if (!err) {
-              return CloudBrowser.auth.sendEmail(user.getEmail(), subject, msg, function() {
-                return $scope.safeApply(function() {
-                  $scope.boxMessage = "The selected instances are now shared with " + $scope.selectedGoogleCollaborator + " (google)";
-                  return $scope.addingCollaborator = false;
-                });
+              CloudBrowser.auth.sendEmail(user.getEmail(), subject, msg, function() {});
+              return $scope.safeApply(function() {
+                $scope.boxMessage = "The selected instances are now shared with " + user.getEmail() + " (" + user.getNameSpace() + ")";
+                $scope.addingOwner = false;
+                return $scope.addingCollaborator = false;
               });
             } else {
               return $scope.safeApply(function() {
@@ -282,94 +228,52 @@
         }
       }
       return _results;
+    };
+    addCollaborator = function(selectedUser, perm) {
+      var emailID, lParIdx, namespace, rParIdx, user;
+      lParIdx = selectedUser.indexOf("(");
+      rParIdx = selectedUser.indexOf(")");
+      if (lParIdx !== -1 && rParIdx !== -1) {
+        emailID = selectedUser.substring(0, lParIdx - 1);
+        namespace = selectedUser.substring(lParIdx + 1, rParIdx);
+        user = new CloudBrowser.User(emailID, namespace);
+        return CloudBrowser.app.userExists(user, function(exists) {
+          if (exists) {
+            return grantPermAndSendMail(user, perm);
+          } else {
+            return $scope.safeApply(function() {
+              return $scope.error = "Invalid Collaborator Selected";
+            });
+          }
+        });
+      } else if (lParIdx === -1 && rParIdx === -1 && /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}$/.test(selectedUser.toUpperCase())) {
+        user = new CloudBrowser.User(selectedUser, "google");
+        return grantPermAndSendMail(user, perm);
+      } else {
+        return $scope.error = "Invalid Collaborator Selected";
+      }
+    };
+    $scope.openCollaborateForm = function() {
+      $scope.addingCollaborator = !$scope.addingCollaborator;
+      if ($scope.addingCollaborator) return $scope.addingOwner = false;
+    };
+    $scope.addCollaborator = function() {
+      addCollaborator($scope.selectedCollaborator, {
+        readwrite: true
+      });
+      return $scope.selectedCollaborator = null;
     };
     $scope.openAddOwnerForm = function() {
       $scope.addingOwner = !$scope.addingOwner;
-      if ($scope.addingOwner) {
-        $scope.addingCollaborator = false;
-        return CloudBrowser.app.getUsers(function(users) {
-          var index, instance, instanceID, _i, _len, _ref;
-          _ref = $scope.selected;
-          for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-            instanceID = _ref[_i];
-            instance = findInInstanceList(instanceID);
-            index = 0;
-            while (index < users.length) {
-              if (instance.isOwner(users[index])) {
-                users.splice(index, 1);
-              } else {
-                index++;
-              }
-            }
-          }
-          return $scope.safeApply(function() {
-            return $scope.owners = users;
-          });
-        });
-      }
+      if ($scope.addingOwner) return $scope.addingCollaborator = false;
     };
     $scope.addOwner = function() {
-      var instance, instanceID, _i, _len, _ref, _results;
-      _ref = $scope.selected;
-      _results = [];
-      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-        instanceID = _ref[_i];
-        instance = findInInstanceList(instanceID);
-        if (instance.isOwner($scope.user)) {
-          _results.push(instance.grantPermissions({
-            own: true,
-            remove: true,
-            readwrite: true
-          }, $scope.selectedOwner, function(err) {
-            return $scope.safeApply(function() {
-              if (!err) {
-                $scope.boxMessage = "The selected instances are now co-owned with " + $scope.selectedOwner.getEmail() + " (" + $scope.selectedOwner.getNameSpace() + ")";
-                return $scope.addingOwner = false;
-              } else {
-                return $scope.error = err;
-              }
-            });
-          }));
-        } else {
-          _results.push($scope.error = "You do not have the permission to perform this action.");
-        }
-      }
-      return _results;
-    };
-    $scope.addGoogleOwner = function() {
-      var instance, instanceID, msg, subject, user, _i, _len, _ref, _results;
-      _ref = $scope.selected;
-      _results = [];
-      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-        instanceID = _ref[_i];
-        instance = findInInstanceList(instanceID);
-        if (instance.isOwner($scope.user)) {
-          user = new CloudBrowser.User($scope.selectedGoogleOwner + "@gmail.com", "google");
-          subject = "CloudBrowser - " + ($scope.user.getEmail()) + " shared an instance with you.";
-          msg = "Hi " + (user.getEmail()) + "<br>To view the instance, visit <a href='" + (CloudBrowser.app.getUrl()) + "'>" + $scope.mountPoint + "</a>";
-          _results.push(instance.grantPermissions({
-            own: true,
-            remove: true,
-            readwrite: true
-          }, user, function(err) {
-            if (!err) {
-              return CloudBrowser.auth.sendEmail(user.getEmail(), subject, msg, function() {
-                return $scope.safeApply(function() {
-                  $scope.boxMessage = "The selected instances are now co-owned with " + $scope.selectedGoogleOwner + " (google)";
-                  return $scope.addingOwner = false;
-                });
-              });
-            } else {
-              return $scope.safeApply(function() {
-                return $scope.error = err;
-              });
-            }
-          }));
-        } else {
-          _results.push($scope.error = "You do not have the permission to perform this action.");
-        }
-      }
-      return _results;
+      addCollaborator($scope.selectedOwner, {
+        own: true,
+        remove: true,
+        readwrite: true
+      });
+      return $scope.selectedOwner = null;
     };
     addToSelected = function(instanceID) {
       if ($scope.selected.indexOf(instanceID) === -1) {
@@ -493,6 +397,61 @@
           return scope.$apply(attrs.ngHasfocus + " = false", scope.instance.rename(scope.instance.name));
         }
       });
+    };
+  });
+
+  CBLandingPage.directive('typeahead', function() {
+    var directive;
+    return directive = {
+      restrict: 'A',
+      link: function(scope, element, attrs) {
+        var args;
+        args = {
+          source: function(query, process) {
+            var data;
+            data = [];
+            return CloudBrowser.app.getUsers(function(users) {
+              var collaborator, index, instance, instanceID, _i, _j, _len, _len2, _ref;
+              _ref = scope.selected;
+              for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+                instanceID = _ref[_i];
+                instance = $.grep(scope.instanceList, function(element, index) {
+                  return element.id === instanceID;
+                });
+                instance = instance[0];
+                index = 0;
+                if (attrs.typeahead === "selectedCollaborator") {
+                  while (index < users.length) {
+                    if (instance.isOwner(users[index]) || instance.isReaderWriter(users[index])) {
+                      users.splice(index, 1);
+                    } else {
+                      index++;
+                    }
+                  }
+                } else if (attrs.typeahead === "selectedOwner") {
+                  while (index < users.length) {
+                    if (instance.isOwner(users[index])) {
+                      users.splice(index, 1);
+                    } else {
+                      index++;
+                    }
+                  }
+                }
+              }
+              for (_j = 0, _len2 = users.length; _j < _len2; _j++) {
+                collaborator = users[_j];
+                data.push(collaborator.getEmail() + ' (' + collaborator.getNameSpace() + ')');
+              }
+              return process(data);
+            });
+          },
+          updater: function(item) {
+            scope.$apply(attrs.typeahead + (" = '" + item + "'"));
+            return item;
+          }
+        };
+        return $(element).typeahead(args);
+      }
     };
   });
 

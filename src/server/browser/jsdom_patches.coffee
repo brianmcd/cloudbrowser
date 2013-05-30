@@ -1,7 +1,10 @@
+Util = require('util')
+
 exports.applyPatches = (level3) ->
     addDefaultHandlers(level3.html)
     addKeyboardEvents(level3)
     patchScriptTag(level3)
+    addCustomCssPropertySupport('relativePosition', level3.html.CSSStyleDeclaration)
 
 patchScriptTag = (level3) ->
     html = level3.html
@@ -190,3 +193,12 @@ addKeyboardEvents = (level3) ->
             when "KeyboardEvents", "KeyboardEvent"
                 return new events.KeyboardEvent(eventType)
         return new events.Event(eventType)
+
+addCustomCssPropertySupport = (property, CSSStyleDeclaration) ->
+    propertyName = property.replace /([a-z]+)([A-Z])/g, (match, p1, p2) ->
+        return "#{p1}-#{p2.toLowerCase()}"
+    Object.defineProperty CSSStyleDeclaration.prototype, property,
+        get: ->
+            @getPropertyValue(propertyName)
+        set: (value) ->
+            @setProperty(propertyName, value)

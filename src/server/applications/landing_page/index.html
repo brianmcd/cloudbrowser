@@ -1,12 +1,12 @@
 <html ng-app="CBLandingPage">
     <head>
         <title>{{mountPoint}}</title>
+        <link href="css/bootstrap.css" rel="stylesheet">
+        <link href="css/bootstrap-responsive.css" rel="stylesheet">
         <script type="text/javascript" src='javascript/angular.js'></script>
         <script type="text/javascript" src='javascript/controller.js'></script>
         <script type="text/javascript" src='javascript/jquery.js'></script>
         <script type="text/javascript" src='javascript/bootstrap.js'></script>
-        <link href="css/bootstrap.css" rel="stylesheet">
-        <link href="css/bootstrap-responsive.css" rel="stylesheet">
         <link rel='stylesheet' href='css/font-awesome.css'>
         <link rel='stylesheet' href='css/style.css'>
     </head>
@@ -125,87 +125,29 @@
                     <div class="span8 offset2 box margin-bottom" ng-show="addingCollaborator && instanceList.length">
                         <button type="button" class="close" ng-click="addingCollaborator = false">×</button>
                         <legend>Add Collaborator</legend>
-                        <div class="tabbable">
-                            <ul class="nav nav-tabs">
-                                <li class="active"><a href="#tab1" data-toggle="tab">{{mountPoint|removeSlash}} users</a></li>
-                                <li><a href="#tab2" data-toggle="tab">Google Users</a></li>
-                            </ul>
-                            <div class="tab-content">
-                                <div class="tab-pane active" id="tab1">
-                                    <form class="form" ng-submit="addCollaborator()">
-                                        <div ng-hide="collaborators.length">
-                                            There are no users to collaborate with.
-                                        </div>
-                                        <label ng-show="collaborators.length">
-                                            Select from existing users of {{mountPoint|removeSlash}}
-                                        </label>
-                                        <select ng-model="selectedCollaborator" ng-show="collaborators.length"
-                                        ng-options="collaborator.getEmail() + ' (' + collaborator.getNameSpace() + ')'
-                                        for collaborator in collaborators">
-                                        </select><br>
-                                        <button type="submit" class="btn btn-primary"
-                                        ng-show="collaborators.length" ng-disabled="!selectedCollaborator">
-                                            Add
-                                        </button>
-                                    </form>
-                                </div>
-                                <div class="tab-pane" id="tab2">
-                                    <form class="form" ng-submit="addGoogleCollaborator()">
-                                        <label>Type in a google ID</label>
-                                        <input type="text" ng-model="selectedGoogleCollaborator"><br>
-                                        <button type="submit" class="btn btn-primary"
-                                        ng-disabled="!selectedGoogleCollaborator">
-                                            Add
-                                        </button>
-                                    </form>
-                                </div>
-                            </div>
-                        </div>
+                            <form class="form-inline" ng-submit="addCollaborator()">
+                                <label>
+                                    Enter a google ID or select from existing users of {{mountPoint|removeSlash}}.
+                                </label>
+                                <input type="text" data-provide="typeahead" typeahead="selectedCollaborator" ng-model="selectedCollaborator">
+                                <button type="submit" class="btn btn-primary" ng-disabled="!selectedCollaborator">
+                                    Add
+                                </button>
+                            </form>
                     </div>
 
                     <div class="box span8 offset2" ng-show="addingOwner && instanceList.length">
                         <button type="button" class="close" ng-click="addingOwner = false">×</button>
                         <legend>Add Owner</legend>
-                        <div class="tabbable">
-                            <ul class="nav nav-tabs">
-                                <li class="active"><a href="#tab3" data-toggle="tab">{{mountPoint|removeSlash}} users</a></li>
-                                <li><a href="#tab4" data-toggle="tab">Google Users</a></li>
-                            </ul>
-                            <div class="tab-content">
-                                <div class="tab-pane active" id="tab3">
-                                    <form class="form" ng-submit="addOwner()">
-                                        <div ng-hide="owners.length">
-                                            There are no users to collaborate with.
-                                        </div>
-                                        <label ng-show="owners.length">
-                                            Select from existing users of {{mountPoint|removeSlash}}
-                                        </label>
-                                        <select ng-model="selectedOwner" ng-show="owners.length"
-                                        ng-options="owner.getEmail() + ' (' + owner.getNameSpace() + ')'
-                                        for owner in owners">
-                                        </select><br>
-                                        <button type="submit" class="btn btn-primary"
-                                        ng-show="owners.length" ng-disabled="!selectedOwner">
-                                            Add
-                                        </button>
-                                    </form>
-                                </div>
-                                <div class="tab-pane" id="tab4">
-                                    <form class="form" ng-submit="addGoogleOwner()">
-                                        <label>Type in a google ID</label>
-                                        <div class="input-append">
-                                            <input id="appendedInput" type="text"
-                                            ng-model="selectedGoogleOwner">
-                                            <span class="add-on">@gmail.com</span>
-                                        </div>
-                                        <button type="submit" class="btn btn-primary"
-                                        ng-disabled="!selectedGoogleOwner">
-                                            Add
-                                        </button>
-                                    </form>
-                                </div>
-                            </div>
-                        </div>
+                            <form class="form-inline" ng-submit="addOwner()">
+                                <label>
+                                    Enter a google ID or select from existing users of {{mountPoint|removeSlash}}.
+                                </label>
+                                <input type="text" data-provide="typeahead" typeahead="selectedOwner" ng-model = "selectedOwner">
+                                <button type="submit" class="btn btn-primary" ng-disabled="!selectedOwner">
+                                    Add
+                                </button>
+                            </form>
                     </div>
 
                 </div>
