@@ -19,14 +19,14 @@ class ApplicationManager extends EventEmitter
     load : (paths) ->
         for path in paths
             path = Path.resolve process.cwd(), path
-            Fs.lstat path, (err, stats) =>
+            @friendlyLstat path, (err, stats) =>
                 throw err if err
                 throw new Error "Path " + path + " not found" if not stats
                 #Check for symlink
                 if stats.isFile()
-                    @addFile path
+                    @addFile stats.filename
                 else if stats.isDirectory()
-                    @walk path
+                    @walk stats.filename
                 
     # Adds an html application to the application manager
     addFile : (path) ->
@@ -36,19 +36,19 @@ class ApplicationManager extends EventEmitter
         @add opts
 
 
+    friendlyLstat : (filename, cb) ->
+        Fs.lstat filename, (err, stats) ->
+            stats.filename = filename
+            if err then cb err
+            else cb err, stats
+
     #Walks a path recursively and finds all CloudBrowser applications
     walk : (path) =>
         outstandingReadDir = @barrier.add()
 
-        friendlyLstat = (filename, cb) ->
-            Fs.lstat filename, (err, stats) ->
-                stats.filename = filename
-                if err then cb err
-                else cb err, stats
-
         statDirEntry = (filename) =>
             outstandingLstat = @barrier.add()
-            friendlyLstat filename, (err, stats) =>
+            @friendlyLstat filename, (err, stats) =>
                 if err then throw err
                 if stats.isDirectory()
                     @walk stats.filename
