@@ -3,7 +3,7 @@ CBHomePage = angular.module("CBHomePage", [])
 CBHomePage.controller "MainCtrl", ($scope) ->
     $scope.apps = CloudBrowser.server.getApps()
     $scope.serverUrl = CloudBrowser.server.getUrl()
-    CloudBrowser.server.registerListenerOnEvent 'Added', (app) ->
+    CloudBrowser.server.addEventListener 'Added', (app) ->
         $scope.$apply ->
             $scope.apps.push(app)
 

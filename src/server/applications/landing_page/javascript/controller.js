@@ -43,7 +43,7 @@
     addToInstanceList = function(instance) {
       if (!findInInstanceList(instance.id)) {
         instance.dateCreated = formatDate(instance.dateCreated);
-        instance.registerListenerOnEvent('Shared', function(err) {
+        instance.addEventListener('Shared', function(err) {
           if (!err) {
             return $scope.safeApply(function() {
               instance.owners = instance.getOwners();
@@ -53,7 +53,7 @@
             return console.log(err);
           }
         });
-        instance.registerListenerOnEvent('Renamed', function(err, name) {
+        instance.addEventListener('Renamed', function(err, name) {
           if (!err) {
             return $scope.safeApply(function() {
               return instance.name = name;
@@ -151,10 +151,10 @@
       }
       return _results;
     });
-    CloudBrowser.app.registerListenerOnEvent('Added', function(instance) {
+    CloudBrowser.app.addEventListener('Added', function(instance) {
       return addToInstanceList(instance);
     });
-    CloudBrowser.app.registerListenerOnEvent('Removed', function(id) {
+    CloudBrowser.app.addEventListener('Removed', function(id) {
       return removeFromInstanceList(id);
     });
     $scope.$watch('selected.length', function(newValue, oldValue) {

@@ -35,12 +35,12 @@ CBLandingPage.controller "UserCtrl", ($scope, $timeout) ->
     addToInstanceList = (instance) ->
         if not findInInstanceList(instance.id)
             instance.dateCreated = formatDate(instance.dateCreated)
-            instance.registerListenerOnEvent 'Shared', (err) ->
+            instance.addEventListener 'Shared', (err) ->
                 if not err then $scope.safeApply ->
                     instance.owners = instance.getOwners()
                     instance.collaborators = instance.getReaderWriters()
                 else console.log(err)
-            instance.registerListenerOnEvent 'Renamed', (err, name) ->
+            instance.addEventListener 'Renamed', (err, name) ->
                 if not err then $scope.safeApply ->
                     instance.name = name
                 else console.log(err)
@@ -102,10 +102,10 @@ CBLandingPage.controller "UserCtrl", ($scope, $timeout) ->
         for instance in instances
             addToInstanceList(instance)
 
-    CloudBrowser.app.registerListenerOnEvent 'Added', (instance) ->
+    CloudBrowser.app.addEventListener 'Added', (instance) ->
         addToInstanceList(instance)
 
-    CloudBrowser.app.registerListenerOnEvent 'Removed', (id) ->
+    CloudBrowser.app.addEventListener 'Removed', (id) ->
         removeFromInstanceList(id)
 
     $scope.$watch 'selected.length', (newValue, oldValue) ->

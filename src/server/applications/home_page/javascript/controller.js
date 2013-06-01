@@ -6,7 +6,7 @@
   CBHomePage.controller("MainCtrl", function($scope) {
     $scope.apps = CloudBrowser.server.getApps();
     $scope.serverUrl = CloudBrowser.server.getUrl();
-    return CloudBrowser.server.registerListenerOnEvent('Added', function(app) {
+    return CloudBrowser.server.addEventListener('Added', function(app) {
       return $scope.$apply(function() {
         return $scope.apps.push(app);
       });
