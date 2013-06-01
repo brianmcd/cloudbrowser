@@ -33,7 +33,7 @@ class DebugClient
             @recvLog.write("Recv: #{bytesReceived} bytes [#{@recvTotal} total]\n")
 
     setupLogs : () ->
-        logDir = Path.resolve(__dirname, '..', '..', 'logs')
+        logDir = Path.resolve(__dirname, '../../..', 'logs')
         sendLogPath = Path.resolve(logDir, "#{@browserID}-send.log")
         recvLogPath = Path.resolve(logDir, "#{@browserID}-recv.log")
         @sendLog = FS.createWriteStream(sendLogPath)
