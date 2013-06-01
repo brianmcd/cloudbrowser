@@ -53,7 +53,7 @@ Chat3.controller "ChatCtrl", ($scope) ->
             addRoom(room, $scope.otherRooms, false)
 
     chatUser = vt.local.user
-    chatUser.setUserDetails(CloudBrowser.app.getCreator().deserialize())
+    chatUser.setUserDetails(CloudBrowser.app.getCreator().toJson())
 
     chatUser.on "JoinedRoom", (room) ->
         addRoom(room, $scope.joinedRooms, true)

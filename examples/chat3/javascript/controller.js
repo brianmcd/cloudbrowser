@@ -78,7 +78,7 @@
       }
     }
     chatUser = vt.local.user;
-    chatUser.setUserDetails(CloudBrowser.app.getCreator().deserialize());
+    chatUser.setUserDetails(CloudBrowser.app.getCreator().toJson());
     chatUser.on("JoinedRoom", function(room) {
       addRoom(room, $scope.joinedRooms, true);
       $scope.safeApply(function() {

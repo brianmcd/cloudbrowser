@@ -10,7 +10,7 @@ Nodemailer  = require("nodemailer")
 #   Gets the namespace of the user.
 #   @return [String] The namespace of the user.
 #
-# @method #deserialize()
+# @method #toJson()
 #   Gets a clone of the user
 #   @return [Object] The clone of the user in the form email:[String],ns:[String]
 class User
@@ -28,7 +28,7 @@ class User
             return email
         @getNameSpace = () ->
             return namespace
-        @deserialize = () ->
+        @toJson = () ->
             return {email:email, ns:namespace}
 
 # CloudBrowser application instances a.k.a. virtual browsers.   
@@ -104,10 +104,10 @@ class Instance
             return creator
 
         @close = (callback) ->
-            application.browsers.close(browser, userContext.deserialize(), callback)
+            application.browsers.close(browser, userContext.toJson(), callback)
 
         @registerListenerOnEvent = (event, callback) ->
-            permissionManager.findBrowserPermRec userContext.deserialize(), browser.mountPoint, @id, (browserRec) ->
+            permissionManager.findBrowserPermRec userContext.toJson(), browser.mountPoint, @id, (browserRec) ->
                 if browserRec?
                     if event is "Shared"
                         browser.on event, (user, list) ->
@@ -127,7 +127,7 @@ class Instance
         #   browser.emit(event, args)
 
         @getReaderWriters = () ->
-            permissionManager.findBrowserPermRec userContext.deserialize(), browser.mountPoint, @id, (browserRec) ->
+            permissionManager.findBrowserPermRec userContext.toJson(), browser.mountPoint, @id, (browserRec) ->
                 if browserRec?
                     readerwriterRecs = browser.getUsersInList('readwrite')
                     users = []
@@ -138,7 +138,7 @@ class Instance
                 else return null
 
         @getOwners = () ->
-            permissionManager.findBrowserPermRec userContext.deserialize(), browser.mountPoint, @id, (browserRec) ->
+            permissionManager.findBrowserPermRec userContext.toJson(), browser.mountPoint, @id, (browserRec) ->
                 if browserRec?
                     ownerRecs = browser.getUsersInList('own')
                     users = []
@@ -148,24 +148,24 @@ class Instance
                 else return null
 
         @isReaderWriter = (user) ->
-            permissionManager.findBrowserPermRec userContext.deserialize(), browser.mountPoint, @id, (browserRec) ->
+            permissionManager.findBrowserPermRec userContext.toJson(), browser.mountPoint, @id, (browserRec) ->
                 if browserRec?
-                    if browser.findUserInList(user.deserialize(), 'readwrite') and
-                    not browser.findUserInList(user.deserialize(), 'own')
+                    if browser.findUserInList(user.toJson(), 'readwrite') and
+                    not browser.findUserInList(user.toJson(), 'own')
                         return true
                     else return false
                 else return null
 
         @isOwner = (user) ->
-            permissionManager.findBrowserPermRec userContext.deserialize(), browser.mountPoint, @id, (browserRec) ->
+            permissionManager.findBrowserPermRec userContext.toJson(), browser.mountPoint, @id, (browserRec) ->
                 if browserRec?
-                    if browser.findUserInList(user.deserialize(), 'own')
+                    if browser.findUserInList(user.toJson(), 'own')
                         return true
                     else return false
                 else return null
 
         @checkPermissions = (permTypes, callback) ->
-            permissionManager.findBrowserPermRec userContext.deserialize(), browser.mountPoint, @id, (browserRec) ->
+            permissionManager.findBrowserPermRec userContext.toJson(), browser.mountPoint, @id, (browserRec) ->
                 if browserRec
                     for type,v of permTypes
                         if not browserRec.permissions[type] or
@@ -178,7 +178,7 @@ class Instance
         @grantPermissions = (permissions, user, callback) ->
             @checkPermissions {own:true}, (hasPermission) ->
                 if hasPermission
-                    user = user.deserialize()
+                    user = user.toJson()
                     permissionManager.findAppPermRec user, browser.mountPoint, (appRec) ->
                         if appRec?
                             permissionManager.addBrowserPermRec user, browser.mountPoint,
@@ -446,11 +446,11 @@ class CloudBrowser
                             callback(userList)
 
             createInstance : (callback) ->
-                application.browsers.create(application, "", creator.deserialize(),
+                application.browsers.create(application, "", creator.toJson(),
                 (err, bsvr) -> callback(err))
 
             getInstances : (callback) ->
-                permissionManager.getBrowserPermRecs creator.deserialize(),
+                permissionManager.getBrowserPermRecs creator.toJson(),
                 application.mountPoint, (browserRecs) ->
                     browsers = []
                     for id, browserRec of browserRecs
@@ -462,7 +462,7 @@ class CloudBrowser
                 bserver.redirect(url)
 
             registerListenerOnEvent : (event, callback) ->
-                permissionManager.findAppPermRec creator.deserialize(),
+                permissionManager.findAppPermRec creator.toJson(),
                 mountPoint, (appRec) ->
                     if appRec
                         if event is "Added" then appRec.on event, (id) ->
@@ -473,7 +473,7 @@ class CloudBrowser
             userExists : (user, callback) ->
                 db.collection application.dbName, (err, collection) ->
                     if err then throw err
-                    collection.findOne user.deserialize(), (err, userRec) ->
+                    collection.findOne user.toJson(), (err, userRec) ->
                         if userRec then callback(true)
                         else callback(false)
 
@@ -485,7 +485,7 @@ class CloudBrowser
             login : (user, password, searchString, callback) ->
                 db.collection application.dbName, (err, collection) =>
                     if err then throw err
-                    collection.findOne user.deserialize(), (err, userRec) =>
+                    collection.findOne user.toJson(), (err, userRec) =>
                         if userRec and userRec.status isnt 'unverified'
                             hashPassword {password : password, salt : new Buffer(userRec.salt, 'hex')}, (result) =>
                                 if result.key.toString('hex') is userRec.key
@@ -571,7 +571,7 @@ class CloudBrowser
             sendResetLink : (user, callback) ->
                 db.collection application.dbName, (err, collection) =>
                     throw err if err
-                    collection.findOne user.deserialize(), (err, userRec) =>
+                    collection.findOne user.toJson(), (err, userRec) =>
                         throw err if err
                         if userRec
                             Crypto.randomBytes 32, (err, token) =>
@@ -585,7 +585,7 @@ class CloudBrowser
                                 " If you have not requested a change in password then take no action."
 
                                 @sendEmail userRec.email, subject, message, () ->
-                                    collection.update user.deserialize(),
+                                    collection.update user.toJson(),
                                     {$set:{status:"reset_password",token:token}}, {w:1}, (err, result) ->
                                         throw err if err
                                         callback(true)
