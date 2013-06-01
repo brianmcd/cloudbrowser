@@ -4,8 +4,8 @@ class Application
     constructor : (opts) ->
         {@entryPoint,
          @mountPoint,
-         @sharedState,
-         @localState,
+         @onFirstInstance,
+         @onEveryInstance,
          @authenticationInterface,
          @instantiationStrategy,
          @dbName,

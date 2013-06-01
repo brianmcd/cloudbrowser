@@ -40,7 +40,7 @@ Chat3.controller "ChatCtrl", ($scope) ->
             return $scope.joinedRooms[$scope.joinedRooms.length - 1]
         else return null
 
-    chatManager = vt.shared.chats
+    chatManager = CloudBrowser.app.shared.chats
 
     chatManager.on "NewRoom", (room) ->
         setTimeout () ->
@@ -52,7 +52,7 @@ Chat3.controller "ChatCtrl", ($scope) ->
         if not findRoom(room.name, $scope.joinedRooms)
             addRoom(room, $scope.otherRooms, false)
 
-    chatUser = vt.local.user
+    chatUser = CloudBrowser.app.local.user
     chatUser.setUserDetails(CloudBrowser.app.getCreator().toJson())
 
     chatUser.on "JoinedRoom", (room) ->

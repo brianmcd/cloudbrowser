@@ -60,7 +60,7 @@
         return null;
       }
     };
-    chatManager = vt.shared.chats;
+    chatManager = CloudBrowser.app.shared.chats;
     chatManager.on("NewRoom", function(room) {
       return setTimeout(function() {
         if (!findRoom(room.name, $scope.joinedRooms)) {
@@ -77,7 +77,7 @@
         addRoom(room, $scope.otherRooms, false);
       }
     }
-    chatUser = vt.local.user;
+    chatUser = CloudBrowser.app.local.user;
     chatUser.setUserDetails(CloudBrowser.app.getCreator().toJson());
     chatUser.on("JoinedRoom", function(room) {
       addRoom(room, $scope.joinedRooms, true);

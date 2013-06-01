@@ -103,8 +103,8 @@ class Browser extends EventEmitter
             @window.run(Browser.koScript, "knockout-latest.debug.js")
             @window.vt.ko = KO
             @window.run(Browser.koPatch, "ko-patch.js")
-        @window.vt.shared = app.sharedState || {}
-        @window.vt.local = if app.localState then new app.localState() else {}
+        @window.CloudBrowser.app.shared = app.onFirstInstance || {}
+        @window.CloudBrowser.app.local = if app.onEveryInstance then new app.onEveryInstance() else {}
 
     @koPatch : do () ->
         koPatchPath = Path.resolve(__dirname, 'knockout', 'ko-patch.js')

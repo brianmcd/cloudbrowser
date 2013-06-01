@@ -1,6 +1,6 @@
 (function () {
-  var chats = vt.shared.chats;
-  var user = vt.local.user;
+  var chats = CloudBrowser.app.shared.chats;
+  var user = CloudBrowser.app.local.user;
   var viewModel = {
     rooms        : chats.rooms,
     username     : ko.observable(user.username()),

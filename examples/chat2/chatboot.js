@@ -4,13 +4,16 @@ var Path        = require('path'),
     User        = require('./model/local/user');
 
 module.exports = {
-  initialize : function (options) {
-        options.sharedState = {
+    initialize : function (options) {
+        /* Object that will be shared with all instances of this application*/
+        options.onFirstInstance = {
             chats : new ChatManager()
         }
-
-        options.localState = function () {
+        /* Function that will executed once per application instance,
+         * the result of which will be attached to the 'this' object of the instance.
+         */
+        options.onEveryInstance = function () {
             this.user = new User();
         }
-  }
+    }
 }
