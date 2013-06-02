@@ -4,7 +4,6 @@ ZLib           = require('zlib')
 Path           = require('path')
 Uglify         = require('uglify-js')
 Browserify     = require('browserify')
-QueryString    = require('querystring')
 Passport       = require('passport')
 GoogleStrategy = require('passport-google').Strategy
 
@@ -64,37 +63,37 @@ class HTTPServer extends EventEmitter
 
         # This is the URL that the user must access to be authenticated
         # by the Google OpenID protocol
-        @server.get '/googleAuth', (req, res, next) ->
-            # Propograting the query parameters to the chechauth route.
-            # Query parameters includes the url the user must be redirected
-            # to after successful authentication
-            req.session.query = req.query
-            next()
-        , Passport.authenticate('google')
+        @server.get '/googleAuth', Passport.authenticate('google')
 
         # This is the URL Google redirects the user to after authentication
         @server.get '/checkauth', Passport.authenticate('google'), (req, res) =>
-            req.query = req.session.query
-            if not req.query.mountPoint then res.send(500)
+            if not req.session.mountPoint then res.send(500)
 
             # Authentication unsuccessful
             else if not req.user
-                @redirect(res, req.query.mountPoint)
+                @redirect(res, req.session.mountPoint)
 
             # Authentication successful
-            else if not (app = @cbServer.applicationManager.find(req.query.mountPoint))?
+            else if not (app = @cbServer.applicationManager.find(req.session.mountPoint))?
                 res.send(500)
 
             else
+                if req.session.redirectto?
+                    redirectto = req.session.redirectto
+                    req.session.redirectto = null
+                    req.session.save()
+                else
+                    redirectto = req.session.mountPoint
+
                 @cbServer.db.collection app.dbName, (err, collection) =>
                     # Check if the user is one of the registered users of the application
                     collection.findOne {email:req.user.email, ns: 'google'}, (err, user) =>
                         throw err if err
                         # If so, update the session to indicate that the user has been authenticated
-                        # And redirect the client to the location specified in the query parameter - "redirectto"
+                        # And redirect the client to the location specified in the session parameter - "redirectto"
                         if user
-                            @updateSession(req, user, req.query.mountPoint)
-                            @redirect(res, req.query.redirectto)
+                            @updateSession(req, user, req.session.mountPoint)
+                            @redirect(res, redirectto)
                         else
                             # Insert user into list of registered users of the application
                             collection.insert {email:req.user.email,
@@ -102,9 +101,9 @@ class HTTPServer extends EventEmitter
                             (err, user) =>
                                 throw err if err
                                 # Update user permissions
-                                @addPermRec user[0], req.query.mountPoint, () =>
-                                    @updateSession(req, user[0], req.query.mountPoint)
-                                    @redirect(res, req.query.redirectto)
+                                @addPermRec user[0], req.session.mountPoint, () =>
+                                    @updateSession(req, user[0], req.session.mountPoint)
+                                    @redirect(res, redirectto)
 
     # Sets up a server endpoints that serves browsers from the
     # browsers BrowserManager.
@@ -129,8 +128,9 @@ class HTTPServer extends EventEmitter
             while components[index] isnt "landing_page" and index < components.length
                 mp += "/" + components[index++]
             if not @findAppUser(req, mp)
-                req.query.redirectto = "http://#{@cbServer.config.domain}:#{@cbServer.config.port}#{req.url}"
-                @redirect(res, "#{mp}/authenticate#{@constructQueryString(req.query)}")
+                if /browsers\/[\da-z]+\/index$/.test(req.url)
+                    req.session.redirectto = "http://#{@cbServer.config.domain}:#{@cbServer.config.port}#{req.url}"
+                @redirect(res, "#{mp}/authenticate")
             else next()
 
         # Middleware that authorizes access to browsers
@@ -153,7 +153,7 @@ class HTTPServer extends EventEmitter
             while components[index] isnt "authenticate" and index < components.length
                 mp += "/" + components[index++]
             if @findAppUser(req, mp)
-                @redirect(res, "#{mp}#{@constructQueryString(req.query)}")
+                @redirect(res, "#{mp}")
             else
                 next()
 
@@ -170,8 +170,6 @@ class HTTPServer extends EventEmitter
             id = decodeURIComponent(req.params.browserID)
             bserver = browsers.find(id)
             if bserver
-                # Not the right way!
-                bserver.browser.window.location.search = @constructQueryString(req.query)
                 console.log "Joining: #{id}"
                 res.render 'base.jade',
                     browserID : id
@@ -193,10 +191,9 @@ class HTTPServer extends EventEmitter
                 components.pop()
                 mp = components.join("/")
                 user = @findAppUser(req, mp)
-                queryString = @constructQueryString(req.query)
-                browsers.create app, queryString, user, (err, bserver) =>
+                browsers.create app, user, (err, bserver) =>
                     throw err if err
-                    @redirect(res, "#{mountPointNoSlash}/browsers/#{bserver.id}/index#{queryString}")
+                    @redirect(res, "#{mountPointNoSlash}/browsers/#{bserver.id}/index")
 
             @server.get browserRoute, isAuthenticated, browserRouteHandler
             @server.get resourceProxyRoute, isAuthenticated, resourceProxyRouteHandler
@@ -226,13 +223,12 @@ class HTTPServer extends EventEmitter
                         res.render 'deactivate.jade'
 
             @server.get mountPoint, isAuthenticated, (req, res) =>
-                queryString = @constructQueryString(req.query)
                 if app.getInstantiationStrategy() is "multiInstance"
-                    @redirect(res, "#{mountPointNoSlash}/landing_page#{queryString}")
+                    @redirect(res, "#{mountPointNoSlash}/landing_page")
                 else
                     user = @findAppUser(req, mountPointNoSlash)
-                    browsers.create app, queryString, user, (err, bserver) =>
-                        @redirect(res, "#{mountPointNoSlash}/browsers/#{bserver.id}/index#{queryString}")
+                    browsers.create app, user, (err, bserver) =>
+                        @redirect(res, "#{mountPointNoSlash}/browsers/#{bserver.id}/index")
 
             @server.get browserRoute, isAuthenticated, authorize, browserRouteHandler
             @server.get resourceProxyRoute, isAuthenticated, resourceProxyRouteHandler
@@ -240,12 +236,11 @@ class HTTPServer extends EventEmitter
         else if /authenticate$/.test(mountPointNoSlash)
             @server.get mountPoint, isNotAuthenticated, (req, res) =>
                 id = req.session.browserID
-                queryString = @constructQueryString(req.query)
                 if !id? || !browsers.find(id)
-                  bserver = browsers.create(app, queryString)
+                  bserver = browsers.create(app)
                   # Makes the browser stick to a particular client to prevent creation of too many browsers
                   id = req.session.browserID = bserver.id
-                @redirect(res, "#{mountPointNoSlash}/browsers/#{id}/index#{queryString}")
+                @redirect(res, "#{mountPointNoSlash}/browsers/#{id}/index")
 
             @server.get browserRoute, isNotAuthenticated, browserRouteHandler
             @server.get resourceProxyRoute, isNotAuthenticated, resourceProxyRouteHandler
@@ -253,12 +248,11 @@ class HTTPServer extends EventEmitter
         else
             @server.get mountPoint, (req, res) =>
                 id = req.session.browserID
-                queryString = @constructQueryString(req.query)
                 if !id? || !browsers.find(id)
-                  bserver = browsers.create(app, queryString)
-                  # Makes the browser stick to a particular client to prevent creation of too many browsers
-                  id = req.session.browserID = bserver.id
-                  @redirect(res, "#{mountPointNoSlash}/browsers/#{id}/index#{queryString}")
+                    bserver = browsers.create(app)
+                    # Makes the browser stick to a particular client to prevent creation of too many browsers
+                    id = req.session.browserID = bserver.id
+                @redirect(res, "#{mountPointNoSlash}/browsers/#{id}/index")
 
             # Route to connect to a virtual browser.
             @server.get browserRoute, browserRouteHandler
@@ -320,11 +314,5 @@ class HTTPServer extends EventEmitter
         req.session.save()
         if req.session.user.length is 0
             req.session.destroy()
-
-    constructQueryString : (query) ->
-        queryString = QueryString.stringify(query)
-        if queryString isnt ""
-            queryString = "?" + queryString
-        return queryString
 
 module.exports = HTTPServer

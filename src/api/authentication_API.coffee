@@ -9,17 +9,15 @@ QueryString     = require("querystring")
 # @method #logout()
 #   Logs out all users connected to this application instance.    
 #
-# @method #login(user, password, queryString, callback)
+# @method #login(user, password, callback)
 #   Logs a user into this CloudBrowser application.
 #   The password is hashed using pbkdf2.    
 #   @param [User] user           The user that is trying to log in.
 #   @param [String] password     The user supplied plaintext password.
-#   @param [String] queryString The location.search needed for redirection.
 #   @param [Function] callback   A boolean indicating the success/failure of the process is passed as an argument.
 #
-# @method #googleLogin(queryString)
+# @method #googleLogin()
 #   Logs a user into the application through their gmail ID.    
-#   @param [String] queryString Must be window.location.search. It is required for redirecting to the originally requested resource.
 #
 # @method #sendEmail(toEmailID, subject, message, callback)
 #   Sends an email to the specified user.
@@ -97,7 +95,7 @@ class AuthenticationAPI
             logout : () ->
                 bserver.redirect(appUrl + "/logout")
 
-            login : (user, password, queryString, callback) ->
+            login : (user, password, callback) ->
                 db.collection application.dbName, (err, collection) =>
                     if err then throw err
                     collection.findOne user.toJson(), (err, userRec) =>
@@ -106,39 +104,36 @@ class AuthenticationAPI
                                 if result.key.toString('hex') is userRec.key
                                     # TODO - Allow only one user to connect to this bserver
                                     sessionID = decodeURIComponent(bserver.getSessions()[0])
-                                    mongoStore.get sessionID, (err, session) =>
+                                    mongoStore.get sessionID, (err, session) ->
                                         throw err if err
                                         if not session.user
                                             session.user = [{app:mountPoint, email:user.getEmail(), ns:user.getNameSpace()}]
                                         else
                                             session.user.push({app:mountPoint, email:user.getEmail(), ns:user.getNameSpace()})
-                                        mongoStore.set sessionID, session, =>
-                                            query = QueryString.parse(queryString)
-                                            if query isnt "" then query = "?" + query
-                                            if query.redirectto?
-                                                bserver.redirect(query.redirectto)
+                                        redirectto = session.redirectto; session.redirectto = null
+
+                                        mongoStore.set sessionID, session, ->
+                                            if redirectto?
+                                                bserver.redirect(redirectto)
                                             else
                                                 bserver.redirect(appUrl)
-                                                setTimeout () ->
-                                                    bserver.server.applicationManager.find(bserver.mountPoint).browsers.close(bserver)
-                                                , 500
+                                            setTimeout () ->
+                                                bserver.server.applicationManager.find(bserver.mountPoint).browsers.close(bserver)
+                                            , 500
                                 else callback(false)
                         else callback(false)
 
-            googleLogin : (queryString) ->
-                search = queryString
-                if search[0] is "?"
-                    search += "&mountPoint=" + mountPoint
-                else
-                    search =  "?mountPoint=" + mountPoint
-                query = QueryString.parse(queryString)
-                if query isnt "" then query = "?" + query
-                if not query.redirectto?
-                    search += "&redirectto=" + appUrl
-                bserver.redirect( "http://" + config.domain + ":" + config.port + '/googleAuth' + search)
-                setTimeout () ->
-                    bserver.server.applicationManager.find(bserver.mountPoint).browsers.close(bserver)
-                , 500
+            googleLogin : () ->
+                sessionID = decodeURIComponent(bserver.getSessions()[0])
+                queryString = "?"
+                mongoStore.get sessionID, (err, session) ->
+                    throw err if err
+                    session.mountPoint = mountPoint
+                    mongoStore.set sessionID, session, () ->
+                        bserver.redirect( "http://" + config.domain + ":" + config.port + '/googleAuth')
+                        setTimeout () ->
+                            bserver.server.applicationManager.find(bserver.mountPoint).browsers.close(bserver)
+                        , 500
 
             sendEmail : (toEmailID, subject, message, callback) ->
                 smtpTransport = Nodemailer.createTransport "SMTP",

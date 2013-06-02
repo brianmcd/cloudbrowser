@@ -11,10 +11,10 @@ class InProcessBrowserManager extends BrowserManager
     find : (id) ->
         return @browsers[id]
 
-    createBrowser : (browserType, id, query, user, permissions) ->
+    createBrowser : (browserType, id, user, permissions) ->
         browser = @browsers[id] = new browserType(@server, id,
         @mountPoint, user, permissions)
-        browser.load(@defaultApp, query)
+        browser.load(@defaultApp)
         @addToBrowserList(browser)
         return browser
 
@@ -24,7 +24,7 @@ class InProcessBrowserManager extends BrowserManager
         browser.close()
 
     # Do we need appOrUrl?
-    create : (appOrUrl = @defaultApp, query, user, callback, id = @generateUUID()) ->
+    create : (appOrUrl = @defaultApp, user, callback, id = @generateUUID()) ->
 
         if appOrUrl? and appOrUrl.authenticationInterface or
         /landing_page$/.test(appOrUrl.mountPoint)
@@ -62,7 +62,7 @@ class InProcessBrowserManager extends BrowserManager
                     if instantiationStrategy is "singleAppInstance"
                         if not appOrUrl.browser
                             permissions = {readwrite:true}
-                            appOrUrl.browser = @createBrowser(BrowserServerSecure, id, query, user, permissions)
+                            appOrUrl.browser = @createBrowser(BrowserServerSecure, id, user, permissions)
                             grantBrowserPerm id, permissions, (browserRec) =>
                                 callback(null, appOrUrl.browser)
                         else
@@ -75,7 +75,7 @@ class InProcessBrowserManager extends BrowserManager
                             if not browserRecs or
                             Object.keys(browserRecs).length < 1
                                 permissions = {own:true, readwrite:true, remove:true}
-                                browser = @createBrowser(BrowserServerSecure, id, query, user, permissions)
+                                browser = @createBrowser(BrowserServerSecure, id, user, permissions)
                                 grantBrowserPerm id, permissions, (browserRec) =>
                                     callback(null, browser)
                             else
@@ -92,7 +92,7 @@ class InProcessBrowserManager extends BrowserManager
                             if not browserRecs or
                             Object.keys(browserRecs).length < userLimit
                                 permissions = {own:true, readwrite:true, remove:true}
-                                browser = @createBrowser(BrowserServerSecure, id, query, user, permissions)
+                                browser = @createBrowser(BrowserServerSecure, id, user, permissions)
                                 grantBrowserPerm id, permissions, (browserRec) =>
                                     callback(null, browser)
                             else callback(new Error("Browser limit reached"), null)
@@ -104,11 +104,11 @@ class InProcessBrowserManager extends BrowserManager
 
             if appOrUrl.getInstantiationStrategy() is "singleAppInstance"
                 if not appOrUrl.browser
-                    appOrUrl.browser = @createBrowser(BrowserServer, id, query)
+                    appOrUrl.browser = @createBrowser(BrowserServer, id)
                 return appOrUrl.browser
 
             else
-                return @createBrowser(BrowserServer, id, query)
+                return @createBrowser(BrowserServer, id)
 
     # Close all browsers
     closeAll : () ->

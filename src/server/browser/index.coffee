@@ -47,7 +47,7 @@ class Browser extends EventEmitter
         @removeAllListeners()
 
     # Loads the application @app
-    load : (arg, query) ->
+    load : (arg) ->
         url = null
         app = null
         if arg instanceof Application
@@ -62,7 +62,7 @@ class Browser extends EventEmitter
         @window.close if @window?
         @window = @DOMWindowFactory.create(url)
         # The first time we call this, it won't navigate. 
-        @window.location = url + query
+        @window.location = url
         @document = @window.document
         @initializeApplication(app) if app? && !app.remoteBrowsing
 

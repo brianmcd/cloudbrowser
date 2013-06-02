@@ -20,14 +20,14 @@
       return $scope.emailError = null;
     });
     $scope.googleLogin = function() {
-      return CloudBrowser.auth.googleLogin(location.search);
+      return CloudBrowser.auth.googleLogin();
     };
     $scope.login = function() {
       if (!$scope.email || !$scope.password) {
         return $scope.loginError = "Please provide both the Email ID and the password to login";
       } else {
         $scope.isDisabled = true;
-        return CloudBrowser.auth.login(CloudBrowser.User($scope.email, 'local'), $scope.password, location.search, function(success) {
+        return CloudBrowser.auth.login(CloudBrowser.User($scope.email, 'local'), $scope.password, function(success) {
           if (!success) {
             $scope.$apply(function() {
               return $scope.loginError = "Invalid Credentials";
@@ -87,7 +87,7 @@
       return $scope.isDisabled = false;
     });
     $scope.googleLogin = function() {
-      return CloudBrowser.auth.googleLogin(location.search);
+      return CloudBrowser.auth.googleLogin();
     };
     return $scope.signup = function() {
       $scope.isDisabled = true;

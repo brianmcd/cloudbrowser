@@ -18,7 +18,7 @@ CBAuthentication.controller "LoginCtrl", ($scope) ->
     $scope.$watch "email", ->
         $scope.emailError = null
 
-    $scope.googleLogin = () -> CloudBrowser.auth.googleLogin(location.search)
+    $scope.googleLogin = () -> CloudBrowser.auth.googleLogin()
 
     $scope.login = () ->
 
@@ -27,7 +27,7 @@ CBAuthentication.controller "LoginCtrl", ($scope) ->
 
         else
             $scope.isDisabled = true
-            CloudBrowser.auth.login CloudBrowser.User($scope.email, 'local'), $scope.password, location.search,
+            CloudBrowser.auth.login CloudBrowser.User($scope.email, 'local'), $scope.password,
             (success) ->
                 if not success
                     $scope.$apply ->
@@ -76,7 +76,7 @@ CBAuthentication.controller "SignupCtrl", ($scope) ->
         $scope.passwordError    = null
         $scope.isDisabled       = false
 
-    $scope.googleLogin = () -> CloudBrowser.auth.googleLogin(location.search)
+    $scope.googleLogin = () -> CloudBrowser.auth.googleLogin()
 
     $scope.signup = ->
         $scope.isDisabled = true

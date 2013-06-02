@@ -87,7 +87,7 @@ class ApplicationAPI
                             callback(userList)
 
             createInstance : (callback) ->
-                application.browsers.create(application, "", creatorJson,
+                application.browsers.create(application, creatorJson,
                 (err, bsvr) -> callback(err))
 
             getInstances : (callback) ->
