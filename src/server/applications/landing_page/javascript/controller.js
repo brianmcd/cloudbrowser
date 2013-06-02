@@ -236,7 +236,7 @@
       if (lParIdx !== -1 && rParIdx !== -1) {
         emailID = selectedUser.substring(0, lParIdx - 1);
         namespace = selectedUser.substring(lParIdx + 1, rParIdx);
-        user = new CloudBrowser.User(emailID, namespace);
+        user = CloudBrowser.User(emailID, namespace);
         return CloudBrowser.app.userExists(user, function(exists) {
           if (exists) {
             return grantPermAndSendMail(user, perm);
@@ -247,7 +247,7 @@
           }
         });
       } else if (lParIdx === -1 && rParIdx === -1 && /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}$/.test(selectedUser.toUpperCase())) {
-        user = new CloudBrowser.User(selectedUser, "google");
+        user = CloudBrowser.User(selectedUser, "google");
         return grantPermAndSendMail(user, perm);
       } else {
         return $scope.error = "Invalid Collaborator Selected";

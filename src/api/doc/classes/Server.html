@@ -13,7 +13,7 @@
   <div id='menu'>
     <a href='../class_index.html' title='Index'>Index</a>
     &raquo;
-    <span class='title'>Model</span>
+    <span class='title'>Server</span>
     <nav>
       <ul>
         <li class='noframes'>
@@ -104,142 +104,142 @@
     <div id='content'>
       <h1>
         Class:
-        Model
+        Server
       </h1>
       <table class='box'>
         <tr>
           <td>Defined in:</td>
-          <td>model.coffee</td>
+          <td>serverAPI.coffee</td>
         </tr>
       </table>
-      <h2>Class Method Summary</h2>
-      <ul class='summary'>
-  <li>
-    <span class='signature'>
-      <a href='#load-class'>
-        + (void) <strong>load</strong>()
-      </a>
-    </span>
-    <span class='desc'>
-      
-    </span>
-  </li>
-</ul>
+      <h2>Overview</h2>
+      <div class='docstring'>
+  <p>Usage = CloudBrowser.server.APIMethod</p>
+</div>
+<div class='tags'>
+</div>
       <h2>Instance Method Summary</h2>
       <ul class='summary'>
   <li>
     <span class='signature'>
+      <a href='#getDomain-instance'>
+        - (String) <strong>getDomain</strong>()
+      </a>
+    </span>
+    <span class='desc'>
+      Returns the domain as configured in the server_config.json configuration file or as provided through the command line at the time of starting CloudBrowser.
+    </span>
+  </li>
+  <li>
+    <span class='signature'>
+      <a href='#getPort-instance'>
+        - (Number) <strong>getPort</strong>()
+      </a>
+    </span>
+    <span class='desc'>
+      Returns the port as configured in the server_config.json configuration file or as provided through the command line at the time of starting CloudBrowser.
+    </span>
+  </li>
+  <li>
+    <span class='signature'>
+      <a href='#getUrl-instance'>
+        - (String) <strong>getUrl</strong>()
+      </a>
+    </span>
+    <span class='desc'>
+      Returns the URL at which the CloudBrowser server is hosted.
+    </span>
+  </li>
+  <li>
+    <span class='signature'>
       <a href='#constructor-instance'>
-        - (void) <strong>constructor</strong>(seed)
+        - (void) <strong>constructor</strong>(bserver)
       </a>
     </span>
     <span class='constructor note title'>Constructor</span>
-    <span class='desc'>
-      seed is a JSON.parse&#39;d object loaded from disk.
-    </span>
-  </li>
-  <li>
-    <span class='signature'>
-      <a href='#_toJSON-instance'>
-        - (void) <strong>_toJSON</strong>()
-      </a>
-    </span>
-    <span class='desc'>
-      
-    </span>
-  </li>
-  <li>
-    <span class='signature'>
-      <a href='#_dbPath-instance'>
-        - (void) <strong>_dbPath</strong>()
-      </a>
-    </span>
-    <span class='desc'>
-      
-    </span>
-  </li>
-  <li>
-    <span class='signature'>
-      <a href='#persist-instance'>
-        - (void) <strong>persist</strong>(callback)
-      </a>
-    </span>
-    <span class='desc'>
-      TODO: rename to &quot;save&quot;
-    </span>
-  </li>
-  <li>
-    <span class='signature'>
-      <a href='#destroy-instance'>
-        - (void) <strong>destroy</strong>(callback)
-      </a>
-    </span>
     <span class='desc'>
       
     </span>
   </li>
 </ul>
-      <h2>Class Method Details</h2>
-      <div class='methods'>
-  <div class='method_details'>
-    <p class='signature' id='load-class'>
-      + (void) <strong>load</strong>()
-    </p>
-    <div class='tags'>
-</div>
-  </div>
-</div>
       <h2>Constructor Details</h2>
       <div class='methods'>
   <div class='method_details'>
     <p class='signature' id='constructor-instance'>
-      - (void) <strong>constructor</strong>(seed)
+      - (void) <strong>constructor</strong>(bserver)
     </p>
-    <div class='docstring'>
-  <p>seed is a JSON.parse&#39;d object loaded from disk.</p>
-</div>
-<div class='tags'>
+    <div class='tags'>
 </div>
   </div>
 </div>
       <h2>Instance Method Details</h2>
       <div class='methods'>
   <div class='method_details'>
-    <p class='signature' id='_toJSON-instance'>
-      - (void) <strong>_toJSON</strong>()
-    </p>
-    <div class='tags'>
-</div>
-  </div>
-  <div class='method_details'>
-    <p class='signature' id='_dbPath-instance'>
-      - (void) <strong>_dbPath</strong>()
-    </p>
-    <div class='tags'>
-</div>
-  </div>
-  <div class='method_details'>
-    <p class='signature' id='persist-instance'>
-      - (void) <strong>persist</strong>(callback)
+    <p class='signature' id='getDomain-instance'>
+      - (String) <strong>getDomain</strong>()
     </p>
     <div class='docstring'>
-  <p>TODO: rename to &quot;save&quot;</p>
+  <p>Returns the domain as configured in the server_config.json configuration
+file or as provided through the command line at the time of starting
+CloudBrowser.<br><strong>Namespace</strong> - Server.</p>
 </div>
 <div class='tags'>
+  <h3>Returns:</h3>
+  <ul class='return'>
+    <li>
+      <span class='type'></span>
+      (<tt>String</tt>)
+      &mdash;
+      <span class='desc'>The domain at which CloudBrowser is hosted.</span>
+    </li>
+  </ul>
 </div>
   </div>
   <div class='method_details'>
-    <p class='signature' id='destroy-instance'>
-      - (void) <strong>destroy</strong>(callback)
+    <p class='signature' id='getPort-instance'>
+      - (Number) <strong>getPort</strong>()
     </p>
-    <div class='tags'>
+    <div class='docstring'>
+  <p>Returns the port as configured in the server_config.json configuration
+file or as provided through the command line at the time of starting
+CloudBrowser.<br><strong>Namespace</strong> - Server.</p>
+</div>
+<div class='tags'>
+  <h3>Returns:</h3>
+  <ul class='return'>
+    <li>
+      <span class='type'></span>
+      (<tt>Number</tt>)
+      &mdash;
+      <span class='desc'>The port at which CloudBrowser is hosted.</span>
+    </li>
+  </ul>
+</div>
+  </div>
+  <div class='method_details'>
+    <p class='signature' id='getUrl-instance'>
+      - (String) <strong>getUrl</strong>()
+    </p>
+    <div class='docstring'>
+  <p>Returns the URL at which the CloudBrowser server is hosted.<br><strong>Namespace</strong> - Server.</p>
+</div>
+<div class='tags'>
+  <h3>Returns:</h3>
+  <ul class='return'>
+    <li>
+      <span class='type'></span>
+      (<tt>String</tt>)
+      &mdash;
+      <span class='desc'>The URL at which CloudBrowser is hosted.</span>
+    </li>
+  </ul>
 </div>
   </div>
 </div>
     </div>
     <div id='footer'>
   Generated on
-  Sun Jun 02 2013 14:02:45 GMT-0400 (EDT)
+  Sat Jun 01 2013 21:39:59 GMT-0400 (EDT)
   by
   <a href='https://github.com/netzpirat/codo' title='CoffeeScript API documentation generator'>Codo</a>
   v1.6.1

@@ -47,10 +47,10 @@ patchScriptTag = (level3) ->
 addDefaultHandlers = (html) ->
     html.HTMLAnchorElement.prototype._eventDefaults =
         click : (event) ->
-            console.log "Inside ANCHOR click handler"
-            console.log(event.target.tagName)
+            #console.log "Inside ANCHOR click handler"
+            #console.log(event.target.tagName)
             window = event.target.ownerDocument.parentWindow
-            console.log("event.target.href:" + event.target.href)
+            #console.log("event.target.href:" + event.target.href)
             window.location = event.target.href if event.target.href?
 
     # See http://dev.w3.org/html5/spec/single-page.html#interactive-content
@@ -70,7 +70,7 @@ addDefaultHandlers = (html) ->
             target.checked = true
 
     html.HTMLInputElement.prototype._eventDefaults.click = (event) ->
-        console.log "Inside INPUT new click handler"
+        #console.log "Inside INPUT new click handler"
         target = event.target
         if target.type == 'submit'
             form = target.form
@@ -90,20 +90,20 @@ addDefaultHandlers = (html) ->
     html.HTMLButtonElement.prototype._eventDefaults =
         # looks like this already is done for input
         click : (event) ->
-            console.log('Inside BUTTON click handler')
+            #console.log('Inside BUTTON click handler')
             elem = event.target
             # Clicks on submit buttons should generate a submit event on the
             # enclosing form.
             if elem.type == 'submit'
                 form =  elem.form
-                console.log("Generating a submit event from button click")
+                #console.log("Generating a submit event from button click")
                 ev = elem.ownerDocument.createEvent('HTMLEvents')
                 ev.initEvent('submit', false, true)
                 form.dispatchEvent(ev)
                 form.reset()
 
     html.HTMLButtonElement.prototype.click = () ->
-        console.log("Inside BUTTON overridden click() method")
+        #console.log("Inside BUTTON overridden click() method")
         ev = @_ownerDocument.createEvent('HTMLEvents')
         ev.initEvent('click', true, true)
         @dispatchEvent(ev)

@@ -163,14 +163,14 @@ CBLandingPage.controller "UserCtrl", ($scope, $timeout) ->
         if lParIdx isnt -1 and rParIdx isnt -1
             emailID   = selectedUser.substring(0, lParIdx-1)
             namespace = selectedUser.substring(lParIdx+1, rParIdx)
-            user      = new CloudBrowser.User(emailID, namespace)
+            user      = CloudBrowser.User(emailID, namespace)
             CloudBrowser.app.userExists user, (exists) ->
                     if exists then grantPermAndSendMail(user, perm)
                     else $scope.safeApply -> $scope.error = "Invalid Collaborator Selected"
 
         else if lParIdx is -1 and rParIdx is -1 and
         /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}$/.test(selectedUser.toUpperCase())
-            user = new CloudBrowser.User(selectedUser, "google")
+            user = CloudBrowser.User(selectedUser, "google")
             grantPermAndSendMail(user, perm)
 
         else $scope.error = "Invalid Collaborator Selected"

@@ -27,7 +27,7 @@ CBAuthentication.controller "LoginCtrl", ($scope) ->
 
         else
             $scope.isDisabled = true
-            CloudBrowser.auth.login new CloudBrowser.User($scope.email, 'local'), $scope.password, location.search,
+            CloudBrowser.auth.login CloudBrowser.User($scope.email, 'local'), $scope.password, location.search,
             (success) ->
                 if not success
                     $scope.$apply ->
@@ -41,7 +41,7 @@ CBAuthentication.controller "LoginCtrl", ($scope) ->
 
         else
             $scope.resetDisabled = true
-            CloudBrowser.auth.sendResetLink new CloudBrowser.User($scope.email, 'local'), (success) ->
+            CloudBrowser.auth.sendResetLink CloudBrowser.User($scope.email, 'local'), (success) ->
                 if success
                     $scope.resetSuccessMsg = "A password reset link has been sent to your email ID."
                 else
@@ -66,7 +66,7 @@ CBAuthentication.controller "SignupCtrl", ($scope) ->
         $scope.isDisabled       = false
         $scope.successMessage   = false
 
-        CloudBrowser.app.userExists new CloudBrowser.User($scope.email, 'local'), (exists) ->
+        CloudBrowser.app.userExists CloudBrowser.User($scope.email, 'local'), (exists) ->
             if exists then $scope.$apply ->
                 $scope.emailError = "Account with this Email ID already exists!"
                 $scope.isDisabled = true
@@ -92,6 +92,6 @@ CBAuthentication.controller "SignupCtrl", ($scope) ->
             " must contain atleast 1 uppercase, 1 lowercase, 1 digit and 1 special character." +
             " Spaces are not allowed."
         else
-            CloudBrowser.auth.signup new CloudBrowser.User($scope.email, 'local'), $scope.password, () ->
+            CloudBrowser.auth.signup CloudBrowser.User($scope.email, 'local'), $scope.password, () ->
                 $scope.$apply ->
                     $scope.successMessage = true

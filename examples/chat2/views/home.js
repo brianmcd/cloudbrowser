@@ -27,12 +27,12 @@
     try {
         var room = chats.create(name); // Might throw
         user.joinRoom(room);
-        vt.pageMan.swap('chats')
+        CloudBrowser.pageMan.swap('chats')
     } catch (e) {}
   });
 
   $('#join-room').click(function () {
     user.joinRoom(viewModel.selectedRoom());
-    vt.pageMan.swap('chats')
+    CloudBrowser.pageMan.swap('chats')
   });
 })();

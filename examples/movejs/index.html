@@ -5,12 +5,12 @@
     <script src="move.js"></script>
     <script>
 
-      function $(selector) {
+      function dollar(selector) {
         return document.querySelectorAll(selector)[0];
       }
 
       function play(example, fn) {
-        $('#example-' + example + ' .play').addEventListener('click', function(e){
+        dollar('#example-' + example + ' .play').addEventListener('click', function(e){
           e.preventDefault();
           fn();
         }, false);

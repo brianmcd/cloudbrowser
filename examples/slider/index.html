@@ -8,12 +8,12 @@
                 };
                 ko.applyBindings(vm);
                 var xSliderDiv = document.getElementById('xSlider');
-                var xSlider = vt.createComponent('slider', xSliderDiv)
+                var xSlider = CloudBrowser.component.create('slider', xSliderDiv)
                 xSlider.addEventListener('slider:valueChange', function (e) {
                     vm.xSliderVal(e.info.newVal);
                 });
                 var ySliderDiv = document.getElementById('ySlider');
-                var ySlider = vt.createComponent('slider', ySliderDiv, {
+                var ySlider = CloudBrowser.component.create('slider', ySliderDiv, {
                     axis : 'y'
                 });
                 ySlider.addEventListener('slider:valueChange', function (e) {

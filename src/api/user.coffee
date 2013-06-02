@@ -9,8 +9,8 @@
 #   @return [String] The namespace of the user.
 #
 # @method #toJson()
-#   Gets a clone of the user
-#   @return [Object] The clone of the user in the form email:[String],ns:[String]
+#   Gets the user in a JSON format
+#   @return [Object] The user in the JSON form \{email:[String],ns:[String]\}
 class User
     # Creates an instance of User.
     # @param [String] email     The email ID of the user.

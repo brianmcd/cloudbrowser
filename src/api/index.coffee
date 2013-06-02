@@ -1,37 +1,48 @@
-Path         = require('path')
-Weak         = require('weak')
-Components   = require('../server/components')
-CloudBrowser = require('./cloudbrowser')
+Weak              = require('weak')
+User              = require("./user")
+serverAPI         = require("./server_API")
+applicationAPI    = require("./application_API")
+authenticationAPI = require("./authentication_API")
+componentAPI      = require("./component_API")
 
-module.exports = EmbedAPI = (browser, bserver) ->
+# The CloudBrowser API
+#
+# Instance Variables
+# ------------------
+# @property [ApplicationAPI]    `app`    - The {ApplicationAPI} namespace.     
+#
+# @property [AuthenticationAPI] `auth`   - The {AuthenticationAPI} namespace.      
+#
+# @property [ServerAPI]         `server` - The {ServerAPI} namespace.        
+#
+# @property [ComponentAPI]      `component` - The {ComponentAPI} namespace.
+#
+# @method #User(email, namespace)
+#   Creates a new CloudBrowser {User}.
+#   @param [String] email The email ID of the user.
+#   @param [String] namespace The namespace of the user. Permissible values are "local" and "google".
+#   @return [User] The CloudBrowser User.
+class CloudBrowser
+
+    # Constructs an instance of the CloudBrowser API
+    # @param [Browser] browser The JSDOM browser object corresponding to the current browser
+    # @param [Browser_Server] bserver The object corresponding to the current browser
+    # @private
+    constructor : (browser, bserver, cleaned) ->
+        @app       = (new applicationAPI(bserver)).app
+        @server    = (new serverAPI(bserver)).server
+        @auth      = (new authenticationAPI(bserver)).auth
+        @component = (new componentAPI(browser, cleaned)).component
+        @User      = (email, namespace) -> return new User(email, namespace)
+
+    # Is this secure?
+    Model       : require('./model')
+    PageManager : require('./page_manager')
+
+module.exports = (browser, bserver) ->
     cleaned = false
     # TODO: is this weak ref required?
     window = Weak(browser.window, () -> cleaned = true)
     browser = Weak(browser, () -> cleaned = true)
 
-    window.vt =
-        Model       : require('./model')
-        PageManager : require('./page_manager')
-
-        createComponent : (name, target, options) ->
-            throw new Error("Browser has been garbage collected") if cleaned
-            targetID = target.__nodeID
-            if browser.components[targetID]
-                throw new Error("Can't create 2 components on the same target.")
-            Ctor = Components[name]
-            if !Ctor then throw new Error("Invalid component name: #{name}")
-
-            rpcMethod = (method, args) ->
-                browser.emit 'ComponentMethod',
-                    target : target
-                    method : method
-                    args   : args
-
-            comp = browser.components[targetID] = new Ctor(options, rpcMethod, target)
-            clientComponent = [name, targetID, comp.getRemoteOptions()]
-            browser.clientComponents.push(clientComponent)
-
-            browser.emit('CreateComponent', clientComponent)
-            return target
-
-    window.CloudBrowser = new CloudBrowser(bserver)
+    window.CloudBrowser = new CloudBrowser(browser, bserver, cleaned)
