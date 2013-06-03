@@ -127,27 +127,7 @@
       </a>
     </span>
     <span class='desc'>
-      Logs out all users connected to this application instance.
-    </span>
-  </li>
-  <li>
-    <span class='signature'>
-      <a href='#login-instance'>
-        - (void) <strong>login</strong>(user, password, callback)
-      </a>
-    </span>
-    <span class='desc'>
-      Logs a user into this CloudBrowser application.
-    </span>
-  </li>
-  <li>
-    <span class='signature'>
-      <a href='#googleLogin-instance'>
-        - (void) <strong>googleLogin</strong>()
-      </a>
-    </span>
-    <span class='desc'>
-      Logs a user into the application through their gmail ID.
+      Logs out all connected clients from this application.
     </span>
   </li>
   <li>
@@ -158,16 +138,6 @@
     </span>
     <span class='desc'>
       Sends an email to the specified user.
-    </span>
-  </li>
-  <li>
-    <span class='signature'>
-      <a href='#signup-instance'>
-        - (void) <strong>signup</strong>(user, password, callback)
-      </a>
-    </span>
-    <span class='desc'>
-      Registers a user with the application and sends a confirmation email to the user&#39;s registered email ID.
     </span>
   </li>
   <li>
@@ -208,55 +178,7 @@
       - (void) <strong>logout</strong>()
     </p>
     <div class='docstring'>
-  <p>Logs out all users connected to this application instance.    </p>
-</div>
-<div class='tags'>
-</div>
-  </div>
-  <div class='method_details'>
-    <p class='signature' id='login-instance'>
-      - (void) <strong>login</strong>(user, password, callback)
-    </p>
-    <div class='docstring'>
-  <p>Logs a user into this CloudBrowser application.
-The password is hashed using pbkdf2.    </p>
-</div>
-<div class='tags'>
-  <h3>Parameters:</h3>
-  <ul class='param'>
-    <li>
-      <span class='name'>user</span>
-      <span class='type'>
-        (<tt><a href='../classes/User.html'>User</a></tt>)
-      </span>
-      &mdash;
-      <span class='desc'>The user that is trying to log in.</span>
-    </li>
-    <li>
-      <span class='name'>password</span>
-      <span class='type'>
-        (<tt>String</tt>)
-      </span>
-      &mdash;
-      <span class='desc'>The user supplied plaintext password.</span>
-    </li>
-    <li>
-      <span class='name'>callback</span>
-      <span class='type'>
-        (<tt>Function</tt>)
-      </span>
-      &mdash;
-      <span class='desc'>A boolean indicating the success/failure of the process is passed as an argument.</span>
-    </li>
-  </ul>
-</div>
-  </div>
-  <div class='method_details'>
-    <p class='signature' id='googleLogin-instance'>
-      - (void) <strong>googleLogin</strong>()
-    </p>
-    <div class='docstring'>
-  <p>Logs a user into the application through their gmail ID.    </p>
+  <p>Logs out all connected clients from this application.</p>
 </div>
 <div class='tags'>
 </div>
@@ -302,46 +224,6 @@ The password is hashed using pbkdf2.    </p>
       </span>
       &mdash;
       <span class='desc'>No arguments are passed to the callback.</span>
-    </li>
-  </ul>
-</div>
-  </div>
-  <div class='method_details'>
-    <p class='signature' id='signup-instance'>
-      - (void) <strong>signup</strong>(user, password, callback)
-    </p>
-    <div class='docstring'>
-  <p>Registers a user with the application and 
-sends a confirmation email to the user&#39;s registered email ID.
-The email ID is not activated until
-it has been confirmed by the user.    </p>
-</div>
-<div class='tags'>
-  <h3>Parameters:</h3>
-  <ul class='param'>
-    <li>
-      <span class='name'>user</span>
-      <span class='type'>
-        (<tt><a href='../classes/User.html'>User</a></tt>)
-      </span>
-      &mdash;
-      <span class='desc'>The user that is trying to log in.</span>
-    </li>
-    <li>
-      <span class='name'>password</span>
-      <span class='type'>
-        (<tt>String</tt>)
-      </span>
-      &mdash;
-      <span class='desc'>The user supplied plaintext password.</span>
-    </li>
-    <li>
-      <span class='name'>callback</span>
-      <span class='type'>
-        (<tt>Function</tt>)
-      </span>
-      &mdash;
-      <span class='desc'>No arguments are supplied.</span>
     </li>
   </ul>
 </div>
@@ -429,7 +311,7 @@ it has been confirmed by the user.    </p>
     </div>
     <div id='footer'>
   Generated on
-  Sun Jun 02 2013 16:15:00 GMT-0400 (EDT)
+  Mon Jun 03 2013 17:12:09 GMT-0400 (EDT)
   by
   <a href='https://github.com/netzpirat/codo' title='CoffeeScript API documentation generator'>Codo</a>
   v1.6.1

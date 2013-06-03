@@ -155,6 +155,7 @@ class Server extends EventEmitter
             mountPoint  = mountPoint.split("/")
             mountPoint.pop()
             mountPoint = mountPoint.join('/')
+            # TODO: Check for undefined.
             if not session or not session.user then return false
             appUser = session.user.filter (item) ->
                 item.app is mountPoint

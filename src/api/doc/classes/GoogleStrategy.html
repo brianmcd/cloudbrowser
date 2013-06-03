@@ -13,7 +13,7 @@
   <div id='menu'>
     <a href='../class_index.html' title='Index'>Index</a>
     &raquo;
-    <span class='title'>CloudBrowser</span>
+    <span class='title'>GoogleStrategy</span>
     <nav>
       <ul>
         <li class='noframes'>
@@ -104,17 +104,17 @@
     <div id='content'>
       <h1>
         Class:
-        CloudBrowser
+        GoogleStrategy
       </h1>
       <table class='box'>
         <tr>
           <td>Defined in:</td>
-          <td>index.coffee</td>
+          <td>authentication_strategies.coffee</td>
         </tr>
       </table>
       <h2>Overview</h2>
       <div class='docstring'>
-  <p>The CloudBrowser API</p><h2>Instance Variables</h2><p><code>app</code>    - The <a href='../classes/ApplicationAPI.html'>ApplicationAPI</a> namespace.<br><code>auth</code>   - The <a href='../classes/AuthenticationAPI.html'>AuthenticationAPI</a> namespace.<br><code>server</code> - The <a href='../classes/ServerAPI.html'>ServerAPI</a> namespace.<br><code>component</code> - The <a href='../classes/ComponentAPI.html'>ComponentAPI</a> namespace.</p>
+  <p>Log in through a google ID</p>
 </div>
 <div class='tags'>
 </div>
@@ -122,53 +122,45 @@
       <ul class='summary'>
   <li>
     <span class='signature'>
-      <a href='#User-instance'>
-        - (User) <strong>User</strong>(email, namespace)
+      <a href='#login-instance'>
+        - (void) <strong>login</strong>()
       </a>
     </span>
     <span class='desc'>
-      Creates a new CloudBrowser <a href='../classes/User.html'>User</a>.
+      Logs a user into the application.
+    </span>
+  </li>
+  <li>
+    <span class='signature'>
+      <a href='#signup-instance'>
+        - (void) <strong>signup</strong>()
+      </a>
+    </span>
+    <span class='desc'>
+      Registers a user with the application
     </span>
   </li>
 </ul>
       <h2>Instance Method Details</h2>
       <div class='methods'>
   <div class='method_details'>
-    <p class='signature' id='User-instance'>
-      - (User) <strong>User</strong>(email, namespace)
+    <p class='signature' id='login-instance'>
+      - (void) <strong>login</strong>()
     </p>
     <div class='docstring'>
-  <p>Creates a new CloudBrowser <a href='../classes/User.html'>User</a>.</p>
+  <p>Logs a user into the application.    </p>
 </div>
 <div class='tags'>
-  <h3>Parameters:</h3>
-  <ul class='param'>
-    <li>
-      <span class='name'>email</span>
-      <span class='type'>
-        (<tt>String</tt>)
-      </span>
-      &mdash;
-      <span class='desc'>The email ID of the user.</span>
-    </li>
-    <li>
-      <span class='name'>namespace</span>
-      <span class='type'>
-        (<tt>String</tt>)
-      </span>
-      &mdash;
-      <span class='desc'>The namespace of the user. Permissible values are &quot;local&quot; and &quot;google&quot;.</span>
-    </li>
-  </ul>
-  <h3>Returns:</h3>
-  <ul class='return'>
-    <li>
-      <span class='type'></span>
-      (<tt><a href='../classes/User.html'>User</a></tt>)
-      &mdash;
-      <span class='desc'>The CloudBrowser User.</span>
-    </li>
-  </ul>
+</div>
+  </div>
+  <div class='method_details'>
+    <p class='signature' id='signup-instance'>
+      - (void) <strong>signup</strong>()
+    </p>
+    <div class='docstring'>
+  <p>Registers a user with the application</p>
+</div>
+<div class='tags'>
 </div>
   </div>
 </div>

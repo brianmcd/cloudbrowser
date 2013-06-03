@@ -1,6 +1,6 @@
 User            = require("./user")
 Instance        = require("./instance")
-{getMountPoint} = require("../shared/utils")
+{getMountPoint} = require("./utils")
 
 # Usage : CloudBrowser.app.APImethod
 #

@@ -18,7 +18,7 @@ CBAuthentication.controller "LoginCtrl", ($scope) ->
     $scope.$watch "email", ->
         $scope.emailError = null
 
-    $scope.googleLogin = () -> CloudBrowser.auth.googleLogin()
+    $scope.googleLogin = () -> CloudBrowser.auth.googleStrategy.login()
 
     $scope.login = () ->
 
@@ -27,12 +27,13 @@ CBAuthentication.controller "LoginCtrl", ($scope) ->
 
         else
             $scope.isDisabled = true
-            CloudBrowser.auth.login CloudBrowser.User($scope.email, 'local'), $scope.password,
-            (success) ->
-                if not success
-                    $scope.$apply ->
-                        $scope.loginError = "Invalid Credentials"
-                $scope.isDisabled = false
+            CloudBrowser.auth.localStrategy.login
+                user     : CloudBrowser.User($scope.email, 'local')
+                password : $scope.password
+                callback : (success) ->
+                    if not success
+                        $scope.$apply -> $scope.loginError = "Invalid Credentials"
+                    $scope.isDisabled = false
 
     $scope.sendResetLink = () ->
 
@@ -76,7 +77,7 @@ CBAuthentication.controller "SignupCtrl", ($scope) ->
         $scope.passwordError    = null
         $scope.isDisabled       = false
 
-    $scope.googleLogin = () -> CloudBrowser.auth.googleLogin()
+    $scope.googleLogin = () -> CloudBrowser.auth.googleStrategy.signup()
 
     $scope.signup = ->
         $scope.isDisabled = true
@@ -92,6 +93,8 @@ CBAuthentication.controller "SignupCtrl", ($scope) ->
             " must contain atleast 1 uppercase, 1 lowercase, 1 digit and 1 special character." +
             " Spaces are not allowed."
         else
-            CloudBrowser.auth.signup CloudBrowser.User($scope.email, 'local'), $scope.password, () ->
-                $scope.$apply ->
-                    $scope.successMessage = true
+            CloudBrowser.auth.localStrategy.signup
+                user     : CloudBrowser.User($scope.email, 'local')
+                password : $scope.password
+                callback : () ->
+                    $scope.$apply -> $scope.successMessage = true

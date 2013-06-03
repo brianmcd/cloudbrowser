@@ -47,14 +47,3 @@ exports.noCacheRequire = (name, regExp) ->
     for entry in Object.keys(reqCache)
         delete reqCache[entry] if regExp.test(entry)
     return rv
-
-# Removes trailing strings "authenticate", "landing_page" and "password_reset"
-# from mountPoint
-exports.getMountPoint = (originalMountPoint) ->
-    delimiters  = ["authenticate", "landing_page", "password_reset"]
-    components  = originalMountPoint.split("/")
-    index       = 1
-    mountPoint  = ""
-    while delimiters.indexOf(components[index]) is -1 and index < components.length
-        mountPoint += "/" + components[index++]
-    return mountPoint
