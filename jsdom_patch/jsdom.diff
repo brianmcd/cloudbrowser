@@ -96,15 +96,6 @@
        if (url.hostname) {
          this.download(url, this.baseUrl(element._ownerDocument), this.enqueue(element, callback, full));
        }
-@@ -70,7 +67,7 @@
-         baseUrl      = document.URL;
- 
-     if (baseElements.length > 0) {
--      baseUrl = baseElements.item(0).href || baseUrl;
-+      baseUrl = baseElements.item(0).href;
-     }
- 
-     return baseUrl;
 @@ -143,7 +140,7 @@
      request.end();
    },
