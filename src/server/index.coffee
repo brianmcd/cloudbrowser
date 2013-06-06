@@ -25,6 +25,8 @@ require('ofe').call()
 #   debug               - bool - Enable debug mode.
 #   debugServer         - bool - Enable the debug server.
 #   domain              - str  - Domain name of server.
+#                                Default localhost; must be a publicly resolvable
+#                                name if you wish to use Google authentication
 #   homePage            - bool - Enable mounting of the home page application at "/".
 #   knockout            - bool - Enable server-side knockout.js bindings.
 #   monitorTraffic      - bool - Monitor/log traffic to/from socket.io clients.
@@ -49,7 +51,7 @@ defaults =
     compressJS          : false
     debug               : false
     debugServer         : false
-    domain              : os.hostname()
+    domain              : "localhost"
     homePage            : true
     knockout            : false
     monitorTraffic      : false
