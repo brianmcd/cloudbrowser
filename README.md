@@ -20,20 +20,20 @@ Installation and Use
 3. `cd` into the cloned CloudBrowser directory.
 4. Switch to the current production branch **deployment**. `git checkout deployment`.
 5. Install all the necessary npm modules. `npm install`
-6. Install the [mongodb](http://www.mongodb.org/downloads) server on your machine. Configure it (using mongodb.conf) to accept connections on
-the domain name or IP that you will set in the server configuration file. 
+6. Install the [mongodb](http://www.mongodb.org/downloads) server on your machine. The default configuration, which binds the mongodb server to localhost, should work. 
 5. Configure the server settings by creating a file server\_config.json in the CloudBrowser directory or supply the configuration parameters on the command line.
 See the section on [server configuration](#server-configuration) for more details. 
-6. Create a web application using HTML/CSS/JavaScript. In the directory containing the web application, create a configuration file app\_config.json and add in
+6. [Optional, see below on how to try out provided examples] Create a web application using HTML/CSS/JavaScript. In the directory containing the web application, create a configuration file app\_config.json and add in
 suitable configuation details. See the section on [application configuration](#web-application-configuration) for more details.
 7. Run the CloudBrowser server using `./bin/server <name of the directory that contains the web application(s)>`.
 This will start the server, recursively search for all applications in the given directory and mount them.
 Only those applications whose source directory has an app\_config.json file will be mounted.
 The mount point of the web application(s) will be displayed by the server on startup.
 Multiple paths can be provided for mounting at the time of startup.
-8. Visit `domain:port/<mount point of application>` in your browser.
 
-You can also try out CloudBrowser by mounting the sample applications in the examples directory.
+To mount the provided examples, run `./bin/server examples`.
+
+8. Visit `domain:port/<mount point of application>` in your browser.
 
 Configuration
 -------------
@@ -60,9 +60,11 @@ These options can be set in the JSON configuration file server\_config.json or t
 * **traceMem**            - bool - Trace memory usage. Defaults to false.
 * **traceProtocol**       - bool - Log protocol messages to #{browserid}-rpc.log. Defaults to false.
 
-A simple configuration file need only contain the domain (if different from os.hostname()),
-and the nodeMailerEmailID plus the nodeMailerPassword (if any of the web applications require authentication to be enabled.) 
-
+Unless you wish to change any options, a server configuration file is not necessary.
+To use Google's OpenID authentication, you'll need to set 'domain' to your machine's FQDN
+or IP.
+To be able to send emails (such as to send 'signup' confirmation emails to new users),
+you must specify a Google account username and password in nodeMailerEmailID/nodeMailerPassword.
 
 ###Web Application Configuration###
 These configuration details are specific to a web application and need to be placed in the JSON file app\_config.json inside the directory
