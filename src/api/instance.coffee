@@ -1,81 +1,70 @@
 User = require('./user')
-# CloudBrowser application instances a.k.a. virtual browsers.   
-#
-# Instance Variables
-# ------------------
-# @property [Number] `id`           - The (hash) ID of the instance.    
-# @property [String] `name`         - The name of the instance.   
-# @property [Date]   `dateCreated`  - The date of creation of the instance.   
-# @property [Array<User>] `owners`  - The owners of the instance.   
-# @property [Array<User>] `collaborators` - The users that can read and write to the instance.   
-#
-# @method #getCreator()
-#   Gets the user that created the instance.
-#   @return [User] The creator of the instance.
-#
-# @method #close(callback)
-#   Closes the instance.
-#   @param [Function] callback Any error is passed as an argument
-#
-# @method #addEventListener(event, callback)
-#   Registers a listener on the instance for an event. 
-#   @param [String]   event    The event to be listened for. The system supported events are "Shared" and "Renamed".
-#   @param [Function] callback The error is passed as an argument.
-#
-# @method #getReaderWriters()
-#   Gets all users that have the permission only 
-#   to read and write to the instance.
-#   @return [Array<User>] List of all reader writers of the instance. Null if the creator does not have any permissions associated with the instance.
-#
-# @method #getOwners()
-#   Gets all users that are the owners of the instance
-#   @return [Array<User>] List of all owners of the instance. Null if the creator does not have any permissions associated with the instance.
-#
-# @method #isReaderWriter(user)
-#   Checks if the user is a reader-writer of the instance.
-#   @param [User] user The user to be tested.
-#   @return [Bool] Indicates whether the user is a reader writer of the instance or not. Null if the creator does not have any permissions associated with the instance.
-#
-# @method #isOwner(user)
-#   Checks if the user is an owner of the instance
-#   @param [User] user The user to be tested.
-#   @return [Bool] Indicates whether the user is an owner of the instance or not. Null if the creator does not have any permissions associated with the instance.
-#
-# @method #checkPermissions(permTypes, callback)
-#   Checks if the user has permissions to perform a set of actions on the instance.
-#   @param [Object]   permTypes Permissible members are 'own', 'remove', 'readwrite', 'readonly'. The values of these properties must be set to true to check for the corresponding permission.
-#   @param [Function] callback  A boolean indicating whether the user has permissions or not is passed as an argument.
-#
-# @method #grantPermissions(permissions, user, callback)
-#   Grants the user a set of permissions on the instance.
-#   @param [Object]   permTypes Permissible members are 'own', 'remove', 'readwrite', 'readonly'. The values of these properties must be set to true to check for the corresponding permission.
-#   @param [User]     user      The user to be granted permission to.
-#   @param [Function] callback  The error is passed as an argument to the callback.
-#
-# @method #rename()
-#   Renames the instance and emits an event "Renamed" that can be listened for by registering a listener on the instance.
 class Instance
     # Creates an instance of Instance.
-    # @param [BrowserServer] browser The corresponding browser object.
-    # @param [User]          user    The user that is going to communicate with the instance.
+    # @param {BrowserServer} browser The corresponding browser object.
+    # @param {User}          user    The user that is going to communicate with the instance.
+    ###*
+        @class Instance
+        @classdesc CloudBrowser application instances a.k.a. virtual browsers.   
+    ###
     constructor : (browser, userContext) ->
         application = browser.server.applicationManager.find(browser.mountPoint)
         permissionManager = browser.server.permissionManager
         if browser.creator?
             creator = new User(browser.creator.email, browser.creator.ns)
 
-        @id          = browser.id
-        @name        = browser.name
+        ###*
+            @member {Number} id
+            @description The (hash) ID of the instance.    
+            @memberOf Instance
+            @instance
+        ###
+        @id = browser.id
+        ###*
+            @description The name of the instance.
+            @member {String} name    
+            @memberOf Instance
+            @instance
+        ###
+        @name = browser.name
+        ###*
+            @description The date of creation of the instance.
+            @member {Date} dateCreated    
+            @memberOf Instance
+            @instance
+        ###
         @dateCreated = browser.dateCreated
 
+        ###*
+            Gets the user that created the instance.
+            @method getCreator
+            @memberof Instance
+            @instance
+            @return {User}
+        ###
         @getCreator = () ->
             return creator
 
+        ###*
+            Closes the instance.
+            @method close
+            @memberof Instance
+            @instance
+            @param {errorCallback} callback
+        ###
         @close = (callback) ->
             application.browsers.close(browser, userContext.toJson(), callback)
 
+        ###*
+            Registers a listener on the instance for an event. The system supported events are "Shared" and "Renamed".
+            @method addEventListener
+            @memberof Instance
+            @instance
+            @param {String}   event
+            @param {errorCallback} callback 
+        ###
         @addEventListener = (event, callback) ->
-            permissionManager.findBrowserPermRec userContext.toJson(), browser.mountPoint, @id, (browserRec) ->
+            permissionManager.findBrowserPermRec userContext.toJson(), browser.mountPoint, browser.id, (browserRec) ->
                 if browserRec?
                     if event is "Shared"
                         browser.on event, (user, list) ->
@@ -94,46 +83,116 @@ class Instance
         #   Permission Check Required
         #   browser.emit(event, args)
 
-        @getReaderWriters = () ->
-            permissionManager.findBrowserPermRec userContext.toJson(), browser.mountPoint, @id, (browserRec) ->
+        ###*
+            Gets all users that have the permission only to read and write to the instance.
+            @method getReaderWriters
+            @memberof Instance
+            @instance
+            @param {userListCallback} callback
+        ###
+        @getReaderWriters = (callback) ->
+            permissionManager.findBrowserPermRec userContext.toJson(), browser.mountPoint, browser.id, (browserRec) ->
                 if browserRec?
                     readerwriterRecs = browser.getUsersInList('readwrite')
                     users = []
                     for readerwriterRec in readerwriterRecs
                         if not browser.findUserInList(readerwriterRec.user, 'own')
                             users.push(new User(readerwriterRec.user.email, readerwriterRec.user.ns))
-                    return users
-                else return null
+                    callback(users)
+                else callback(null)
 
-        @getOwners = () ->
-            permissionManager.findBrowserPermRec userContext.toJson(), browser.mountPoint, @id, (browserRec) ->
+        ###*
+            Gets the number of users that have the permission only to read and write to the instance.
+            @method getNumReaderWriters
+            @memberof Instance
+            @instance
+            @param {numberCallback} callback
+        ###
+        @getNumReaderWriters = (callback) ->
+            permissionManager.findBrowserPermRec userContext.toJson(), browser.mountPoint, browser.id, (browserRec) ->
+                if browserRec?
+                    readerwriterRecs = browser.getUsersInList('readwrite')
+                    numReadWriters = readerwriterRecs.length
+                    for readerwriterRec in readerwriterRecs
+                        if browser.findUserInList(readerwriterRec.user, 'own')
+                            numReadWriters--
+                    callback(numReadWriters)
+                else callback(null)
+
+        ###*
+            Gets the number of users that own the instance.
+            @method getNumOwners
+            @memberof Instance
+            @instance
+            @param {numberCallback} callback
+        ###
+        @getNumOwners = (callback) ->
+            permissionManager.findBrowserPermRec userContext.toJson(), browser.mountPoint, browser.id, (browserRec) ->
+                if browserRec?
+                    ownerRecs = browser.getUsersInList('own')
+                    callback(ownerRecs.length)
+                else callback(null)
+
+        ###*
+            Gets all users that are the owners of the instance
+            @method getOwners
+            @memberof Instance
+            @instance
+            @param {userListCallback} callback
+        ###
+        @getOwners = (callback) ->
+            permissionManager.findBrowserPermRec userContext.toJson(), browser.mountPoint, browser.id, (browserRec) ->
                 if browserRec?
                     ownerRecs = browser.getUsersInList('own')
                     users = []
                     for ownerRec in ownerRecs
                         users.push(new User(ownerRec.user.email, ownerRec.user.ns))
-                    return users
-                else return null
+                    callback(users)
+                else callback(null)
 
-        @isReaderWriter = (user) ->
-            permissionManager.findBrowserPermRec userContext.toJson(), browser.mountPoint, @id, (browserRec) ->
+        ###*
+            Checks if the user is a reader-writer of the instance.
+            @method isReaderWriter
+            @memberof Instance
+            @instance
+            @param {User} user
+            @param {booleanCallback} callback
+        ###
+        @isReaderWriter = (user, callback) ->
+            permissionManager.findBrowserPermRec userContext.toJson(), browser.mountPoint, browser.id, (browserRec) ->
                 if browserRec?
                     if browser.findUserInList(user.toJson(), 'readwrite') and
                     not browser.findUserInList(user.toJson(), 'own')
-                        return true
-                    else return false
-                else return null
+                        callback(true)
+                    else callback(false)
+                else callback(null)
 
-        @isOwner = (user) ->
-            permissionManager.findBrowserPermRec userContext.toJson(), browser.mountPoint, @id, (browserRec) ->
+        ###*
+            Checks if the user is an owner of the instance
+            @method isOwner
+            @memberof Instance
+            @instance
+            @param {User} user
+            @param {booleanCallback} callback
+        ###
+        @isOwner = (user, callback) ->
+            permissionManager.findBrowserPermRec userContext.toJson(), browser.mountPoint, browser.id, (browserRec) ->
                 if browserRec?
                     if browser.findUserInList(user.toJson(), 'own')
-                        return true
-                    else return false
-                else return null
+                        callback(true)
+                    else callback(false)
+                else  callback(null)
 
+        ###*
+            Checks if the user has permissions to perform a set of actions on the instance.
+            @method checkPermissions
+            @memberof Instance
+            @instance
+            @param {Object} permTypes Permissible members are 'own', 'remove', 'readwrite', 'readonly'. The values of these properties must be set to true to check for the corresponding permission.
+            @param {booleanCallback} callback
+        ###
         @checkPermissions = (permTypes, callback) ->
-            permissionManager.findBrowserPermRec userContext.toJson(), browser.mountPoint, @id, (browserRec) ->
+            permissionManager.findBrowserPermRec userContext.toJson(), browser.mountPoint, browser.id, (browserRec) ->
                 if browserRec
                     for type,v of permTypes
                         if not browserRec.permissions[type] or
@@ -143,6 +202,15 @@ class Instance
                     callback(true)
                 else callback(false)
 
+        ###*
+            Grants the user a set of permissions on the instance.
+            @method grantPermissions
+            @memberof Instance
+            @instance
+            @param {Object} permTypes Permissible members are 'own', 'remove', 'readwrite', 'readonly'. The values of these properties must be set to true to check for the corresponding permission.
+            @param {User} user 
+            @param {errorCallback} callback 
+        ###
         @grantPermissions = (permissions, user, callback) ->
             @checkPermissions {own:true}, (hasPermission) ->
                 if hasPermission
@@ -162,6 +230,13 @@ class Instance
                                         callback(null)
                 else callback(new Error("You do not have the permission to perform the requested action"))
         
+        ###*
+            Renames the instance and emits an event "Renamed" that can be listened for by registering a listener on the instance.
+            @method rename
+            @memberof Instance
+            @instance
+            @param {String} newName
+        ###
         @rename = (newName) ->
             @checkPermissions {own:true}, (hasPermission) ->
                 if hasPermission
@@ -169,7 +244,21 @@ class Instance
                     browser.name = newName
                     browser.emit('Renamed', newName)
 
-        @owners = @getOwners()
-        @collaborators = @getReaderWriters()
+        ###*
+            @description The owners of the instance.
+            @member {Array<User>} owners
+            @memberOf Instance
+            @instance
+        ###
+        @getOwners (owners) =>
+            @owners = owners
+        ###*
+            @description The users that can read and write to the instance.
+            @member {Array<User>} collaborators
+            @memberOf Instance
+            @instance
+        ###
+        @getReaderWriters (collaborators) =>
+            @collaborators = collaborators
 
 module.exports = Instance

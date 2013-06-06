@@ -2,8 +2,7 @@ Crypto = require('crypto')
 
 # Removes trailing strings "authenticate", "landing_page" and "password_reset"
 # from mountPoint
-# @private
-exports.getMountPoint = (originalMountPoint) ->
+exports.getParentMountPoint = (originalMountPoint) ->
     delimiters  = ["authenticate", "landing_page", "password_reset"]
     components  = originalMountPoint.split("/")
     index       = 1
@@ -13,7 +12,6 @@ exports.getMountPoint = (originalMountPoint) ->
     return mountPoint
 
 # Hashes the password using pbkdf2
-# @private
 exports.hashPassword = (config={}, callback) ->
     defaults =
         iterations : 10000
@@ -42,3 +40,9 @@ exports.hashPassword = (config={}, callback) ->
             config.key = key
             callback(config)
 
+exports.compare = (app1, app2) ->
+    if(app1.mountPoint < app2.mountPoint)
+        return -1
+    else if app1.mountPoint > app2.mountPoint
+        return 1
+    else return 0

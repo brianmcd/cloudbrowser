@@ -36,10 +36,12 @@ CBLandingPage.controller "UserCtrl", ($scope, $timeout) ->
         if not findInInstanceList(instance.id)
             instance.dateCreated = formatDate(instance.dateCreated)
             instance.addEventListener 'Shared', (err) ->
-                if not err then $scope.safeApply ->
-                    instance.owners = instance.getOwners()
-                    instance.collaborators = instance.getReaderWriters()
-                else console.log(err)
+                if err then console.log err
+                else
+                    instance.getOwners (owners) ->
+                        $scope.safeApply -> instance.owners = owners
+                    instance.getReaderWriters (readersWriters) ->
+                        $scope.safeApply -> instance.collaborators = readersWriters
             instance.addEventListener 'Renamed', (err, name) ->
                 if not err then $scope.safeApply ->
                     instance.name = name
@@ -143,18 +145,20 @@ CBLandingPage.controller "UserCtrl", ($scope, $timeout) ->
               " and login to your existing account or use your google ID to login if you do not have an account already."
         for instanceID in $scope.selected
             instance = findInInstanceList(instanceID)
-            if instance.isOwner($scope.user)
-                instance.grantPermissions perm, user, (err) ->
-                    if not err
-                        CloudBrowser.auth.sendEmail user.getEmail(), subject, msg, () ->
-                        $scope.safeApply ->
-                            $scope.boxMessage = "The selected instances are now shared with " +
-                            user.getEmail() + " (" + user.getNameSpace() + ")"
-                            $scope.addingOwner        = false
-                            $scope.addingCollaborator = false
-                    else $scope.safeApply -> $scope.error = err
-            else
-                $scope.error = "You do not have the permission to perform this action."
+            do (instance) ->
+                instance.isOwner $scope.user, (isOwner) ->
+                    if isOwner
+                        instance.grantPermissions perm, user, (err) ->
+                            if not err
+                                CloudBrowser.auth.sendEmail user.getEmail(), subject, msg, () ->
+                                $scope.safeApply ->
+                                    $scope.boxMessage = "The selected instances are now shared with " +
+                                    user.getEmail() + " (" + user.getNameSpace() + ")"
+                                    $scope.addingOwner        = false
+                                    $scope.addingCollaborator = false
+                            else $scope.safeApply -> $scope.error = err
+                    else
+                        $scope.safeApply -> $scope.error = "You do not have the permission to perform this action."
 
     addCollaborator = (selectedUser, perm) ->
         lParIdx = selectedUser.indexOf("(")
@@ -229,8 +233,8 @@ CBLandingPage.controller "UserCtrl", ($scope, $timeout) ->
 
     $scope.clickRename = (instanceID) ->
         instance = findInInstanceList(instanceID)
-        if instance.isOwner($scope.user)
-            instance.editing = true
+        instance.isOwner $scope.user, (isOwner) ->
+            if isOwner then $scope.safeApply -> instance.editing = true
         
 CBLandingPage.filter "removeSlash", () ->
     return (input) ->
@@ -244,22 +248,29 @@ CBLandingPage.filter "instanceFilter", () ->
         modifiedList = []
         if filterType is 'owned'
             for instance in list
-                if instance.isOwner(user)
-                    modifiedList.push(instance)
+                do (instance) ->
+                    instance.isOwner user, (isOwner) ->
+                        if isOwner then modifiedList.push(instance)
         if filterType is 'notOwned'
             for instance in list
-                if not instance.isOwner(user)
-                    modifiedList.push(instance)
+                do (instance) ->
+                    instance.isOwner user, (isOwner) ->
+                        if not isOwner then modifiedList.push(instance)
         if filterType is 'shared'
             for instance in list
-                if instance.getReaderWriters().length or
-                instance.getOwners().length > 1
-                    modifiedList.push(instance)
+                do (instance) ->
+                    instance.getNumReaderWriters (numReaderWriters) ->
+                        if numReaderWriters then modifiedList.push(instance)
+                        else instance.getNumOwners (numOwners) ->
+                            if numOwners > 1 then modifiedList.push(instance)
         if filterType is 'notShared'
             for instance in list
-                if instance.getOwners().length is 1 and
-                not instance.getReaderWriters().length
-                    modifiedList.push(instance)
+                do (instance) ->
+                    instance.getNumOwners (numOwners) ->
+                        if numOwners is 1
+                            instance.getNumReaderWriters (numReaderWriters) ->
+                                if not numReaderWriters
+                                    modifiedList.push(instance)
         if filterType is 'all'
             modifiedList = list
         return modifiedList
@@ -289,15 +300,22 @@ CBLandingPage.directive 'typeahead', () ->
                             instance = instance[0]; index = 0
                             if attrs.typeahead is "selectedCollaborator"
                                 while index < users.length
-                                    if instance.isOwner(users[index]) or
-                                    instance.isReaderWriter(users[index])
-                                        users.splice(index, 1)
-                                    else index++
+                                    user = users[index]
+                                    do (user) ->
+                                        instance.isOwner user, (isOwner) ->
+                                            if isOwner then scope.safeApply -> users.splice(index, 1)
+                                            else instance.isReaderWriter user, (isReaderWriter) ->
+                                                scope.safeApply ->
+                                                    if isReaderWriter then users.splice(index, 1)
+                                                    else index++
                             else if attrs.typeahead is "selectedOwner"
                                 while index < users.length
-                                    if instance.isOwner(users[index])
-                                        users.splice(index, 1)
-                                    else index++
+                                    user = users[index]
+                                    do (user) ->
+                                        instance.isOwner user, (isOwner) ->
+                                            scope.safeApply ->
+                                                if isOwner then users.splice(index, 1)
+                                                else index++
                         for collaborator in users
                             data.push(collaborator.getEmail() + ' (' + collaborator.getNameSpace() + ')')
                         process(data)

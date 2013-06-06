@@ -1,29 +1,27 @@
 Crypto          = require("crypto")
-{getMountPoint, hashPassword} = require("./utils")
+{getParentMountPoint, hashPassword} = require("./utils")
 
-# Log In Locally. 
-# @method #login(options)
-#   Logs a user into the application.    
-#   @param [Object] options An object containing a user:{User} (optional), password: (String) The user provided plaintext password (optional), callback: (Function) The boolean false is passed as an argument in case of failure. In case of success, the callback function is not called.
-#
-# @method #signup(options)
-#   Registers a user with the application and 
-#   sends a confirmation email to the user's registered email ID.
-#   The email ID is not activated until
-#   it has been confirmed by the user.    
-#   @param [Object] options An object containing a user:({User}) (optional), password: (String) The user provided plaintext password (optional), callback: (Function) The boolean true is passed as an argument in case of success. In case of failure, the callback function is not called.(optional).
 class LocalStrategy
-    # Constructs a LocalStrategy instance.
-    # @param [BrowserServer] bserver The object of the current browser
-    # @param [AuthenticationAPI] authAPI The authentication API object needed for methods like sendEmail
-    # @private
+    ###*
+        @class LocalStrategy
+    ###
     constructor : (bserver, authAPI) ->
-        mountPoint  = getMountPoint(bserver.mountPoint)
+        mountPoint  = getParentMountPoint(bserver.mountPoint)
         application = bserver.server.applicationManager.find(mountPoint)
         db          = bserver.server.db
         mongoStore  = bserver.server.mongoStore
         config      = bserver.server.config
         appUrl      = "http://" + config.domain + ":" + config.port + mountPoint
+        ###*
+            Logs a user into the application.    
+            @method login
+            @memberof LocalStrategy
+            @instance
+            @param options 
+            @param {User} options.user
+            @param {String} options.password
+            @param {booleanCallback} options.callback 
+        ###
         @login = (options) ->
             # Checking for required arguments
             if not options.user then throw new Error("Missing required parameter - user")
@@ -76,6 +74,17 @@ class LocalStrategy
                             else if options.callback then options.callback(false)
                     else if options.callback then options.callback(false)
 
+        ###*
+            Registers a user with the application and sends a confirmation email to the user's registered email ID.
+            The email ID is not activated until it has been confirmed by the user.    
+            @memberof LocalStrategy
+            @instance
+            @method signup
+            @param options 
+            @param {User} options.user
+            @param {String} options.password
+            @param {booleanCallback} options.callback 
+        ###
         @signup = (options) ->
             # Checking for required arguments.
             if not options.user then throw new Error("Missing required parameter - user")
@@ -115,20 +124,26 @@ class LocalStrategy
                             collection.insert userRec, () ->
                                 if options.callback then options.callback()
 
-# Log in through a google ID
-# @method #login(options)
-#   Logs a user into the application.    
-#
-# @method #signup(options)
-#   Registers a user with the application
 class GoogleStrategy
-    # Constructs a GoogleStrategy instance.
-    # @param [BrowserServer] bserver The object of the current browser
-    # @private
+    ###*
+        @class GoogleStrategy
+    ###
     constructor : (bserver) ->
-        mountPoint  = getMountPoint(bserver.mountPoint)
+        mountPoint  = getParentMountPoint(bserver.mountPoint)
         mongoStore  = bserver.server.mongoStore
         config      = bserver.server.config
+        ###*
+            Log in through a google ID
+            @method login
+            @memberof GoogleStrategy
+            @instance
+        ###
+        ###*
+            Registers a user with the application
+            @method signup
+            @memberof GoogleStrategy
+            @instance
+        ###
         @login = @signup = () ->
             sessionID = decodeURIComponent(bserver.getSessions()[0])
             mongoStore.get sessionID, (err, session) ->

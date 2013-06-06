@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: authentication_strategies.js</title>
+    
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+    
+    <h1 class="page-title">Source: authentication_strategies.js</h1>
+    
+    
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source"><code>(function() {
+  var Crypto, GoogleStrategy, LocalStrategy, getParentMountPoint, hashPassword, _ref;
+
+  Crypto = require("crypto");
+
+  _ref = require("./utils"), getParentMountPoint = _ref.getParentMountPoint, hashPassword = _ref.hashPassword;
+
+  LocalStrategy = (function() {
+    /**
+        @class LocalStrategy
+    */
+    function LocalStrategy(bserver, authAPI) {
+      var appUrl, application, config, db, mongoStore, mountPoint;
+      mountPoint = getParentMountPoint(bserver.mountPoint);
+      application = bserver.server.applicationManager.find(mountPoint);
+      db = bserver.server.db;
+      mongoStore = bserver.server.mongoStore;
+      config = bserver.server.config;
+      appUrl = "http://" + config.domain + ":" + config.port + mountPoint;
+      /**
+          Logs a user into the application.    
+          @method login
+          @memberof LocalStrategy
+          @instance
+          @param options 
+          @param {User} options.user
+          @param {String} options.password
+          @param {booleanCallback} options.callback
+      */
+      this.login = function(options) {
+        var _this = this;
+        if (!options.user) {
+          throw new Error("Missing required parameter - user");
+        } else if (!options.password) {
+          throw new Error("Missing required paramter - password");
+        }
+        return db.collection(application.dbName, function(err, collection) {
+          if (err) throw err;
+          return collection.findOne(options.user.toJson(), function(err, userRec) {
+            if (userRec && userRec.status !== 'unverified') {
+              return hashPassword({
+                password: options.password,
+                salt: new Buffer(userRec.salt, 'hex')
+              }, function(result) {
+                var sessionID;
+                if (result.key.toString('hex') === userRec.key) {
+                  sessionID = decodeURIComponent(bserver.getSessions()[0]);
+                  return mongoStore.get(sessionID, function(err, session) {
+                    var redirectto, sessionObj;
+                    if (err) throw err;
+                    sessionObj = {
+                      app: mountPoint,
+                      email: options.user.getEmail(),
+                      ns: options.user.getNameSpace()
+                    };
+                    if (!session.user) {
+                      session.user = [sessionObj];
+                    } else {
+                      session.user.push(sessionObj);
+                    }
+                    redirectto = session.redirectto;
+                    session.redirectto = null;
+                    return mongoStore.set(sessionID, session, function() {
+                      if (redirectto != null) {
+                        bserver.redirect(redirectto);
+                      } else {
+                        bserver.redirect(appUrl);
+                      }
+                      return setTimeout(function() {
+                        return bserver.server.applicationManager.find(bserver.mountPoint).browsers.close(bserver);
+                      }, 500);
+                    });
+                  });
+                } else if (options.callback) {
+                  return options.callback(false);
+                }
+              });
+            } else if (options.callback) {
+              return options.callback(false);
+            }
+          });
+        });
+      };
+      /**
+          Registers a user with the application and sends a confirmation email to the user's registered email ID.
+          The email ID is not activated until it has been confirmed by the user.    
+          @memberof LocalStrategy
+          @instance
+          @method signup
+          @param options 
+          @param {User} options.user
+          @param {String} options.password
+          @param {booleanCallback} options.callback
+      */
+      this.signup = function(options) {
+        var _this = this;
+        if (!options.user) {
+          throw new Error("Missing required parameter - user");
+        } else if (!options.password) {
+          throw new Error("Missing required paramter - password");
+        }
+        return Crypto.randomBytes(32, function(err, token) {
+          var confirmationMsg, subject;
+          if (err) throw err;
+          token = token.toString('hex');
+          subject = "Activate your cloudbrowser account";
+          confirmationMsg = "Please click on the link below to verify your email address.&lt;br>" + ("&lt;p>&lt;a href='" + appUrl + "/activate/" + token + "'>Activate your account&lt;/a>&lt;/p>") + "&lt;p>If you have received this message in error and did not sign up for a cloudbrowser account," + (" click &lt;a href='" + appUrl + "/deactivate/" + token + "'>not my account&lt;/a>&lt;/p>");
+          return authAPI.sendEmail(options.user.getEmail(), subject, confirmationMsg, function() {
+            if (err) throw err;
+            return db.collection(application.dbName, function(err, collection) {
+              if (err) throw err;
+              return hashPassword({
+                password: options.password
+              }, function(result) {
+                var userRec;
+                userRec = {
+                  email: options.user.getEmail(),
+                  key: result.key.toString('hex'),
+                  salt: result.salt.toString('hex'),
+                  status: 'unverified',
+                  token: token,
+                  ns: options.user.getNameSpace()
+                };
+                return collection.insert(userRec, function() {
+                  if (options.callback) return options.callback();
+                });
+              });
+            });
+          });
+        });
+      };
+    }
+
+    return LocalStrategy;
+
+  })();
+
+  GoogleStrategy = (function() {
+    /**
+        @class GoogleStrategy
+    */
+    function GoogleStrategy(bserver) {
+      var config, mongoStore, mountPoint;
+      mountPoint = getParentMountPoint(bserver.mountPoint);
+      mongoStore = bserver.server.mongoStore;
+      config = bserver.server.config;
+      /**
+          Log in through a google ID
+          @method login
+          @memberof GoogleStrategy
+          @instance
+      */
+      /**
+          Registers a user with the application
+          @method signup
+          @memberof GoogleStrategy
+          @instance
+      */
+      this.login = this.signup = function() {
+        var sessionID;
+        sessionID = decodeURIComponent(bserver.getSessions()[0]);
+        return mongoStore.get(sessionID, function(err, session) {
+          if (err) throw err;
+          session.mountPoint = mountPoint;
+          return mongoStore.set(sessionID, session, function() {
+            bserver.redirect("http://" + config.domain + ":" + config.port + '/googleAuth');
+            return setTimeout(function() {
+              return bserver.server.applicationManager.find(bserver.mountPoint).browsers.close(bserver);
+            }, 500);
+          });
+        });
+      };
+    }
+
+    return GoogleStrategy;
+
+  })();
+
+  module.exports = {
+    LocalStrategy: LocalStrategy,
+    GoogleStrategy: GoogleStrategy
+  };
+
+}).call(this);
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Index</a></h2><h3>Classes</h3><ul><li><a href="GoogleStrategy.html">GoogleStrategy</a></li><li><a href="Instance.html">Instance</a></li><li><a href="LocalStrategy.html">LocalStrategy</a></li><li><a href="User.html">User</a></li></ul><h3>Namespaces</h3><ul><li><a href="CloudBrowser.html">CloudBrowser</a></li><li><a href="CloudBrowser.app.html">app</a></li><li><a href="CloudBrowser.auth.html">auth</a></li><li><a href="CloudBrowser.component.html">component</a></li><li><a href="CloudBrowser.server.html">server</a></li></ul><h3><a href="global.html">Global</a></h3>
+</nav>
+
+<br clear="both">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.2.0-dev</a> on Wed Jun 05 2013 20:29:52 GMT-0400 (EDT)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

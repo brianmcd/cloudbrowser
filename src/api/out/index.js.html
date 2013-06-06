@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: index.js</title>
+    
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+    
+    <h1 class="page-title">Source: index.js</h1>
+    
+    
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source"><code>(function() {
+  var CloudBrowser, Components, Crypto, GoogleStrategy, Instance, LocalStrategy, Nodemailer, QueryString, User, Weak, compare, getParentMountPoint, hashPassword, _ref, _ref2;
+
+  Weak = require('weak');
+
+  User = require("./user");
+
+  Crypto = require("crypto");
+
+  Instance = require("./instance");
+
+  Nodemailer = require("nodemailer");
+
+  Components = require('../server/components');
+
+  QueryString = require("querystring");
+
+  _ref = require("./authentication_strategies"), LocalStrategy = _ref.LocalStrategy, GoogleStrategy = _ref.GoogleStrategy;
+
+  _ref2 = require("./utils"), getParentMountPoint = _ref2.getParentMountPoint, hashPassword = _ref2.hashPassword, compare = _ref2.compare;
+
+  /**
+      The CloudBrowser object that is attached to the window object of every application instance.
+      @namespace CloudBrowser
+  */
+
+  CloudBrowser = (function() {
+
+    function CloudBrowser(browser, bserver, cleaned) {
+      var appUrl, application, config, creator, creatorJson, db, mongoStore, mountPoint, permissionManager;
+      mountPoint = getParentMountPoint(bserver.mountPoint);
+      application = bserver.server.applicationManager.find(mountPoint);
+      db = bserver.server.db;
+      config = bserver.server.config;
+      mongoStore = bserver.server.mongoStore;
+      appUrl = "http://" + config.domain + ":" + config.port + mountPoint;
+      permissionManager = bserver.server.permissionManager;
+      if (bserver.creator != null) {
+        creator = new User(bserver.creator.email, bserver.creator.ns);
+        creatorJson = creator.toJson();
+      }
+      /**
+          The Application Namespace
+          @namespace CloudBrowser.app
+      */
+      /**
+          @lends CloudBrowser.app.prototype
+      */
+      this.app = {
+        /**
+            Gets the user that created the current application instance.   
+            @returns {User}
+        */
+        getCreator: function() {
+          return creator;
+        },
+        /**
+            Gets the absolute URL at which the application is hosted/mounted.    
+            @returns {String}
+        */
+        getUrl: function() {
+          return "http://" + bserver.server.config.domain + ":" + bserver.server.config.port + mountPoint;
+        },
+        /**
+            Gets the description of the application as provided in the
+            app_config.json configuration file.    
+            @return {String}
+        */
+        getDescription: function() {
+          return application.description;
+        },
+        /**
+            Gets the path relative to the root URL at which the application was mounted.     
+            @return {String}
+        */
+        getMountPoint: function() {
+          return mountPoint;
+        },
+        /**
+            A list of all the registered users of the application.          
+            @param {userListCallback} callback
+        */
+        getUsers: function(callback) {
+          return db.collection(application.dbName, function(err, collection) {
+            if (err) throw err;
+            return collection.find({}, function(err, cursor) {
+              return cursor.toArray(function(err, users) {
+                var user, userList, _i, _len;
+                if (err) throw err;
+                userList = [];
+                for (_i = 0, _len = users.length; _i &lt; _len; _i++) {
+                  user = users[_i];
+                  userList.push(new User(user.email, user.ns));
+                }
+                return callback(userList);
+              });
+            });
+          });
+        },
+        /**
+            Creates a new instance of this application.    
+            @param {errorCallback} callback
+        */
+        createInstance: function(callback) {
+          return application.browsers.create(application, creatorJson, function(err, bsvr) {
+            return callback(err);
+          });
+        },
+        /**
+            Gets all the instances of the application associated with the current user.    
+            @param {instanceListCallback} callback
+        */
+        getInstances: function(callback) {
+          return permissionManager.getBrowserPermRecs(creatorJson, application.mountPoint, function(browserRecs) {
+            var browserRec, browsers, id;
+            browsers = [];
+            for (id in browserRecs) {
+              browserRec = browserRecs[id];
+              browser = application.browsers.find(id);
+              browsers.push(new Instance(browser, creator));
+            }
+            return callback(browsers);
+          });
+        },
+        /**
+            Redirects all clients connected to the current instance to the given URL.    
+            @param {String} url
+        */
+        redirect: function(url) {
+          return bserver.redirect(url);
+        },
+        /**
+            Registers a listener on the application for an event associated with the current user.     
+            CloudBrowser supported events are Added and Removed. They are fired when an instance
+            associated with the current user is added or removed.
+            @param {String} event 
+            @param {instanceCallback} callback
+        */
+        addEventListener: function(event, callback) {
+          return permissionManager.findAppPermRec(creatorJson, mountPoint, function(appRec) {
+            if (appRec) {
+              if (event === "Added") {
+                return appRec.on(event, function(id) {
+                  return callback(new Instance(application.browsers.find(id), creator));
+                });
+              } else {
+                return appRec.on(event, function(id) {
+                  return callback(id);
+                });
+              }
+            }
+          });
+        },
+        /**
+            Checks if a user is already registered/signed up with the application.     
+            @param {User} user
+            @param {booleanCallback} callback
+        */
+        userExists: function(user, callback) {
+          return db.collection(application.dbName, function(err, collection) {
+            if (err) throw err;
+            return collection.findOne(user.toJson(), function(err, userRec) {
+              if (userRec) {
+                return callback(true);
+              } else {
+                return callback(false);
+              }
+            });
+          });
+        },
+        /**
+            Gets the current application instance.
+            @return {Instance}
+        */
+        getCurrentInstance: function() {
+          return new Instance(application.browsers.find(bserver.id), creator);
+        }
+        /**
+            @callback instanceListCallback 
+            @param {Array&lt;Instance>} instances A list of all the instances associated with the current user.
+        */
+        /**
+            @callback userListCallback
+            @param {Array&lt;User>} users
+        */
+        /**
+            @callback errorCallback
+            @param {Error} error
+        */
+        /**
+            @callback instanceCallback
+            @param {Instance | Number} instance | ID Instance if the event is "Added", else ID.
+        */
+        /**
+            @callback booleanCallback
+            @param {Bool | Null} status Null indicates that the user does not have the permission to perform this action.
+        */
+        /**
+            @callback numberCallback
+            @param {Number} number
+        */
+      };
+      /**
+          The Server Namespace
+          @namespace CloudBrowser.server
+      */
+      /**
+          @lends CloudBrowser.server.prototype
+      */
+      this.server = {
+        /**
+            Returns the domain as configured in the server_config.json configuration
+            file or as provided through the command line at the time of starting
+            CloudBrowser.    
+            @return {String}
+        */
+        getDomain: function() {
+          return config.domain;
+        },
+        /**
+            Returns the port as configured in the server_config.json configuration
+            file or as provided through the command line at the time of starting
+            CloudBrowser.    
+            @return {Number}
+        */
+        getPort: function() {
+          return config.port;
+        },
+        /**
+            Returns the URL at which the CloudBrowser server is hosted.    
+            @return {String}
+        */
+        getUrl: function() {
+          return "http://" + this.getDomain() + ":" + this.getPort();
+        },
+        mount: function(path) {
+          return bserver.server.applicationManager.create(path);
+        },
+        unmount: function(mountPoint) {
+          return bserver.server.applicationManager.remove(mountPoint);
+        },
+        listApps: function() {
+          var user;
+          user = this.getCreator();
+          return bserver.server.applicationManager.get({
+            email: user.getEmail(),
+            ns: user.getNameSpace()
+          });
+        },
+        getApps: function() {
+          var app, list, mountPoint, _ref3;
+          list = [];
+          _ref3 = bserver.server.applicationManager.get();
+          for (mountPoint in _ref3) {
+            app = _ref3[mountPoint];
+            list.push({
+              mountPoint: mountPoint,
+              description: app.description
+            });
+          }
+          list.sort(compare);
+          return list;
+        },
+        addEventListener: function(event, callback) {
+          return bserver.server.applicationManager.on(event, function(app) {
+            if (event === "Added") {
+              return callback({
+                mountPoint: app.mountPoint,
+                description: app.description
+              });
+            } else {
+              return callback(app.mountPoint);
+            }
+          });
+        }
+      };
+      /**
+          The Authentication Namespace
+          @namespace CloudBrowser.auth
+      */
+      /**
+          @lends CloudBrowser.auth.prototype
+      */
+      this.auth = {
+        /**
+            Logs out all connected clients from the current application.
+        */
+        logout: function() {
+          return bserver.redirect(appUrl + "/logout");
+        },
+        /**
+            Sends an email to the specified user.
+            @param {string} toEmailID
+            @param {string} subject
+            @param {string} message
+            @param {emptyCallback} callback
+        */
+        sendEmail: function(toEmailID, subject, message, callback) {
+          var mailOptions, smtpTransport;
+          smtpTransport = Nodemailer.createTransport("SMTP", {
+            service: "Gmail",
+            auth: {
+              user: config.nodeMailerEmailID,
+              pass: config.nodeMailerPassword
+            }
+          });
+          mailOptions = {
+            from: config.nodeMailerEmailID,
+            to: toEmailID,
+            subject: subject,
+            html: message
+          };
+          return smtpTransport.sendMail(mailOptions, function(err, response) {
+            if (err) throw err;
+            smtpTransport.close();
+            return callback();
+          });
+        },
+        /**
+            Sends a password reset link to the user at their registered email ID.    
+            @param {booleanCallback} callback
+        */
+        sendResetLink: function(user, callback) {
+          var _this = this;
+          return db.collection(application.dbName, function(err, collection) {
+            if (err) throw err;
+            return collection.findOne(user.toJson(), function(err, userRec) {
+              if (err) throw err;
+              if (userRec) {
+                return Crypto.randomBytes(32, function(err, token) {
+                  var esc_email, message, subject;
+                  if (err) throw err;
+                  token = token.toString('hex');
+                  esc_email = encodeURIComponent(userRec.email);
+                  subject = "Link to reset your CloudBrowser password";
+                  message = "You have requested to change your password." + " If you want to continue click " + ("&lt;a href='" + appUrl + "/password_reset?token=" + token + "&user=" + esc_email + "'>reset&lt;/a>.") + " If you have not requested a change in password then take no action.";
+                  return _this.sendEmail(userRec.email, subject, message, function() {
+                    return collection.update(user.toJson(), {
+                      $set: {
+                        status: "reset_password",
+                        token: token
+                      }
+                    }, {
+                      w: 1
+                    }, function(err, result) {
+                      if (err) throw err;
+                      return callback(true);
+                    });
+                  });
+                });
+              } else {
+                return callback(false);
+              }
+            });
+          });
+        },
+        /**
+            Gets the user's email ID from the query string of the URL.
+            @param {string} queryString Must be the location.search of the instance.
+        */
+        getResetEmail: function(queryString) {
+          var query;
+          query = QueryString.parse(queryString);
+          if (query !== "") query = "?" + query;
+          return query['user'];
+        },
+        /**
+            Resets the password for a valid user request.     
+            A boolean is passed as an argument to indicate success/failure.
+            @param {String}   queryString  Must be the location.search string of the instance.
+            @param {String}   password     The new plaintext password provided by the user.
+            @param {booleanCallback} callback
+        */
+        resetPassword: function(queryString, password, callback) {
+          var query,
+            _this = this;
+          query = QueryString.parse(queryString);
+          if (query !== "") query = "?" + query;
+          return db.collection(application.dbName, function(err, collection) {
+            if (err) throw err;
+            return collection.findOne({
+              email: query['user'],
+              ns: 'local'
+            }, function(err, userRec) {
+              if (userRec && userRec.status === "reset_password" && userRec.token === query['token']) {
+                return collection.update({
+                  email: userRec.email,
+                  ns: userRec.ns
+                }, {
+                  $unset: {
+                    token: "",
+                    status: ""
+                  }
+                }, {
+                  w: 1
+                }, function(err, result) {
+                  if (err) throw err;
+                  return hashPassword({
+                    password: password
+                  }, function(result) {
+                    return collection.update({
+                      email: userRec.email,
+                      ns: userRec.ns
+                    }, {
+                      $set: {
+                        key: result.key.toString('hex'),
+                        salt: result.salt.toString('hex')
+                      }
+                    }, function(err, result) {
+                      if (err) throw err;
+                      return callback(true);
+                    });
+                  });
+                });
+              } else {
+                return callback(false);
+              }
+            });
+          });
+        },
+        /**
+            @property {LocalStrategy} localStrategy
+        */
+        localStrategy: new LocalStrategy(bserver),
+        /**
+            @property {GoogleStrategy} googleStrategy
+        */
+        googleStrategy: new GoogleStrategy(bserver)
+        /**
+            @callback emptyCallback
+        */
+      };
+      /**
+          The Component Namespace
+          @namespace CloudBrowser.component
+      */
+      /**
+          @lends CloudBrowser.component.prototype
+      */
+      this.component = {
+        /**
+            Creates a new component
+            @param {String}  name    The identifying name of the component.          
+            @param {DOMNode} target  The target node at which the component must be created.         
+            @param {Object}  options Any extra options needed to customize the component.          
+            @return {DOMNode}
+        */
+        create: function(name, target, options) {
+          var Ctor, clientComponent, comp, rpcMethod, targetID;
+          if (cleaned) throw new Error("Browser has been garbage collected");
+          targetID = target.__nodeID;
+          if (browser.components[targetID]) {
+            throw new Error("Can't create 2 components on the same target.");
+          }
+          Ctor = Components[name];
+          if (!Ctor) throw new Error("Invalid component name: " + name);
+          rpcMethod = function(method, args) {
+            return browser.emit('ComponentMethod', {
+              target: target,
+              method: method,
+              args: args
+            });
+          };
+          comp = browser.components[targetID] = new Ctor(options, rpcMethod, target);
+          clientComponent = [name, targetID, comp.getRemoteOptions()];
+          browser.clientComponents.push(clientComponent);
+          browser.emit('CreateComponent', clientComponent);
+          return target;
+        }
+      };
+      this.User = function(email, namespace) {
+        return new User(email, namespace);
+      };
+    }
+
+    CloudBrowser.prototype.Model = require('./model');
+
+    CloudBrowser.prototype.PageManager = require('./page_manager');
+
+    return CloudBrowser;
+
+  })();
+
+  module.exports = function(browser, bserver) {
+    var cleaned, window;
+    cleaned = false;
+    window = Weak(browser.window, function() {
+      return cleaned = true;
+    });
+    browser = Weak(browser, function() {
+      return cleaned = true;
+    });
+    return window.CloudBrowser = new CloudBrowser(browser, bserver, cleaned);
+  };
+
+}).call(this);
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Index</a></h2><h3>Classes</h3><ul><li><a href="GoogleStrategy.html">GoogleStrategy</a></li><li><a href="Instance.html">Instance</a></li><li><a href="LocalStrategy.html">LocalStrategy</a></li><li><a href="User.html">User</a></li></ul><h3>Namespaces</h3><ul><li><a href="CloudBrowser.html">CloudBrowser</a></li><li><a href="CloudBrowser.app.html">app</a></li><li><a href="CloudBrowser.auth.html">auth</a></li><li><a href="CloudBrowser.component.html">component</a></li><li><a href="CloudBrowser.server.html">server</a></li></ul><h3><a href="global.html">Global</a></h3>
+</nav>
+
+<br clear="both">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.2.0-dev</a> on Wed Jun 05 2013 20:29:52 GMT-0400 (EDT)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

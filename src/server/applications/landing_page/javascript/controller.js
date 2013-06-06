@@ -44,13 +44,19 @@
       if (!findInInstanceList(instance.id)) {
         instance.dateCreated = formatDate(instance.dateCreated);
         instance.addEventListener('Shared', function(err) {
-          if (!err) {
-            return $scope.safeApply(function() {
-              instance.owners = instance.getOwners();
-              return instance.collaborators = instance.getReaderWriters();
-            });
-          } else {
+          if (err) {
             return console.log(err);
+          } else {
+            instance.getOwners(function(owners) {
+              return $scope.safeApply(function() {
+                return instance.owners = owners;
+              });
+            });
+            return instance.getReaderWriters(function(readersWriters) {
+              return $scope.safeApply(function() {
+                return instance.collaborators = readersWriters;
+              });
+            });
           }
         });
         instance.addEventListener('Renamed', function(err, name) {
@@ -208,24 +214,30 @@
       for (_i = 0, _len = _ref.length; _i < _len; _i++) {
         instanceID = _ref[_i];
         instance = findInInstanceList(instanceID);
-        if (instance.isOwner($scope.user)) {
-          _results.push(instance.grantPermissions(perm, user, function(err) {
-            if (!err) {
-              CloudBrowser.auth.sendEmail(user.getEmail(), subject, msg, function() {});
-              return $scope.safeApply(function() {
-                $scope.boxMessage = "The selected instances are now shared with " + user.getEmail() + " (" + user.getNameSpace() + ")";
-                $scope.addingOwner = false;
-                return $scope.addingCollaborator = false;
+        _results.push((function(instance) {
+          return instance.isOwner($scope.user, function(isOwner) {
+            if (isOwner) {
+              return instance.grantPermissions(perm, user, function(err) {
+                if (!err) {
+                  CloudBrowser.auth.sendEmail(user.getEmail(), subject, msg, function() {});
+                  return $scope.safeApply(function() {
+                    $scope.boxMessage = "The selected instances are now shared with " + user.getEmail() + " (" + user.getNameSpace() + ")";
+                    $scope.addingOwner = false;
+                    return $scope.addingCollaborator = false;
+                  });
+                } else {
+                  return $scope.safeApply(function() {
+                    return $scope.error = err;
+                  });
+                }
               });
             } else {
               return $scope.safeApply(function() {
-                return $scope.error = err;
+                return $scope.error = "You do not have the permission to perform this action.";
               });
             }
-          }));
-        } else {
-          _results.push($scope.error = "You do not have the permission to perform this action.");
-        }
+          });
+        })(instance));
       }
       return _results;
     };
@@ -332,7 +344,13 @@
     return $scope.clickRename = function(instanceID) {
       var instance;
       instance = findInInstanceList(instanceID);
-      if (instance.isOwner($scope.user)) return instance.editing = true;
+      return instance.isOwner($scope.user, function(isOwner) {
+        if (isOwner) {
+          return $scope.safeApply(function() {
+            return instance.editing = true;
+          });
+        }
+      });
     };
   });
 
@@ -347,36 +365,62 @@
   CBLandingPage.filter("instanceFilter", function() {
     var _this = this;
     return function(list, arg) {
-      var filterType, instance, modifiedList, user, _i, _j, _k, _l, _len, _len2, _len3, _len4;
+      var filterType, instance, modifiedList, user, _fn, _fn2, _fn3, _fn4, _i, _j, _k, _l, _len, _len2, _len3, _len4;
       filterType = arg.type;
       user = arg.user;
       modifiedList = [];
       if (filterType === 'owned') {
+        _fn = function(instance) {
+          return instance.isOwner(user, function(isOwner) {
+            if (isOwner) return modifiedList.push(instance);
+          });
+        };
         for (_i = 0, _len = list.length; _i < _len; _i++) {
           instance = list[_i];
-          if (instance.isOwner(user)) modifiedList.push(instance);
+          _fn(instance);
         }
       }
       if (filterType === 'notOwned') {
+        _fn2 = function(instance) {
+          return instance.isOwner(user, function(isOwner) {
+            if (!isOwner) return modifiedList.push(instance);
+          });
+        };
         for (_j = 0, _len2 = list.length; _j < _len2; _j++) {
           instance = list[_j];
-          if (!instance.isOwner(user)) modifiedList.push(instance);
+          _fn2(instance);
         }
       }
       if (filterType === 'shared') {
+        _fn3 = function(instance) {
+          return instance.getNumReaderWriters(function(numReaderWriters) {
+            if (numReaderWriters) {
+              return modifiedList.push(instance);
+            } else {
+              return instance.getNumOwners(function(numOwners) {
+                if (numOwners > 1) return modifiedList.push(instance);
+              });
+            }
+          });
+        };
         for (_k = 0, _len3 = list.length; _k < _len3; _k++) {
           instance = list[_k];
-          if (instance.getReaderWriters().length || instance.getOwners().length > 1) {
-            modifiedList.push(instance);
-          }
+          _fn3(instance);
         }
       }
       if (filterType === 'notShared') {
+        _fn4 = function(instance) {
+          return instance.getNumOwners(function(numOwners) {
+            if (numOwners === 1) {
+              return instance.getNumReaderWriters(function(numReaderWriters) {
+                if (!numReaderWriters) return modifiedList.push(instance);
+              });
+            }
+          });
+        };
         for (_l = 0, _len4 = list.length; _l < _len4; _l++) {
           instance = list[_l];
-          if (instance.getOwners().length === 1 && !instance.getReaderWriters().length) {
-            modifiedList.push(instance);
-          }
+          _fn4(instance);
         }
       }
       if (filterType === 'all') modifiedList = list;
@@ -411,7 +455,7 @@
             var data;
             data = [];
             return CloudBrowser.app.getUsers(function(users) {
-              var collaborator, index, instance, instanceID, _i, _j, _len, _len2, _ref;
+              var collaborator, index, instance, instanceID, user, _i, _j, _len, _len2, _ref;
               _ref = scope.selected;
               for (_i = 0, _len = _ref.length; _i < _len; _i++) {
                 instanceID = _ref[_i];
@@ -422,19 +466,41 @@
                 index = 0;
                 if (attrs.typeahead === "selectedCollaborator") {
                   while (index < users.length) {
-                    if (instance.isOwner(users[index]) || instance.isReaderWriter(users[index])) {
-                      users.splice(index, 1);
-                    } else {
-                      index++;
-                    }
+                    user = users[index];
+                    (function(user) {
+                      return instance.isOwner(user, function(isOwner) {
+                        if (isOwner) {
+                          return scope.safeApply(function() {
+                            return users.splice(index, 1);
+                          });
+                        } else {
+                          return instance.isReaderWriter(user, function(isReaderWriter) {
+                            return scope.safeApply(function() {
+                              if (isReaderWriter) {
+                                return users.splice(index, 1);
+                              } else {
+                                return index++;
+                              }
+                            });
+                          });
+                        }
+                      });
+                    })(user);
                   }
                 } else if (attrs.typeahead === "selectedOwner") {
                   while (index < users.length) {
-                    if (instance.isOwner(users[index])) {
-                      users.splice(index, 1);
-                    } else {
-                      index++;
-                    }
+                    user = users[index];
+                    (function(user) {
+                      return instance.isOwner(user, function(isOwner) {
+                        return scope.safeApply(function() {
+                          if (isOwner) {
+                            return users.splice(index, 1);
+                          } else {
+                            return index++;
+                          }
+                        });
+                      });
+                    })(user);
                   }
                 }
               }
