@@ -9,9 +9,7 @@ Managers            = require('./browser_manager')
 ParseCookie         = require('cookie').parse
 ApplicationManager  = require('./application_manager')
 PermissionManager   = require('./permission_manager')
-Mongo               = require('mongodb')
-Express             = require("express")
-MongoStore          = require("connect-mongo")(Express)
+MongoInterface      = require("./mongo_interface")
 os                  = require('os')
 require('ofe').call()
 
@@ -78,15 +76,9 @@ class Server extends EventEmitter
                 if @config.debug
                     console.log "#{k} : #{@config[k]}"
 
-        @db_server = new Mongo.Server(@config.domain, 27017, {auto_reconnect:true})
-        @db = new Mongo.Db('cloudbrowser', @db_server)
-        @db.open (err, db) ->
-          if !err
-              console.log "Connection to Database cloudbrowser established"
-          else throw err
-        @mongoStore = new MongoStore(db: "cloudbrowser_sessions", clear_interval: 600)
+        @mongoInterface = new MongoInterface('cloudbrowser')
         @applicationManager = new ApplicationManager(paths, this, projectRoot)
-        @permissionManager = new PermissionManager(@db)
+        @permissionManager = new PermissionManager(@mongoInterface)
         @httpServer = new HTTPServer this, () =>
             @emit('ready')
         @socketIOServer = @createSocketIOServer(@httpServer.server, @config.apps)
@@ -132,10 +124,8 @@ class Server extends EventEmitter
             io.set 'authorization', (handshakeData, callback) =>
                 handshakeData.cookie = ParseCookie(handshakeData.headers.cookie)
                 handshakeData.sessionID = handshakeData.cookie['cb.id']
-                @mongoStore.get handshakeData.sessionID, (err, session) ->
-                    if err then callback(null, false)
-                    else if session.user
-                        handshakeData.session = session
+                @mongoInterface.getSession handshakeData.sessionID, (session) ->
+                    handshakeData.session = session
                     callback(null, true)
 
         io.sockets.on 'connection', (socket) =>

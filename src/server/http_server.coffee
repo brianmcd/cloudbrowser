@@ -19,7 +19,7 @@ class HTTPServer extends EventEmitter
                 server.use(express.logger())
             server.use(express.bodyParser())
             server.use(express.cookieParser('secret'))
-            server.use(express.session({store: @cbServer.mongoStore, secret: 'change me please', key:'cb.id'}))
+            server.use(express.session({store: @cbServer.mongoInterface.mongoStore, secret: 'change me please', key:'cb.id'}))
             server.set('views', Path.join(__dirname, '..', '..', 'views'))
             server.set('view options', {layout: false})
             server.use(Passport.initialize())
@@ -85,22 +85,17 @@ class HTTPServer extends EventEmitter
                 else
                     redirectto = req.session.mountPoint
 
-                @cbServer.db.collection app.dbName, (err, collection) =>
-                    # Check if the user is one of the registered users of the application
-                    collection.findOne {email:req.user.email, ns: 'google'}, (err, user) =>
-                        throw err if err
-                        # If so, update the session to indicate that the user has been authenticated
-                        # And redirect the client to the location specified in the session parameter - "redirectto"
+                newUser = {email:req.user.email, ns: 'google'}
+                @cbServer.mongoInterface.findUser newUser, app.dbName, (user) =>
                         if user
+                            # If user is registered with the application, update the session
+                            # to indicate that the user has been authenticated
+                            # And redirect the client to the location specified in the session parameter - "redirectto"
                             @updateSession(req, user, req.session.mountPoint)
                             @redirect(res, redirectto)
                         else
                             # Insert user into list of registered users of the application
-                            collection.insert {email:req.user.email,
-                            displayName:req.user.displayName, ns: 'google'},
-                            (err, user) =>
-                                throw err if err
-                                # Update user permissions
+                            @cbServer.mongoInterface.addUser newUser, app.dbName, (user) =>
                                 @addPermRec user[0], req.session.mountPoint, () =>
                                     @updateSession(req, user[0], req.session.mountPoint)
                                     @redirect(res, redirectto)
@@ -205,22 +200,15 @@ class HTTPServer extends EventEmitter
                 @redirect(res, mountPointNoSlash)
 
             @server.get "#{mountPointNoSlash}/activate/:token", (req, res) =>
-                @cbServer.db.collection app.dbName, (err, collection) =>
-                    throw err if err
-                    collection.findOne {token:req.params.token}, (err, user) =>
-                        @addPermRec user, mountPointNoSlash, () =>
-                            collection.update {token: req.params.token}, {$unset: {token: "", status: ""}},
-                            {w:1}, (err, result) =>
-                                throw err if err
-                                res.render 'activate.jade',
-                                    url: "http://#{@cbServer.config.domain}:#{@cbServer.config.port}#{mountPointNoSlash}"
+                @cbServer.mongoInterface.findUser {token:req.params.token}, app.dbName, (user) =>
+                    @addPermRec user, mountPointNoSlash, () =>
+                        @cbServer.mongoInterface.unsetUser {token: req.params.token}, app.dbName, {token: "", status: ""}, () =>
+                            res.render 'activate.jade',
+                                url: "http://#{@cbServer.config.domain}:#{@cbServer.config.port}#{mountPointNoSlash}"
 
-            @server.get "#{mountPointNoSlash}/deactivate/:token", (req, res) ->
-                @cbServer.db.collection app.dbName, (err, collection) ->
-                    throw err if err
-                    collection.remove {token: req.params.token}, (err, result) ->
-                        throw err if err
-                        res.render 'deactivate.jade'
+            @server.get "#{mountPointNoSlash}/deactivate/:token", (req, res) =>
+                @cbServer.mongoInterface.removeUser {token: req.params.token}, app.dbName, () =>
+                    res.render 'deactivate.jade'
 
             @server.get mountPoint, isAuthenticated, (req, res) =>
                 if app.getInstantiationStrategy() is "multiInstance"
@@ -247,6 +235,8 @@ class HTTPServer extends EventEmitter
 
         else
             @server.get mountPoint, (req, res) =>
+                # For password reset requests
+                @preserveQueryParameters(req.query, req.session)
                 id = req.session.browserID
                 if !id? || !browsers.find(id)
                     bserver = browsers.create(app)
@@ -315,4 +305,9 @@ class HTTPServer extends EventEmitter
         if req.session.user.length is 0
             req.session.destroy()
 
+    preserveQueryParameters : (query, session) ->
+        if Object.keys(query).length isnt 0
+            for k, v of query
+                session[k] = v
+        session.save()
 module.exports = HTTPServer

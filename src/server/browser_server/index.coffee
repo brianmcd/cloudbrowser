@@ -62,12 +62,14 @@ class BrowserServer extends EventEmitter
     ###
 
     # Returns cookies of all clients connected to the VB
-    getSessions : () ->
-        sessionIDS = []
-        for socket in @sockets
-            cookie = ParseCookie(socket.handshake.headers.cookie)
-            sessionIDS.push(cookie["cb.id"])
-        return sessionIDS
+    getSessions : (callback) ->
+        # TODO: Must remove setTimeout Hack?
+        setTimeout () =>
+            sessions = []
+            for socket in @sockets
+                sessions.push(socket.handshake.sessionID)
+            callback(sessions)
+        , 1000
 
     # arg can be an Application or URL string.
     load : (arg, location) ->

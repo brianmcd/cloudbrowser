@@ -212,9 +212,7 @@ class CacheManager
 
 class UserPermissionManager extends CacheManager
 
-    constructor : (@db_connection) ->
-        if not @db_connection?
-            throw new Error("Missing required parameter")
+    constructor : (@mongoInterface) ->
         super
 
     findSysPermRec : (user, callback) ->
@@ -225,25 +223,20 @@ class UserPermissionManager extends CacheManager
             callback(cacheRecord)
 
         # Else, hit the DB
-        else @db_connection.collection "Permissions", (err, collection) =>
-            throw err if err
+        else @mongoInterface.findUser {email:user.email, ns:user.ns}, "Permissions", (dbRecord) =>
+            if dbRecord
+                # Add user record to cache
+                cacheRecord = @addToCache(user, dbRecord.permissions)
 
-            collection.findOne {email:user.email, ns:user.ns}, (err, dbRecord) =>
-                throw err if err
+                # Add application records {mountPoint, application level permissions}
+                # to cache 
+                if dbRecord.apps
+                    for app in dbRecord.apps
+                         cacheRecord.addItemAndSetPerm(app.mountPoint, AppPermissionManager, app.permissions)
 
-                if dbRecord
-                    # Add user record to cache
-                    cacheRecord = @addToCache(user, dbRecord.permissions)
+                callback(cacheRecord)
 
-                    # Add application records {mountPoint, application level permissions}
-                    # to cache 
-                    if dbRecord.apps
-                        for app in dbRecord.apps
-                             cacheRecord.addItemAndSetPerm(app.mountPoint, AppPermissionManager, app.permissions)
-
-                    callback(cacheRecord)
-
-                else callback(null)
+            else callback(null)
 
     addSysPermRec : (user, permissions, callback) ->
 
@@ -259,15 +252,12 @@ class UserPermissionManager extends CacheManager
 
         @findSysPermRec user, (sysRec) =>
             # Add user system level record only if not already present
-            if not sysRec? then @db_connection.collection "Permissions", (err, collection) =>
-                throw err if err
+            if not sysRec?
                 # Add to DB
-                collection.insert {email:user.email, ns:user.ns}, (err, dbRecord) =>
-                    throw err if err
+                @mongoInterface.addUser {email:user.email, ns:user.ns}, "Permissions", (dbRecord) =>
                     # Add to cache
                     sysRec = @addRecToCache(user)
                     setPerm(user, permissions, sysRec, callback)
-
             # Else, just set the permissions
             else
                 setPerm(user, permissions, sysRec, callback)
@@ -275,13 +265,10 @@ class UserPermissionManager extends CacheManager
     rmSysPermRec : (user, callback) ->
         @findSysPermRec user, (sysRec) =>
             if sysRec?
-                @db_connection.collection "Permissions", (err, collection) =>
-                    throw err if err
-                    # Remove from DB
-                    collection.remove {email:user.email, ns:user.ns}, (err, rec) =>
-                        throw err if err
-                        # Remove from cache
-                        callback(@removeFromCache(user))
+                # Remove from DB
+                @mongoInterface.removeUser {email:user.email, ns:user.ns}, "Permissions", () =>
+                    # Remove from cache
+                    callback(@removeFromCache(user))
             else callback(new Error("User permission record for " + user.email + "(" + user.ns + ") does not exist"))
 
     findAppPermRec : (user, mountPoint, callback) ->
@@ -310,36 +297,24 @@ class UserPermissionManager extends CacheManager
         @findAppPermRec user, mountPoint, (appRec) =>
             if not appRec?
                 # Add to DB
-                @db_connection.collection "Permissions", (err, collection) =>
-                    collection.update {email:user.email, ns:user.ns},
-                    {$push: {apps:{mountPoint:mountPoint}}}, {w:1},
-                    (err) =>
-                        if err then throw err
-                        @findSysPermRec user, (sysRec) =>
-                            if sysRec
-                                appRec = sysRec.addItem(mountPoint, AppPermissionManager)
-                                setPerm(user, mountPoint, permissions, appRec, callback)
-                            else callback(null)
+                @mongoInterface.addToUser {email:user.email, ns:user.ns}, "Permissions",
+                {apps:{mountPoint:mountPoint}}, () =>
+                    @findSysPermRec user, (sysRec) =>
+                        if sysRec
+                            appRec = sysRec.addItem(mountPoint, AppPermissionManager)
+                            setPerm(user, mountPoint, permissions, appRec, callback)
+                        else callback(null)
             else
                 setPerm(user, mountPoint, permissions, appRec, callback)
             
     rmAppPermRec : (user, mountPoint, callback) ->
         @findAppPermRec user, mountPoint, (appRec) =>
-            @db_connection.collection "Permissions", (err, collection) =>
-                if err then throw err
-
-                # Remove from DB
-                collection.update {email:user.email, ns:user.ns},
-                {$pull:{apps:{mountPoint:mountPoint}}}, {w:1},
-                (err, item) =>
-                    if err then throw err
-
-                    # Remove from cache
-                    @findSysPermRec user, (sysRec) ->
-                        if sysRec
-                            callback(sysRec.removeItem(mountPoint))
-
-                        else callback(new Error("User permission record for " + user.email + "(" + user.ns + ") does not exist"))
+            @mongoInterface.removeFromUser {email:user.email, ns:user.ns}, "Permissions", {apps:{mountPoint:mountPoint}}, () =>
+                # Remove from cache
+                @findSysPermRec user, (sysRec) ->
+                    if sysRec
+                        callback(sysRec.removeItem(mountPoint))
+                    else callback(new Error("User permission record for " + user.email + "(" + user.ns + ") does not exist"))
 
     findBrowserPermRec: (user, mountPoint, browserId, callback) ->
         @findAppPermRec user, mountPoint, (appRec) ->
@@ -378,31 +353,15 @@ class UserPermissionManager extends CacheManager
     setSysPerm : (user, permissions, callback) ->
         @findSysPermRec user, (sysRec) =>
             if not sysRec? then callback(null)
-
-            @db_connection.collection "Permissions", (err, collection) ->
-                if err then throw err
-
-                collection.update {email:user.email, ns:user.ns},
-                {$set : {permissions:sysRec.set(permissions)}}, {w:1},
-                (err, result) ->
-                    throw err if err
-
-                    callback(sysRec)
+            @mongoInterface.setUser {email:user.email, ns:user.ns}, "Permissions", {permissions:sysRec.set(permissions)}, () ->
+                callback(sysRec)
 
     setAppPerm : (user, mountPoint, permissions, callback) ->
         @findAppPermRec user, mountPoint, (appRec) =>
             if not appRec then callback(null)
-
-            @db_connection.collection "Permissions", (err, collection) =>
-                if err then throw err
-
-                collection.update {email:user.email, ns:user.ns,
-                apps:{'$elemMatch':{mountPoint:mountPoint}}},
-                {$set:{'apps.$.permissions':appRec.set(permissions)}}, {w:1},
-                (err, rec) ->
-                    throw err if err
-
-                    callback(appRec)
+            @mongoInterface.setUser {email:user.email, ns:user.ns, apps:{'$elemMatch':{mountPoint:mountPoint}}},
+            "Permissions", {'apps.$.permissions':appRec.set(permissions)}, () ->
+                callback(appRec)
         
     setBrowserPerm: (user, mountPoint, browserId, permissions, callback) ->
         @findBrowserPermRec user, mountPoint, browserId, (browserRec) ->
