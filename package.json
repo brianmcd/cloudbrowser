@@ -15,7 +15,7 @@
   },
   "scripts": {
     "test": "./run_tests.js",
-    "postinstall": "bin/make-links.sh && mkdir -p logs"
+    "postinstall": "bin/make-links.sh && mkdir -p logs && bin/instructions.sh"
   },
   "dependencies": {
     "jsdom"            : "0.6.5",
