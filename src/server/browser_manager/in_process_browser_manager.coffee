@@ -20,6 +20,7 @@ class InProcessBrowserManager extends BrowserManager
 
     closeBrowser : (browser) ->
         @removeFromBrowserList(browser)
+        browser.removeAllListeners()
         delete @browsers[browser.id]
         browser.close()
 
