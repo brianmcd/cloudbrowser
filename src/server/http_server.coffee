@@ -23,6 +23,10 @@ class HTTPServer extends EventEmitter
             server.set('views', Path.join(__dirname, '..', '..', 'views'))
             server.set('view options', {layout: false})
             server.use(Passport.initialize())
+            server.on 'error', (e) =>
+                if e.code is 'EADDRINUSE'
+                    console.log("\nError : Address #{@cbServer.config.domain}:#{@cbServer.config.port} is in use. Exiting.")
+                    process.exit(1)
 
         # Must set up routes only after session middleware has been initialized
         @setupGoogleAuthentication()
