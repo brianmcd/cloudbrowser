@@ -30,10 +30,11 @@ This will start the server, recursively search for all applications in the given
 Only those applications whose source directory has an app\_config.json file will be mounted.
 The mount point of the web application(s) will be displayed by the server on startup.
 Multiple paths can be provided for mounting at the time of startup.
+8. Visit `domain:port/<mount point of application>` in your browser.
 
 To mount the provided examples, run `./bin/server examples`.
+To view all the mounted applications visit `domain:port/`
 
-8. Visit `domain:port/<mount point of application>` in your browser.
 
 Configuration
 -------------
