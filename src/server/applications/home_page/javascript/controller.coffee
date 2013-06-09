@@ -6,6 +6,11 @@ CBHomePage.controller "MainCtrl", ($scope) ->
     CloudBrowser.server.addEventListener 'Added', (app) ->
         $scope.$apply ->
             $scope.apps.push(app)
+    
+    $scope.leftClick = (url) ->
+        console.log "redirecting to #{url}"
+        require('util').inspect CloudBrowser.app.redirect
+        CloudBrowser.app.redirect(url)
 
 CBHomePage.filter "removeSlash", () ->
     return (input) ->

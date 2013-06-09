@@ -6,11 +6,16 @@
   CBHomePage.controller("MainCtrl", function($scope) {
     $scope.apps = CloudBrowser.server.getApps();
     $scope.serverUrl = CloudBrowser.server.getUrl();
-    return CloudBrowser.server.addEventListener('Added', function(app) {
+    CloudBrowser.server.addEventListener('Added', function(app) {
       return $scope.$apply(function() {
         return $scope.apps.push(app);
       });
     });
+    return $scope.leftClick = function(url) {
+      console.log("redirecting to " + url);
+      require('util').inspect(CloudBrowser.app.redirect);
+      return CloudBrowser.app.redirect(url);
+    };
   });
 
   CBHomePage.filter("removeSlash", function() {
