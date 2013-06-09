@@ -104,7 +104,7 @@ class Server extends EventEmitter
             @mount app
 
     mount : (app) ->
-        console.log "Mounting " + app.mountPoint
+        console.log("Mounting #{app.mountPoint} at http://#{@config.domain}:#{@config.port}#{app.mountPoint}\n")
         {mountPoint} = app
         browsers = app.browsers = if app.browserStrategy == 'multiprocess'
             new MultiProcessBrowserManager(this, mountPoint, app)
