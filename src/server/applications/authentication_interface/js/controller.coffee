@@ -9,6 +9,10 @@ CBAuthentication.controller "LoginCtrl", ($scope) ->
     $scope.resetSuccessMsg  = null
     $scope.isDisabled       = false
     $scope.showEmailButton  = false
+    currentVirtualBrowser   = cloudbrowser.getCurrentVirtualBrowser()
+    appConfig               = currentVirtualBrowser.getAppConfig()
+    googleStrategy          = appConfig.getGoogleStrategy()
+    localStrategy           = appConfig.getLocalStrategy()
 
     $scope.$watch "email + password", ->
         $scope.loginError       = null
@@ -18,7 +22,7 @@ CBAuthentication.controller "LoginCtrl", ($scope) ->
     $scope.$watch "email", ->
         $scope.emailError = null
 
-    $scope.googleLogin = () -> CloudBrowser.auth.googleStrategy.login()
+    $scope.googleLogin = () -> googleStrategy.login()
 
     $scope.login = () ->
 
@@ -27,8 +31,8 @@ CBAuthentication.controller "LoginCtrl", ($scope) ->
 
         else
             $scope.isDisabled = true
-            CloudBrowser.auth.localStrategy.login
-                user     : CloudBrowser.User($scope.email, 'local')
+            localStrategy.login
+                user     : new cloudbrowser.app.User($scope.email, 'local')
                 password : $scope.password
                 callback : (success) ->
                     if not success
@@ -42,7 +46,7 @@ CBAuthentication.controller "LoginCtrl", ($scope) ->
 
         else
             $scope.resetDisabled = true
-            CloudBrowser.auth.sendResetLink CloudBrowser.User($scope.email, 'local'), (success) ->
+            appConfig.sendResetLink new cloudbrowser.app.User($scope.email, 'local'), (success) ->
                 if success
                     $scope.resetSuccessMsg = "A password reset link has been sent to your email ID."
                 else
@@ -60,6 +64,10 @@ CBAuthentication.controller "SignupCtrl", ($scope) ->
     $scope.passwordError    = null
     $scope.successMessage   = false
     $scope.isDisabled       = false
+    currentVirtualBrowser   = cloudbrowser.getCurrentVirtualBrowser()
+    appConfig               = currentVirtualBrowser.getAppConfig()
+    googleStrategy          = appConfig.getGoogleStrategy()
+    localStrategy           = appConfig.getLocalStrategy()
 
     $scope.$watch "email", (nval, oval) ->
         $scope.emailError       = null
@@ -67,7 +75,7 @@ CBAuthentication.controller "SignupCtrl", ($scope) ->
         $scope.isDisabled       = false
         $scope.successMessage   = false
 
-        CloudBrowser.app.userExists CloudBrowser.User($scope.email, 'local'), (exists) ->
+        appConfig.isUserRegistered new cloudbrowser.app.User($scope.email, 'local'), (exists) ->
             if exists then $scope.$apply ->
                 $scope.emailError = "Account with this Email ID already exists!"
                 $scope.isDisabled = true
@@ -77,7 +85,7 @@ CBAuthentication.controller "SignupCtrl", ($scope) ->
         $scope.passwordError    = null
         $scope.isDisabled       = false
 
-    $scope.googleLogin = () -> CloudBrowser.auth.googleStrategy.signup()
+    $scope.googleLogin = () -> googleStrategy.signup()
 
     $scope.signup = ->
         $scope.isDisabled = true
@@ -93,8 +101,8 @@ CBAuthentication.controller "SignupCtrl", ($scope) ->
             " must contain atleast 1 uppercase, 1 lowercase, 1 digit and 1 special character." +
             " Spaces are not allowed."
         else
-            CloudBrowser.auth.localStrategy.signup
-                user     : CloudBrowser.User($scope.email, 'local')
+            localStrategy.signup
+                user     : new cloudbrowser.app.User($scope.email, 'local')
                 password : $scope.password
                 callback : () ->
                     $scope.$apply -> $scope.successMessage = true

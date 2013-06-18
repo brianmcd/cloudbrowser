@@ -12,7 +12,7 @@ exports.getParentMountPoint = (originalMountPoint) ->
     return mountPoint
 
 # Hashes the password using pbkdf2
-exports.hashPassword = (config={}, callback) ->
+exports.hashPassword = hashPassword = (config={}, callback) ->
     defaults =
         iterations : 10000
         randomPasswordStartLen : 6 #final password length after base64 encoding will be 8

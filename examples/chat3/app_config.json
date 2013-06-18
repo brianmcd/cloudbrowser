@@ -1,5 +1,6 @@
 {
     "state"      : "chatboot.js",
     "entryPoint" : "index.html",
-    "instantiationStrategy" : "singleUserInstance"
+    "instantiationStrategy" : "singleUserInstance",
+    "description" : "A multi user chat application written using AngularJS."
 }

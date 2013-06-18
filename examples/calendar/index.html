@@ -7,7 +7,8 @@
                 };
                 ko.applyBindings(vm);
                 var pickerDiv = document.getElementById('datePicker');
-                var picker = CloudBrowser.component.create('calendar', pickerDiv, {
+                var curVB  = cloudbrowser.getCurrentVirtualBrowser()
+                var picker = curVB.createComponent('calendar', pickerDiv, {
                     height : '200px',
                     width : '600px',
                     showPrevMonth : true,

@@ -2,6 +2,7 @@
     <head>
         <script>
             window.addEventListener('load', function () {
+                var currentVB = cloudbrowser.getCurrentVirtualBrowser()
                 var vm = {
                     selectedDate : ko.observable()
                 };
@@ -9,7 +10,7 @@
 
                 // DatePicker
                 var pickerDiv = document.getElementById('datePicker');
-                var picker = CloudBrowser.component.create('calendar', pickerDiv, {
+                var picker = currentVB.createComponent('calendar', pickerDiv, {
                     height : '100px',
                     width : '300px',
                     showPrevMonth : true,

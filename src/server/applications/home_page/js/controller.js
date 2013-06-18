@@ -4,15 +4,18 @@
   CBHomePage = angular.module("CBHomePage", []);
 
   CBHomePage.controller("MainCtrl", function($scope) {
-    $scope.apps = CloudBrowser.server.getApps();
-    $scope.serverUrl = CloudBrowser.server.getUrl();
-    CloudBrowser.server.addEventListener('Added', function(app) {
+    var currentVirtualBrowser, server;
+    server = cloudbrowser.getServerConfig();
+    currentVirtualBrowser = cloudbrowser.getCurrentVirtualBrowser();
+    $scope.apps = server.getApps();
+    $scope.serverUrl = server.getUrl();
+    server.addEventListener('Added', function(app) {
       return $scope.$apply(function() {
         return $scope.apps.push(app);
       });
     });
     return $scope.leftClick = function(url) {
-      return CloudBrowser.app.redirect(url);
+      return currentVirtualBrowser.redirect(url);
     };
   });
 

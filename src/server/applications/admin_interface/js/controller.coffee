@@ -1,7 +1,8 @@
-CBAdmin         = angular.module("CBAdmin", [])
+CBAdmin = angular.module("CBAdmin", [])
 
 CBAdmin.controller "AppCtrl", ($scope, $timeout) ->
-    $scope.user = cloudBrowser.app.getCreator()
+    currentInstance = cloudbrowser.app.getCurrentInstance()
+    $scope.user = currentInstance.getCreator()
     #change to event based model
     $scope.getApps = () ->
         $timeout ->
@@ -11,4 +12,4 @@ CBAdmin.controller "AppCtrl", ($scope, $timeout) ->
         , 100
     $scope.getApps()
     $scope.deleteVB = (mountPoint, browserID) ->
-        cloudbrowser.app.closeInstance browserID, $scope.user, () ->
+        #cloudbrowser.app.closeInstance browserID, $scope.user, () ->

@@ -6,10 +6,11 @@
   Util = require('util');
 
   Chat3.controller("ChatCtrl", function($scope) {
-    var addRoom, chatManager, chatUser, findRoom, getLastActiveRoom, lastActiveRoom, room, _i, _j, _len, _len2, _ref, _ref2;
+    var addRoom, chatManager, chatUser, currentVB, findRoom, getLastActiveRoom, lastActiveRoom, room, _i, _j, _len, _len2, _ref, _ref2;
     $scope.joinedRooms = [];
     $scope.otherRooms = [];
-    $scope.username = CloudBrowser.app.getCreator().getEmail();
+    currentVB = cloudbrowser.getCurrentVirtualBrowser();
+    $scope.username = currentVB.getCreator().getEmail();
     $scope.activeRoom = null;
     $scope.roomName = null;
     $scope.currentMessage = "";
@@ -60,7 +61,7 @@
         return null;
       }
     };
-    chatManager = CloudBrowser.app.shared.chats;
+    chatManager = cloudbrowser.app.shared.chats;
     chatManager.on("NewRoom", function(room) {
       return setTimeout(function() {
         if (!findRoom(room.name, $scope.joinedRooms)) {
@@ -77,8 +78,8 @@
         addRoom(room, $scope.otherRooms, false);
       }
     }
-    chatUser = CloudBrowser.app.local.user;
-    chatUser.setUserDetails(CloudBrowser.app.getCreator().toJson());
+    chatUser = cloudbrowser.app.local.user;
+    chatUser.setUserDetails(currentVB.getCreator().toJson());
     chatUser.on("JoinedRoom", function(room) {
       addRoom(room, $scope.joinedRooms, true);
       $scope.safeApply(function() {

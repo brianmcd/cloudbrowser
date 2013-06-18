@@ -3,10 +3,10 @@
         <title>{{mountPoint}}</title>
         <link href="css/bootstrap.css" rel="stylesheet">
         <link href="css/bootstrap-responsive.css" rel="stylesheet">
-        <script type="text/javascript" src='javascript/angular.js'></script>
-        <script type="text/javascript" src='javascript/controller.js'></script>
-        <script type="text/javascript" src='javascript/jquery.js'></script>
-        <script type="text/javascript" src='javascript/bootstrap.js'></script>
+        <script type="text/javascript" src='js/angular.js'></script>
+        <script type="text/javascript" src='js/controller.js'></script>
+        <script type="text/javascript" src='js/jquery.js'></script>
+        <script type="text/javascript" src='js/bootstrap.js'></script>
         <link rel='stylesheet' href='css/font-awesome.css'>
         <link rel='stylesheet' href='css/style.css'>
     </head>
@@ -23,13 +23,13 @@
                         {{description}}
                     </div>
 
-                    <div class="hero-unit" ng-show="!(instanceList.length)">
+                    <div class="hero-unit" ng-show="!(virtualBrowserList.length)">
                         <h2>Welcome to {{mountPoint|removeSlash}}.</h2>
-                        <p>You don't have any instances yet.</p>
+                        <p>You don't have any virtual browsers yet.</p>
                         <p><button class="btn btn-success" ng-click="createVB()">Create</button> one now!</p>
                     </div>
 
-                    <div ng-show="instanceList.length">
+                    <div ng-show="virtualBrowserList.length">
                         <button class="btn margin-bottom" ng-click="createVB()">
                             Create <i class="icon-plus"></i>
                         </button>
@@ -84,7 +84,7 @@
                             </a>
                             <ul class="dropdown-menu" style="text-align:left">
                                 <li><a tabindex="-1"
-                                ng-click="openCollaborateForm()">
+                                ng-click="openAddReaderWriterForm()">
                                     Grant Read/Write Access
                                 </a></li>
 
@@ -116,27 +116,27 @@
                         <strong>Error!</strong> Can not perform requested action. {{error}}.
                     </div>
 
-                    <div class="alert alert-error" ng-show="confirmDelete && instanceList.length">
+                    <div class="alert alert-error" ng-show="confirmDelete && virtualBrowserList.length">
                         <button type="button" class="close" ng-click="confirmDelete=false">&times;</button>
-                        <strong>Warning!</strong> The selected instances will be permanently deleted.<br>
+                        <strong>Warning!</strong> The selected virtual browsers will be permanently deleted.<br>
                         <button class="btn btn-danger" ng-click="remove()">Continue</button>
                     </div>
 
-                    <div class="span8 offset2 box margin-bottom" ng-show="addingCollaborator && instanceList.length">
-                        <button type="button" class="close" ng-click="addingCollaborator = false">×</button>
+                    <div class="span8 offset2 box margin-bottom" ng-show="addingReaderWriter && virtualBrowserList.length">
+                        <button type="button" class="close" ng-click="addingReaderWriter = false">×</button>
                         <legend>Add Collaborator</legend>
-                            <form class="form-inline" ng-submit="addCollaborator()">
+                            <form class="form-inline" ng-submit="addReaderWriter()">
                                 <label>
                                     Enter a google ID or select from existing users of {{mountPoint|removeSlash}}.
                                 </label>
-                                <input type="text" data-provide="typeahead" typeahead="selectedCollaborator" ng-model="selectedCollaborator">
-                                <button type="submit" class="btn btn-primary" ng-disabled="!selectedCollaborator">
+                                <input type="text" data-provide="typeahead" typeahead="selectedReaderWriter" ng-model="selectedReaderWriter">
+                                <button type="submit" class="btn btn-primary" ng-disabled="!selectedReaderWriter">
                                     Add
                                 </button>
                             </form>
                     </div>
 
-                    <div class="box span8 offset2" ng-show="addingOwner && instanceList.length">
+                    <div class="box span8 offset2" ng-show="addingOwner && virtualBrowserList.length">
                         <button type="button" class="close" ng-click="addingOwner = false">×</button>
                         <legend>Add Owner</legend>
                             <form class="form-inline" ng-submit="addOwner()">
@@ -152,7 +152,7 @@
 
                 </div>
 
-                <div class="span9 offset1" ng-show="instanceList.length">
+                <div class="span9 offset1" ng-show="virtualBrowserList.length">
                     <table class="table table-bordered">
                         <thead>
                             <th><input type="checkbox"
@@ -173,30 +173,30 @@
                             <th>Collaborator(s)</th>
                         </thead>
                         <tbody>
-                            <tr ng-repeat="instance in instanceList | instanceFilter:{user:user,type:filterType} | orderBy:predicate:reverse"
-                                ng-class="getSelectedClass(instance.id)">
+                            <tr ng-repeat="vb in virtualBrowserList | virtualBrowserFilter:{user:user,type:filterType} | orderBy:predicate:reverse"
+                                ng-class="getSelectedClass(vb.id)">
                                 <td>
                                     <input type="checkbox"
-                                    ng-click="select($event, instance.id)"
-                                    ng-checked="isSelected(instance.id)">
+                                    ng-click="select($event, vb.id)"
+                                    ng-checked="isSelected(vb.id)">
                                 </td>
                                 <td>
-                                    <span ng-hide="instance.editing"
-                                    ng-click="clickRename(instance.id)" class="pointer">
-                                        {{instance.name}}
+                                    <span ng-hide="vb.editing"
+                                    ng-click="clickRename(vb.id)" class="pointer">
+                                        {{vb.name}}
                                     </span>
-                                    <input ng-show="instance.editing" ng-hasfocus="instance.editing" type="text" class="span11" ng-model="instance.name">
+                                    <input ng-show="vb.editing" ng-hasfocus="vb.editing" type="text" class="span11" ng-model="vb.name">
                                 </td>
                                 <td>
-                                    {{instance.dateCreated}}
+                                    {{vb.dateCreated}}
                                 </td>
                                 <td>
-                                    <div ng-repeat="owner in instance.owners">
+                                    <div ng-repeat="owner in vb.owners">
                                         {{owner.getEmail()}} ({{owner.getNameSpace()}})
                                     </div>
                                 </td>
                                 <td>
-                                    <div ng-repeat="collaborator in instance.collaborators">
+                                    <div ng-repeat="collaborator in vb.collaborators">
                                         {{collaborator.getEmail()}} ({{collaborator.getNameSpace()}})
                                     </div>
                                 </td>

@@ -4,7 +4,10 @@
   CBPasswordReset = angular.module("CBPasswordReset", []);
 
   CBPasswordReset.controller("ResetCtrl", function($scope) {
-    CloudBrowser.auth.getResetEmail(function(userEmail) {
+    var appConfig, currentVirtualBrowser;
+    currentVirtualBrowser = cloudbrowser.getCurrentVirtualBrowser();
+    appConfig = currentVirtualBrowser.getAppConfig();
+    currentVirtualBrowser.getResetEmail(function(userEmail) {
       return $scope.$apply(function() {
         return $scope.email = userEmail.split("@")[0];
       });
@@ -24,7 +27,7 @@
       if (!($scope.password != null) || !/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^\da-zA-Z])\S{8,15}$/.test($scope.password)) {
         return $scope.passwordError = "Password must be have a length between 8 - 15 characters," + " must contain atleast 1 uppercase, 1 lowercase, 1 digit and 1 special character." + " Spaces are not allowed.";
       } else {
-        return CloudBrowser.auth.resetPassword($scope.password, function(success) {
+        return appConfig.resetPassword($scope.password, function(success) {
           return $scope.$apply(function() {
             if (success) {
               $scope.passwordSuccess = "The password has been successfully reset";

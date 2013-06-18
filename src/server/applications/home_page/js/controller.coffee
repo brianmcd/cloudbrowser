@@ -1,14 +1,17 @@
 CBHomePage = angular.module("CBHomePage", [])
 
 CBHomePage.controller "MainCtrl", ($scope) ->
-    $scope.apps = CloudBrowser.server.getApps()
-    $scope.serverUrl = CloudBrowser.server.getUrl()
-    CloudBrowser.server.addEventListener 'Added', (app) ->
+    server = cloudbrowser.getServerConfig()
+    currentVirtualBrowser = cloudbrowser.getCurrentVirtualBrowser()
+
+    $scope.apps = server.getApps()
+    $scope.serverUrl = server.getUrl()
+    server.addEventListener 'Added', (app) ->
         $scope.$apply ->
             $scope.apps.push(app)
     
     $scope.leftClick = (url) ->
-        CloudBrowser.app.redirect(url)
+        currentVirtualBrowser.redirect(url)
 
 CBHomePage.filter "removeSlash", () ->
     return (input) ->

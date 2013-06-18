@@ -31,7 +31,7 @@ class Browser extends EventEmitter
 
     close : () ->
         if @window?
-            @window.CloudBrowser = null
+            @window.cloudbrowser = null
             @window.browser = null
             if @window.document?
                 ev = @window.document.createEvent('HTMLEvents')
@@ -95,15 +95,15 @@ class Browser extends EventEmitter
         # based on a package.json manifest.
         @window.require = require
         @window.process = process
-        EmbedAPI(this, @bserver)
-        @window.CloudBrowser.app.shared = app.onFirstInstance || {}
-        @window.CloudBrowser.app.local = if app.onEveryInstance then new app.onEveryInstance() else {}
+        EmbedAPI(@bserver)
+        @window.cloudbrowser.app.shared = app.onFirstInstance || {}
+        @window.cloudbrowser.app.local  = if app.onEveryInstance then new app.onEveryInstance() else {}
         # If an app needs server-side knockout, we have to monkey patch
         # some ko functions.
         if @bserver.server.config.knockout
             @window.run(Browser.jQScript, "jquery-1.6.2.js")
             @window.run(Browser.koScript, "knockout-latest.debug.js")
-            @window.CloudBrowser.ko = KO
+            @window.cloudbrowser.ko = KO
             @window.run(Browser.koPatch, "ko-patch.js")
 
     @koPatch : do () ->

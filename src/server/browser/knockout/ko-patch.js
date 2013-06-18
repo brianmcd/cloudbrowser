@@ -7,7 +7,7 @@ if (ko) {
         if ((instance === null) || (instance === undefined) || (instance.__ko_proto__ === undefined)) {
             return false;
         }
-        if (instance.__ko_proto__ === ko.observable || instance.__ko_proto__ === CloudBrowser.ko.observable) {
+        if (instance.__ko_proto__ === ko.observable || instance.__ko_proto__ === cloudbrowser.ko.observable) {
             return true;
         }
         return ko.isObservable(instance.__ko_proto__); // Walk the prototype chain
@@ -17,10 +17,10 @@ if (ko) {
         var proto = instance.__ko_proto__;
         // Observable
         if (typeof instance == "function") {
-            if ((proto === ko.observable) || (proto === CloudBrowser.ko.observable))
+            if ((proto === ko.observable) || (proto === cloudbrowser.ko.observable))
                 return true;
             // Writeable dependent observable
-            if (((proto === ko.dependentObservable) || (proto === CloudBrowser.ko.dependentObservable)) && instance.hasWriteFunction)
+            if (((proto === ko.dependentObservable) || (proto === cloudbrowser.ko.dependentObservable)) && instance.hasWriteFunction)
                 return true;
         }
         // Anything else
@@ -31,7 +31,7 @@ if (ko) {
     // instances, or dependency tracking doesn't work.  Observables call
     // ko.dependencyDetection.registerDependency() when they are read, so
     // they must all call the same one.
-    ko.dependencyDetection = CloudBrowser.ko.dependencyDetection;
+    ko.dependencyDetection = cloudbrowser.ko.dependencyDetection;
 
     // We need to clean up all of the nodes, which removes references to shared
     // data, fixing memory leaks that prevented pretty much anything from being

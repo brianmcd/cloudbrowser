@@ -69,7 +69,6 @@ class MongoInterface
                 callback()
 
     getSession : (sessionID, callback) ->
-        console.log sessionID
         @mongoStore.get sessionID, (err, session) ->
             throw err if err
             callback(session)

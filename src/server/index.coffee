@@ -104,13 +104,14 @@ class Server extends EventEmitter
             @mount app
 
     mount : (app) ->
-        console.log("Mounting #{app.mountPoint} at http://#{@config.domain}:#{@config.port}#{app.mountPoint}\n")
+        console.log("Mounting http://#{@config.domain}:#{@config.port}#{app.mountPoint}\n")
         {mountPoint} = app
         browsers = app.browsers = if app.browserStrategy == 'multiprocess'
             new MultiProcessBrowserManager(this, mountPoint, app)
         else
             new InProcessBrowserManager(this, mountPoint, app)
         @httpServer.setupMountPoint(browsers, app)
+        return(app)
 
     createSocketIOServer : (http, apps) ->
         browserManagers = @httpServer.mountedBrowserManagers

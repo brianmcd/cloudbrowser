@@ -28,13 +28,15 @@ class ApplicationManager extends EventEmitter
                 else if stats.isDirectory()
                     @walk stats.filename
                 
-    # Adds an html application to the application manager
+    # Adds an html application to the application manager when given an absolute path to the application
     addFile : (path) ->
         opts = {}
-        opts.mountPoint = @getMountPoint Path.dirname(path)
+        opts.mountPoint = @getMountPoint(@removeFileExtension(path))
         opts.entryPoint = path
         @add opts
 
+    removeFileExtension : (path) ->
+        return (path.split('.')[0])
 
     friendlyLstat : (filename, cb) ->
         Fs.lstat filename, (err, stats) ->

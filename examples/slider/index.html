@@ -2,18 +2,19 @@
     <head>
         <script>
             window.addEventListener('load', function () {
+                var currentVB = cloudbrowser.getCurrentVirtualBrowser()
                 var vm = {
                     xSliderVal : ko.observable(),
                     ySliderVal : ko.observable()
                 };
                 ko.applyBindings(vm);
                 var xSliderDiv = document.getElementById('xSlider');
-                var xSlider = CloudBrowser.component.create('slider', xSliderDiv)
+                var xSlider = currentVB.createComponent('slider', xSliderDiv)
                 xSlider.addEventListener('slider:valueChange', function (e) {
                     vm.xSliderVal(e.info.newVal);
                 });
                 var ySliderDiv = document.getElementById('ySlider');
-                var ySlider = CloudBrowser.component.create('slider', ySliderDiv, {
+                var ySlider = currentVB.createComponent('slider', ySliderDiv, {
                     axis : 'y'
                 });
                 ySlider.addEventListener('slider:valueChange', function (e) {
