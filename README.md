@@ -19,7 +19,7 @@ Installation and Use
 2. Clone the repository to your machine. `git clone https://github.com/brianmcd/cloudbrowser.git`
 3. `cd` into the cloned CloudBrowser directory.
 4. Switch to the current production branch **deployment**. `git checkout deployment`.
-5. Install all the necessary npm modules. `npm install`
+5. Install all the necessary npm modules. `npm install -d`
 6. Install the [mongodb](http://www.mongodb.org/downloads) server on your machine. The default configuration, which binds the mongodb server to localhost, should work. 
 5. Configure the server settings by creating a file server\_config.json in the CloudBrowser directory or supply the configuration parameters on the command line.
 See the section on [server configuration](#server-configuration) for more details. 
