@@ -455,10 +455,12 @@
         if (nVal) return element[0].focus();
       });
       element.bind('blur', function() {
-        return scope.$apply(attrs.ngHasfocus + " = false");
+        return scope.$apply(attrs.ngHasfocus + " = false", scope.vb.rename(scope.vb.name));
       });
       return element.bind('keydown', function(e) {
-        if (e.which === 13) return scope.$apply(attrs.ngHasfocus + " = false");
+        if (e.which === 13) {
+          return scope.$apply(attrs.ngHasfocus + " = false", scope.vb.rename(scope.vb.name));
+        }
       });
     };
   });

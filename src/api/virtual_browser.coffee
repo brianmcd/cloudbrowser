@@ -44,17 +44,7 @@ class VirtualBrowser
             @memberOf VirtualBrowser
             @instance
         ###
-        Object.defineProperty this, 'name',
-            get: ->
-                return browser.name
-            set: (newName) ->
-                @checkPermissions {own:true}, (hasPermission) ->
-                    if hasPermission
-                        browser.name = newName
-                        browser.emit('Renamed', newName)
-                    else return
-                
-        #@name = browser.name
+        @name = browser.name
         ###*
             @description The date of creation of the instance.
             @member {Date} dateCreated    

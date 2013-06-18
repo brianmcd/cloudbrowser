@@ -331,10 +331,10 @@ CBLandingPage.directive 'ngHasfocus', () ->
             if (nVal)
                 element[0].focus()
         element.bind 'blur', () ->
-            scope.$apply(attrs.ngHasfocus + " = false")
+            scope.$apply(attrs.ngHasfocus + " = false";scope.vb.rename(scope.vb.name))
         element.bind 'keydown', (e) ->
             if e.which is 13
-                scope.$apply(attrs.ngHasfocus + " = false")
+                scope.$apply(attrs.ngHasfocus + " = false";scope.vb.rename(scope.vb.name))
 
 CBLandingPage.directive 'typeahead', () ->
     directive =
