@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: server_config.js</title>
+    
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+    
+    <h1 class="page-title">Source: server_config.js</h1>
+    
+    
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source"><code>(function() {
+  var ServerConfig, compare;
+
+  compare = require('./utils').compare;
+
+  /**
+      @class cloudbrowser.ServerConfig
+  */
+
+  ServerConfig = (function() {
+    var _instance, _privates;
+
+    _privates = [];
+
+    _instance = null;
+
+    function ServerConfig(server) {
+      if (_privates.length) {
+        return _instance;
+      } else {
+        _instance = this;
+      }
+      Object.defineProperty(this, "_index", {
+        value: _privates.length
+      });
+      _privates.push({
+        server: server
+      });
+    }
+
+    /**
+        Returns the domain as configured in the server_config.json configuration
+        file or as provided through the command line at the time of starting
+        CloudBrowser.    
+        @static
+        @method getDomain
+        @memberOf cloudbrowser.ServerConfig
+        @return {String}
+    */
+
+    ServerConfig.prototype.getDomain = function() {
+      return _privates[this._index].server.config.domain;
+    };
+
+    /**
+        Returns the port as configured in the server_config.json configuration
+        file or as provided through the command line at the time of starting
+        CloudBrowser.    
+        @static
+        @method getPort
+        @memberOf cloudbrowser.ServerConfig
+        @return {Number}
+    */
+
+    ServerConfig.prototype.getPort = function() {
+      return _privates[this._index].server.config.port;
+    };
+
+    /**
+        Returns the URL at which the CloudBrowser server is hosted.    
+        @static
+        @method getUrl
+        @memberOf cloudbrowser.ServerConfig
+        @return {String}
+    */
+
+    ServerConfig.prototype.getUrl = function() {
+      return "http://" + this.getDomain() + ":" + this.getPort();
+    };
+
+    ServerConfig.prototype.mount = function(path) {
+      return _privates[this._index].server.applicationManager.create(path);
+    };
+
+    ServerConfig.prototype.unmount = function(mountPoint) {
+      return _privates[this._index].server.applicationManager.remove(mountPoint);
+    };
+
+    ServerConfig.prototype.listApps = function() {
+      var user;
+      user = this.getCreator();
+      return _privates[this._index].server.applicationManager.get({
+        email: user.getEmail(),
+        ns: user.getNameSpace()
+      });
+    };
+
+    /**
+        @typedef appObject
+        @property {string} mountPoint
+        @property {string} description
+    */
+
+    /**
+        Returns the list of apps mounted on CloudBrowser.    
+        @static
+        @method getApps
+        @memberOf cloudbrowser.ServerConfig
+        @return {Array&lt;appObject>}
+    */
+
+    ServerConfig.prototype.getApps = function() {
+      var app, list, mountPoint, _ref;
+      list = [];
+      _ref = _privates[this._index].server.applicationManager.get();
+      for (mountPoint in _ref) {
+        app = _ref[mountPoint];
+        list.push({
+          mountPoint: mountPoint,
+          description: app.description
+        });
+      }
+      list.sort(compare);
+      return list;
+    };
+
+    ServerConfig.prototype.addEventListener = function(event, callback) {
+      return _privates[this._index].server.applicationManager.on(event, function(app) {
+        if (event === "Added") {
+          return callback({
+            mountPoint: app.mountPoint,
+            description: app.description
+          });
+        } else {
+          return callback(app.mountPoint);
+        }
+      });
+    };
+
+    return ServerConfig;
+
+  })();
+
+  module.exports = ServerConfig;
+
+}).call(this);
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Index</a></h2><h3>Classes</h3><ul><li><a href="cloudbrowser.app.AppConfig.html">AppConfig</a></li><li><a href="cloudbrowser.app.GoogleStrategy.html">GoogleStrategy</a></li><li><a href="cloudbrowser.app.LocalStrategy.html">LocalStrategy</a></li><li><a href="cloudbrowser.app.User.html">User</a></li><li><a href="cloudbrowser.app.VirtualBrowser.html">VirtualBrowser</a></li><li><a href="cloudbrowser.ServerConfig.html">ServerConfig</a></li><li><a href="cloudbrowser.Util.html">Util</a></li></ul><h3>Events</h3><ul><li><a href="cloudbrowser.app.AppConfig.html#event:Added">Added</a></li><li><a href="cloudbrowser.app.AppConfig.html#event:Removed">Removed</a></li><li><a href="cloudbrowser.app.VirtualBrowser.html#event:Renamed">Renamed</a></li><li><a href="cloudbrowser.app.VirtualBrowser.html#event:Shared">Shared</a></li></ul><h3>Namespaces</h3><ul><li><a href="cloudbrowser.html">cloudbrowser</a></li><li><a href="cloudbrowser.app.html">app</a></li></ul><h3><a href="global.html">Global</a></h3>
+</nav>
+
+<br clear="both">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.2.0-dev</a> on Wed Jun 19 2013 14:52:42 GMT-0400 (EDT)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

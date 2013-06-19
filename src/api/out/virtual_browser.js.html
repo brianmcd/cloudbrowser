@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: virtual_browser.js</title>
+    
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+    
+    <h1 class="page-title">Source: virtual_browser.js</h1>
+    
+    
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source"><code>(function() {
+  var Components, VirtualBrowser;
+
+  Components = require("../server/components");
+
+  /**
+      CloudBrowser application instances a.k.a. virtual browsers.   
+      @class cloudbrowser.app.VirtualBrowser
+      @param {BrowserServer} browser     The corresponding browser object.
+      @param {User}          userContext The user that is going to communicate with the instance.
+      @fires cloudbrowser.app.VirtualBrowser#Shared
+      @fires cloudbrowser.app.VirtualBrowser#Renamed
+  */
+
+  VirtualBrowser = (function() {
+    var _privates;
+
+    _privates = [];
+
+    function VirtualBrowser(browser, userContext, cloudbrowserContext) {
+      var creator,
+        _this = this;
+      Object.defineProperty(this, "_index", {
+        value: _privates.length
+      });
+      creator = browser.creator != null ? new cloudbrowserContext.app.User(browser.creator.email, browser.creator.ns) : null;
+      _privates.push({
+        browser: browser,
+        creator: creator,
+        userContext: userContext,
+        application: browser.server.applicationManager.find(browser.mountPoint),
+        cloudbrowserContext: cloudbrowserContext
+      });
+      /**
+          @member {Number} id
+          @description The (hash) ID of the instance.    
+          @memberOf cloudbrowser.app.VirtualBrowser
+          @instance
+      */
+      this.id = browser.id;
+      /**
+          @description The name of the instance.
+          @member {String} name    
+          @memberOf cloudbrowser.app.VirtualBrowser
+          @instance
+      */
+      this.name = browser.name;
+      /**
+          @description The date of creation of the instance.
+          @member {Date} dateCreated    
+          @memberOf cloudbrowser.app.VirtualBrowser
+          @instance
+      */
+      this.dateCreated = browser.dateCreated;
+      if (userContext) {
+        /**
+            @description The owners of the instance.
+            @member {Array&lt;cloudbrowser.app.User>} owners
+            @memberOf cloudbrowser.app.VirtualBrowser
+            @instance
+        */
+        this.getOwners(function(owners) {
+          return _this.owners = owners;
+        });
+        /**
+            @description The users that can read and write to the instance.
+            @member {Array&lt;cloudbrowser.app.User>} collaborators
+            @memberOf cloudbrowser.app.VirtualBrowser
+            @instance
+        */
+        this.getReaderWriters(function(collaborators) {
+          return _this.collaborators = collaborators;
+        });
+      }
+    }
+
+    /**
+        Creates a new component
+        @method createComponent
+        @param {String}  name    The identifying name of the component.          
+        @param {DOMNode} target  The target node at which the component must be created.         
+        @param {Object}  options Any extra options needed to customize the component.          
+        @return {DOMNode}
+        @instance
+        @memberof cloudbrowser.app.VirtualBrowser
+    */
+
+    VirtualBrowser.prototype.createComponent = function(name, target, options) {
+      var Ctor, browser, clientComponent, comp, rpcMethod, targetID,
+        _this = this;
+      browser = _privates[this._index].browser.browser;
+      targetID = target.__nodeID;
+      if (browser.components[targetID]) {
+        throw new Error("Can't create 2 components on the same target.");
+      }
+      Ctor = Components[name];
+      if (!Ctor) throw new Error("Invalid component name: " + name);
+      rpcMethod = function(method, args) {
+        return browser.emit('ComponentMethod', {
+          target: target,
+          method: method,
+          args: args
+        });
+      };
+      comp = browser.components[targetID] = new Ctor(options, rpcMethod, target);
+      clientComponent = [name, targetID, comp.getRemoteOptions()];
+      browser.clientComponents.push(clientComponent);
+      browser.emit('CreateComponent', clientComponent);
+      return target;
+    };
+
+    /**
+        Gets the application configuration that created the instance.
+        @method getCreator
+        @memberof cloudbrowser.app.VirtualBrowser
+        @instance
+        @return {cloudbrowser.app.User}
+    */
+
+    VirtualBrowser.prototype.getAppConfig = function() {
+      return new _privates[this._index].cloudbrowserContext.app.AppConfig(_privates[this._index].browser, _privates[this._index].cloudbrowserContext);
+    };
+
+    /**
+        Gets the user that created the instance.
+        @method getCreator
+        @memberof cloudbrowser.app.VirtualBrowser
+        @instance
+        @return {cloudbrowser.app.User}
+    */
+
+    VirtualBrowser.prototype.getCreator = function() {
+      return _privates[this._index].creator;
+    };
+
+    /**
+        Closes the instance.
+        @method close
+        @memberof cloudbrowser.app.VirtualBrowser
+        @instance
+        @param {errorCallback} callback
+    */
+
+    VirtualBrowser.prototype.close = function(callback) {
+      return _privates[this._index].application.browsers.close(_privates[this._index].browser, _privates[this._index].userContext.toJson(), callback);
+    };
+
+    /**
+        Registers a listener on the instance for an event. The system supported events are "Shared" and "Renamed".
+        @method addEventListener
+        @memberof cloudbrowser.app.VirtualBrowser
+        @instance
+        @param {String}   event
+        @param {errorCallback} callback
+    */
+
+    VirtualBrowser.prototype.addEventListener = function(event, callback) {
+      var permissionManager,
+        _this = this;
+      permissionManager = _privates[this._index].browser.server.permissionManager;
+      return permissionManager.findBrowserPermRec(_privates[this._index].userContext.toJson(), _privates[this._index].browser.mountPoint, _privates[this._index].browser.id, function(browserRec) {
+        if (browserRec != null) {
+          if (event === "Shared") {
+            return _privates[_this._index].browser.on(event, function(user, list) {
+              return callback(null);
+            });
+          } else if (event === "Renamed") {
+            return _privates[_this._index].browser.on(event, function(name) {
+              return callback(null, name);
+            });
+          }
+        } else {
+          return callback(new Error("You do not have the permission to perform the requested action"));
+        }
+      });
+    };
+
+    /**
+        Gets all users that have the permission only to read and write to the instance.
+        @method getReaderWriters
+        @memberof cloudbrowser.app.VirtualBrowser
+        @instance
+        @param {userListCallback} callback
+    */
+
+    VirtualBrowser.prototype.getReaderWriters = function(callback) {
+      var permissionManager, user,
+        _this = this;
+      user = _privates[this._index].cloudbrowserContext.app.User;
+      permissionManager = _privates[this._index].browser.server.permissionManager;
+      return permissionManager.findBrowserPermRec(_privates[this._index].userContext.toJson(), _privates[this._index].browser.mountPoint, _privates[this._index].browser.id, function(browserRec) {
+        var readerwriterRec, readerwriterRecs, users, _i, _len;
+        if (browserRec != null) {
+          readerwriterRecs = _privates[_this._index].browser.getUsersInList('readwrite');
+          users = [];
+          for (_i = 0, _len = readerwriterRecs.length; _i &lt; _len; _i++) {
+            readerwriterRec = readerwriterRecs[_i];
+            if (!_privates[_this._index].browser.findUserInList(readerwriterRec.user, 'own')) {
+              users.push(new user(readerwriterRec.user.email, readerwriterRec.user.ns));
+            }
+          }
+          return callback(users);
+        } else {
+          return callback(null);
+        }
+      });
+    };
+
+    /**
+        Gets the number of users that have the permission only to read and write to the instance.
+        @method getNumReaderWriters
+        @memberof cloudbrowser.app.VirtualBrowser
+        @instance
+        @param {numberCallback} callback
+    */
+
+    VirtualBrowser.prototype.getNumReaderWriters = function(callback) {
+      var permissionManager,
+        _this = this;
+      permissionManager = _privates[this._index].browser.server.permissionManager;
+      return permissionManager.findBrowserPermRec(_privates[this._index].userContext.toJson(), _privates[this._index].browser.mountPoint, _privates[this._index].browser.id, function(browserRec) {
+        var numReadWriters, readerwriterRec, readerwriterRecs, _i, _len;
+        if (browserRec != null) {
+          readerwriterRecs = _privates[_this._index].browser.getUsersInList('readwrite');
+          numReadWriters = readerwriterRecs.length;
+          for (_i = 0, _len = readerwriterRecs.length; _i &lt; _len; _i++) {
+            readerwriterRec = readerwriterRecs[_i];
+            if (_privates[_this._index].browser.findUserInList(readerwriterRec.user, 'own')) {
+              numReadWriters--;
+            }
+          }
+          return callback(numReadWriters);
+        } else {
+          return callback(null);
+        }
+      });
+    };
+
+    /**
+        Gets the number of users that own the instance.
+        @method getNumOwners
+        @memberof cloudbrowser.app.VirtualBrowser
+        @instance
+        @param {numberCallback} callback
+    */
+
+    VirtualBrowser.prototype.getNumOwners = function(callback) {
+      var permissionManager,
+        _this = this;
+      permissionManager = _privates[this._index].browser.server.permissionManager;
+      return permissionManager.findBrowserPermRec(_privates[this._index].userContext.toJson(), _privates[this._index].browser.mountPoint, _privates[this._index].browser.id, function(browserRec) {
+        var ownerRecs;
+        if (browserRec != null) {
+          ownerRecs = _privates[_this._index].browser.getUsersInList('own');
+          return callback(ownerRecs.length);
+        } else {
+          return callback(null);
+        }
+      });
+    };
+
+    /**
+        Gets all users that are the owners of the instance
+        @method getOwners
+        @memberof cloudbrowser.app.VirtualBrowser
+        @instance
+        @param {userListCallback} callback
+    */
+
+    VirtualBrowser.prototype.getOwners = function(callback) {
+      var permissionManager, user,
+        _this = this;
+      user = _privates[this._index].cloudbrowserContext.app.User;
+      permissionManager = _privates[this._index].browser.server.permissionManager;
+      return permissionManager.findBrowserPermRec(_privates[this._index].userContext.toJson(), _privates[this._index].browser.mountPoint, _privates[this._index].browser.id, function(browserRec) {
+        var ownerRec, ownerRecs, users, _i, _len;
+        if (browserRec != null) {
+          ownerRecs = _privates[_this._index].browser.getUsersInList('own');
+          users = [];
+          for (_i = 0, _len = ownerRecs.length; _i &lt; _len; _i++) {
+            ownerRec = ownerRecs[_i];
+            users.push(new user(ownerRec.user.email, ownerRec.user.ns));
+          }
+          return callback(users);
+        } else {
+          return callback(null);
+        }
+      });
+    };
+
+    /**
+        Checks if the user is a reader-writer of the instance.
+        @method isReaderWriter
+        @memberof cloudbrowser.app.VirtualBrowser
+        @instance
+        @param {cloudbrowser.app.User} user
+        @param {booleanCallback} callback
+    */
+
+    VirtualBrowser.prototype.isReaderWriter = function(user, callback) {
+      var permissionManager,
+        _this = this;
+      permissionManager = _privates[this._index].browser.server.permissionManager;
+      return permissionManager.findBrowserPermRec(_privates[this._index].userContext.toJson(), _privates[this._index].browser.mountPoint, _privates[this._index].browser.id, function(browserRec) {
+        if (browserRec != null) {
+          if (_privates[_this._index].browser.findUserInList(user.toJson(), 'readwrite') && !_privates[_this._index].browser.findUserInList(user.toJson(), 'own')) {
+            return callback(true);
+          } else {
+            return callback(false);
+          }
+        } else {
+          return callback(null);
+        }
+      });
+    };
+
+    /**
+        Checks if the user is an owner of the instance
+        @method isOwner
+        @memberof cloudbrowser.app.VirtualBrowser
+        @instance
+        @param {cloudbrowser.app.User} user
+        @param {booleanCallback} callback
+    */
+
+    VirtualBrowser.prototype.isOwner = function(user, callback) {
+      var permissionManager,
+        _this = this;
+      permissionManager = _privates[this._index].browser.server.permissionManager;
+      return permissionManager.findBrowserPermRec(_privates[this._index].userContext.toJson(), _privates[this._index].browser.mountPoint, _privates[this._index].browser.id, function(browserRec) {
+        if (browserRec != null) {
+          if (_privates[_this._index].browser.findUserInList(user.toJson(), 'own')) {
+            return callback(true);
+          } else {
+            return callback(false);
+          }
+        } else {
+          return callback(null);
+        }
+      });
+    };
+
+    /**
+        Checks if the user has permissions to perform a set of actions on the instance.
+        @method checkPermissions
+        @memberof cloudbrowser.app.VirtualBrowser
+        @instance
+        @param {Object} permTypes Permissible members are 'own', 'remove', 'readwrite', 'readonly'. The values of these properties must be set to true to check for the corresponding permission.
+        @param {booleanCallback} callback
+    */
+
+    VirtualBrowser.prototype.checkPermissions = function(permTypes, callback) {
+      var permissionManager,
+        _this = this;
+      permissionManager = _privates[this._index].browser.server.permissionManager;
+      return permissionManager.findBrowserPermRec(_privates[this._index].userContext.toJson(), _privates[this._index].browser.mountPoint, _privates[this._index].browser.id, function(browserRec) {
+        var type, v;
+        if (browserRec) {
+          for (type in permTypes) {
+            v = permTypes[type];
+            if (!browserRec.permissions[type] || typeof browserRec.permissions[type] === "undefined") {
+              callback(false);
+              return;
+            }
+          }
+          return callback(true);
+        } else {
+          return callback(false);
+        }
+      });
+    };
+
+    /**
+        Grants the user a set of permissions on the instance.
+        @method grantPermissions
+        @memberof cloudbrowser.app.VirtualBrowser
+        @instance
+        @param {Object} permTypes The values of these properties must be set to true to check for the corresponding permission.
+        @property [boolean] own
+        @property [boolean] remove
+        @property [boolean] readwrite
+        @property [boolean] readonly
+        @param {cloudbrowser.app.User} user 
+        @param {errorCallback} callback
+    */
+
+    VirtualBrowser.prototype.grantPermissions = function(permissions, user, callback) {
+      var permissionManager,
+        _this = this;
+      permissionManager = _privates[this._index].browser.server.permissionManager;
+      return this.checkPermissions({
+        own: true
+      }, function(hasPermission) {
+        if (hasPermission) {
+          user = user.toJson();
+          return permissionManager.findAppPermRec(user, _privates[_this._index].browser.mountPoint, function(appRec) {
+            if (appRec != null) {
+              return permissionManager.addBrowserPermRec(user, _privates[_this._index].browser.mountPoint, _privates[_this._index].browser.id, permissions, function(browserRec) {
+                return _privates[_this._index].browser.addUserToLists(user, permissions, function() {
+                  return callback(null);
+                });
+              });
+            } else {
+              return _privates[_this._index].browser.server.httpServer.addPermRec(user, _privates[_this._index].browser.mountPoint, function() {
+                return permissionManager.addBrowserPermRec(user, _privates[_this._index].browser.mountPoint, _privates[_this._index].browser.id, permissions, function(browserRec) {
+                  return _privates[_this._index].browser.addUserToLists(user, permissions, function() {
+                    return callback(null);
+                  });
+                });
+              });
+            }
+          });
+        } else {
+          return callback(new Error("You do not have the permission to perform the requested action"));
+        }
+      });
+    };
+
+    /**
+        Renames the instance and emits an event "Renamed" that can be listened for by registering a listener on the instance.
+        @method rename
+        @memberof cloudbrowser.app.VirtualBrowser
+        @instance
+        @param {String} newName
+    */
+
+    VirtualBrowser.prototype.rename = function(newName) {
+      var _this = this;
+      return this.checkPermissions({
+        own: true
+      }, function(hasPermission) {
+        if (hasPermission) {
+          _this.name = newName;
+          _privates[_this._index].browser.name = newName;
+          return _privates[_this._index].browser.emit('Renamed', newName);
+        }
+      });
+    };
+
+    /**
+        Redirects all clients connected to the current instance to the given URL.    
+        @method redirect
+        @param {String} url
+        @memberof cloudbrowser.app.VirtualBrowser
+        @instance
+    */
+
+    VirtualBrowser.prototype.redirect = function(url) {
+      return _privates[this._index].browser.redirect(url);
+    };
+
+    /**
+        Gets the user's email ID that is stored in the session. 
+        @method getResetEmail
+        @param {emailCallback} callback
+        @memberof cloudbrowser.app.VirtualBrowser
+        @instance
+    */
+
+    VirtualBrowser.prototype.getResetEmail = function(callback) {
+      var mongoInterface;
+      mongoInterface = _privates[this._index].browser.server.mongoInterface;
+      return _privates[this._index].browser.getSessions(function(sessionIDs) {
+        if (sessionIDs.length) {
+          return mongoInterface.getSession(sessionIDs[0], function(session) {
+            return callback(session.resetuser);
+          });
+        } else {
+          return callback(null);
+        }
+      });
+    };
+
+    return VirtualBrowser;
+
+  })();
+
+  module.exports = VirtualBrowser;
+
+  /**
+      Browser Shared event
+      @event cloudbrowser.app.VirtualBrowser#Shared
+  */
+
+  /**
+      Browser Renamed event
+      @event cloudbrowser.app.VirtualBrowser#Renamed
+      @type {String}
+  */
+
+}).call(this);
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Index</a></h2><h3>Classes</h3><ul><li><a href="cloudbrowser.app.AppConfig.html">AppConfig</a></li><li><a href="cloudbrowser.app.GoogleStrategy.html">GoogleStrategy</a></li><li><a href="cloudbrowser.app.LocalStrategy.html">LocalStrategy</a></li><li><a href="cloudbrowser.app.User.html">User</a></li><li><a href="cloudbrowser.app.VirtualBrowser.html">VirtualBrowser</a></li><li><a href="cloudbrowser.ServerConfig.html">ServerConfig</a></li><li><a href="cloudbrowser.Util.html">Util</a></li></ul><h3>Events</h3><ul><li><a href="cloudbrowser.app.AppConfig.html#event:Added">Added</a></li><li><a href="cloudbrowser.app.AppConfig.html#event:Removed">Removed</a></li><li><a href="cloudbrowser.app.VirtualBrowser.html#event:Renamed">Renamed</a></li><li><a href="cloudbrowser.app.VirtualBrowser.html#event:Shared">Shared</a></li></ul><h3>Namespaces</h3><ul><li><a href="cloudbrowser.html">cloudbrowser</a></li><li><a href="cloudbrowser.app.html">app</a></li></ul><h3><a href="global.html">Global</a></h3>
+</nav>
+
+<br clear="both">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.2.0-dev</a> on Wed Jun 19 2013 14:52:42 GMT-0400 (EDT)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

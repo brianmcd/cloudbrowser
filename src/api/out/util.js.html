@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>JSDoc: Source: user.js</title>
+    <title>JSDoc: Source: util.js</title>
     
     <script src="scripts/prettify/prettify.js"> </script>
     <script src="scripts/prettify/lang-css.js"> </script>
@@ -17,7 +17,7 @@
 
 <div id="main">
     
-    <h1 class="page-title">Source: user.js</h1>
+    <h1 class="page-title">Source: util.js</h1>
     
     
 
@@ -25,83 +25,75 @@
     
     <section>
         <article>
-            <pre class="prettyprint source"><code>
-/**
-    @param {String} email     The email ID of the user.
-    @param {String} namespace The namespace of the user. Permissible values are "local" and "google".
-    @description CloudBrowser User
-    @class cloudbrowser.app.User
-*/
+            <pre class="prettyprint source"><code>(function() {
+  var Nodemailer, Util;
 
-(function() {
-  var User;
+  Nodemailer = require("nodemailer");
 
-  User = (function() {
-    var _privates;
+  /**
+      @class cloudbrowser.Util
+      @param {object} config
+  */
+
+  Util = (function() {
+    var _instance, _privates;
 
     _privates = [];
 
-    function User(email, namespace) {
-      if (!email) {
-        throw new Error("Missing required parameter - email");
-      } else if (!namespace) {
-        throw new Error("Missing required parameter - namespace");
-      } else if (!(namespace === "google" || namespace === "local")) {
-        throw new Error("Invalid value for the parameter - namespace");
+    _instance = null;
+
+    function Util(config) {
+      if (_privates.length) {
+        return _instance;
+      } else {
+        _instance = this;
       }
       Object.defineProperty(this, "_index", {
         value: _privates.length
       });
       _privates.push({
-        email: email,
-        namespace: namespace
+        config: config
       });
     }
 
     /**
-        Gets the email ID of the user.
-        @method getEmail
-        @memberof cloudbrowser.app.User
-        @instance
-        @return {String}
+        Sends an email to the specified user.
+        @static
+        @method sendEmail
+        @memberOf cloudbrowser.Util
+        @param {string} toEmailID
+        @param {string} subject
+        @param {string} message
+        @param {emptyCallback} callback
     */
 
-    User.prototype.getEmail = function() {
-      return _privates[this._index].email;
-    };
-
-    /**
-        Gets the namespace of the user.
-        @method getNameSpace
-        @memberof User
-        @instance
-        @return {String}
-    */
-
-    User.prototype.getNameSpace = function() {
-      return _privates[this._index].namespace;
-    };
-
-    /**
-        Gets the user in a JSON format {email:{String},ns:{String}}
-        @method toJson
-        @memberof User
-        @instance
-        @return {Object}
-    */
-
-    User.prototype.toJson = function() {
-      return {
-        email: _privates[this._index].email,
-        ns: _privates[this._index].namespace
+    Util.prototype.sendEmail = function(toEmailID, subject, message, callback) {
+      var mailOptions, smtpTransport;
+      smtpTransport = Nodemailer.createTransport("SMTP", {
+        service: "Gmail",
+        auth: {
+          user: _privates[this._index].config.nodeMailerEmailID,
+          pass: _privates[this._index].config.nodeMailerPassword
+        }
+      });
+      mailOptions = {
+        from: _privates[this._index].config.nodeMailerEmailID,
+        to: toEmailID,
+        subject: subject,
+        html: message
       };
+      return smtpTransport.sendMail(mailOptions, function(err, response) {
+        if (err) throw err;
+        smtpTransport.close();
+        return callback();
+      });
     };
 
-    return User;
+    return Util;
 
   })();
 
-  module.exports = User;
+  module.exports = Util;
 
 }).call(this);
 </code></pre>

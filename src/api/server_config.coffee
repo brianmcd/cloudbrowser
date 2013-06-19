@@ -1,5 +1,8 @@
 {compare} = require('./utils')
 
+###*
+    @class cloudbrowser.ServerConfig
+###
 class ServerConfig
 
     # Private Properties inside class closure
@@ -23,6 +26,9 @@ class ServerConfig
         Returns the domain as configured in the server_config.json configuration
         file or as provided through the command line at the time of starting
         CloudBrowser.    
+        @static
+        @method getDomain
+        @memberOf cloudbrowser.ServerConfig
         @return {String}
     ###
     getDomain : () ->
@@ -32,6 +38,9 @@ class ServerConfig
         Returns the port as configured in the server_config.json configuration
         file or as provided through the command line at the time of starting
         CloudBrowser.    
+        @static
+        @method getPort
+        @memberOf cloudbrowser.ServerConfig
         @return {Number}
     ###
     getPort : () ->
@@ -39,6 +48,9 @@ class ServerConfig
 
     ###*
         Returns the URL at which the CloudBrowser server is hosted.    
+        @static
+        @method getUrl
+        @memberOf cloudbrowser.ServerConfig
         @return {String} 
     ###
     getUrl : () ->
@@ -57,8 +69,19 @@ class ServerConfig
         user = @getCreator()
         _privates[@_index].server.applicationManager.get({email:user.getEmail(), ns:user.getNameSpace()})
 
-    # Gets all mounted apps
-    getApps :() ->
+    ###*
+        @typedef appObject
+        @property {string} mountPoint
+        @property {string} description
+    ###
+    ###*
+        Returns the list of apps mounted on CloudBrowser.    
+        @static
+        @method getApps
+        @memberOf cloudbrowser.ServerConfig
+        @return {Array<appObject>} 
+    ###
+    getApps : () ->
         list = []
         for mountPoint, app of _privates[@_index].server.applicationManager.get()
             list.push({mountPoint:mountPoint, description:app.description})

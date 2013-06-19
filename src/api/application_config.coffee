@@ -1,11 +1,22 @@
 Crypto = require("crypto")
 {getParentMountPoint, hashPassword} = require("./utils")
 
+###*
+    @description Configuration details of the application including details
+    in the app_config.json file of the application
+    @class cloudbrowser.app.AppConfig
+    @param {BrowserServer} bserver
+    @param {cloudbrowser}  cloudbrowserContext
+    @fires cloudbrowser.app.AppConfig#Added
+    @fires cloudbrowser.app.AppConfig#Removed
+###
 class AppConfig
+
     # Private Properties inside class closure
     _privates = []
 
     constructor : (bserver, cloudbrowserContext) ->
+
         # Defining @_index as a read-only property
         Object.defineProperty this, "_index",
             value : _privates.length
@@ -32,6 +43,9 @@ class AppConfig
 
     ###*
         Gets the absolute URL at which the application is hosted/mounted.    
+        @instance
+        @method getUrl
+        @memberOf cloudbrowser.app.AppConfig
         @returns {String}
     ###
     getUrl : () ->
@@ -41,6 +55,9 @@ class AppConfig
     ###*
         Gets the description of the application as provided in the
         app_config.json configuration file.    
+        @instance
+        @method getDescription
+        @memberOf cloudbrowser.app.AppConfig
         @return {String}
     ###
     getDescription: () ->
@@ -48,6 +65,9 @@ class AppConfig
 
     ###*
         Gets the path relative to the root URL at which the application was mounted.     
+        @instance
+        @method getMountPoint
+        @memberOf cloudbrowser.app.AppConfig
         @return {String}
     ###
     getMountPoint: () ->
@@ -55,6 +75,9 @@ class AppConfig
 
     ###*
         A list of all the registered users of the application.          
+        @instance
+        @method getUsers
+        @memberOf cloudbrowser.app.AppConfig
         @param {userListCallback} callback
     ###
     getUsers : (callback) ->
@@ -69,6 +92,9 @@ class AppConfig
 
     ###*
         Creates a new instance of this application.    
+        @instance
+        @method createVirtualBrowser
+        @memberOf cloudbrowser.app.AppConfig
         @param {errorCallback} callback
     ###
     createVirtualBrowser : (callback) ->
@@ -78,6 +104,9 @@ class AppConfig
 
     ###*
         Gets all the instances of the application associated with the current user.    
+        @instance
+        @method getVirtualBrowsers
+        @memberOf cloudbrowser.app.AppConfig
         @param {instanceListCallback} callback
     ###
     getVirtualBrowsers : (callback) ->
@@ -93,8 +122,9 @@ class AppConfig
 
     ###*
         Registers a listener on the application for an event associated with the current user.     
-        CloudBrowser supported events are Added and Removed. They are fired when an instance
-        associated with the current user is added or removed.
+        @instance
+        @method addEventListener
+        @memberOf cloudbrowser.app.AppConfig
         @param {String} event 
         @param {instanceCallback} callback
     ###
@@ -112,6 +142,9 @@ class AppConfig
 
     ###*
         Checks if a user is already registered/signed up with the application.     
+        @instance
+        @method isUserRegistered
+        @memberOf cloudbrowser.app.AppConfig
         @param {User} user
         @param {booleanCallback} callback 
     ###
@@ -124,6 +157,9 @@ class AppConfig
 
     ###*
         Sends a password reset link to the user at their registered email ID.    
+        @instance
+        @method sendResetLink
+        @memberOf cloudbrowser.app.AppConfig
         @param {booleanCallback} callback
     ###
     sendResetLink : (user, callback) ->
@@ -154,6 +190,9 @@ class AppConfig
     ###*
         Resets the password for a valid user request.     
         A boolean is passed as an argument to indicate success/failure.
+        @instance
+        @method resetPassword
+        @memberOf cloudbrowser.app.AppConfig
         @param {String}   password     The new plaintext password provided by the user.
         @param {booleanCallback} callback     
     ###
@@ -176,16 +215,44 @@ class AppConfig
 
     ###*
         Logs out all connected clients from the current application.
+        @instance
+        @method logout
+        @memberOf cloudbrowser.app.AppConfig
     ###
     logout : () ->
         config = _privates[@_index].bserver.server.config
         appUrl = "http://#{config.domain}:#{config.port}#{_privates[@_index].parentMountPoint}"
         _privates[@_index].bserver.redirect(appUrl + "/logout")
 
+    ###*
+        Returns an instance of local strategy for authentication
+        @instance
+        @method getLocalStrategy
+        @memberOf cloudbrowser.app.AppConfig
+        @return {cloudbrowser.app.LocalStrategy} 
+    ###
     getLocalStrategy : () ->
         return _privates[@_index].localStrategy
 
+    ###*
+        Returns an instance of google strategy for authentication
+        @instance
+        @method getGoogleStrategy
+        @memberOf cloudbrowser.app.AppConfig
+        @return {cloudbrowser.app.GoogleStrategy} 
+    ###
     getGoogleStrategy : () ->
         return _privates[@_index].googleStrategy
-            
+
 module.exports = AppConfig
+###*
+    Browser Added event
+    @event cloudbrowser.app.AppConfig#Added
+    @type {cloudbrowser.app.VirtualBrowser} 
+###
+###*
+    Browser Removed event
+    @event cloudbrowser.app.AppConfig#Removed
+    @type {Number}
+###
+            

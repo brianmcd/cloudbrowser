@@ -1,8 +1,8 @@
 ###*
     @param {String} email     The email ID of the user.
     @param {String} namespace The namespace of the user. Permissible values are "local" and "google".
-    @namespace CloudBrowser.User
     @description CloudBrowser User
+    @class cloudbrowser.app.User
 ###
 class User
     _privates = []
@@ -25,7 +25,7 @@ class User
     ###*
         Gets the email ID of the user.
         @method getEmail
-        @memberof CloudBrowser.User
+        @memberof cloudbrowser.app.User
         @instance
         @return {String}
     ###

@@ -1,18 +1,19 @@
 Components = require("../server/components")
 
-# Differentiate between parent applicationa and current application
+###*
+    CloudBrowser application instances a.k.a. virtual browsers.   
+    @class cloudbrowser.app.VirtualBrowser
+    @param {BrowserServer} browser     The corresponding browser object.
+    @param {User}          userContext The user that is going to communicate with the instance.
+    @fires cloudbrowser.app.VirtualBrowser#Shared
+    @fires cloudbrowser.app.VirtualBrowser#Renamed
+###
 class VirtualBrowser
 
     # Private Properties inside class closure
     _privates = []
 
     # Creates an instance of VirtualBrowser.
-    # @param {BrowserServer} browser The corresponding browser object.
-    # @param {User}          user    The user that is going to communicate with the instance.
-    ###*
-        @class VirtualBrowser
-        @classdesc CloudBrowser application instances a.k.a. virtual browsers.   
-    ###
     constructor : (browser, userContext, cloudbrowserContext) ->
         # Defining @_index as a read-only property
         Object.defineProperty this, "_index",
@@ -34,21 +35,21 @@ class VirtualBrowser
         ###*
             @member {Number} id
             @description The (hash) ID of the instance.    
-            @memberOf VirtualBrowser
+            @memberOf cloudbrowser.app.VirtualBrowser
             @instance
         ###
         @id = browser.id
         ###*
             @description The name of the instance.
             @member {String} name    
-            @memberOf VirtualBrowser
+            @memberOf cloudbrowser.app.VirtualBrowser
             @instance
         ###
         @name = browser.name
         ###*
             @description The date of creation of the instance.
             @member {Date} dateCreated    
-            @memberOf VirtualBrowser
+            @memberOf cloudbrowser.app.VirtualBrowser
             @instance
         ###
         @dateCreated = browser.dateCreated
@@ -56,16 +57,16 @@ class VirtualBrowser
         if userContext
             ###*
                 @description The owners of the instance.
-                @member {Array<User>} owners
-                @memberOf VirtualBrowser
+                @member {Array<cloudbrowser.app.User>} owners
+                @memberOf cloudbrowser.app.VirtualBrowser
                 @instance
             ###
             @getOwners (owners) =>
                 @owners = owners
             ###*
                 @description The users that can read and write to the instance.
-                @member {Array<User>} collaborators
-                @memberOf VirtualBrowser
+                @member {Array<cloudbrowser.app.User>} collaborators
+                @memberOf cloudbrowser.app.VirtualBrowser
                 @instance
             ###
             @getReaderWriters (collaborators) =>
@@ -73,10 +74,13 @@ class VirtualBrowser
 
     ###*
         Creates a new component
+        @method createComponent
         @param {String}  name    The identifying name of the component.          
         @param {DOMNode} target  The target node at which the component must be created.         
         @param {Object}  options Any extra options needed to customize the component.          
         @return {DOMNode}
+        @instance
+        @memberof cloudbrowser.app.VirtualBrowser
     ###
     createComponent : (name, target, options) ->
         #throw new Error("Browser has been garbage collected") if cleaned
@@ -101,14 +105,21 @@ class VirtualBrowser
         browser.emit('CreateComponent', clientComponent)
         return target
 
+    ###*
+        Gets the application configuration that created the instance.
+        @method getCreator
+        @memberof cloudbrowser.app.VirtualBrowser
+        @instance
+        @return {cloudbrowser.app.User}
+    ###
     getAppConfig : () ->
         return new _privates[@_index].cloudbrowserContext.app.AppConfig(_privates[@_index].browser, _privates[@_index].cloudbrowserContext)
     ###*
         Gets the user that created the instance.
         @method getCreator
-        @memberof VirtualBrowser
+        @memberof cloudbrowser.app.VirtualBrowser
         @instance
-        @return {User}
+        @return {cloudbrowser.app.User}
     ###
     getCreator : () ->
         return _privates[@_index].creator
@@ -116,7 +127,7 @@ class VirtualBrowser
     ###*
         Closes the instance.
         @method close
-        @memberof VirtualBrowser
+        @memberof cloudbrowser.app.VirtualBrowser
         @instance
         @param {errorCallback} callback
     ###
@@ -127,7 +138,7 @@ class VirtualBrowser
     ###*
         Registers a listener on the instance for an event. The system supported events are "Shared" and "Renamed".
         @method addEventListener
-        @memberof VirtualBrowser
+        @memberof cloudbrowser.app.VirtualBrowser
         @instance
         @param {String}   event
         @param {errorCallback} callback 
@@ -148,7 +159,7 @@ class VirtualBrowser
     ###*
         Gets all users that have the permission only to read and write to the instance.
         @method getReaderWriters
-        @memberof VirtualBrowser
+        @memberof cloudbrowser.app.VirtualBrowser
         @instance
         @param {userListCallback} callback
     ###
@@ -169,7 +180,7 @@ class VirtualBrowser
     ###*
         Gets the number of users that have the permission only to read and write to the instance.
         @method getNumReaderWriters
-        @memberof VirtualBrowser
+        @memberof cloudbrowser.app.VirtualBrowser
         @instance
         @param {numberCallback} callback
     ###
@@ -189,7 +200,7 @@ class VirtualBrowser
     ###*
         Gets the number of users that own the instance.
         @method getNumOwners
-        @memberof VirtualBrowser
+        @memberof cloudbrowser.app.VirtualBrowser
         @instance
         @param {numberCallback} callback
     ###
@@ -205,7 +216,7 @@ class VirtualBrowser
     ###*
         Gets all users that are the owners of the instance
         @method getOwners
-        @memberof VirtualBrowser
+        @memberof cloudbrowser.app.VirtualBrowser
         @instance
         @param {userListCallback} callback
     ###
@@ -225,9 +236,9 @@ class VirtualBrowser
     ###*
         Checks if the user is a reader-writer of the instance.
         @method isReaderWriter
-        @memberof VirtualBrowser
+        @memberof cloudbrowser.app.VirtualBrowser
         @instance
-        @param {User} user
+        @param {cloudbrowser.app.User} user
         @param {booleanCallback} callback
     ###
     isReaderWriter : (user, callback) ->
@@ -244,9 +255,9 @@ class VirtualBrowser
     ###*
         Checks if the user is an owner of the instance
         @method isOwner
-        @memberof VirtualBrowser
+        @memberof cloudbrowser.app.VirtualBrowser
         @instance
-        @param {User} user
+        @param {cloudbrowser.app.User} user
         @param {booleanCallback} callback
     ###
     isOwner : (user, callback) ->
@@ -262,7 +273,7 @@ class VirtualBrowser
     ###*
         Checks if the user has permissions to perform a set of actions on the instance.
         @method checkPermissions
-        @memberof VirtualBrowser
+        @memberof cloudbrowser.app.VirtualBrowser
         @instance
         @param {Object} permTypes Permissible members are 'own', 'remove', 'readwrite', 'readonly'. The values of these properties must be set to true to check for the corresponding permission.
         @param {booleanCallback} callback
@@ -283,10 +294,14 @@ class VirtualBrowser
     ###*
         Grants the user a set of permissions on the instance.
         @method grantPermissions
-        @memberof VirtualBrowser
+        @memberof cloudbrowser.app.VirtualBrowser
         @instance
-        @param {Object} permTypes Permissible members are 'own', 'remove', 'readwrite', 'readonly'. The values of these properties must be set to true to check for the corresponding permission.
-        @param {User} user 
+        @param {Object} permTypes The values of these properties must be set to true to check for the corresponding permission.
+        @property [boolean] own
+        @property [boolean] remove
+        @property [boolean] readwrite
+        @property [boolean] readonly
+        @param {cloudbrowser.app.User} user 
         @param {errorCallback} callback 
     ###
     grantPermissions : (permissions, user, callback) ->
@@ -316,7 +331,7 @@ class VirtualBrowser
     ###*
         Renames the instance and emits an event "Renamed" that can be listened for by registering a listener on the instance.
         @method rename
-        @memberof VirtualBrowser
+        @memberof cloudbrowser.app.VirtualBrowser
         @instance
         @param {String} newName
     ###
@@ -329,13 +344,20 @@ class VirtualBrowser
 
     ###*
         Redirects all clients connected to the current instance to the given URL.    
+        @method redirect
         @param {String} url
+        @memberof cloudbrowser.app.VirtualBrowser
+        @instance
     ###
     redirect : (url) ->
         _privates[@_index].browser.redirect(url)
 
     ###*
         Gets the user's email ID that is stored in the session. 
+        @method getResetEmail
+        @param {emailCallback} callback
+        @memberof cloudbrowser.app.VirtualBrowser
+        @instance
     ###
     getResetEmail : (callback) ->
         mongoInterface = _privates[@_index].browser.server.mongoInterface
@@ -346,3 +368,12 @@ class VirtualBrowser
             else callback(null)
 
 module.exports = VirtualBrowser
+###*
+    Browser Shared event
+    @event cloudbrowser.app.VirtualBrowser#Shared
+###
+###*
+    Browser Renamed event
+    @event cloudbrowser.app.VirtualBrowser#Renamed
+    @type {String}
+###

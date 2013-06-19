@@ -2,7 +2,7 @@
 
 ###*
     The CloudBrowser object that is attached to the global window object of every application instance (virtual browser).
-    @namespace CloudBrowser
+    @namespace cloudbrowser
 ###
 
 class CloudBrowser
@@ -14,6 +14,18 @@ class CloudBrowser
         Object.defineProperty this, "_index",
             value : _privates.length
 
+        ###*
+            @member {BrowserServer} bserver
+            @memberOf cloudbrowser
+            @instance
+            @private
+        ###
+        ###*
+            @member {User} creator
+            @memberOf cloudbrowser
+            @instance
+            @private
+        ###
         # Setting private properties
         _privates.push
             bserver : bserver
@@ -23,7 +35,7 @@ class CloudBrowser
 
     ###*
         The Application Namespace
-        @namespace CloudBrowser.app
+        @namespace cloudbrowser.app
     ###
     app :
         User           : require('./user')
@@ -35,23 +47,30 @@ class CloudBrowser
         GoogleStrategy : require('./authentication_strategies').GoogleStrategy
 
     ###*
-        Gets the current application instance.
-        @return {VirtualBrowser}
+        Gets the current virtual browser.
+        @method
+        @return {cloudbrowser.app.VirtualBrowser}
     ###
     getCurrentVirtualBrowser : () ->
         return new @app.VirtualBrowser(_privates[@_index].bserver, _privates[@_index].creator, this)
 
     ServerConfig : require("./server_config")
+
     ###*
-        The Server Namespace
-        @namespace CloudBrowser.server
+        Gets the server configuration object
+        @method getServerConfig
+        @memberof cloudbrowser
+        @return {cloudbrowser.ServerConfig}
     ###
     getServerConfig : () -> new @ServerConfig(_privates[@_index].bserver.server)
 
     Util : require("./util")
+
     ###*
-        The Util Namespace
-        @namespace CloudBrowser.util
+        Gets the util object
+        @method getUtil
+        @memberof cloudbrowser
+        @return {cloudbrowser.Util}
     ###
     getUtil : () -> new @Util(_privates[@_index].bserver.server.config)
 

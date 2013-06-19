@@ -1,5 +1,9 @@
 Nodemailer        = require("nodemailer")
 
+###*
+    @class cloudbrowser.Util
+    @param {object} config
+###
 class Util
     _privates = []
     _instance = null
@@ -19,6 +23,9 @@ class Util
 
     ###*
         Sends an email to the specified user.
+        @static
+        @method sendEmail
+        @memberOf cloudbrowser.Util
         @param {string} toEmailID
         @param {string} subject
         @param {string} message

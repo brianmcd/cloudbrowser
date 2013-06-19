@@ -1,10 +1,13 @@
 Crypto = require("crypto")
 {getParentMountPoint, hashPassword} = require("./utils")
 
+###*
+    @class cloudbrowser.app.LocalStrategy
+    @param {BrowserServer} bserver
+    @param {cloudbrowser} cloudbrowserContext
+###
 class LocalStrategy
-    ###*
-        @class LocalStrategy
-    ###
+
     # Private Properties inside class closure
     _privates = []
 
@@ -25,16 +28,16 @@ class LocalStrategy
             browserMgr   : appMgr.find(bserver.mountPoint).browsers
             util         : cloudbrowserContext.getUtil()
             parentMountPoint : parentMountPoint
-        ###*
-            Logs a user into the application.    
-            @method login
-            @memberof LocalStrategy
-            @instance
-            @param options 
-            @param {User} options.user
-            @param {String} options.password
-            @param {booleanCallback} options.callback 
-        ###
+    ###*
+        Logs a user into the application.    
+        @method login
+        @memberof cloudbrowser.app.LocalStrategy
+        @instance
+        @param options 
+        @param {User} options.user
+        @param {String} options.password
+        @param {booleanCallback} options.callback 
+    ###
     login : (options) ->
         mongoInterface = _privates[@_index].bserver.server.mongoInterface
         config = _privates[@_index].bserver.server.config
@@ -90,7 +93,7 @@ class LocalStrategy
     ###*
         Registers a user with the application and sends a confirmation email to the user's registered email ID.
         The email ID is not activated until it has been confirmed by the user.    
-        @memberof LocalStrategy
+        @memberof cloudbrowser.app.LocalStrategy
         @instance
         @method signup
         @param options 
@@ -135,10 +138,11 @@ class LocalStrategy
                     mongoInterface.addUser userRec, _privates[@_index].parentDbName, (user) ->
                         if options.callback then options.callback()
 
+###*
+    @class cloudbrowser.app.GoogleStrategy
+    @param {BrowserServer} bserver
+###
 class GoogleStrategy
-    ###*
-        @class GoogleStrategy
-    ###
     # Private Properties inside class closure
     _privates = []
     constructor : (bserver) ->
@@ -153,13 +157,7 @@ class GoogleStrategy
     ###*
         Log in through a google ID
         @method login
-        @memberof GoogleStrategy
-        @instance
-    ###
-    ###*
-        Registers a user with the _application
-        @method signup
-        @memberof GoogleStrategy
+        @memberof cloudbrowser.app.GoogleStrategy
         @instance
     ###
     login : () ->
@@ -181,6 +179,12 @@ class GoogleStrategy
                         _privates[@_index].browserMgr.close(_privates[@_index].bserver)
                     , 500
 
+    ###*
+        Registers a user with the _application
+        @method signup
+        @memberof cloudbrowser.app.GoogleStrategy
+        @instance
+    ###
     signup : GoogleStrategy::login
 
 module.exports =
