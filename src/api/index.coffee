@@ -84,11 +84,11 @@ module.exports = (bserver) ->
 
 ###*
     @callback instanceListCallback 
-    @param {Array<VirtualBrowser>} instances A list of all the instances associated with the current user.
+    @param {Array<cloudbrowser.app.VirtualBrowser>} instances A list of all the instances associated with the current user.
 ###
 ###*
     @callback userListCallback
-    @param {Array<User>} users
+    @param {Array<cloudbrowser.app.User>} users
 ###
 ###*
     @callback errorCallback
@@ -96,7 +96,7 @@ module.exports = (bserver) ->
 ###
 ###*
     @callback instanceCallback
-    @param {VirtualBrowser | Number} instance | ID VirtualBrowser if the event is "Added", else ID.
+    @param {cloudbrowser.app.VirtualBrowser | Number} instance | ID VirtualBrowser if the event is "Added", else ID.
 ###
 ###*
     @callback booleanCallback

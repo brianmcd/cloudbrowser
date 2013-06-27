@@ -5,7 +5,7 @@ Path           = require('path')
 Uglify         = require('uglify-js')
 Browserify     = require('browserify')
 Passport       = require('passport')
-GoogleStrategy = require('passport-google').Strategy
+GoogleStrategy = require('./authentication_strategies/google_strategy')
 
 class HTTPServer extends EventEmitter
     constructor : (@cbServer, callback) ->
@@ -22,6 +22,7 @@ class HTTPServer extends EventEmitter
             server.use(express.session({store: @cbServer.mongoInterface.mongoStore, secret: 'change me please', key:'cb.id'}))
             server.set('views', Path.join(__dirname, '..', '..', 'views'))
             server.set('view options', {layout: false})
+            # For google authentication
             server.use(Passport.initialize())
             server.on 'error', (e) =>
                 if e.code is 'EADDRINUSE'
@@ -29,7 +30,11 @@ class HTTPServer extends EventEmitter
                     process.exit(1)
 
         # Must set up routes only after session middleware has been initialized
-        @setupGoogleAuthentication()
+        GoogleStrategy.setup @cbServer.config,
+        servers =
+            http         : this
+            express      : server
+            cloudbrowser : @cbServer
 
         server.get '/clientEngine.js', (req, res) =>
             res.statusCode = 200
@@ -47,94 +52,48 @@ class HTTPServer extends EventEmitter
             @clientEngineJS = @bundleJS()
             server.listen(@cbServer.config.port, callback)
 
-    
     close : (callback) ->
         @server.close(callback)
         @emit('close')
 
-    setupGoogleAuthentication : () ->
+    # Middleware that protects access to browsers
+    isAuthenticated : (req, res, next, mountPoint) =>
+        components = mountPoint.split("/")
+        index = 1; mp = ""
 
-        Passport.use new GoogleStrategy {returnURL:"http://#{@cbServer.config.domain}:#{@cbServer.config.port}/checkauth",
-        realm: "http://#{@cbServer.config.domain}:#{@cbServer.config.port}" },
-        (identifier, profile, done) =>
-            done(null, {identifier:identifier, email:profile.emails[0].value, displayName: profile.displayName})
+        # Finding the parent application
+        while components[index] isnt "landing_page" and index < components.length
+            mp += "/#{components[index++]}"
 
-        Passport.serializeUser (user, done) ->
-            done(null, user.identifier)
+        # Checking if user has not logged in to the parent application
+        if not @findAppUser(req, mp)
+            if /browsers\/[\da-z]+\/index$/.test(req.url)
+                req.session.redirectto = "http://#{@cbServer.config.domain}:#{@cbServer.config.port}#{req.url}"
+            @redirect(res, "#{mp}/authenticate")
 
-        Passport.deserializeUser (identifier, done) ->
-            done(null, {identifier:identifier})
+        else next()
 
-        # This is the URL that the user must access to be authenticated
-        # by the Google OpenID protocol
-        @server.get '/googleAuth', Passport.authenticate('google')
+    # Middleware to reroute authenticated users when they request for
+    # the authentication_interface
+    isNotAuthenticated : (req, res, next, mountPoint) =>
+        components  = mountPoint.split("/")
+        index = 1; mp = ""
 
-        # This is the URL Google redirects the user to after authentication
-        @server.get '/checkauth', Passport.authenticate('google'), (req, res) =>
-            if not req.session.mountPoint then res.send(500)
+        # Finding the parent application
+        while components[index] isnt "authenticate" and index < components.length
+            mp += "/" + components[index++]
 
-            # Authentication unsuccessful
-            else if not req.user
-                @redirect(res, req.session.mountPoint)
+        # Checking if user has already logged in to the parent application
+        if @findAppUser(req, mp)
+            @redirect(res, "#{mp}")
+        else
+            next()
 
-            # Authentication successful
-            else if not (app = @cbServer.applicationManager.find(req.session.mountPoint))?
-                res.send(500)
-
-            else
-                if req.session.redirectto?
-                    redirectto = req.session.redirectto
-                    req.session.redirectto = null
-                    req.session.save()
-                else
-                    redirectto = req.session.mountPoint
-
-                newUser = {email:req.user.email, ns: 'google'}
-                @cbServer.mongoInterface.findUser newUser, app.dbName, (user) =>
-                        if user
-                            # If user is registered with the application, update the session
-                            # to indicate that the user has been authenticated
-                            # And redirect the client to the location specified in the session parameter - "redirectto"
-                            @updateSession(req, user, req.session.mountPoint)
-                            @redirect(res, redirectto)
-                        else
-                            # Insert user into list of registered users of the application
-                            @cbServer.mongoInterface.addUser newUser, app.dbName, (user) =>
-                                @addPermRec user[0], req.session.mountPoint, () =>
-                                    @updateSession(req, user[0], req.session.mountPoint)
-                                    @redirect(res, redirectto)
-
-    # Sets up a server endpoints that serves browsers from the
-    # browsers BrowserManager.
-    setupMountPoint : (browsers, app) ->
-        {mountPoint} = browsers
-        @mountedBrowserManagers[mountPoint] = browsers
-
-        # Remove trailing slash if it exists
-        mountPointNoSlash = if mountPoint.indexOf('/') == mountPoint.length - 1
-            mountPoint.substring(0, mountPoint.length - 1)
-        else mountPoint
-
-        # Routes
-        resourceProxyRoute = "#{mountPointNoSlash}/browsers/:browserID/:resourceID"
-        browserRoute = "#{mountPointNoSlash}/browsers/:browserID/index"
-
-        # Middleware that protects access to browsers
-        isAuthenticated = (req, res, next) =>
-            components  = mountPointNoSlash.split("/")
-            index       = 1
-            mp          = ""
-            while components[index] isnt "landing_page" and index < components.length
-                mp += "/" + components[index++]
-            if not @findAppUser(req, mp)
-                if /browsers\/[\da-z]+\/index$/.test(req.url)
-                    req.session.redirectto = "http://#{@cbServer.config.domain}:#{@cbServer.config.port}#{req.url}"
-                @redirect(res, "#{mp}/authenticate")
-            else next()
-
-        # Middleware that authorizes access to browsers
-        authorize = (req, res, next) =>
-            @cbServer.permissionManager.findBrowserPermRec @findAppUser(req, mountPointNoSlash), mountPointNoSlash,
+    # Middleware that authorizes access to browsers
+    authorize : (req, res, next, mountPoint) =>
+        user = @findAppUser(req, mountPoint)
+        if user?
+            @cbServer.permissionManager.findBrowserPermRec user, mountPoint,
             req.params.browserID, (browserPermRec) ->
                 # Replace with call to checkPermissions
                 if browserPermRec?
@@ -142,41 +101,148 @@ class HTTPServer extends EventEmitter
                         next()
                 else
                     res.send("Permission Denied", 403)
+        else
+            res.send("Permission Denied", 403)
 
-        # Middleware to reroute authenticated users when they request for
-        # the authentication_interface
-        isNotAuthenticated = (req, res, next) =>
-            components  = mountPointNoSlash.split("/")
-            index       = 1
-            mp          = ""
-            while components[index] isnt "authenticate" and index < components.length
-                mp += "/" + components[index++]
-            if @findAppUser(req, mp)
-                @redirect(res, "#{mp}")
+    # Route handler for resource proxy request
+    resourceProxyRouteHandler : (req, res, next, mountPoint) =>
+        resourceID = req.params.resourceID
+        decoded = decodeURIComponent(req.params.browserID)
+        browsers = @mountedBrowserManagers[mountPoint]
+        bserver = browsers.find(decoded)
+        # Note: fetch calls res.end()
+        bserver?.resources.fetch(resourceID, res)
+
+    # Route handler for virtual browser request
+    browserRouteHandler : (req, res, next, mountPoint) =>
+        id = decodeURIComponent(req.params.browserID)
+        browsers = @mountedBrowserManagers[mountPoint]
+        bserver = browsers.find(id)
+        if bserver?
+            console.log "Joining: #{id}"
+            res.render 'base.jade',
+                browserID : id
+                appid : mountPoint
+        else
+            res.send("The requested browser #{id} was not found", 403)
+
+    setupLandingPage: (browsers, app) ->
+        {mountPoint} = browsers
+        @mountedBrowserManagers[app.mountPoint] = browsers
+
+        @server.get mountPoint,
+        (req, res, next) => @isAuthenticated(req, res, next, mountPoint),
+        (req, res) =>
+            components  = mountPoint.split("/")
+            components.pop()
+            mp = components.join("/")
+            user = @findAppUser(req, mp)
+            browsers.create app, user, (err, bserver) =>
+                throw err if err
+                @redirect(res, "#{mountPoint}/browsers/#{bserver.id}/index")
+
+        @server.get @browserRoute(mountPoint),
+        (req, res, next) => @isAuthenticated(req, res, next, mountPoint),
+        (req, res, next) => @browserRouteHandler(req, res, next, mountPoint)
+
+        @server.get @resourceProxyRoute(mountPoint),
+        (req, res, next) => @isAuthenticated(req, res, next, mountPoint),
+        (req, res, next) => @resourceProxyRouteHandler(req, res, next, mountPoint)
+
+    setupAuthenticationInterface: (browsers, app) ->
+        {mountPoint} = browsers
+        @mountedBrowserManagers[mountPoint] = browsers
+
+        @server.get mountPoint,
+        (req, res, next) => @isNotAuthenticated(req, res, next, mountPoint),
+        (req, res) =>
+            id = req.session.browserID
+            if !id? || !browsers.find(id)
+              bserver = browsers.create(app)
+              # Makes the browser stick to a particular client to prevent creation of too many browsers
+              id = req.session.browserID = bserver.id
+            @redirect(res, "#{mountPoint}/browsers/#{id}/index")
+
+        @server.get @browserRoute(mountPoint),
+        (req, res, next) => @isNotAuthenticated(req, res, next, mountPoint),
+        (req, res, next) => @browserRouteHandler(req, res, next, mountPoint)
+
+        @server.get @resourceProxyRoute(mountPoint),
+        (req, res, next) => @isNotAuthenticated(req, res, next, mountPoint),
+        (req, res, next) => @resourceProxyRouteHandler(req, res, next, mountPoint)
+
+    setupAuthRoutes : (app, mountPoint) ->
+        browsers = @mountedBrowserManagers[mountPoint]
+
+        @server.get mountPoint,
+        (req, res, next) => @isAuthenticated(req, res, next, mountPoint),
+        (req, res) =>
+            if app.getInstantiationStrategy() is "multiInstance"
+                @redirect(res, "#{mountPoint}/landing_page")
             else
-                next()
+                user = @findAppUser(req, mountPoint)
+                browsers.create app, user, (err, bserver) =>
+                    @redirect(res, "#{mountPoint}/browsers/#{bserver.id}/index")
 
-        # Route handler for resource proxy request
-        resourceProxyRouteHandler = (req, res) ->
-            resourceID = req.params.resourceID
-            decoded = decodeURIComponent(req.params.browserID)
-            bserver = browsers.find(decoded)
-            # Note: fetch calls res.end()
-            bserver?.resources.fetch(resourceID, res)
+        @server.get @browserRoute(mountPoint),
+        (req, res, next) => @isAuthenticated(req, res, next, mountPoint),
+        (req, res, next) => @authorize(req, res, next, mountPoint),
+        (req, res, next) => @browserRouteHandler(req, res, next, mountPoint)
 
-        # Route handler for browser request
-        browserRouteHandler = (req, res, next) =>
-            id = decodeURIComponent(req.params.browserID)
-            bserver = browsers.find(id)
-            if bserver
-                console.log "Joining: #{id}"
-                res.render 'base.jade',
-                    browserID : id
-                    appid : mountPointNoSlash
-            else
-                res.send("The requested browser #{id} was not found", 403)
+        @server.get @resourceProxyRoute(mountPoint),
+        (req, res, next) => @isAuthenticated(req, res, next, mountPoint),
+        (req, res, next) => @resourceProxyRouteHandler(req, res, next, mountPoint)
 
-    
+        # Extra routes for applications with authentication interface enabled
+        @server.get "#{mountPoint}/logout", (req, res) =>
+            @terminateUserAppSession(req, mountPoint)
+            @redirect(res, mountPoint)
+
+        @server.get "#{mountPoint}/activate/:token", (req, res) =>
+            @cbServer.mongoInterface.findUser {token:req.params.token}, app.dbName, (user) =>
+                @addPermRec user, mountPoint, () =>
+                    @cbServer.mongoInterface.unsetUser {token: req.params.token},
+                    app.dbName, {token: "", status: ""}, () =>
+                        res.render 'activate.jade',
+                            url: "http://#{@cbServer.config.domain}:#{@cbServer.config.port}#{mountPoint}"
+
+        @server.get "#{mountPoint}/deactivate/:token", (req, res) =>
+            @cbServer.mongoInterface.removeUser {token: req.params.token}, app.dbName, () =>
+                res.render 'deactivate.jade'
+
+    browserRoute : (mountPoint) ->
+        return "#{if mountPoint is "/" then "" else mountPoint}/browsers/:browserID/index"
+
+    resourceProxyRoute : (mountPoint) ->
+        return "#{if mountPoint is "/" then "" else mountPoint}/browsers/:browserID/:resourceID"
+
+    setupRoutes : (app, mountPoint) ->
+        browsers = @mountedBrowserManagers[mountPoint]
+
+        @server.get mountPoint, (req, res) =>
+            # For password reset requests
+            @preserveQueryParameters(req.query, req.session)
+            id = req.session.browserID
+            if !id? || !browsers.find(id)
+                bserver = browsers.create(app)
+                # Makes the browser stick to a particular client to prevent creation of too many browsers
+                id = req.session.browserID = bserver.id
+            @redirect(res, "#{if mountPoint is "/" then "" else mountPoint}/browsers/#{id}/index")
+
+        # Route to connect to a virtual browser.
+        @server.get @browserRoute(mountPoint),
+        (req, res, next) => @browserRouteHandler(req, res, next, mountPoint)
+
+        # Route for ResourceProxy
+        @server.get @resourceProxyRoute(mountPoint),
+        (req, res, next) => @resourceProxyRouteHandler(req, res, next, mountPoint)
+
+    # Sets up a server endpoints that serves browsers from the
+    # application's BrowserManager.
+    setupMountPoint : (browsers, app) ->
+        {mountPoint} = browsers
+        @mountedBrowserManagers[mountPoint] = browsers
+
         # Route to reserve a virtual browser.
         # TODO: It would be nice to extract this, since it's useful just to
         # provide endpoints for serving browsers without providing routes for
@@ -184,80 +250,13 @@ class HTTPServer extends EventEmitter
         # strategies for creating browsers should be pluggable (e.g. creating
         # a browser from a URL sent via POST).
 
-        if /landing_page$/.test(mountPointNoSlash)
-            @server.get mountPoint, isAuthenticated, (req, res) =>
-                components  = mountPointNoSlash.split("/")
-                components.pop()
-                mp = components.join("/")
-                user = @findAppUser(req, mp)
-                browsers.create app, user, (err, bserver) =>
-                    throw err if err
-                    @redirect(res, "#{mountPointNoSlash}/browsers/#{bserver.id}/index")
-
-            @server.get browserRoute, isAuthenticated, browserRouteHandler
-            @server.get resourceProxyRoute, isAuthenticated, resourceProxyRouteHandler
-
-        else if app.authenticationInterface
-
-            @server.get "#{mountPointNoSlash}/logout", (req, res) =>
-                @terminateUserAppSession(req, mountPointNoSlash)
-                @redirect(res, mountPointNoSlash)
-
-            @server.get "#{mountPointNoSlash}/activate/:token", (req, res) =>
-                @cbServer.mongoInterface.findUser {token:req.params.token}, app.dbName, (user) =>
-                    @addPermRec user, mountPointNoSlash, () =>
-                        @cbServer.mongoInterface.unsetUser {token: req.params.token}, app.dbName, {token: "", status: ""}, () =>
-                            res.render 'activate.jade',
-                                url: "http://#{@cbServer.config.domain}:#{@cbServer.config.port}#{mountPointNoSlash}"
-
-            @server.get "#{mountPointNoSlash}/deactivate/:token", (req, res) =>
-                @cbServer.mongoInterface.removeUser {token: req.params.token}, app.dbName, () =>
-                    res.render 'deactivate.jade'
-
-            @server.get mountPoint, isAuthenticated, (req, res) =>
-                if app.getInstantiationStrategy() is "multiInstance"
-                    @redirect(res, "#{mountPointNoSlash}/landing_page")
-                else
-                    user = @findAppUser(req, mountPointNoSlash)
-                    browsers.create app, user, (err, bserver) =>
-                        @redirect(res, "#{mountPointNoSlash}/browsers/#{bserver.id}/index")
-
-            @server.get browserRoute, isAuthenticated, authorize, browserRouteHandler
-            @server.get resourceProxyRoute, isAuthenticated, resourceProxyRouteHandler
-
-        else if /authenticate$/.test(mountPointNoSlash)
-            @server.get mountPoint, isNotAuthenticated, (req, res) =>
-                id = req.session.browserID
-                if !id? || !browsers.find(id)
-                  bserver = browsers.create(app)
-                  # Makes the browser stick to a particular client to prevent creation of too many browsers
-                  id = req.session.browserID = bserver.id
-                @redirect(res, "#{mountPointNoSlash}/browsers/#{id}/index")
-
-            @server.get browserRoute, isNotAuthenticated, browserRouteHandler
-            @server.get resourceProxyRoute, isNotAuthenticated, resourceProxyRouteHandler
-
-        else
-            @server.get mountPoint, (req, res) =>
-                # For password reset requests
-                @preserveQueryParameters(req.query, req.session)
-                id = req.session.browserID
-                if !id? || !browsers.find(id)
-                    bserver = browsers.create(app)
-                    # Makes the browser stick to a particular client to prevent creation of too many browsers
-                    id = req.session.browserID = bserver.id
-                @redirect(res, "#{mountPointNoSlash}/browsers/#{id}/index")
-
-            # Route to connect to a virtual browser.
-            @server.get browserRoute, browserRouteHandler
-
-            # Route for ResourceProxy
-            @server.get resourceProxyRoute, resourceProxyRouteHandler
+        if app.authenticationInterface then @setupAuthRoutes(app, mountPoint)
+        else @setupRoutes(app, mountPoint)
 
     bundleJS : () ->
         b = Browserify
             require : [Path.resolve(__dirname, '..', 'client', 'client_engine')]
-            ignore : ['socket.io-client', 'weak']
+            ignore : ['socket.io-client', 'weak', 'xmlhttprequest']
             filter : (src) =>
                 if @cbServer.config.compressJS
                     ugly = Uglify(src)

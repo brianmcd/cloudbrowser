@@ -77,12 +77,20 @@ class Server extends EventEmitter
                     console.log "#{k} : #{@config[k]}"
 
         @mongoInterface = new MongoInterface('cloudbrowser')
-        @applicationManager = new ApplicationManager(paths, this, projectRoot)
+
         @permissionManager = new PermissionManager(@mongoInterface)
+
         @httpServer = new HTTPServer this, () =>
             @emit('ready')
+
         @socketIOServer = @createSocketIOServer(@httpServer.server, @config.apps)
+
         @setupEventTracker() if @config.printEventStats
+
+        @applicationManager = new ApplicationManager
+            paths     : paths
+            server    : this
+            cbAppDir  : projectRoot
 
     setupEventTracker : () ->
         @processedEvents = 0
@@ -99,18 +107,14 @@ class Server extends EventEmitter
             @emit('close')
         @httpServer.close()
 
-    mountMultiple: (apps) ->
-        for mountPoint, app of apps
-            @mount app
-
-    mount : (app) ->
+    mount : (app, mountFunc) ->
         console.log("Mounting http://#{@config.domain}:#{@config.port}#{app.mountPoint}\n")
         {mountPoint} = app
         browsers = app.browsers = if app.browserStrategy == 'multiprocess'
             new MultiProcessBrowserManager(this, mountPoint, app)
         else
             new InProcessBrowserManager(this, mountPoint, app)
-        @httpServer.setupMountPoint(browsers, app)
+        @httpServer[mountFunc](browsers, app)
         return(app)
 
     createSocketIOServer : (http, apps) ->

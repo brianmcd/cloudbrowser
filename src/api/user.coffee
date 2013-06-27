@@ -34,7 +34,7 @@ class User
     ###*
         Gets the namespace of the user.
         @method getNameSpace
-        @memberof User
+        @memberof cloudbrowser.app.User
         @instance
         @return {String}
     ###
@@ -43,7 +43,7 @@ class User
     ###*
         Gets the user in a JSON format {email:{String},ns:{String}}
         @method toJson
-        @memberof User
+        @memberof cloudbrowser.app.User
         @instance
         @return {Object} 
     ###
