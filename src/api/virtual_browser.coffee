@@ -28,7 +28,7 @@ class VirtualBrowser
             browser             : browser
             creator             : creator
             userContext         : userContext
-            application         : browser.server.applicationManager.find(browser.mountPoint)
+            application         : browser.server.applications.find(browser.mountPoint)
             cloudbrowserContext : cloudbrowserContext
 
         # Public properties id, name, dateCreated, owners, collaborators

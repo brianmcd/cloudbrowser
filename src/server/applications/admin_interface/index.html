@@ -24,7 +24,7 @@
                         <tr ng-repeat="(mountPoint,app) in apps">
                             <td><a href="{{mountPoint}}" ng-click="click(mountPoint)" target="_blank">{{mountPoint}}</a></td>
                             <td>
-                                <div ng-repeat="(id,browser) in app.browsers.browsers">
+                                <!--<div ng-repeat="(id,browser) in app.browsers.browsers">-->
                                     <a href="http://{{domain}}:{{port}}{{mountPoint}}/browsers/{{id}}/index">{{id}}</a>
                                     <i id="remove" class="icon-remove-sign icon-large" ng-click="deleteVB(mountPoint,id)"></i>
                                 </div>

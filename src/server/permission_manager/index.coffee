@@ -350,6 +350,25 @@ class UserPermissionManager extends CacheManager
             else callback(new Error("Browser permission record for browser " +
             browserId + " of " + user.email + "(" + user.ns ") does not exist"))
 
+    checkPermissions : (options) ->
+        callback = (rec) ->
+            if rec
+                for type,v of options.permTypes
+                    if not rec.permissions[type] or
+                    typeof rec.permissions[type] is "undefined"
+                        options.callback(false)
+                        return
+                options.callback(true)
+            else options.callback(false)
+
+        if options.browserId
+            @findBrowserPermRec options.user, options.mountPoint, options.browserId, callback
+        else if options.mountPoint
+            @findAppPermRec options.user, options.mountPoint, callback
+        else if options.user
+            @findSysPermRec options.user, callback
+        else options.callback(false)
+        
     setSysPerm : (user, permissions, callback) ->
         @findSysPermRec user, (sysRec) =>
             if not sysRec? then callback(null)

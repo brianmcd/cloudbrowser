@@ -1,6 +1,7 @@
 Util                 = require('util')
 Path                 = require('path')
 FS                   = require('fs')
+Weak                 = require('weak')
 {EventEmitter}       = require('events')
 Browser              = require('../browser')
 ResourceProxy        = require('./resource_proxy')
@@ -10,20 +11,30 @@ Compressor           = require('../../shared/compressor')
 TaggedNodeCollection = require('../../shared/tagged_node_collection')
 {serialize}          = require('./serializer')
 {isVisibleOnClient}  = require('../../shared/utils')
-ParseCookie          = require('cookie').parse
 
 {eventTypeToGroup,
  clientEvents,
  defaultEvents} = require('../../shared/event_lists')
 
+# Defining callback at the highest level
+# see https://github.com/TooTallNate/node-weak#weak-callback-function-best-practices
+# Dummy callback, does nothing
+cleanupBserver = (id) ->
+    return () ->
+        console.log "[Browser Server] - Garbage collected bserver #{id}"
+
 # Serves 1 Browser to n clients.
 class BrowserServer extends EventEmitter
-    constructor : (@server, @id, @mountPoint) ->
-        if !@id? || !@mountPoint
-            throw new Error("Missing required parameter")
-        @browser = new Browser(@id, this, @server)
+
+    constructor : (bserverInfo) ->
+
+        {@server, @id, @mountPoint} = bserverInfo
+        weakRefToThis = Weak(this, cleanupBserver(@id))
+
+        @browser = new Browser(@id, weakRefToThis, @server)
         @dateCreated = new Date()
 
+        # TODO : Causes memory leak, must fix
         @browser.on 'PageLoaded', () =>
             @browser.window.addEventListener 'hashchange', (event) =>
                 @broadcastEvent('UpdateLocationHash',
@@ -49,8 +60,8 @@ class BrowserServer extends EventEmitter
 
         for own event, handler of DOMEventHandlers
             do (event, handler) =>
-                @browser.on event, () =>
-                    handler.apply(this, arguments)
+                @browser.on event, () ->
+                    handler.apply(weakRefToThis, arguments)
         @initLogs() if !@server.config.noLogs
 
     redirect : (URL) ->
@@ -72,8 +83,8 @@ class BrowserServer extends EventEmitter
         , 1000
 
     # arg can be an Application or URL string.
-    load : (arg, location) ->
-        @browser.load(arg, location)
+    load : (arg) ->
+        @browser.load(arg)
 
     # For testing purposes, return an emulated client for this browser.
     createTestClient : () ->
@@ -97,6 +108,8 @@ class BrowserServer extends EventEmitter
         @closed = true
         @sockets = @sockets.concat(@queuedSockets)
         socket.disconnect() for socket in @sockets
+        socket.removeAllListeners for socket in @sockets
+        @compressor.removeAllListeners()
         @sockets = []
         @queuedSockets = []
         @browser.close()
@@ -154,6 +167,7 @@ class BrowserServer extends EventEmitter
                         @logRPCMethod(type, arguments)
                     args = Array.prototype.slice.call(arguments)
                     args.push(socket)
+                    # Weak ref not required here
                     func.apply(this, args)
         socket.on 'disconnect', () =>
             @sockets       = (s for s in @sockets       when s != socket)

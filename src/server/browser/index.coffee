@@ -50,7 +50,7 @@ class Browser extends EventEmitter
     load : (arg) ->
         url = null
         app = null
-        if arg instanceof Application
+        if arg.entryURL?
             url = arg.entryURL()
             app = arg
             @bserver.mountPoint = arg.mountPoint

@@ -127,7 +127,7 @@ class HTTPServer extends EventEmitter
             res.send("The requested browser #{id} was not found", 403)
 
     setupLandingPage: (browsers, app) ->
-        {mountPoint} = browsers
+        {mountPoint} = app
         @mountedBrowserManagers[app.mountPoint] = browsers
 
         @server.get mountPoint,
@@ -137,7 +137,7 @@ class HTTPServer extends EventEmitter
             components.pop()
             mp = components.join("/")
             user = @findAppUser(req, mp)
-            browsers.create app, user, (err, bserver) =>
+            browsers.create user, (err, bserver) =>
                 throw err if err
                 @redirect(res, "#{mountPoint}/browsers/#{bserver.id}/index")
 
@@ -150,7 +150,7 @@ class HTTPServer extends EventEmitter
         (req, res, next) => @resourceProxyRouteHandler(req, res, next, mountPoint)
 
     setupAuthenticationInterface: (browsers, app) ->
-        {mountPoint} = browsers
+        {mountPoint} = app
         @mountedBrowserManagers[mountPoint] = browsers
 
         @server.get mountPoint,
@@ -158,7 +158,7 @@ class HTTPServer extends EventEmitter
         (req, res) =>
             id = req.session.browserID
             if !id? || !browsers.find(id)
-              bserver = browsers.create(app)
+              bserver = browsers.create()
               # Makes the browser stick to a particular client to prevent creation of too many browsers
               id = req.session.browserID = bserver.id
             @redirect(res, "#{mountPoint}/browsers/#{id}/index")
@@ -181,7 +181,7 @@ class HTTPServer extends EventEmitter
                 @redirect(res, "#{mountPoint}/landing_page")
             else
                 user = @findAppUser(req, mountPoint)
-                browsers.create app, user, (err, bserver) =>
+                browsers.create user, (err, bserver) =>
                     @redirect(res, "#{mountPoint}/browsers/#{bserver.id}/index")
 
         @server.get @browserRoute(mountPoint),
@@ -240,7 +240,7 @@ class HTTPServer extends EventEmitter
     # Sets up a server endpoints that serves browsers from the
     # application's BrowserManager.
     setupMountPoint : (browsers, app) ->
-        {mountPoint} = browsers
+        {mountPoint} = app
         @mountedBrowserManagers[mountPoint] = browsers
 
         # Route to reserve a virtual browser.

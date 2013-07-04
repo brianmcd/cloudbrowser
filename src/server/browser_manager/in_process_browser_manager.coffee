@@ -1,155 +1,189 @@
 BrowserServer       = require('../browser_server')
 BrowserManager      = require('./browser_manager')
 BrowserServerSecure = require('../browser_server/browser_server_secure')
-Util                = require('util')
+Weak                = require('weak')
 
-# Do we even need defaultApp? It can be found now from application_manager.find(@mountPoint)
+# Defining callback at the highest level
+# see https://github.com/TooTallNate/node-weak#weak-callback-function-best-practices
+# Dummy callback, does nothing
+cleanupBserver = (id) ->
+    return () ->
+        console.log "[Browser Manager] - Garbage collected bserver #{id}"
+
 class InProcessBrowserManager extends BrowserManager
-    constructor : (@server, @mountPoint, @defaultApp) ->
-        @browsers = {}
+    constructor : (@server, @app) ->
 
-    find : (id) ->
-        return @browsers[id]
+        # List of strong references to bservers
+        @bservers = {}
 
-    createBrowser : (browserType, id, user, permissions) ->
-        browser = @browsers[id] = new browserType(@server, id,
-        @mountPoint, user, permissions)
-        browser.load(@defaultApp)
-        @addToBrowserList(browser)
-        return browser
+        # List of weak references to bservers
+        @weakRefsToBservers = {}
 
-    closeBrowser : (browser) ->
-        @removeFromBrowserList(browser)
-        browser.removeAllListeners()
-        delete @browsers[browser.id]
-        browser.close()
+    # Creates a browser server of type browserType
+    # browserType can be BrowserServer(for normal apps) and BrowserServerSecure
+    # (for apps with authentication interface enabled)
+    _createBserver : (browserInfo) ->
+        id = browserInfo.id
 
-    # Do we need appOrUrl?
-    create : (appOrUrl = @defaultApp, user, callback, id = @generateUUID()) ->
+        # Store strong reference
+        @bservers[id] = new browserInfo.type
+            id          : id
+            server      : @server
+            mountPoint  : @app.mountPoint
+            creator     : browserInfo.creator,
+            permissions : browserInfo.permissions
 
-        if appOrUrl? and appOrUrl.authenticationInterface or
-        /landing_page$/.test(appOrUrl.mountPoint)
-            if not user?
-                callback(new Error("Permission Denied"), null)
+        # Store weak reference
+        @weakRefsToBservers[id] = Weak(@bservers[id], cleanupBserver(id))
 
-            # Remove nested functions like this one
-            grantBrowserPerm = (id, permissions, callback) =>
-                @server.permissionManager.addBrowserPermRec user,
-                @mountPoint, id, permissions,
-                (browserRec) ->
-                    if not browserRec
-                        throw new Error("Could not grant permissions associated with " +
-                        id + " to user " + user.email + " (" + user.ns + ")")
-                    else callback(browserRec)
+        # Load the application code into the browser
+        @bservers[id].load(@app)
 
-            # Move this to the PermissionManager
-            checkPermissions = (permTypes, callback) =>
-                @server.permissionManager.findAppPermRec user, @mountPoint, (appRec) ->
-                    if appRec
-                        for type,v of permTypes
-                            if not appRec.permissions[type] or
-                            typeof appRec.permissions[type] is "undefined"
-                                callback(false)
-                                return
-                        callback(true)
-                    else callback(false)
+        # Hand out weak references to other modules
+        return @weakRefsToBservers[id]
 
-            # Checking the browser limit configured for the application
-            checkPermissions {createbrowsers:true}, (isActionPermitted) =>
+    _closeBserver : (bserver) ->
 
-                if isActionPermitted
-                    instantiationStrategy = appOrUrl.getInstantiationStrategy()
+        # Removing all event listeners to prevent memory leak
+        bserver.removeAllListeners()
 
-                    if instantiationStrategy is "singleAppInstance"
-                        if not appOrUrl.browser
+        bserver.close()
+
+        # Removing stored weak ref
+        delete @weakRefsToBservers[bserver.id]
+
+        # Removing the last strong reference to the bserver
+        delete @bservers[bserver.id]
+
+    _grantBrowserPerm : (user, id, permissions, callback) ->
+        @server.permissionManager.addBrowserPermRec user, @app.mountPoint,
+        id, permissions, (browserRec) ->
+            if not browserRec
+                throw new Error("Could not grant permissions associated with " +
+                id + " to user " + user.email + " (" + user.ns + ")")
+            else callback(browserRec)
+
+    _createSecure : (user, callback, id) ->
+        if not user?
+            callback(new Error("Permission Denied"), null)
+
+        # Checking the browser limit configured for the application
+        @server.permissionManager.checkPermissions
+            user        : user
+            mountPoint  : @app.mountPoint
+            permissions : {createbrowsers:true}
+            callback    : (canCreate) =>
+                if not canCreate
+                    callback(new Error("You are not permitted to perform this action."))
+                else
+
+                    switch(@app.getInstantiationStrategy())
+                        when "singleAppInstance"
                             permissions = {readwrite:true}
-                            appOrUrl.browser = @createBrowser(BrowserServerSecure, id, user, permissions)
-                            grantBrowserPerm id, permissions, (browserRec) =>
-                                callback(null, appOrUrl.browser)
-                        else
-                            grantBrowserPerm appOrUrl.browser.id, {readwrite:true}, (browserRec) ->
-                                callback(null, appOrUrl.browser)
-
-                    else if instantiationStrategy is "singleUserInstance"
-                        @server.permissionManager.getBrowserPermRecs user,
-                        @mountPoint, (browserRecs) =>
-                            if not browserRecs or
-                            Object.keys(browserRecs).length < 1
-                                permissions = {own:true, readwrite:true, remove:true}
-                                browser = @createBrowser(BrowserServerSecure, id, user, permissions)
-                                grantBrowserPerm id, permissions, (browserRec) =>
-                                    callback(null, browser)
+                            # Attaching a single bserver to app
+                            # that will be used for all requests to this 
+                            # application
+                            if not @app.bserver
+                                # Create bserver and grant readwrite permission
+                                # to user for this bserver
+                                @app.bserver = @_createBserver
+                                    type        : BrowserServerSecure
+                                    id          : id
+                                    creator     : user
+                                    permissions : permissions
+                                @_grantBrowserPerm user, id, permissions, (browserRec) =>
+                                    callback(null, @app.bserver)
                             else
-                                for browserId, browser of browserRecs
-                                    callback(null, @find(browserId))
-                                    break
+                                # use created bserver and just grant readwrite permission
+                                # to user
+                                @_grantBrowserPerm user, @app.bserver.id, permissions, (browserRec) =>
+                                    callback(null, @app.bserver)
+                        when "singleUserInstance"
+                            @server.permissionManager.getBrowserPermRecs user,
+                            @app.mountPoint, (browserRecs) =>
+                                # Create new bserver and grant permissions only if
+                                # one associated with the user doesn't exist
+                                if not browserRecs or
+                                Object.keys(browserRecs).length < 1
+                                    permissions = {own:true, readwrite:true, remove:true}
+                                    bserver = @_createBserver
+                                        type        : BrowserServerSecure
+                                        id          : id
+                                        creator     : user
+                                        permissions : permissions
+                                    @_grantBrowserPerm user, id, permissions, (browserRec) =>
+                                        callback(null, bserver)
+                                else
+                                    for browserId, bserver of browserRecs
+                                        callback(null, @find(browserId))
+                                        break
+                        when "multiInstance"
+                            userLimit = @app.getBrowserLimit()
+                            if not userLimit
+                                throw new Error("BrowserLimit for app #{@app.mountPoint} not specified")
+                            @server.permissionManager.getBrowserPermRecs user,
+                            @app.mountPoint, (browserRecs) =>
+                                if not browserRecs or
+                                Object.keys(browserRecs).length < userLimit
+                                    permissions = {own:true, readwrite:true, remove:true}
+                                    bserver = @_createBserver
+                                        type        : BrowserServerSecure
+                                        id          : id
+                                        creator     : user
+                                        permissions : permissions
+                                    @_grantBrowserPerm user, id, permissions, (browserRec) =>
+                                        callback(null, bserver)
+                                else callback(new Error("Browser limit reached"), null)
 
-                    else if instantiationStrategy is "multiInstance"
-                        userLimit = appOrUrl.getBrowserLimit()
-                        if not userLimit
-                            throw new Error("BrowserLimit for app " + @mountPoint + " not specified")
-                        @server.permissionManager.getBrowserPermRecs user,
-                        @mountPoint, (browserRecs) =>
-                            if not browserRecs or
-                            Object.keys(browserRecs).length < userLimit
-                                permissions = {own:true, readwrite:true, remove:true}
-                                browser = @createBrowser(BrowserServerSecure, id, user, permissions)
-                                grantBrowserPerm id, permissions, (browserRec) =>
-                                    callback(null, browser)
-                            else callback(new Error("Browser limit reached"), null)
-
-                else callback(new Error("You are not permitted to perform this action."))
-
+    _create : (id) ->
+        if @app.getInstantiationStrategy() is "singleAppInstance"
+            if not @app.bserver
+                @app.bserver = @_createBserver
+                    type : BrowserServer
+                    id   : id
+            return @app.bserver
         else
-            # Authentication is disabled
+            return @_createBserver
+                type : BrowserServer
+                id   : id
 
-            if appOrUrl.getInstantiationStrategy() is "singleAppInstance"
-                if not appOrUrl.browser
-                    appOrUrl.browser = @createBrowser(BrowserServer, id)
-                return appOrUrl.browser
+    create : (user, callback, id = @generateUUID()) ->
 
-            else
-                return @createBrowser(BrowserServer, id)
+        if @app.authenticationInterface or /landing_page$/.test(@app.mountPoint)
+            @_createSecure(user, callback, id)
 
-    # Close all browsers
+        else @_create(id)
+
+    # Close all bservers
     closeAll : () ->
-        for browser in @browsers
-            @closeBrowser(browser)
+        for bserver in @bservers
+            @_closeBserver(bserver)
     
-    close : (browser, user, callback) ->
-
-        if !browser?
-            throw new Error("Must pass a browser to close")
-
-        if @defaultApp.authenticationInterface
-
+    close : (bserver, user, callback) ->
+        if @app.authenticationInterface
             if not user?
                 callback(new Error("Permission Denied"))
-
-            # Must move to PermissionManager
-            checkPermissions = (permTypes, callback) =>
-                @server.permissionManager.findBrowserPermRec user, @mountPoint, browser.id, (browserRec) ->
-                    if browserRec
-                        for type,v of permTypes
-                            if not browserRec.permissions[type] or
-                            typeof browserRec.permissions[type] is "undefined"
-                                callback(false)
-                                return
-                        callback(true)
-                    else callback(false)
-
-            # Check if the user has permissions to delete this browser
-            checkPermissions {remove:true}, (isActionPermitted) =>
-                if isActionPermitted
-                    # Not respecting asynchronous nature of function call here!
-                    for user in browser.getAllUsers()
-                        @server.permissionManager.rmBrowserPermRec user,
-                        @mountPoint, browser.id, (err) ->
-                            if err then callback(err)
-                        @closeBrowser(browser)
-                        callback(null)
-                else callback(new Error "Permission Denied")
+            # Check if the user has permissions to delete this bserver
+            @server.permissionManager.checkPermissions
+                user        : user
+                mountPoint  : @app.mountPoint
+                browserId   : bserver.id
+                permissions :{remove:true}
+                callback    : (canRemove) =>
+                    if canRemove
+                        # Not respecting asynchronous nature of function call here!
+                        for user in bserver.getAllUsers()
+                            @server.permissionManager.rmBrowserPermRec user,
+                            @app.mountPoint, bserver.id, (err) ->
+                                if err then callback(err)
+                            @_closeBserver(bserver)
+                            callback(null)
+                    else callback(new Error "Permission Denied")
         else
-            @closeBrowser(browser)
+            @_closeBserver(bserver)
+
+    find : (id) ->
+        # Hand out weak references to other modules
+        return @weakRefsToBservers[id]
 
 module.exports = InProcessBrowserManager

@@ -2,8 +2,9 @@ BrowserServer = require('./index')
 
 class BrowserServerSecure extends BrowserServer
     @nameCount:0
-    constructor: (@server, @id, @mountPoint, @creator, permissions) ->
+    constructor: (bserverInfo) ->
         super
+        {@creator, permissions} = bserverInfo
         # Lists of users with corresponding permissions
         # for this browser
         @own        = []

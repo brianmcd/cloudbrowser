@@ -37,7 +37,7 @@ class AppConfig
             creatorJson         : if creator then creator.toJson() else null
             cloudbrowserContext : cloudbrowserContext
             parentMountPoint    : parentMountPoint
-            parentApplication   : bserver.server.applicationManager.find(parentMountPoint)
+            parentApplication   : bserver.server.applications.find(parentMountPoint)
             localStrategy       : new cloudbrowserContext.app.LocalStrategy(bserver, cloudbrowserContext)
             googleStrategy      : new cloudbrowserContext.app.GoogleStrategy(bserver)
 
@@ -100,7 +100,7 @@ class AppConfig
     createVirtualBrowser : (callback) ->
         parentApp = _privates[@_index].parentApplication
         creatorJson = _privates[@_index].creatorJson
-        parentApp.browsers.create(parentApp, creatorJson, (err, bsvr) -> callback(err))
+        parentApp.browsers.create(creatorJson, (err, bsvr) -> callback(err))
 
     ###*
         Gets all the instances of the application associated with the current user.    

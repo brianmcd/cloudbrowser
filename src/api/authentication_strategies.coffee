@@ -19,7 +19,7 @@ class LocalStrategy
             value : _privates.length
 
         parentMountPoint = getParentMountPoint(bserver.mountPoint)
-        appMgr     = bserver.server.applicationManager
+        appMgr     = bserver.server.applications
 
         # Setting private properties
         _privates.push
@@ -153,7 +153,7 @@ class GoogleStrategy
         _privates.push
             parentMountPoint : getParentMountPoint(bserver.mountPoint)
             bserver    : bserver
-            browserMgr : bserver.server.applicationManager.find(bserver.mountPoint).browsers
+            browserMgr : bserver.server.applications.find(bserver.mountPoint).browsers
     ###*
         Log in through a google ID
         @method login

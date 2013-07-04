@@ -66,7 +66,7 @@ class GoogleStrategy
             # Invalid requests, that did not originate from cloudbrowser
             if not req.session.mountPoint then res.send(403)
 
-            app = servers.cloudbrowser.applicationManager.find(req.session.mountPoint)
+            app = servers.cloudbrowser.applications.find(req.session.mountPoint)
             if not app?
                 res.send(403)
 

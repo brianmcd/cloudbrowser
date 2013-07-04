@@ -87,7 +87,7 @@ class Server extends EventEmitter
 
         @setupEventTracker() if @config.printEventStats
 
-        @applicationManager = new ApplicationManager
+        @applications = new ApplicationManager
             paths     : paths
             server    : this
             cbAppDir  : projectRoot
@@ -111,15 +111,14 @@ class Server extends EventEmitter
         console.log("Mounting http://#{@config.domain}:#{@config.port}#{app.mountPoint}\n")
         {mountPoint} = app
         browsers = app.browsers = if app.browserStrategy == 'multiprocess'
-            new MultiProcessBrowserManager(this, mountPoint, app)
+            new MultiProcessBrowserManager(this, app)
         else
-            new InProcessBrowserManager(this, mountPoint, app)
+            new InProcessBrowserManager(this, app)
         @httpServer[mountFunc](browsers, app)
         return(app)
 
     createSocketIOServer : (http, apps) ->
         browserManagers = @httpServer.mountedBrowserManagers
-        applicationManager = @applicationManager
         io = sio.listen(http)
         io.configure () =>
             if @config.compressJS
@@ -159,7 +158,7 @@ class Server extends EventEmitter
             if appUser[0] then return true
             else return false
 
-        app = @applicationManager.find(mountPoint)
+        app = @applications.find(mountPoint)
 
         if not app
             return false

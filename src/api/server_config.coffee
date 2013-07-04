@@ -58,16 +58,16 @@ class ServerConfig
 
     # Mounts the application whose files are at `path`.
     mount : (path) ->
-        _privates[@_index].server.applicationManager.create(path)
+        _privates[@_index].server.applications.create(path)
 
     # Unmounts the application running at `mountPoint`.
     unmount : (mountPoint) ->
-        _privates[@_index].server.applicationManager.remove(mountPoint)
+        _privates[@_index].server.applications.remove(mountPoint)
 
     # Lists all the applications mounted by the creator of this browser.
     listApps : () ->
         user = @getCreator()
-        _privates[@_index].server.applicationManager.get({email:user.getEmail(), ns:user.getNameSpace()})
+        _privates[@_index].server.applications.get({email:user.getEmail(), ns:user.getNameSpace()})
 
     ###*
         @typedef appObject
@@ -83,13 +83,13 @@ class ServerConfig
     ###
     getApps : () ->
         list = []
-        for mountPoint, app of _privates[@_index].server.applicationManager.get()
+        for mountPoint, app of _privates[@_index].server.applications.get()
             list.push({mountPoint:mountPoint, description:app.description})
         list.sort(compare)
         return list
 
     addEventListener : (event, callback) ->
-        _privates[@_index].server.applicationManager.on event, (app) ->
+        _privates[@_index].server.applications.on event, (app) ->
             if event is "Added"
                 callback({mountPoint:app.mountPoint, description:app.description})
             else
