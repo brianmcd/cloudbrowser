@@ -2,13 +2,12 @@ Browser          = require('../src/server/browser')
 Lists            = require('../src/shared/event_lists')
 {noCacheRequire} = require('../src/shared/utils')
 {InProcessBrowserManager} = require('../src/server/browser_manager')
+Application = require('../src/server/application_manager/application')
 
-
-remoteBrowsers = new InProcessBrowserManager('/remote_browsers')
-global.server.httpServer.setupMountPoint(remoteBrowsers)
-
-exports.createRemoteBrowserServer = (url) ->
-    return remoteBrowsers.create(url)
+exports.createBrowserServer = (path) ->
+    app = global.server.mount(global.server.applications.createAppFromFile(path),
+    'setupMountPoint')
+    return app.browsers.create()
     
 exports.createEmptyWindow = (callback) ->
     browser = new Browser('browser1', global.defaultApp)
@@ -28,4 +27,4 @@ exports.fireEvent = (browser, type, node) ->
     node.dispatchEvent(ev)
 
 exports.getFreshJSDOM = () ->
-    return noCacheRequire('jsdom-nocache')
+    return noCacheRequire('jsdom')

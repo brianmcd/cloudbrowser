@@ -8,11 +8,8 @@ class ResourceProxy
     constructor : (baseURL) ->
         @urlsByIndex = []
         @urlsByName = {}
-        @baseURL = Path.dirname(baseURL)
-        @useFS = if /^\//.test(@baseURL)
-            true
-        else
-            false
+        @useFS = /^\//.test(baseURL)
+        @baseURL = if @useFS then Path.dirname(baseURL) else baseURL
     
     # url - a relative or absolute URL
     addURL : (url) ->
@@ -51,6 +48,6 @@ class ResourceProxy
             FS.readFile path, (err, data) ->
                 throw err if err
                 sendResponse(data)
-        console.log("Fetching resource: #{id} [type=#{type}] [path=#{path}]")
+        #console.log("Fetching resource: #{id} [type=#{type}] [path=#{path}]")
             
 module.exports = ResourceProxy

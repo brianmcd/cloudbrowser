@@ -2,6 +2,7 @@ URL               = require('url')
 {LocationBuilder} = require('../../src/server/browser/location')
 
 lastEvent = null
+queue     = []
 
 MockBrowser =
     # TODO: Test that entrypoint changes appropriately.
@@ -14,6 +15,8 @@ MockBrowser =
                 return {initEvent : () ->}
         dispatchEvent : () ->
             lastEvent = 'hashchange'
+            (queue.pop())()
+
     load : () ->
         lastEvent = 'pagechange'
     setLocation : (url) ->
@@ -41,42 +44,46 @@ exports['test navigation'] = (test) ->
     MockBrowser.setLocation('http://www.google.com')
     loc = new Location('http://www.google.com/newpage.html')
     test.equal(lastEvent, 'pagechange')
-    lastEvent = null
     
+    lastEvent = null
     MockBrowser.setLocation('http://www.site.com')
     loc = new Location('http://www.site.com')
     test.equal(lastEvent, null)
 
-    MockBrowser.setLocation('http://www.google.com')
-    loc = new Location('http://www.google.com/#!update')
-    test.equal(lastEvent, 'hashchange')
     lastEvent = null
-    
     MockBrowser.setLocation('http://www.google.com')
     loc = new Location('http://www.google.com')
     test.equal(lastEvent, null)
 
     loc.href = 'http://www.google.com/page2.html'
     test.equal(lastEvent, 'pagechange')
-    test.done()
+
+    MockBrowser.setLocation('http://www.google.com')
+    loc = new Location('http://www.google.com/#!update')
+    queue.push () ->
+        test.equal(lastEvent, 'hashchange')
+        test.done()
 
 exports['test hashchange'] = (test) ->
+    
     lastEvent = null
-    # None of these tests should cause navigation, only hash changes.
     MockBrowser.setLocation('http://www.google.com')
     loc = new Location('http://www.google.com')
     test.equal(lastEvent, null)
 
+    # None of these tests should cause navigation, only hash changes.
     loc.href = 'http://www.google.com/#!/more/stuff'
-    test.equal(lastEvent, 'hashchange')
-    lastEvent = null
+    queue.push () ->
+        test.equal(lastEvent, 'hashchange')
 
+    lastEvent = null
     MockBrowser.setLocation('http://www.google.com/#!/more/stuff')
     loc.href = 'http://www.google.com/#!/more/stuff'
     test.equal(lastEvent, null)
 
     loc.href = 'http://www.google.com/#!changedagain'
-    test.equal(lastEvent, 'hashchange')
-    test.done()
+    queue.push () ->
+        test.equal(lastEvent, 'hashchange')
+        test.done()
 
 # TODO: test navigating by setting properties like pathname

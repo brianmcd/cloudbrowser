@@ -6,7 +6,7 @@ class TestClient extends EventEmitter
     constructor : (@browserID, @mountPoint) ->
         # Make sure we get a fresh JSDOM, not one that has been augmented with
         # advice.
-        @jsdom = noCacheRequire('jsdom-nocache')
+        @jsdom = noCacheRequire('jsdom')
         @document = @jsdom.jsdom(null, null, {browser: new EventEmitter})
         @window = @document.parentWindow
         # Attach this testClient to the window, so that the client code can

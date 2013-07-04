@@ -1,25 +1,22 @@
 Browser        = require('../../src/server/browser')
 {EventEmitter} = require('events')
+{createBrowserServer} = require('../helpers')
+Path           = require('path')
 
-{fireEvent, createRemoteBrowserServer} = require('../helpers')
-
-defaultAppBrowsers = global.defaultApp.browsers
-
-exports['basic test'] = (test) ->
-    b = defaultAppBrowsers.create().browser
-    b.on 'PageLoaded', () ->
-        test.done()
+{fireEvent, createBrowserServer} = require('../helpers')
 
 exports['load app'] = (test) ->
-    b = defaultAppBrowsers.create().browser
+    b = createBrowserServer(Path.resolve(__dirname,'../files/basic.html')).browser
     b.once 'PageLoaded', () ->
         test.notEqual(b.window, null)
-        test.notEqual(b.window.vt, null)
+        test.notEqual(b.window.cloudbrowser, null)
         test.notEqual(b.window.document, null)
         test.done()
 
+# This doesn't test remote browser anymore
+###
 exports['test remote browsing'] = (test) ->
-    b = createRemoteBrowserServer('http://localhost:3001/test/files/basic.html').browser
+    b = createBrowserServer(Path.resolve(__dirname,'../files/basic.html')).browser
     b.once 'PageLoaded', () ->
         test.notEqual(b.window, null)
         doc = b.window.document
@@ -29,13 +26,14 @@ exports['test remote browsing'] = (test) ->
         test.notEqual(div, null)
         test.equal(div.textContent, 'Testing')
         test.done()
+###
 
 exports['test addEventListener advice'] = (test) ->
-    {browser} = createRemoteBrowserServer('http://localhost:3001/test/files/basic.html')
+    {browser} = createBrowserServer(Path.resolve(__dirname,'../files/basic.html'))
     events = ['blur', 'click', 'change', 'mousedown', 'mousemove']
     count = 0
     browser.on 'AddEventListener', (params) ->
-        return if params.type == 'load'
+        return if params.type is 'load' or params.type is 'hashchange'
         test.equal(events[count++], params.type)
         if count == events.length
             test.done()
@@ -48,23 +46,23 @@ exports['test addEventListener advice'] = (test) ->
         div.addEventListener('mousemove', () ->)
 
 exports['test event inference - addEventListener'] = (test) ->
-    {browser} = createRemoteBrowserServer('http://localhost:3001/test/files/event_processor.html')
+    {browser} = createBrowserServer(Path.resolve(__dirname,'../files/event_processor.html'))
     events = ['mouseover', 'click', 'dblclick', 'change', 'focus']
     count = 0
     browser.on 'AddEventListener', (params) ->
         {type} = params
-        return if type == 'load' || type == 'DOMNodeInsertedIntoDocument'
+        return if type is 'load' or type is 'DOMNodeInsertedIntoDocument' or type is 'hashchange'
         test.equal(events[count++], params.type)
         if count == events.length
             test.done()
 
 exports['test event inference - attribute handlers'] = (test) ->
-    {browser} = createRemoteBrowserServer('http://localhost:3001/test/files/event_processor_attributes.html')
+    {browser} = createBrowserServer(Path.resolve(__dirname,'../files/event_processor_attributes.html'))
     events = ['focus', 'click', 'change', 'mouseover']
     count = 0
     browser.on 'AddEventListener', (params) ->
         {type} = params
-        return if type == 'load' || type == 'DOMNodeInsertedIntoDocument'
+        return if type is 'load' or type is 'DOMNodeInsertedIntoDocument' or type is 'hashchange'
         {window} = browser
         {document} = window
         div   = document.getElementById('div1')

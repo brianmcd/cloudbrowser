@@ -53,7 +53,17 @@ class ClientEngine
             # We need to clear out the require cache so that each TestClient
             # gets its own Socket.IO client
             io = noCacheRequire('socket.io-client', /socket\.io-client/)
+            # TODO : Create a user session corresponding to cookie in the db
+            # to test apps with authentication interface enabled.
+            # Patching XmlHttpRequest to send cookie as part of the header
+            io.util.request = (xdomain) ->
+                XMLHttpRequest = require('xmlhttprequest').XMLHttpRequest
+                xhr = new XMLHttpRequest()
+                xhr.setRequestHeader("cookie", "cb.id=testCookie;path=/")
+                return xhr
+
             socket = io.connect('http://localhost:3000')
+            
             # socket.io-client for node doesn't seem to emit 'connect'
             process.nextTick () =>
                 @socket.emit('auth', @window.__appID, @window.__envSessionID)

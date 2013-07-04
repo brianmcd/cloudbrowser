@@ -1,9 +1,8 @@
 {EventEmitter}  = require('events')
-Config          = require('../../src/shared/config')
 {serialize}     = require('../../src/server/browser_server/serializer')
 {getFreshJSDOM} = require('../helpers')
 
-Config.resourceProxy = false
+config = global.server.config
 
 jsdom = getFreshJSDOM()
 
@@ -29,7 +28,7 @@ compareRecords = (actual, expected, test) ->
 
 exports['test null'] = (test) ->
     doc = createDoc()
-    records = serialize(null, null, doc)
+    records = serialize(null, null, doc, config)
     test.notEqual(records, null)
     test.ok(records instanceof Array)
     test.equal(records.length, 0)
@@ -42,28 +41,28 @@ exports['elements'] = (test) ->
                       "</html>")
     expected = [
         type   : 'element'
-        name   : 'HTML'
+        name   : 'html'
         attributes : undefined
     ,
         type : 'element'
-        name : 'HEAD'
+        name : 'head'
         attributes : undefined
     ,
         type : 'element'
-        name : 'BODY'
+        name : 'body'
         attributes : undefined
     ,
         type : 'element'
-        name : 'DIV'
+        name : 'div'
         attributes : undefined
     ,
         type : 'element'
-        name : 'INPUT'
+        name : 'input'
         attributes :
             type : 'text'
     ]
 
-    actual = serialize(doc, null, doc)
+    actual = serialize(doc, null, doc, config)
     compareRecords(actual, expected, test)
     test.done()
 
@@ -71,11 +70,11 @@ exports['comments'] = (test) ->
     doc = createDoc("<html><body><!--Here's my comment!--></body></html>")
     expected = [
         type : 'element'
-        name : 'HTML'
+        name : 'html'
         attributes : undefined
     ,
         type : 'element'
-        name : 'BODY'
+        name : 'body'
         attributes : undefined
     ,
         type : 'comment'
@@ -83,7 +82,7 @@ exports['comments'] = (test) ->
         value : "Here's my comment!"
         attributes : undefined
     ]
-    actual = serialize(doc, null, doc)
+    actual = serialize(doc, null, doc, config)
     compareRecords(actual, expected, test)
     test.done()
 
@@ -91,11 +90,11 @@ exports['text'] = (test) ->
     doc = createDoc("<html><body>Here's my text!</body></html>")
     expected = [
         type : 'element'
-        name : 'HTML'
+        name : 'html'
         attribites : undefined
     ,
         type : 'element'
-        name : 'BODY'
+        name : 'body'
         attributes : undefined
     ,
         type : 'text'
@@ -103,6 +102,6 @@ exports['text'] = (test) ->
         attributes : undefined
         value : "Here's my text!"
     ]
-    actual = serialize(doc, null, doc)
+    actual = serialize(doc, null, doc, config)
     compareRecords(actual, expected, test)
     test.done()

@@ -43,7 +43,8 @@
     "ofe"              : "0.1.2",
     "passport"         : "0.1.16",
     "passport-google"  : "0.3.0",
-    "jsdoc"            : "git://github.com/jsdoc3/jsdoc.git"
+    "jsdoc"            : "git://github.com/jsdoc3/jsdoc.git",
+    "xmlhttprequest"   : "1.2.2"
   },
   "devDependencies": {
     "nodeunit": "0.6.4"

@@ -50,6 +50,7 @@ exports.LocationBuilder = (browser) ->
                 # to navigate or hashchange.
                 @assign(url)
 
+        # Navigates to the given page
         assign : (url) ->
             # window.location could be 1 of 2 things right now:
             #   1. 'this' if user used window.location.assign(url).
@@ -76,10 +77,12 @@ exports.LocationBuilder = (browser) ->
                 when 'pagechange'
                     browser.load(@parsed.href)
 
+        # Removes the current page from the session history and navigates to the given page
         replace : (url) ->
             console.log("Location#replace not yet implemented")
             throw new Error("Not yet implemented")
         
+        # Reloads the current page
         reload : (oldloc, constructing) ->
             console.log("Location#reload not yet implemented")
             throw new Error("Not yet implemented")

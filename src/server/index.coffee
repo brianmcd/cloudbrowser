@@ -126,11 +126,13 @@ class Server extends EventEmitter
                 io.set('browser client gzip', true)
             io.set('log level', 1)
             io.set 'authorization', (handshakeData, callback) =>
-                handshakeData.cookie = ParseCookie(handshakeData.headers.cookie)
-                handshakeData.sessionID = handshakeData.cookie['cb.id']
-                @mongoInterface.getSession handshakeData.sessionID, (session) ->
-                    handshakeData.session = session
-                    callback(null, true)
+                if handshakeData.headers?.cookie?
+                    handshakeData.cookie = ParseCookie(handshakeData.headers.cookie)
+                    handshakeData.sessionID = handshakeData.cookie['cb.id']
+                    @mongoInterface.getSession handshakeData.sessionID, (session) ->
+                        handshakeData.session = session
+                        callback(null, true)
+                else callback(null, false)
 
         io.sockets.on 'connection', (socket) =>
             @addLatencyToClient(socket) if @config.simulateLatency

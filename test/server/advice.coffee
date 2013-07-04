@@ -193,7 +193,7 @@ exports['DOMStyleChanged'] = (test) ->
     ee.removeAllListeners('DOMStyleChanged')
 
     doc.body.appendChild(div)
-    styles = [['display', 'none'], ['textAlign', 'center'], ['fontFamily', 'Arial']]
+    styles = [['display', 'none'], ['text-align', 'center'], ['font-family', 'Arial']]
     count = 0
     ee.on 'DOMStyleChanged', (event) ->
         style = styles[count]
