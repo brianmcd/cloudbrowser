@@ -44,7 +44,8 @@
     "passport"         : "0.1.16",
     "passport-google"  : "0.3.0",
     "jsdoc"            : "git://github.com/jsdoc3/jsdoc.git",
-    "xmlhttprequest"   : "1.2.2"
+    "xmlhttprequest"   : "1.2.2",
+    "coffee-script-mapped" : "0.1.4"
   },
   "devDependencies": {
     "nodeunit": "0.6.4"
