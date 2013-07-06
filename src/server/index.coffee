@@ -4,12 +4,12 @@ FS                  = require('fs')
 express             = require('express')
 sio                 = require('socket.io')
 ParseCookie         = require('cookie').parse
-HTTPServer          = require('./http_server')
 Managers            = require('./browser_manager')
 ApplicationManager  = require('./application_manager')
 PermissionManager   = require('./permission_manager')
 MongoInterface      = require('./mongo_interface')
 DebugServer         = require('./debug_server')
+HTTPServer          = require('./http_server')
 require('ofe').call()
 
 {MultiProcessBrowserManager, InProcessBrowserManager} = Managers
