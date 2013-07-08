@@ -13,9 +13,9 @@ MockBrowser =
         document :
             createEvent : () ->
                 return {initEvent : () ->}
-        dispatchEvent : () ->
+        dispatchEvent : (event) ->
             lastEvent = 'hashchange'
-            (queue.pop())()
+            (queue.shift())(event)
 
     load : () ->
         lastEvent = 'pagechange'
@@ -60,21 +60,21 @@ exports['test navigation'] = (test) ->
 
     MockBrowser.setLocation('http://www.google.com')
     loc = new Location('http://www.google.com/#!update')
-    queue.push () ->
-        test.equal(lastEvent, 'hashchange')
+    queue.push (event) ->
+        test.equal(event.newURL, 'http://www.google.com/#!update')
         test.done()
 
 exports['test hashchange'] = (test) ->
     
+    # None of these tests should cause navigation, only hash changes.
     lastEvent = null
     MockBrowser.setLocation('http://www.google.com')
     loc = new Location('http://www.google.com')
     test.equal(lastEvent, null)
 
-    # None of these tests should cause navigation, only hash changes.
     loc.href = 'http://www.google.com/#!/more/stuff'
-    queue.push () ->
-        test.equal(lastEvent, 'hashchange')
+    queue.push (event) ->
+        test.equal(event.newURL, 'http://www.google.com/#!/more/stuff')
 
     lastEvent = null
     MockBrowser.setLocation('http://www.google.com/#!/more/stuff')
@@ -82,8 +82,8 @@ exports['test hashchange'] = (test) ->
     test.equal(lastEvent, null)
 
     loc.href = 'http://www.google.com/#!changedagain'
-    queue.push () ->
-        test.equal(lastEvent, 'hashchange')
+    queue.push (event) ->
+        test.equal(event.newURL, 'http://www.google.com/#!changedagain')
         test.done()
 
 # TODO: test navigating by setting properties like pathname
