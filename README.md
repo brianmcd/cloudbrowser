@@ -65,7 +65,7 @@ or IP.
 
 ###Emailer Configuration###
 To be able to send emails (such as to send 'signup' confirmation emails to new users),
-you must specify a Google account username and password in this file as follows.
+you must specify a Google account username and password in the file emailer\_config.json as follows.
 * **email**     - str
 * **password**  - str
 
