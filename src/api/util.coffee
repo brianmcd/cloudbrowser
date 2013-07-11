@@ -32,14 +32,19 @@ class Util
         @param {emptyCallback} callback
     ###
     sendEmail : (toEmailID, subject, message, callback) ->
+        if not _privates[@_index].config.emailerConfig.email or
+        not _privates[@_index].config.emailerConfig.password
+            throw new Error "Please provide an email and the corresponding password" +
+            " to enable sending confirmation emails in emailer_config.json"
+
         smtpTransport = Nodemailer.createTransport "SMTP",
             service: "Gmail"
             auth:
-                user: _privates[@_index].config.nodeMailerEmailID
-                pass: _privates[@_index].config.nodeMailerPassword
+                user: _privates[@_index].config.emailerConfig.email
+                pass: _privates[@_index].config.emailerConfig.password
 
         mailOptions =
-            from    : _privates[@_index].config.nodeMailerEmailID
+            from    : _privates[@_index].config.emailerConfig.email
             to      : toEmailID
             subject : subject
             html    : message

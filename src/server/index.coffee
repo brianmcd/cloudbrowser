@@ -28,10 +28,9 @@ require('ofe').call()
 #   knockout            - bool - Enable server-side knockout.js bindings.
 #   monitorTraffic      - bool - Monitor/log traffic to/from socket.io clients.
 #   multiProcess        - bool - Run each browser in its own process.
-#   nodeMailerEmailID   - str  - The email ID required to send mails through
-#                                the Nodemailer module.
-#   nodeMailerPassword  - str  - The password required to send mails through
-#                                the Nodemailer module.
+#   emailerConfig       - obj  - {emailID:string, password:string} - The email ID
+#                                and password required to send mails through
+#                                the Emailer module.
 #   noLogs              - bool - Disable all logging to files.
 #   port                - int  - Port to use for the server.
 #   resourceProxy       - bool - Enable the resource proxy.
@@ -49,12 +48,11 @@ defaults =
     debug               : false
     debugServer         : false
     domain              : "localhost"
+    emailerConfig       : {email:"", password:""}
     homePage            : true
     knockout            : false
     monitorTraffic      : false
     multiProcess        : false
-    nodeMailerEmailID   : ""
-    nodeMailerPassword  : ""
     noLogs              : true
     port                : 3000
     resourceProxy       : true
