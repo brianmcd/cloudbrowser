@@ -51,8 +51,6 @@ These options can be set in the JSON configuration file server\_config.json or t
 * **homePage**            - bool - Enable mounting of the home page application at "/". Defaults to true.
 * **knockout**            - bool - Enable server-side knockout.js bindings. Defaults to false.
 * **monitorTraffic**      - bool - Monitor/log traffic to/from socket.io clients. Defaults to false.
-* **nodeMailerEmailID**   - str  - The email ID required to send mails through the Nodemailer module. Defaults to "".
-* **nodeMailerPassword**  - str  - The password required to send mails through the Nodemailer module. Defaults to "".
 * **noLogs**              - bool - Disable all logging to files. Defaults to true.
 * **port**                - num  - Port to use for the server. Defaults to 3000.
 * **resourceProxy**       - bool - Enable the resource proxy. Defaults to true.
@@ -64,8 +62,14 @@ These options can be set in the JSON configuration file server\_config.json or t
 Unless you wish to change any options, a server configuration file is not necessary.
 To use Google's OpenID authentication, you'll need to set 'domain' to your machine's FQDN
 or IP.
+
+###Emailer Configuration###
 To be able to send emails (such as to send 'signup' confirmation emails to new users),
-you must specify a Google account username and password in nodeMailerEmailID/nodeMailerPassword.
+you must specify a Google account username and password in this file as follows.
+* **email**     - str
+* **password**  - str
+
+This file is required only if you wish to have applications with the authentication interface enabled.
 
 ###Web Application Configuration###
 These configuration details are specific to a web application and need to be placed in the JSON file app\_config.json inside the directory
