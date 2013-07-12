@@ -11,9 +11,14 @@ projectRoot.pop();projectRoot.pop()
 projectRoot = projectRoot.join("/")
 
 configPath  = Path.resolve(projectRoot, "server_config.json")
+emailerConfigPath = Path.resolve(projectRoot, "emailer_config.json")
 
-if FS.existsSync configPath
-    serverConfig = JSON.parse FS.readFileSync configPath
+if FS.existsSync(configPath)
+    serverConfig = JSON.parse(FS.readFileSync(configPath))
+
+if FS.existsSync(emailerConfigPath)
+    emailerConfig = JSON.parse(FS.readFileSync(emailerConfigPath))
+    serverConfig['emailerConfig'] = emailerConfig
 
 Opts = require('nomnom')
     .option 'deployment',
@@ -68,12 +73,6 @@ Opts = require('nomnom')
     .option 'homePage',
         full    : 'home-page'
         help    : "Enable mounting of the home page application at '/'"
-    .option 'nodeMailerEmailID',
-        full    : 'node-mailer-email-ID'
-        help    : "The password required to send mails through the Nodemailer module"
-    .option 'nodeMailerPassword',
-        full    : 'node-mailer-password'
-        help    : "The password required to send mails through the Nodemailer module"
     .option 'simulateLatency',
         full    : 'simulate-latency'
         help    : "Simulate latency for clients in ms (if not given assign uniform randomly in 20-120 ms range."
