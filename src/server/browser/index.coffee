@@ -3,7 +3,6 @@ Path                   = require('path')
 FS                     = require('fs')
 URL                    = require('url')
 Request                = require('request')
-EmbedAPI               = require('../../api')
 KO                     = require('../../api/ko')
 DOMWindowFactory       = require('./DOMWindowFactory')
 Application            = require('../application_manager/application')
@@ -95,7 +94,6 @@ class Browser extends EventEmitter
         # based on a package.json manifest.
         @window.require = require
         @window.process = process
-        EmbedAPI(@bserver)
         @window.cloudbrowser.app.shared = app.onFirstInstance || {}
         @window.cloudbrowser.app.local  = if app.onEveryInstance then new app.onEveryInstance() else {}
         # If an app needs server-side knockout, we have to monkey patch

@@ -11,6 +11,7 @@ Compressor           = require('../../shared/compressor')
 TaggedNodeCollection = require('../../shared/tagged_node_collection')
 {serialize}          = require('./serializer')
 {isVisibleOnClient}  = require('../../shared/utils')
+EmbedAPI             = require('../../api')
 
 {eventTypeToGroup,
  clientEvents,
@@ -85,6 +86,7 @@ class BrowserServer extends EventEmitter
     # arg can be an Application or URL string.
     load : (arg) ->
         @browser.load(arg)
+        EmbedAPI(this)
 
     # For testing purposes, return an emulated client for this browser.
     createTestClient : () ->
