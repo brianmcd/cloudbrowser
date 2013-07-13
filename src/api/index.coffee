@@ -4,6 +4,8 @@
     The CloudBrowser object that is attached to the global window object of every application instance (virtual browser).
     @namespace cloudbrowser
 ###
+KO      = require('./ko')
+Browser = require('../server/browser')
 
 class CloudBrowser
 
@@ -75,12 +77,14 @@ class CloudBrowser
     getUtil : () -> new @Util(_privates[@_index].bserver.server.config)
 
 module.exports = (bserver) ->
-    #cleaned = false
-    # TODO: is this weak ref required?
-    #window  = Weak(browser.window, () -> cleaned = true)
-    #browser = Weak(browser, () -> cleaned = true)
-
     bserver.browser.window.cloudbrowser = new CloudBrowser(bserver)
+    # TODO : Refactor the code below
+    app = bserver.server.applications.find(bserver.mountPoint)
+    bserver.browser.window.cloudbrowser.app.shared = app.onFirstInstance || {}
+    bserver.browser.window.cloudbrowser.app.local  = if app.onEveryInstance then new app.onEveryInstance() else {}
+    # TODO : Fix ko
+    bserver.browser.window.cloudbrowser.ko = KO
+    bserver.browser.window.run(Browser.koPatch, "ko-patch.js")
 
 ###*
     @callback instanceListCallback 

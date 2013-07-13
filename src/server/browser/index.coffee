@@ -3,7 +3,6 @@ Path                   = require('path')
 FS                     = require('fs')
 URL                    = require('url')
 Request                = require('request')
-KO                     = require('../../api/ko')
 DOMWindowFactory       = require('./DOMWindowFactory')
 Application            = require('../application_manager/application')
 
@@ -94,15 +93,11 @@ class Browser extends EventEmitter
         # based on a package.json manifest.
         @window.require = require
         @window.process = process
-        @window.cloudbrowser.app.shared = app.onFirstInstance || {}
-        @window.cloudbrowser.app.local  = if app.onEveryInstance then new app.onEveryInstance() else {}
         # If an app needs server-side knockout, we have to monkey patch
         # some ko functions.
-        if @bserver.server.config.knockout
+        if @server.config.knockout
             @window.run(Browser.jQScript, "jquery-1.6.2.js")
             @window.run(Browser.koScript, "knockout-latest.debug.js")
-            @window.cloudbrowser.ko = KO
-            @window.run(Browser.koPatch, "ko-patch.js")
 
     @koPatch : do () ->
         koPatchPath = Path.resolve(__dirname, 'knockout', 'ko-patch.js')
