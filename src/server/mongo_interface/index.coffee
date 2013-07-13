@@ -7,7 +7,6 @@ class MongoInterface
         @dbClient = new Mongo.Db(dbName, new Mongo.Server("127.0.0.1", 27017, options:{auto_reconnect:true}))
         @dbClient.open (err, pClient) ->
             throw err if err
-            console.log("Connection to Database cloudbrowser established")
         @mongoStore = new MongoStore({db:"#{dbName}_sessions"})
 
     findUser : (searchKey, dbName, callback) ->
