@@ -198,10 +198,17 @@ class ApplicationManager extends EventEmitter
                 
     # Creates a CloudBrowser application given the absolute path to the html file
     createAppFromFile : (path) ->
-        # As there is no app_config.json file, we manually set the basic
+        # As there is no app_config.json file, manually set the basic
         # configuration options - entryPoint and mountPoint
         opts = {}
-        opts.mountPoint = @_getMountPoint(path.split('.')[0])
+
+        # Removing the extension
+        indexOfExt = path.lastIndexOf(".")
+        newPath = path.substring 0,
+        if indexOfExt isnt -1 then indexOfExt else path.length
+
+        opts.mountPoint = @_getMountPoint(newPath)
+
         opts.entryPoint = path
         # Add the application to the application manager's pool of apps
         @_add(opts)
