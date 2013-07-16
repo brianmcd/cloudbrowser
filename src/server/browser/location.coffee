@@ -26,7 +26,7 @@ exports.LocationBuilder = (browser) ->
                 @__defineSetter__ attr, (value) ->
                     @parsed[attr] = value
                     # This still doesn't work, but it's closer.
-                    @parsed = URL.parse(URL.format(@parsed))
+                    @parsed = URL.parse(URL.format(@parsed), true)
                     @assign(@parsed.href)
 
             # href getter returns a string representation of the URL.
@@ -38,7 +38,7 @@ exports.LocationBuilder = (browser) ->
             # If there isn't currently a page loaded, then we return, since
             # it means Location is being set before the initial page request.
             if !browser.window?.location?
-                @parsed = URL.parse(url)
+                @parsed = URL.parse(url, true)
                 return
             # Otherwise, a page has been loaded so we need to see if we should
             # navigate or fire a hashchange.  If we navigate, we use
@@ -59,10 +59,11 @@ exports.LocationBuilder = (browser) ->
             oldLoc = browser.window.location
 
             # Resolve the new url relative to that page's url.
-            url = URL.resolve(oldLoc.href, url)
+            if oldLoc.href?
+                url = URL.resolve(oldLoc.href, url)
 
             # Set up our POJO for the new URL.
-            @parsed = URL.parse(url)
+            @parsed = URL.parse(url, true)
 
 
             switch checkChange(this, oldLoc)
