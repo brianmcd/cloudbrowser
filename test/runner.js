@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-require('coffee-script');
+require('coffee-script-mapped');
 
 process.env.TESTS_RUNNING = true;
 
@@ -15,9 +15,7 @@ var projectRoot = process.argv[1].split('/');
 projectRoot.pop();projectRoot.pop()
 projectRoot = projectRoot.join("/");
 
-path = Path.resolve(__dirname, 'files', 'index.html');
-
-var s = global.server = new Server({test_env:true,compression:false}, [path], projectRoot)
+var s = global.server = new Server({test_env:true, compression:false, port:4000}, [], projectRoot)
 
 NodeUnit.once('done', function () {
     console.log("Done running tests.");

@@ -62,7 +62,7 @@ class ClientEngine
                 xhr.setRequestHeader("cookie", "cb.id=testCookie;path=/")
                 return xhr
 
-            socket = io.connect('http://localhost:3000')
+            socket = io.connect('http://localhost:4000')
             
             # socket.io-client for node doesn't seem to emit 'connect'
             process.nextTick () =>
