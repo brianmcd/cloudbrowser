@@ -84,7 +84,12 @@ module.exports = (bserver) ->
     bserver.browser.window.cloudbrowser.app.local  = if app.onEveryInstance then new app.onEveryInstance() else {}
     # TODO : Fix ko
     bserver.browser.window.cloudbrowser.ko = KO
-    bserver.browser.window.run(Browser.koPatch, "ko-patch.js")
+    # If an app needs server-side knockout, we have to monkey patch
+    # some ko functions.
+    if bserver.server.config.knockout
+        bserver.browser.window.run(Browser.jQScript, "jquery-1.6.2.js")
+        bserver.browser.window.run(Browser.koScript, "knockout-latest.debug.js")
+        bserver.browser.window.run(Browser.koPatch, "ko-patch.js")
 
 ###*
     @callback instanceListCallback 

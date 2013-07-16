@@ -93,11 +93,6 @@ class Browser extends EventEmitter
         # based on a package.json manifest.
         @window.require = require
         @window.process = process
-        # If an app needs server-side knockout, we have to monkey patch
-        # some ko functions.
-        if @server.config.knockout
-            @window.run(Browser.jQScript, "jquery-1.6.2.js")
-            @window.run(Browser.koScript, "knockout-latest.debug.js")
 
     @koPatch : do () ->
         koPatchPath = Path.resolve(__dirname, 'knockout', 'ko-patch.js')
