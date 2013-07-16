@@ -73,6 +73,8 @@ class Server extends EventEmitter
                 if @config.debug
                     console.log "#{k} : #{@config[k]}"
 
+        # There may be a synchronization issue
+        # The final server may be usable only if all the components have been initialized
         @mongoInterface = new MongoInterface('cloudbrowser')
 
         @permissionManager = new PermissionManager(@mongoInterface)
