@@ -1,0 +1,11 @@
+{
+    "isPublic": true,
+    "owner": {
+        "email": "ashimaathri@gmail.com",
+        "ns": "local"
+    },
+    "mountOnStartup": false,
+    "authenticationInterface": true,
+    "mountPoint": "/doodle",
+    "collectionName": "doodle.users"
+}

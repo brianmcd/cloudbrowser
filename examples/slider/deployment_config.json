@@ -1,0 +1,11 @@
+{
+    "isPublic": true,
+    "owner": {
+        "email": "ashimaathri@gmail.com",
+        "ns": "local"
+    },
+    "mountOnStartup": false,
+    "mountPoint": "/slider",
+    "authenticationInterface": false,
+    "collectionName": null
+}

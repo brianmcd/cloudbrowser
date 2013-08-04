@@ -1,4 +1,7 @@
 {
-    "entryPoint" : "index.html",
-    "description": "A To Do application written in AngularJS"
+    "entryPoint": "/home/ashima/cloudbrowser_versions/0.10.5/cloudbrowser/examples/angular-todo/index.html",
+    "description": "A To Do application written in AngularJS",
+    "browserLimit": 0,
+    "applicationStateFile": "",
+    "instantiationStrategy": "singleUserInstance"
 }

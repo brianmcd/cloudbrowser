@@ -1,0 +1,11 @@
+{
+    "isPublic": true,
+    "owner": {
+        "email": "ashimaathri@gmail.com",
+        "ns": "local"
+    },
+    "mountOnStartup": true,
+    "mountPoint": "/leaderboard",
+    "authenticationInterface": false,
+    "collectionName": "leaderboard.users"
+}

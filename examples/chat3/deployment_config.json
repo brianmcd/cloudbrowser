@@ -1,3 +1,11 @@
 {
-    "authenticationInterface"   : true
+    "authenticationInterface": true,
+    "isPublic": true,
+    "owner": {
+        "email": "godmar@gmail.com",
+        "ns": "google"
+    },
+    "mountOnStartup": false,
+    "mountPoint": "/chat3",
+    "collectionName": "chat3.users"
 }

@@ -1,0 +1,11 @@
+{
+    "isPublic": false,
+    "owner": {
+        "email": "ashimaathri@gmail.com",
+        "ns": "local"
+    },
+    "mountOnStartup": true,
+    "authenticationInterface": true,
+    "mountPoint": "/helloworld",
+    "collectionName": "helloworld.users"
+}

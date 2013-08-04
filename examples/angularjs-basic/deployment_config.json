@@ -1,11 +1,11 @@
 {
-    "authenticationInterface": true,
     "isPublic": true,
     "owner": {
         "email": "godmar@gmail.com",
         "ns": "google"
     },
     "mountOnStartup": true,
-    "mountPoint": "/chess",
-    "collectionName": "chess.users"
+    "mountPoint": "/angularjs-basic",
+    "authenticationInterface": true,
+    "collectionName": "angularjs-basic.users"
 }

@@ -1,11 +1,11 @@
 {
-    "authenticationInterface": true,
     "isPublic": true,
     "owner": {
         "email": "godmar@gmail.com",
         "ns": "google"
     },
     "mountOnStartup": true,
-    "mountPoint": "/chess",
-    "collectionName": "chess.users"
+    "authenticationInterface": false,
+    "mountPoint": "/calendar",
+    "collectionName": "calendar.users"
 }

@@ -1,3 +1,4 @@
 {
-    "entryPoint" : "index.html"
+    "entryPoint" : "index.html",
+    "instantiationStrategy" : "singleUserInstance"
 }

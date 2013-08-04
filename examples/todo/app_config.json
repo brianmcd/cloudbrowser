@@ -1,3 +1,7 @@
 {
-    "entryPoint" : "index.html"
+    "entryPoint": "/home/ashima/cloudbrowser_versions/0.10.5/cloudbrowser/examples/todo/index.html",
+    "browserLimit": 0,
+    "description": "",
+    "applicationStateFile": "",
+    "instantiationStrategy": "default"
 }

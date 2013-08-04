@@ -1,4 +1,4 @@
 {
     "authenticationInterface" : true,
-    "instantiationStrategy"   : "singleAppInstance"
+    "mountOnStartup"          : true
 }

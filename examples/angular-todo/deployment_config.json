@@ -1,4 +1,11 @@
 {
-    "authenticationInterface"   : true,
-    "instantiationStrategy"     : "singleUserInstance"
+    "authenticationInterface": true,
+    "isPublic": true,
+    "owner": {
+        "email": "godmar@gmail.com",
+        "ns": "google"
+    },
+    "mountOnStartup": true,
+    "collectionName": "angular-todo.users",
+    "mountPoint": "/angular-todo"
 }

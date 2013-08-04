@@ -1,0 +1,11 @@
+{
+    "isPublic": false,
+    "owner": {
+        "email": "godmar@gmail.com",
+        "ns": "google"
+    },
+    "mountOnStartup": true,
+    "mountPoint": "/frames",
+    "authenticationInterface": true,
+    "collectionName": "frames.users"
+}

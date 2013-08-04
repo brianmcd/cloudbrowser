@@ -1,7 +1,11 @@
 {
-    "authenticationInterface"   : true,
-    "instantiationStrategy"     : "multiInstance",
-    "browserLimit"              : 5,
-    "readOnlyUsers"             : ["ALL"],
-    "comments" : "This file is provided by the developer. Override default mountpoint. allowedUsers=users.mongodb"
+    "authenticationInterface": true,
+    "isPublic": true,
+    "owner": {
+        "email": "godmar@gmail.com",
+        "ns": "google"
+    },
+    "mountOnStartup": true,
+    "mountPoint": "/chat2",
+    "collectionName": "chat2.users"
 }

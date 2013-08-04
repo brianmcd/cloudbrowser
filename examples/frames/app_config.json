@@ -1,3 +1,7 @@
 {
-    "entryPoint" : "index.html"
+    "entryPoint": "/home/ashima/cloudbrowser_versions/0.10.5/cloudbrowser/examples/frames/index.html",
+    "browserLimit": 0,
+    "applicationStateFile": "",
+    "description": "This app doesn't work anymore. It loads the first two frames but not the last external one from news.ycombinator.com",
+    "instantiationStrategy": "singleUserInstance"
 }
