@@ -9,3 +9,4 @@ logs
 lib/
 npm-debug.log
 server_config.json
+emailer_config.json
