@@ -1,5 +1,6 @@
 Hat  = require('hat')
 Weak = require('weak')
+{EventEmitter} = require('events')
 ko   = require('../../api/ko')
 
 # TODO: rename, make this a real global browser list.
@@ -8,7 +9,7 @@ global.weakRefList = {}
 
 # Base class for browser management strategies.
 # Must also define @mountPoint
-class BrowserManager
+class BrowserManager extends EventEmitter
     addToBrowserList : (browser) ->
         if process.env.WAS_FORKED
             id = browser.id

@@ -11,8 +11,10 @@ class User
             throw new Error("Missing required parameter - email")
         else if not namespace
             throw new Error("Missing required parameter - namespace")
-        else if not (namespace is "google" or namespace is "local")
-            throw new Error("Invalid value for the parameter - namespace")
+        else if not (namespace is "google" or
+            namespace is "local" or
+            namespace is "public")
+                throw new Error("Invalid value for the parameter - namespace")
 
         # Defining @_index as a read-only property
         Object.defineProperty this, "_index",
@@ -22,6 +24,10 @@ class User
         _privates.push
             email     : email
             namespace : namespace
+
+        Object.freeze(this.__proto__)
+        Object.freeze(this)
+
     ###*
         Gets the email ID of the user.
         @method getEmail

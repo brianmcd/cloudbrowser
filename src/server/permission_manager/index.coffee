@@ -45,31 +45,48 @@ class PermissionManager extends EventEmitter
         @permissions = {}
         @containedItems = {}
 
-    findItem : (key) ->
-        return @containedItems[key]
+    findItem : (key, permissions) ->
+        if permissions?
+            item = @containedItems[key]
+            valid = true
+            for type, v of permissions
+                if item.permissions[type] isnt true then valid = false
+            if valid is true then return item
+            else return null
+        else return @containedItems[key]
 
-    getItems : () ->
-        return @containedItems
+    getItems : (permissions) ->
+        if permissions?
+            # Filtering based on permissions
+            items = []
+            valid = true
+            for key, item of @containedItems
+                for type, v of permissions
+                    if item.permissions[type] isnt true then valid = false
+                if valid is true then items.push(item)
+                else valid = true
+            return items
+        else
+            # Returning all items
+            return @containedItems
 
-    addItem : (key, type) ->
+    addItem : (key, type, permissions) ->
         if not @findItem key
             @containedItems[key] = new type(key)
-        return @containedItems[key]
+            @emit('added', key)
 
-    addItemAndSetPerm : (key, type, permissions) ->
-        item = @addItem(key, type)
+        item = @containedItems[key]
 
-        if permissions and
+        if permissions? and
         Object.keys(permissions).length isnt 0
             item.set(permissions)
 
-        @emit('Added', key)
         return item
 
     removeItem : (key) ->
         if @findItem key
             delete @containedItems[key]
-            @emit('Removed', key)
+            @emit('removed', key)
             return(null)
         else return new Error("Key " + key + " not found.")
 
@@ -214,6 +231,7 @@ class UserPermissionManager extends CacheManager
 
     constructor : (@mongoInterface) ->
         super
+        @mongoInterface.addIndex("Permissions", {email:1, ns:1})
 
     findSysPermRec : (user, callback) ->
         cacheRecord = @findInCache(user)
@@ -232,7 +250,7 @@ class UserPermissionManager extends CacheManager
                 # to cache 
                 if dbRecord.apps
                     for app in dbRecord.apps
-                         cacheRecord.addItemAndSetPerm(app.mountPoint, AppPermissionManager, app.permissions)
+                         cacheRecord.addItem(app.mountPoint, AppPermissionManager, app.permissions)
 
                 callback(cacheRecord)
 
@@ -271,18 +289,17 @@ class UserPermissionManager extends CacheManager
                     callback(@removeFromCache(user))
             else callback(new Error("User permission record for " + user.email + "(" + user.ns + ") does not exist"))
 
-    findAppPermRec : (user, mountPoint, callback) ->
+    findAppPermRec : (user, mountPoint, callback, permissions) ->
         @findSysPermRec user, (sysRec) ->
             if sysRec?
-                callback(sysRec.findItem(mountPoint))
+                callback(sysRec.findItem(mountPoint, permissions))
 
             else callback(null)
 
-    getAppPermRecs : (user, callback) ->
+    getAppPermRecs : (user, callback, permissions) ->
         @findSysPermRec user, (sysRec) ->
             if sysRec?
-                callback(sysRec.getItems())
-
+                callback(sysRec.getItems(permissions))
             else callback(null)
 
     addAppPermRec : (user, mountPoint, permissions, callback) ->
@@ -292,18 +309,23 @@ class UserPermissionManager extends CacheManager
                 # Set permissions in both the cache and the DB
                 @setAppPerm(user, mountPoint, permissions, callback)
 
-            else callback(rec)
+            else callback?(rec)
 
         @findAppPermRec user, mountPoint, (appRec) =>
             if not appRec?
-                # Add to DB
-                @mongoInterface.addToUser {email:user.email, ns:user.ns}, "Permissions",
-                {apps:{mountPoint:mountPoint}}, () =>
-                    @findSysPermRec user, (sysRec) =>
-                        if sysRec
+                @findSysPermRec user, (sysRec) =>
+                    if sysRec
+                        # Add to DB
+                        @mongoInterface.addToUser {email:user.email, ns:user.ns}, "Permissions",
+                        {apps:{mountPoint:mountPoint}}, () ->
                             appRec = sysRec.addItem(mountPoint, AppPermissionManager)
                             setPerm(user, mountPoint, permissions, appRec, callback)
-                        else callback(null)
+                    else
+                        @addSysPermRec user, {}, (sysRec) =>
+                            @mongoInterface.addToUser {email:user.email, ns:user.ns}, "Permissions",
+                            {apps:{mountPoint:mountPoint}}, () ->
+                                appRec = sysRec.addItem(mountPoint, AppPermissionManager)
+                                setPerm(user, mountPoint, permissions, appRec, callback)
             else
                 setPerm(user, mountPoint, permissions, appRec, callback)
             
@@ -313,8 +335,8 @@ class UserPermissionManager extends CacheManager
                 # Remove from cache
                 @findSysPermRec user, (sysRec) ->
                     if sysRec
-                        callback(sysRec.removeItem(mountPoint))
-                    else callback(new Error("User permission record for " + user.email + "(" + user.ns + ") does not exist"))
+                        callback?(sysRec.removeItem(mountPoint))
+                    else callback?(new Error("User permission record for " + user.email + "(" + user.ns + ") does not exist"))
 
     findBrowserPermRec: (user, mountPoint, browserId, callback) ->
         @findAppPermRec user, mountPoint, (appRec) ->
@@ -334,7 +356,7 @@ class UserPermissionManager extends CacheManager
             if not browserRec?
                 @findAppPermRec user, mountPoint, (appRec) =>
                     if appRec
-                        browserRec = appRec.addItemAndSetPerm(browserId, BrowserPermissionManager, permissions)
+                        browserRec = appRec.addItem(browserId, BrowserPermissionManager, permissions)
                         callback(browserRec)
                     else callback(null)
             else
@@ -377,15 +399,15 @@ class UserPermissionManager extends CacheManager
 
     setAppPerm : (user, mountPoint, permissions, callback) ->
         @findAppPermRec user, mountPoint, (appRec) =>
-            if not appRec then callback(null)
+            if not appRec then callback?(null)
             @mongoInterface.setUser {email:user.email, ns:user.ns, apps:{'$elemMatch':{mountPoint:mountPoint}}},
             "Permissions", {'apps.$.permissions':appRec.set(permissions)}, () ->
-                callback(appRec)
+                callback?(appRec)
         
     setBrowserPerm: (user, mountPoint, browserId, permissions, callback) ->
         @findBrowserPermRec user, mountPoint, browserId, (browserRec) ->
             if not browserRec then callback(null)
             permissions = browserRec.set(permissions)
-            callback(browserRec)
+            callback?(browserRec)
 
 module.exports = UserPermissionManager

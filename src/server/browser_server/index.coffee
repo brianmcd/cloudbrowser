@@ -86,7 +86,8 @@ class BrowserServer extends EventEmitter
     # arg can be an Application or URL string.
     load : (arg) ->
         @browser.load(arg)
-        EmbedAPI(this)
+        weakRefToThis = Weak(this, cleanupBserver(@id))
+        EmbedAPI(weakRefToThis)
 
     # For testing purposes, return an emulated client for this browser.
     createTestClient : () ->
@@ -389,7 +390,12 @@ RPCMethods =
             if attribute == 'selectedIndex'
                 return target[attribute] = value
             @setByClient = socket
-            target.setAttribute(attribute, value)
+            # Hack for textarea, as it doesn't have a value attribute
+            # in the DOM.
+            if target.tagName.toLowerCase() is "textarea" and
+            attribute is "value"
+                target.value = value
+            else target.setAttribute(attribute, value)
             @setByClient = null
 
     # TODO: what is this id for?

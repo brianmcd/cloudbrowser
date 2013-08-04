@@ -41,8 +41,8 @@ exports.hashPassword = hashPassword = (config={}, callback) ->
             callback(config)
 
 exports.compare = (app1, app2) ->
-    if(app1.mountPoint < app2.mountPoint)
+    if(app1.getMountPoint() < app2.getMountPoint())
         return -1
-    else if app1.mountPoint > app2.mountPoint
+    else if app1.getMountPoint() > app2.getMountPoint()
         return 1
     else return 0

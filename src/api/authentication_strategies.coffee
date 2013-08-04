@@ -9,25 +9,27 @@ Crypto = require("crypto")
 class LocalStrategy
 
     # Private Properties inside class closure
-    _privates = []
+    _pvts = []
 
     constructor : (bserver, cloudbrowserContext) ->
-        # Defining @_index as a read-only property
+        # Defining @_idx as a read-only property
         # so as to prevent access of the instance variables of  
         # one instance from another.
-        Object.defineProperty this, "_index",
-            value : _privates.length
+        Object.defineProperty this, "_idx",
+            value : _pvts.length
 
         parentMountPoint = getParentMountPoint(bserver.mountPoint)
         appMgr     = bserver.server.applications
 
         # Setting private properties
-        _privates.push
+        _pvts.push
             bserver      : bserver
-            parentDbName : appMgr.find(parentMountPoint).dbName
             browserMgr   : appMgr.find(bserver.mountPoint).browsers
-            util         : cloudbrowserContext.getUtil()
-            parentMountPoint : parentMountPoint
+            util         : cloudbrowserContext.util
+            parentApp    : appMgr.find(parentMountPoint)
+
+        Object.freeze(this.__proto__)
+        Object.freeze(this)
     ###*
         Logs a user into the application.    
         @method login
@@ -39,27 +41,30 @@ class LocalStrategy
         @param {booleanCallback} options.callback 
     ###
     login : (options) ->
-        mongoInterface = _privates[@_index].bserver.server.mongoInterface
-        config = _privates[@_index].bserver.server.config
-        appUrl = "http://#{config.domain}:#{config.port}#{_privates[@_index].parentMountPoint}"
-        # Checking for required arguments
-        if not options.user then throw new Error("Missing required parameter - user")
-        else if not options.password then throw new Error("Missing required paramter - password")
+        {user, password, callback} = options
+        {bserver, parentApp, browserMgr} = _pvts[@_idx]
+        {mongoInterface, config} = bserver.server
+        parentMountPoint = parentApp.getMountPoint()
+        appUrl = "http://#{config.domain}:#{config.port}#{parentMountPoint}"
 
-        # Searching for the user in the application collection dbName.
-        mongoInterface.findUser options.user.toJson(), _privates[@_index].parentDbName, (userRec) =>
+        # Checking for required arguments
+        if not user then throw new Error("Missing required parameter - user")
+        else if not password then throw new Error("Missing required paramter - password")
+
+        # Checking if the user is already registered to the app
+        parentApp.findUser user.toJson(), (userRec) =>
             # Passes only if the user's email ID has been confirmed by the user.
             if userRec and userRec.status isnt 'unverified'
                 # Hashing the password using pbkdf2.
-                hashPassword {password : options.password, salt : new Buffer(userRec.salt, 'hex')}, (result) =>
+                hashPassword {password : password, salt : new Buffer(userRec.salt, 'hex')}, (result) =>
                     # Comparing the hashed user supplied password to the one stored in the database.
                     if result.key.toString('hex') is userRec.key
                         # TODO - Allow only one user to connect to this bserver
-                        _privates[@_index].bserver.getSessions (sessionIDs) =>
+                        bserver.getSessions (sessionIDs) =>
                             # Get the user's session details from the mongo store.
                             mongoInterface.getSession sessionIDs[0], (session) =>
                                 # Update the session to reflect the user's logged in state (to this application only).
-                                sessionObj = {app:_privates[@_index].parentMountPoint, email:options.user.getEmail(), ns:options.user.getNameSpace()}
+                                sessionObj = {app:parentMountPoint, email:user.getEmail(), ns:user.getNameSpace()}
                                 if not session.user
                                     # Initialize the session.user array that was previously set to null
                                     session.user = [sessionObj]
@@ -77,18 +82,18 @@ class LocalStrategy
                                     if redirectto?
                                         # If a specific virtual browser requested by the user
                                         # before authenticating, redirect to that
-                                        _privates[@_index].bserver.redirect(redirectto)
+                                        bserver.redirect(redirectto)
                                     else
                                         # Redirect to base application url.
-                                        _privates[@_index].bserver.redirect(appUrl)
+                                        bserver.redirect(appUrl)
                                     # Kill the authentication VB once user has been authenticated.
                                     # TODO: Remove this setTimeout hack.
                                     setTimeout () =>
-                                        _privates[@_index].browserMgr.close(_privates[@_index].bserver)
+                                        browserMgr.close(bserver)
                                     , 500
                     # Callback is called only when login fails. On success, a redirect happens.
-                    else if options.callback then options.callback(false)
-            else if options.callback then options.callback(false)
+                    else callback?(false)
+            else callback?(false)
 
     ###*
         Registers a user with the application and sends a confirmation email to the user's registered email ID.
@@ -102,12 +107,15 @@ class LocalStrategy
         @param {booleanCallback} options.callback 
     ###
     signup : (options) ->
-        mongoInterface = _privates[@_index].bserver.server.mongoInterface
-        config = _privates[@_index].bserver.server.config
-        appUrl = "http://#{config.domain}:#{config.port}#{_privates[@_index].parentMountPoint}"
+        {bserver, parentApp, util} = _pvts[@_idx]
+        {config, mongoInterface} = bserver.server
+        {user, password, callback} = options
+        parentMountPoint = parentApp.getMountPoint()
+        appUrl = "http://#{config.domain}:#{config.port}#{parentMountPoint}"
+
         # Checking for required arguments.
-        if not options.user then throw new Error("Missing required parameter - user")
-        else if not options.password then throw new Error("Missing required paramter - password")
+        if not user then throw new Error("Missing required parameter - user")
+        else if not password then throw new Error("Missing required paramter - password")
 
         # Generating a random token to ensure the validity of user confirmation.
         Crypto.randomBytes 32, (err, token) =>
@@ -121,22 +129,21 @@ class LocalStrategy
 
             # Sending a confirmation email to the user along with the random token embedded in
             # a link that the user must click in order to confirm.
-            _privates[@_index].util.sendEmail options.user.getEmail(), subject, confirmationMsg, () =>
+            util.sendEmail user.getEmail(), subject, confirmationMsg, () =>
                 # Hashing the user supplied password using pbkdf2
                 # and storing it with the status of 'unverified' to
                 # indicate that the email ID has not been activated
                 # and any login request from this account must not be
                 # allowed to pass.
-                hashPassword {password:options.password}, (result) =>
+                hashPassword {password:password}, (result) =>
                     userRec =
-                        email   : options.user.getEmail()
+                        email   : user.getEmail()
                         key     : result.key.toString('hex')
                         salt    : result.salt.toString('hex')
                         status  : 'unverified'
                         token   : token
-                        ns      : options.user.getNameSpace()
-                    mongoInterface.addUser userRec, _privates[@_index].parentDbName, (user) ->
-                        if options.callback then options.callback()
+                        ns      : user.getNameSpace()
+                    parentApp.addNewUser(userRec, (user) -> callback())
 
 ###*
     @class cloudbrowser.app.GoogleStrategy
@@ -144,16 +151,21 @@ class LocalStrategy
 ###
 class GoogleStrategy
     # Private Properties inside class closure
-    _privates = []
+    _pvts = []
     constructor : (bserver) ->
         # Setting private properties
-        Object.defineProperty this, "_index",
-            value : _privates.length
+        Object.defineProperty this, "_idx",
+            value : _pvts.length
 
-        _privates.push
-            parentMountPoint : getParentMountPoint(bserver.mountPoint)
+        parentMountPoint = getParentMountPoint(bserver.mountPoint)
+
+        _pvts.push
             bserver    : bserver
             browserMgr : bserver.server.applications.find(bserver.mountPoint).browsers
+            parentApp    : bserver.server.applications.find(parentMountPoint)
+
+        Object.freeze(this.__proto__)
+        Object.freeze(this)
     ###*
         Log in through a google ID
         @method login
@@ -161,22 +173,22 @@ class GoogleStrategy
         @instance
     ###
     login : () ->
-        mongoInterface = _privates[@_index].bserver.server.mongoInterface
-        config = _privates[@_index].bserver.server.config
-        _privates[@_index].bserver.getSessions (sessionIDs) =>
-            mongoInterface.getSession sessionIDs[0], (session) =>
+        {bserver, parentApp, browserMgr} = _pvts[@_idx]
+        {config, mongoInterface} = bserver.server
+        bserver.getSessions (sessionIDs) ->
+            mongoInterface.getSession sessionIDs[0], (session) ->
                 # The mountpoint attached to the user session is used by the google
                 # authentication mountpoint in the http_server
                 # to identify the application from which the returning redirect from
                 # google has arrived.
-                session.mountPoint = _privates[@_index].parentMountPoint
+                session.mountPoint = parentApp.getMountPoint()
                 # Saving the session to the database.
-                mongoInterface.setSession sessionIDs[0], session, () =>
+                mongoInterface.setSession sessionIDs[0], session, () ->
                     # Redirecting to google authentication mountpoint.
-                    _privates[@_index].bserver.redirect("http://#{config.domain}:#{config.port}/googleAuth")
+                    bserver.redirect("http://#{config.domain}:#{config.port}/googleAuth")
                     # Killing the authentication virtual browser.
-                    setTimeout () =>
-                        _privates[@_index].browserMgr.close(_privates[@_index].bserver)
+                    setTimeout () ->
+                        browserMgr.close(bserver)
                     , 500
 
     ###*

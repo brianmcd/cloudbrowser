@@ -4,7 +4,7 @@ Util = require('util')
 Chat3.controller "ChatCtrl", ($scope) ->
     $scope.joinedRooms = []
     $scope.otherRooms  = []
-    currentVB          = cloudbrowser.getCurrentVirtualBrowser()
+    currentVB          = cloudbrowser.currentVirtualBrowser
     $scope.username    = currentVB.getCreator().getEmail()
     $scope.activeRoom  = null
     $scope.roomName    = null

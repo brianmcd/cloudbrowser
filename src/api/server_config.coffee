@@ -1,26 +1,29 @@
 {compare} = require('./utils')
+AppConfig = require('./application_config')
 
 ###*
     @class cloudbrowser.ServerConfig
 ###
 class ServerConfig
-
     # Private Properties inside class closure
-    _privates = []
-    _instance = null
+    _pvts = []
 
-    constructor : (server) ->
-        # Singleton
-        if _privates.length then return _instance
-        else _instance = this
+    constructor : (options) ->
+        {userCtx, server, cbCtx} = options
 
-        # Defining @_index as a read-only property
-        Object.defineProperty this, "_index",
-            value : _privates.length
+        # Defining @_idx as a read-only property
+        Object.defineProperty this, "_idx",
+            value : _pvts.length
 
         # Setting private properties
-        _privates.push
-            server : server
+        _pvts.push
+            # Duplicate pointers to server
+            server  : server
+            userCtx : userCtx
+            cbCtx   : cbCtx
+
+        Object.freeze(this.__proto__)
+        Object.freeze(this)
 
     ###*
         Returns the domain as configured in the server_config.json configuration
@@ -32,7 +35,8 @@ class ServerConfig
         @return {String}
     ###
     getDomain : () ->
-        return _privates[@_index].server.config.domain
+        {server} = _pvts[@_idx]
+        return server.config.domain
 
     ###*
         Returns the port as configured in the server_config.json configuration
@@ -44,7 +48,8 @@ class ServerConfig
         @return {Number}
     ###
     getPort : () ->
-        return _privates[@_index].server.config.port
+        {server} = _pvts[@_idx]
+        return server.config.port
 
     ###*
         Returns the URL at which the CloudBrowser server is hosted.    
@@ -54,45 +59,71 @@ class ServerConfig
         @return {String} 
     ###
     getUrl : () ->
-        return "http://" + @getDomain() + ":" + @getPort()
-
-    # Mounts the application whose files are at `path`.
-    mount : (path) ->
-        _privates[@_index].server.applications.create(path)
-
-    # Unmounts the application running at `mountPoint`.
-    unmount : (mountPoint) ->
-        _privates[@_index].server.applications.remove(mountPoint)
+        return "http://#{@getDomain()}:#{@getPort()}"
 
     # Lists all the applications mounted by the creator of this browser.
-    listApps : () ->
-        user = @getCreator()
-        _privates[@_index].server.applications.get({email:user.getEmail(), ns:user.getNameSpace()})
-
     ###*
-        @typedef appObject
-        @property {string} mountPoint
-        @property {string} description
-    ###
-    ###*
-        Returns the list of apps mounted on CloudBrowser.    
+        Returns the list of apps mounted on CloudBrowser by the current user   
         @static
-        @method getApps
+        @method listApps
         @memberOf cloudbrowser.ServerConfig
         @return {Array<appObject>} 
     ###
-    getApps : () ->
-        list = []
-        for mountPoint, app of _privates[@_index].server.applications.get()
-            list.push({mountPoint:mountPoint, description:app.description})
-        list.sort(compare)
-        return list
+    listApps : (options) ->
+
+        # TODO: Better error handling here
+        if not options or not options.callback then return
+
+        {userCtx, server, cbCtx} = _pvts[@_idx]
+        {permissionManager} = server
+        {filters, callback} = options
+        appConfigs = []
+
+        # Apps that the user using the current
+        # cloudbrowser API object owns
+        if filters.perUser
+            permissionManager.getAppPermRecs userCtx.toJson(), (appRecs) ->
+                for rec in appRecs
+                    if filters.public
+                        # Find the app from the application manager
+                        app = server.applications.find(rec.getMountPoint())
+                        # Check if it is configured as public and if it is then
+                        # don't push into the array to be returned
+                        if not app.isAppPublic() then continue
+                    appConfigs.push new AppConfig
+                        userCtx : userCtx
+                        server  : server
+                        cbCtx   : cbCtx
+                        mountPoint : rec.getMountPoint()
+                callback(appConfigs)
+            , {'own' : true}
+
+        # or get a list of all apps.
+        # Though the method get is synchronous,
+        # we still use the callback for uniformity
+        else if filters.public
+            apps = server.applications.get()
+            for mountPoint, app of apps
+                if app.isAppPublic()
+                    appConfigs.push new AppConfig
+                        userCtx : userCtx
+                        server  : server
+                        cbCtx   : cbCtx
+                        mountPoint : mountPoint
+            callback(appConfigs)
 
     addEventListener : (event, callback) ->
-        _privates[@_index].server.applications.on event, (app) ->
-            if event is "Added"
-                callback({mountPoint:app.mountPoint, description:app.description})
-            else
-                callback(app.mountPoint)
+
+        {userCtx, server, cbCtx} = _pvts[@_idx]
+
+        server.applications.on event, (app) ->
+            switch event
+                when "added", "madePublic"
+                    callback new AppConfig
+                        userCtx : userCtx
+                        server  : server
+                        cbCtx   : cbCtx
+                        mountPoint : app.getMountPoint()
+                else callback(app.getMountPoint())
 
 module.exports = ServerConfig

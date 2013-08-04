@@ -4,15 +4,12 @@ FS                  = require('fs')
 express             = require('express')
 sio                 = require('socket.io')
 ParseCookie         = require('cookie').parse
-Managers            = require('./browser_manager')
 ApplicationManager  = require('./application_manager')
 PermissionManager   = require('./permission_manager')
 MongoInterface      = require('./mongo_interface')
 DebugServer         = require('./debug_server')
 HTTPServer          = require('./http_server')
 require('ofe').call()
-
-{MultiProcessBrowserManager, InProcessBrowserManager} = Managers
 
 # Server options:
 #   adminInterface      - bool - Enable the admin interface.
@@ -75,21 +72,22 @@ class Server extends EventEmitter
 
         # There may be a synchronization issue
         # The final server may be usable only if all the components have been initialized
-        @mongoInterface = new MongoInterface('cloudbrowser')
+        server = this
+        @mongoInterface = new MongoInterface 'cloudbrowser', () =>
 
-        @permissionManager = new PermissionManager(@mongoInterface)
+            server.permissionManager = new PermissionManager(@mongoInterface)
 
-        @httpServer = new HTTPServer this, () =>
-            @emit('ready')
+            server.httpServer = new HTTPServer server, () =>
+                @emit('ready')
 
-        @socketIOServer = @createSocketIOServer(@httpServer.server, @config.apps)
+            server.socketIOServer = @createSocketIOServer(@httpServer.server, @config.apps)
+
+            server.applications = new ApplicationManager
+                paths     : paths
+                server    : server
+                cbAppDir  : projectRoot
 
         @setupEventTracker() if @config.printEventStats
-
-        @applications = new ApplicationManager
-            paths     : paths
-            server    : this
-            cbAppDir  : projectRoot
 
     setupEventTracker : () ->
         @processedEvents = 0
@@ -105,16 +103,6 @@ class Server extends EventEmitter
         @httpServer.once 'close', () ->
             @emit('close')
         @httpServer.close()
-
-    mount : (app, mountFunc) ->
-        console.log("Mounting http://#{@config.domain}:#{@config.port}#{app.mountPoint}\n")
-        {mountPoint} = app
-        browsers = app.browsers = if app.browserStrategy == 'multiprocess'
-            new MultiProcessBrowserManager(this, app)
-        else
-            new InProcessBrowserManager(this, app)
-        @httpServer[mountFunc](browsers, app)
-        return(app)
 
     createSocketIOServer : (http, apps) ->
         browserManagers = @httpServer.mountedBrowserManagers
@@ -163,7 +151,7 @@ class Server extends EventEmitter
 
         if not app
             return false
-        else if not app.authenticationInterface
+        else if not app.isAuthConfigured()
             return true
         else if not session.user
             return false

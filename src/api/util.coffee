@@ -2,25 +2,27 @@ Nodemailer        = require("nodemailer")
 
 ###*
     @class cloudbrowser.Util
-    @param {object} config
+    @param {object} emailerConfig
 ###
 class Util
-    _privates = []
+    _pvts = []
     _instance = null
 
-    constructor : (config) ->
+    constructor : (emailerConfig) ->
         # Singleton
-        if _privates.length then return _instance
+        if _pvts.length then return _instance
         else _instance = this
 
-        # Defining @_index as a read-only property
-        Object.defineProperty this, "_index",
-            value : _privates.length
+        # Defining @_idx as a read-only property
+        Object.defineProperty this, "_idx",
+            value : _pvts.length
 
         # Setting private properties
-        _privates.push
-            config : config
+        _pvts.push
+            emailerConfig : emailerConfig
 
+        Object.freeze(this.__proto__)
+        Object.freeze(this)
     ###*
         Sends an email to the specified user.
         @static
@@ -32,19 +34,19 @@ class Util
         @param {emptyCallback} callback
     ###
     sendEmail : (toEmailID, subject, message, callback) ->
-        if not _privates[@_index].config.emailerConfig.email or
-        not _privates[@_index].config.emailerConfig.password
-            throw new Error "Please provide an email and the corresponding password" +
-            " to enable sending confirmation emails in emailer_config.json"
+        if not _pvts[@_idx].emailerConfig.email or
+        not _pvts[@_idx].emailerConfig.password
+            throw new Error("Please provide an email ID and the corresponding" +
+            " password in emailer_config.json to enable sending confirmation emails")
 
         smtpTransport = Nodemailer.createTransport "SMTP",
             service: "Gmail"
             auth:
-                user: _privates[@_index].config.emailerConfig.email
-                pass: _privates[@_index].config.emailerConfig.password
+                user: _pvts[@_idx].emailerConfig.email
+                pass: _pvts[@_idx].emailerConfig.password
 
         mailOptions =
-            from    : _privates[@_index].config.emailerConfig.email
+            from    : _pvts[@_idx].emailerConfig.email
             to      : toEmailID
             subject : subject
             html    : message

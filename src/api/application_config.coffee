@@ -1,45 +1,43 @@
-Crypto = require("crypto")
-{getParentMountPoint, hashPassword} = require("./utils")
+{getParentMountPoint} = require("./utils")
 
 ###*
     @description Configuration details of the application including details
     in the app_config.json file of the application
     @class cloudbrowser.app.AppConfig
-    @param {BrowserServer} bserver
-    @param {cloudbrowser}  cloudbrowserContext
+    @param {cloudbrowser}  cbCtx
     @fires cloudbrowser.app.AppConfig#Added
     @fires cloudbrowser.app.AppConfig#Removed
 ###
 class AppConfig
 
     # Private Properties inside class closure
-    _privates = []
+    # This is not enumerable, not configurable, not writable
+    _pvts = []
 
-    constructor : (bserver, cloudbrowserContext) ->
+    constructor : (options) ->
 
-        # Defining @_index as a read-only property
-        Object.defineProperty this, "_index",
-            value : _privates.length
+        {userCtx, mountPoint, server, cbCtx} = options
 
-        # Gets the mountpoint of the parent application for applications like
+        # Gets the mountpoint of the parent app for sub-apps like
         # authentication interface and landing page.
-        # If application is not a sub application like authentication interface
-        # or landing page then the application is its own parent.
-        parentMountPoint = getParentMountPoint(bserver.mountPoint)
-        creator = if bserver.creator?
-            new cloudbrowserContext.app.User(bserver.creator.email, bserver.creator.ns)
-        else null
+        # If the app is not a sub-app then the app is its own parent.
+        parentMountPoint = getParentMountPoint(mountPoint)
+
+        # Defining @_idx as a read-only property
+        Object.defineProperty this, "_idx",
+            value : _pvts.length
 
         # Setting private properties
-        _privates.push
-            bserver             : bserver
-            creator             : creator
-            creatorJson         : if creator then creator.toJson() else null
-            cloudbrowserContext : cloudbrowserContext
-            parentMountPoint    : parentMountPoint
-            parentApplication   : bserver.server.applications.find(parentMountPoint)
-            localStrategy       : new cloudbrowserContext.app.LocalStrategy(bserver, cloudbrowserContext)
-            googleStrategy      : new cloudbrowserContext.app.GoogleStrategy(bserver)
+        _pvts.push
+            # Redundant pointers to the server
+            server            : server
+            userCtx           : userCtx
+            cbCtx             : cbCtx
+            parentApp         : server.applications.find(parentMountPoint)
+            mountPoint        : mountPoint
+
+        Object.freeze(this.__proto__)
+        Object.freeze(this)
 
     ###*
         Gets the absolute URL at which the application is hosted/mounted.    
@@ -49,8 +47,11 @@ class AppConfig
         @returns {String}
     ###
     getUrl : () ->
-        config = _privates[@_index].bserver.server.config
-        return "http://#{config.domain}:#{config.port}#{_privates[@_index].parentMountPoint}"
+        {server, parentApp} = _pvts[@_idx]
+        parentMountPoint = parentApp.getMountPoint()
+        {config} = server
+
+        return "http://#{config.domain}:#{config.port}#{parentMountPoint}"
 
     ###*
         Gets the description of the application as provided in the
@@ -61,8 +62,23 @@ class AppConfig
         @return {String}
     ###
     getDescription: () ->
-        return _privates[@_index].parentApplication.description
+        _pvts[@_idx].parentApp.getDescription()
 
+    setDescription: (description) ->
+        if not description then return new Error("Missing required parameter - description")
+
+        {server, parentApp, userCtx} = _pvts[@_idx]
+        {permissionManager} = server
+
+        # Permission Check
+        permissionManager.findAppPermRec userCtx.toJson(),
+        parentApp.getMountPoint(), (appRec) ->
+            if appRec
+                parentApp.setDescription(description)
+                return null
+            else return new Error('Permission Denied')
+        , {'own' : true}
+        
     ###*
         Gets the path relative to the root URL at which the application was mounted.     
         @instance
@@ -70,8 +86,130 @@ class AppConfig
         @memberOf cloudbrowser.app.AppConfig
         @return {String}
     ###
-    getMountPoint: () ->
-        return _privates[@_index].parentMountPoint
+    getMountPoint : () ->
+        return _pvts[@_idx].parentApp.getMountPoint()
+
+    isAppPublic : () ->
+        return _pvts[@_idx].parentApp.isAppPublic()
+
+    makePublic : () ->
+        {server, parentApp, userCtx} = _pvts[@_idx]
+        {permissionManager} = server
+
+        # Permission Check
+        permissionManager.findAppPermRec userCtx.toJson(),
+        parentApp.getMountPoint(), (appRec) ->
+            if appRec
+                parentApp.makePublic()
+                return null
+            else return new Error('Permission Denied')
+        , {'own' : true}
+
+    makePrivate : () ->
+        {server, parentApp, userCtx} = _pvts[@_idx]
+        {permissionManager} = server
+
+        # Permission Check
+        permissionManager.findAppPermRec userCtx.toJson(),
+        parentApp.getMountPoint(), (appRec) ->
+            if appRec
+                parentApp.makePrivate()
+                return null
+            else return new Error('Permission Denied')
+        , {'own' : true}
+
+    isAuthConfigured : () ->
+        return _pvts[@_idx].parentApp.isAuthConfigured()
+
+    enableAuthentication : () ->
+        {server, parentApp, userCtx} = _pvts[@_idx]
+        {permissionManager} = server
+
+        # Permission Check
+        permissionManager.findAppPermRec userCtx.toJson(),
+        parentApp.getMountPoint(), (appRec) ->
+            if appRec
+                parentApp.enableAuthentication()
+                return null
+            else return new Error('Permission Denied')
+        , {'own' : true}
+
+    disableAuthentication : () ->
+        {server, parentApp, userCtx} = _pvts[@_idx]
+        {permissionManager} = server
+
+        # Permission Check
+        permissionManager.findAppPermRec userCtx.toJson(),
+        parentApp.getMountPoint(), (appRec) ->
+            if appRec
+                parentApp.disableAuthentication()
+                return null
+            else return new Error('Permission Denied')
+        , {'own' : true}
+
+    getInstantiationStrategy : () ->
+        return _pvts[@_idx].parentApp.getInstantiationStrategy()
+
+    setInstantiationStrategy : (strategy) ->
+        if not strategy then return new Error("Strategy can't be empty")
+        {server, parentApp, userCtx} = _pvts[@_idx]
+        {permissionManager} = server
+
+        # Permission Check
+        permissionManager.findAppPermRec userCtx.toJson(),
+        parentApp.getMountPoint(), (appRec) ->
+            if appRec
+                parentApp.setInstantiationStrategy(strategy)
+                return null
+            else return new Error('Permission Denied')
+        , {'own' : true}
+
+    getBrowserLimit : () ->
+        return _pvts[@_idx].parentApp.getBrowserLimit()
+
+    setBrowserLimit : (limit) ->
+        if not limit then return new Error("Limit can't be empty")
+        
+        {server, parentApp, userCtx} = _pvts[@_idx]
+        {permissionManager} = server
+
+        # Permission Check
+        permissionManager.findAppPermRec userCtx.toJson(),
+        parentApp.getMountPoint(), (appRec) ->
+            if appRec
+                parentApp.setBrowserLimit(limit)
+                return null
+            else return new Error('Permission Denied')
+        , {'own' : true}
+
+    mount : () ->
+        # Permission Check Required
+        {server, parentApp, userCtx} = _pvts[@_idx]
+        {permissionManager} = server
+
+        # Permission Check
+        permissionManager.findAppPermRec userCtx.toJson(),
+        parentApp.getMountPoint(), (appRec) ->
+            if appRec
+                parentApp.mount()
+                return null
+            else return new Error('Permission Denied')
+        , {'own' : true}
+
+    # Unmounts the application running at `mountPoint`.
+    # Move to app config
+    disable : () ->
+        {userCtx, server, parentApp} = _pvts[@_idx]
+        {permissionManager} = server
+
+        # Permission Check
+        permissionManager.findAppPermRec userCtx.toJson(),
+        parentApp.getMountPoint(), (appRec) ->
+            if appRec
+                parentApp.disable()
+                return null
+            else return new Error('Permission Denied')
+        , {'own' : true}
 
     ###*
         A list of all the registered users of the application.          
@@ -81,15 +219,34 @@ class AppConfig
         @param {userListCallback} callback
     ###
     getUsers : (callback) ->
-        mongoInterface = _privates[@_index].bserver.server.mongoInterface
-        dbName         = _privates[@_index].parentApplication.dbName
-        userClass      = _privates[@_index].cloudbrowserContext.app.User
-        mongoInterface.getUsers dbName, (users) ->
-            userList = []
-            for user in users
-                userList.push(new userClass(user.email,user.ns))
-            callback(userList)
+        # Permission Check Required
+        # Only a VB from the app itself or a sub-app specifically auth int and landing page
+        # should have access to the users of an app
+        {parentApp, server, cbCtx, userCtx} = _pvts[@_idx]
+        
+        if not parentApp.isAuthConfigured() then return
 
+        # Remove this once permission check is added
+        if userCtx.getNameSpace() is "public" then return
+
+        {User}   = cbCtx.app
+
+        {permissionManager} = server
+
+        # Permission Check
+        permissionManager.findAppPermRec userCtx.toJson(),
+        parentApp.getMountPoint(), (appRec) ->
+            if appRec
+                parentApp.getUsers (users) ->
+                    userList = []
+                    for user in users
+                        userList.push(new User(user.email, user.ns))
+                    callback(userList)
+            else callback(new Error('Permission Denied'))
+        , {'own' : true}
+
+    isMounted : () ->
+        return _pvts[@_idx].parentApp.isMounted()
     ###*
         Creates a new instance of this application.    
         @instance
@@ -98,30 +255,40 @@ class AppConfig
         @param {errorCallback} callback
     ###
     createVirtualBrowser : (callback) ->
-        parentApp = _privates[@_index].parentApplication
-        creatorJson = _privates[@_index].creatorJson
-        parentApp.browsers.create(creatorJson, (err, bsvr) -> callback(err))
+        {userCtx, parentApp} = _pvts[@_idx]
+
+        if userCtx.getNameSpace() is "public"
+            parentApp.browsers.create()
+        else
+            parentApp.browsers.create userCtx.toJson(),
+            (err, bsvr) -> callback(err)
 
     ###*
-        Gets all the instances of the application associated with the current user.    
+        Gets all the instances of the application associated with the given user.    
         @instance
         @method getVirtualBrowsers
         @memberOf cloudbrowser.app.AppConfig
         @param {instanceListCallback} callback
     ###
     getVirtualBrowsers : (callback) ->
-        vbClass = _privates[@_index].cloudbrowserContext.app.VirtualBrowser
-        permissionManager = _privates[@_index].bserver.server.permissionManager
-        permissionManager.getBrowserPermRecs _privates[@_index].creatorJson,
-        _privates[@_index].parentMountPoint, (browserRecs) =>
-            browsers = []
-            for id, browserRec of browserRecs
-                browser = _privates[@_index].parentApplication.browsers.find(id)
-                browsers.push(new vbClass(browser, _privates[@_index].creator, _privates[@_index].cloudbrowserContext))
-            callback(browsers)
+        # Write one method for getting all virtual browsers
+        {server, userCtx, parentApp, cbCtx} = _pvts[@_idx]
+        parentMountPoint = parentApp.getMountPoint()
+        permMgr        = server.permissionManager
+        VirtualBrowser = require('./virtual_browser')
+
+        permMgr.getBrowserPermRecs userCtx.toJson(), parentMountPoint,
+            (browserRecs) ->
+                browsers = []
+                for id, browserRec of browserRecs
+                    browsers.push new VirtualBrowser
+                        bserver : parentApp.browsers.find(id)
+                        userCtx : userCtx
+                        cbCtx   : cbCtx
+                callback(browsers)
 
     ###*
-        Registers a listener on the application for an event associated with the current user.     
+        Registers a listener on the application for an event associated with the given user.     
         @instance
         @method addEventListener
         @memberOf cloudbrowser.app.AppConfig
@@ -129,16 +296,41 @@ class AppConfig
         @param {instanceCallback} callback
     ###
     addEventListener : (event, callback) ->
-        permissionManager = _privates[@_index].bserver.server.permissionManager
-        vbClass = _privates[@_index].cloudbrowserContext.app.VirtualBrowser
-        permissionManager.findAppPermRec _privates[@_index].creatorJson,
-        _privates[@_index].parentMountPoint, (appRec) =>
-            if appRec
-                if event is "Added" then appRec.on event, (id) =>
-                    callback(new vbClass(_privates[@_index].parentApplication.browsers.find(id),
-                    _privates[@_index].creator, _privates[@_index].cloudbrowserContext))
-                else appRec.on event, (id) ->
-                    callback(id)
+        # Another version required for the owner of the app that listens for all browsers
+        {server, userCtx, cbCtx, parentApp} = _pvts[@_idx]
+        parentMountPoint = parentApp.getMountPoint()
+        permMgr        = server.permissionManager
+        # Requiring the module here to prevent the circular reference
+        # problem which will result in the required module being empty
+        VirtualBrowser = require('./virtual_browser')
+
+        permMgr.findAppPermRec userCtx.toJson(), parentMountPoint,
+            (appRec) ->
+                if appRec
+                    permMgr.checkPermissions
+                        user : userCtx.toJson()
+                        mountPoint : parentMountPoint
+                        permTypes  : {own : true}
+                        callback   : (isOwner) ->
+                            if isOwner
+                                switch event
+                                    when "added"
+                                        parentApp.addEventListener event, (id) ->
+                                            callback new VirtualBrowser
+                                                bserver : parentApp.browsers.find(id)
+                                                userCtx : userCtx
+                                                cbCtx   : cbCtx
+                                    else
+                                        parentApp.addEventListener(event, callback)
+                            else
+                                switch event
+                                    when "added"
+                                        appRec.on event, (id) ->
+                                            callback new VirtualBrowser
+                                                bserver : parentApp.browsers.find(id)
+                                                userCtx : userCtx
+                                                cbCtx   : cbCtx
+                                    else appRec.on(event, callback)
 
     ###*
         Checks if a user is already registered/signed up with the application.     
@@ -149,102 +341,23 @@ class AppConfig
         @param {booleanCallback} callback 
     ###
     isUserRegistered : (user, callback) ->
-        mongoInterface = _privates[@_index].bserver.server.mongoInterface
-        dbName         = _privates[@_index].parentApplication.dbName
-        mongoInterface.findUser user.toJson(), dbName, (user) ->
-            if user then callback(true)
-            else callback(false)
+        {userCtx, server, parentApp} = _pvts[@_idx]
+        {permissionManager} = server
 
-    ###*
-        Sends a password reset link to the user at their registered email ID.    
-        @instance
-        @method sendResetLink
-        @memberOf cloudbrowser.app.AppConfig
-        @param {booleanCallback} callback
-    ###
-    sendResetLink : (user, callback) ->
-        mongoInterface = _privates[@_index].bserver.server.mongoInterface
-        dbName = _privates[@_index].parentApplication.dbName
-        config = _privates[@_index].bserver.server.config
-        appUrl = "http://#{config.domain}:#{config.port}#{_privates[@_index].parentMountPoint}"
-        util   = _privates[@_index].cloudbrowserContext.getUtil()
-        mongoInterface.findUser user.toJson(), dbName, (userRec) =>
-            if userRec
-                Crypto.randomBytes 32, (err, token) =>
-                    throw err if err
-                    token = token.toString 'hex'
-                    esc_email = encodeURIComponent(userRec.email)
-                    subject = "Link to reset your CloudBrowser password"
-                    message = "You have requested to change your password." +
-                    " If you want to continue click " +
-                    "<a href='#{appUrl}/password_reset?resettoken=#{token}&resetuser=#{esc_email}'>reset</a>." +
-                    " If you have not requested a change in password then take no action."
+        # Permission Check
+        permissionManager.findAppPermRec userCtx.toJson(),
+        parentApp.getMountPoint(), (appRec) ->
+            if appRec
+                parentApp.findUser user.toJson(), (user) ->
+                    if user then callback(true)
+                    else callback(false)
+            else return new Error('Permission Denied')
+        , {'own' : true}
 
-                    util.sendEmail userRec.email, subject, message, () ->
-                        mongoInterface.setUser user.toJson(), dbName,
-                        {status:"reset_password",token:token}, (result) ->
-                            callback(true)
 
-            else callback(false)
-
-    ###*
-        Resets the password for a valid user request.     
-        A boolean is passed as an argument to indicate success/failure.
-        @instance
-        @method resetPassword
-        @memberOf cloudbrowser.app.AppConfig
-        @param {String}   password     The new plaintext password provided by the user.
-        @param {booleanCallback} callback     
-    ###
-    resetPassword : (password, callback) ->
-        mongoInterface = _privates[@_index].bserver.server.mongoInterface
-        dbName         = _privates[@_index].parentApplication.dbName
-        _privates[@_index].bserver.getSessions (sessionIDs) ->
-            if sessionIDs.length
-                mongoInterface.getSession sessionIDs[0], (session) ->
-                    mongoInterface.findUser {email:session.resetuser, ns:'local'}, dbName, (userRec) ->
-                        if userRec and userRec.status is "reset_password" and userRec.token is session.resettoken
-                            mongoInterface.unsetUser {email:userRec.email, ns:userRec.ns}, dbName,
-                            {token: "", status: ""}, () ->
-                                hashPassword {password:password}, (result) ->
-                                    mongoInterface.setUser {email:userRec.email, ns:userRec.ns}, dbName,
-                                    {key: result.key.toString('hex'), salt: result.salt.toString('hex')}, () ->
-                                        callback(true)
-                        else callback(false)
-            else callback(false)
-
-    ###*
-        Logs out all connected clients from the current application.
-        @instance
-        @method logout
-        @memberOf cloudbrowser.app.AppConfig
-    ###
-    logout : () ->
-        config = _privates[@_index].bserver.server.config
-        appUrl = "http://#{config.domain}:#{config.port}#{_privates[@_index].parentMountPoint}"
-        _privates[@_index].bserver.redirect(appUrl + "/logout")
-
-    ###*
-        Returns an instance of local strategy for authentication
-        @instance
-        @method getLocalStrategy
-        @memberOf cloudbrowser.app.AppConfig
-        @return {cloudbrowser.app.LocalStrategy} 
-    ###
-    getLocalStrategy : () ->
-        return _privates[@_index].localStrategy
-
-    ###*
-        Returns an instance of google strategy for authentication
-        @instance
-        @method getGoogleStrategy
-        @memberOf cloudbrowser.app.AppConfig
-        @return {cloudbrowser.app.GoogleStrategy} 
-    ###
-    getGoogleStrategy : () ->
-        return _privates[@_index].googleStrategy
 
 module.exports = AppConfig
+
 ###*
     Browser Added event
     @event cloudbrowser.app.AppConfig#Added
@@ -255,4 +368,3 @@ module.exports = AppConfig
     @event cloudbrowser.app.AppConfig#Removed
     @type {Number}
 ###
-            

@@ -2,29 +2,38 @@ Mongo      = require('mongodb')
 Express    = require('express')
 MongoStore = require('connect-mongo')(Express)
 
+# TODO : use Mongoose and rewrite this code
 class MongoInterface
-    constructor : (dbName) ->
+    constructor : (dbName, callback) ->
         @dbClient = new Mongo.Db(dbName, new Mongo.Server("127.0.0.1", 27017, options:{auto_reconnect:true}))
         @dbClient.open (err, pClient) ->
             throw err if err
+            callback?()
         @mongoStore = new MongoStore({db:"#{dbName}_sessions"})
+        @appCollection = "applications"
 
-    findUser : (searchKey, dbName, callback) ->
-        @dbClient.collection dbName, (err, collection) ->
+    findUser : (searchKey, collName, callback) ->
+        @dbClient.collection collName, (err, collection) ->
             throw err if err
             collection.findOne searchKey, (err, user) ->
                 throw err if err
                 callback(user)
 
-    addUser : (user, dbName, callback) ->
-        @dbClient.collection dbName, (err, collection) ->
+    addUser : (users, collName, callback) ->
+        @dbClient.collection collName, (err, collection) ->
             throw err if err
-            collection.insert user, (err, user) ->
+            collection.insert users, (err, userRecs) ->
                 throw err if err
-                callback(user)
+                # If an array of users was provided to be added
+                # return the array of records added
+                if users instanceof Array
+                    callback?(userRecs)
+                # Return only one object not the array that contains
+                # the single object
+                else callback?(userRecs[0])
 
-    getUsers : (dbName, callback) ->
-        @dbClient.collection dbName, (err, collection) ->
+    getUsers : (collName, callback) ->
+        @dbClient.collection collName, (err, collection) ->
             throw err if err
             collection.find {}, (err, cursor) ->
                 throw err if err
@@ -32,40 +41,40 @@ class MongoInterface
                     throw err if err
                     callback(users)
 
-    addToUser : (searchKey, dbName, addedInfo, callback) ->
-        @dbClient.collection dbName, (err, collection) ->
+    addToUser : (searchKey, collName, addedInfo, callback) ->
+        @dbClient.collection collName, (err, collection) ->
             throw err if err
-            collection.update searchKey, {$push:addedInfo}, {w:1}, (err, result) ->
+            collection.update searchKey, {$addToSet:addedInfo}, {w:1}, (err, result) ->
                 throw err if err
-                callback()
+                callback?()
 
-    removeFromUser : (searchKey, dbName, removedInfo, callback) ->
-        @dbClient.collection dbName, (err, collection) ->
+    removeFromUser : (searchKey, collName, removedInfo, callback) ->
+        @dbClient.collection collName, (err, collection) ->
             throw err if err
             collection.update searchKey, {$pull:removedInfo}, {w:1}, (err, result) ->
                 throw err if err
-                callback()
+                callback?()
 
-    setUser : (searchKey, dbName, updatedInfo, callback) ->
-        @dbClient.collection dbName, (err, collection) ->
+    setUser : (searchKey, collName, updatedInfo, callback) ->
+        @dbClient.collection collName, (err, collection) ->
             throw err if err
             collection.update searchKey, {$set:updatedInfo}, {w:1}, (err, result) ->
                 throw err if err
-                callback()
+                callback?()
 
-    unsetUser : (searchKey, dbName, updatedInfo, callback) ->
-        @dbClient.collection dbName, (err, collection) ->
+    unsetUser : (searchKey, collName, updatedInfo, callback) ->
+        @dbClient.collection collName, (err, collection) ->
             throw err if err
             collection.update searchKey, {$unset:updatedInfo}, {w:1}, (err, result) ->
                 throw err if err
-                callback()
+                callback?()
 
-    removeUser : (searchKey, dbName, callback) ->
-        @dbClient.collection dbName, (err, collection) ->
+    removeUser : (searchKey, collName, callback) ->
+        @dbClient.collection collName, (err, collection) ->
             throw err if err
             collection.remove searchKey, (err, result) ->
                 throw err if err
-                callback()
+                callback?()
 
     getSession : (sessionID, callback) ->
         @mongoStore.get sessionID, (err, session) ->
@@ -75,6 +84,44 @@ class MongoInterface
     setSession : (sessionID, session, callback) ->
         @mongoStore.set sessionID, session, (err) ->
             throw err if err
-            callback()
+            callback?()
+
+    findApp : (searchKey, callback) ->
+        @dbClient.collection @appCollection, (err, collection) ->
+            throw err if err
+            collection.findOne searchKey, (err, app) ->
+                throw err if err
+                callback(app)
+
+    addApp : (app, callback) ->
+        @findApp app, (appRec) =>
+            if appRec then callback?(appRec)
+            else
+                @dbClient.collection @appCollection, (err, collection) ->
+                    throw err if err
+                    collection.insert app, (err, app) ->
+                        throw err if err
+                        callback?(app)
+
+    removeApp : (searchKey, callback) ->
+        @dbClient.collection @appCollection, (err, collection) ->
+            throw err if err
+            collection.remove searchKey, (err, numResults) ->
+                throw err if err
+                callback?(numResults)
+
+    getApps : (callback) ->
+        @dbClient.collection @appCollection, (err, collection) ->
+            throw err if err
+            collection.find {}, (err, cursor) ->
+                throw err if err
+                cursor.toArray (err, apps) ->
+                    throw err if err
+                    callback(apps)
+
+    addIndex : (collName, index, callback) ->
+        @dbClient.collection collName, (err, collection) ->
+            collection.ensureIndex index, {unique:true}, (err, indexName) ->
+                callback?(indexName)
 
 module.exports = MongoInterface

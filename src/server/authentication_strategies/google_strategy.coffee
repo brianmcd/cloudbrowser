@@ -42,19 +42,9 @@ class GoogleStrategy
             email : req.user.email
             ns    : 'google'
 
-        servers.cloudbrowser.mongoInterface.findUser newUser, app.dbName, (user) =>
-            if user
-                # If user is registered with the application, update the session
-                # to indicate that the user has been authenticated
-                # And redirect the client to the location specified in the session parameter - "redirectto"
-                servers.http.updateSession(req, user, req.session.mountPoint)
-                servers.http.redirect(res, redirectto)
-            else
-                # Insert user into list of registered users of the application
-                servers.cloudbrowser.mongoInterface.addUser newUser, app.dbName, (user) =>
-                    servers.http.addPermRec user[0], req.session.mountPoint, () =>
-                        servers.http.updateSession(req, user[0], req.session.mountPoint)
-                        servers.http.redirect(res, redirectto)
+        app.addNewUser newUser, (user) ->
+            servers.http.redirect(res, redirectto)
+            servers.http.updateSession(req, user, req.session.mountPoint)
 
     @_setupRoutes : (servers) ->
         # When the client requests for /googleAuth, the google authentication

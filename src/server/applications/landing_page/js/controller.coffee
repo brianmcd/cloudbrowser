@@ -1,7 +1,9 @@
+# TODO - Refactor the whole code
 cb = {}
-cb.currentVirtualBrowser = cloudbrowser.getCurrentVirtualBrowser()
+cb.currentVirtualBrowser = cloudbrowser.currentVirtualBrowser
 cb.appConfig             = cb.currentVirtualBrowser.getAppConfig()
-cb.util                  = cloudbrowser.getUtil()
+cb.util                  = cloudbrowser.util
+cb.auth                  = cloudbrowser.auth
 
 CBLandingPage = angular.module("CBLandingPage", [])
 CBLandingPage.controller "UserCtrl", ($scope, $timeout) ->
@@ -52,28 +54,46 @@ CBLandingPage.controller "UserCtrl", ($scope, $timeout) ->
                (element.id is id)
             return vb[0]
 
-        add : (vb) ->
-            if not @find(vb.id)
-                vb.dateCreated = utils.formatDate(vb.dateCreated)
-                vb.addEventListener 'Shared', (err) ->
-                    if err then console.log(err)
-                    else
-                        vb.getOwners (owners) ->
-                            $scope.safeApply -> vb.owners = owners
-                        vb.getReaderWriters (readersWriters) ->
-                            $scope.safeApply -> vb.collaborators = readersWriters
-                vb.addEventListener 'Renamed', (err, name) ->
-                    if not err then $scope.safeApply ->
-                        vb.name = name
-                    else console.log(err)
+        add : (vbAPI) ->
+            if not @find(vbAPI.id)
+                # Creating the vb object
+                vb =
+                    api    : vbAPI
+                    id     : vbAPI.id
+                    name   : vbAPI.getName()
+                    dateCreated  : utils.formatDate(vbAPI.dateCreated)
+
+                vb.api.getOwners (owners) ->
+                    vb.owners = owners
+
+                vb.api.getReaderWriters (readerWriters) ->
+                    vb.collaborators = readerWriters
+
+                # Adding the event listeners
+                vb.api.addEventListener 'shared', (err) ->
+                    # TODO : Better error handling?
+                    console.log(err) if err
+                    vb.api.getOwners (owners) ->
+                        $scope.safeApply -> vb.owners = owners
+                    vb.api.getReaderWriters (readersWriters) ->
+                        $scope.safeApply -> vb.collaborators = readersWriters
+
+                vb.api.addEventListener 'renamed', (err, name) ->
+                    console.log(err) if err
+                    $scope.safeApply -> vb.name = name
+
+                # Adding vb object to list
                 $scope.safeApply ->
                     $scope.virtualBrowserList.push(vb)
 
         remove : (id) ->
             $scope.safeApply ->
                 oldLength = $scope.virtualBrowserList.length
+
                 $scope.virtualBrowserList = $.grep $scope.virtualBrowserList, (element, index) ->
                     return(element.id isnt id)
+                
+                # TODO : Why is this required?
                 if oldLength > $scope.virtualBrowserList.length
                     selected.remove(id)
 
@@ -91,23 +111,26 @@ CBLandingPage.controller "UserCtrl", ($scope, $timeout) ->
     # on all the selected browsers
     checkPermission = (type, callback) ->
         outstanding = $scope.selected.length
+        callbackNotCalled = true
 
         # Looping through all selected browsers
         for id in $scope.selected
-            vbMgr.find(id).checkPermissions type, (hasPermission) ->
+            vbMgr.find(id).api.checkPermissions type, (hasPermission) ->
                 # If user doesn't have permission for even one browser
                 # immediately return false
-                if not hasPermission then $scope.safeApply -> callback(false)
-                else outstanding--
+                if not hasPermission
+                    $scope.safeApply -> callback(false)
+                    callbackNotCalled = false
+                    outstanding = 0
+                else if outstanding then outstanding--
 
-        # Find asynchronously when all selected browsers have been iterated over
+        # Find when all selected browsers have been iterated over
         process.nextTick () ->
             # If user has permissions to perform the requested action
             # for all selected browsers return true
             if not outstanding
-                $scope.safeApply -> callback(true)
-            # If all the browsers haven't been iterated over
-            # Check in the next cycle
+                if callbackNotCalled
+                    $scope.safeApply -> callback(true)
             else process.nextTick(arguments.callee)
 
     # Toggle the action buttons
@@ -133,13 +156,13 @@ CBLandingPage.controller "UserCtrl", ($scope, $timeout) ->
             $scope.isDisabled.share  = true
 
     cb.appConfig.getVirtualBrowsers (virtualBrowsers) ->
-        for vb in virtualBrowsers
-            vbMgr.add(vb)
+        for vbAPI in virtualBrowsers
+            vbMgr.add(vbAPI)
 
-    cb.appConfig.addEventListener 'Added', (vb) ->
-        vbMgr.add(vb)
+    cb.appConfig.addEventListener 'added', (vbAPI) ->
+        vbMgr.add(vbAPI)
 
-    cb.appConfig.addEventListener 'Removed', (id) ->
+    cb.appConfig.addEventListener 'removed', (id) ->
         vbMgr.remove(id)
 
     $scope.$watch 'selected.length', (newValue, oldValue) ->
@@ -151,7 +174,7 @@ CBLandingPage.controller "UserCtrl", ($scope, $timeout) ->
         cb.appConfig.createVirtualBrowser (err) ->
             if err then $scope.safeApply () -> $scope.error = err.message
 
-    $scope.logout = () -> cb.appConfig.logout()
+    $scope.logout = () -> cb.auth.logout()
 
     $scope.open = () ->
         openNewTab = (id) ->
@@ -164,7 +187,7 @@ CBLandingPage.controller "UserCtrl", ($scope, $timeout) ->
 
     $scope.remove = () ->
         while $scope.selected.length > 0
-            vbMgr.find($scope.selected[0]).close (err) ->
+            vbMgr.find($scope.selected[0]).api.close (err) ->
                 if err
                     $scope.error = "You do not have the permission to perform this action"
         $scope.confirmDelete = false
@@ -183,10 +206,10 @@ CBLandingPage.controller "UserCtrl", ($scope, $timeout) ->
             do (vb) ->
                 # Checking whether the current user has the
                 # permission to share this browser with others
-                vb.isOwner $scope.user, (isOwner) ->
+                vb.api.isOwner $scope.user, (isOwner) ->
                     if isOwner
                         # Grant permissions to selected user
-                        vb.grantPermissions perm, user, (err) ->
+                        vb.api.grantPermissions perm, user, (err) ->
                             if not err
                                 sendMail(user.getEmail())
                                 callback(user)
@@ -283,7 +306,7 @@ CBLandingPage.controller "UserCtrl", ($scope, $timeout) ->
 
     $scope.clickRename = (id) ->
         vb = vbMgr.find(id)
-        vb.isOwner $scope.user, (isOwner) ->
+        vb.api.isOwner $scope.user, (isOwner) ->
             if isOwner then $scope.safeApply -> vb.editing = true
         
 CBLandingPage.filter "removeSlash", () ->
@@ -299,26 +322,26 @@ CBLandingPage.filter "virtualBrowserFilter", () ->
         if filterType is 'owned'
             for vb in list
                 do (vb) ->
-                    vb.isOwner user, (isOwner) ->
+                    vb.api.isOwner user, (isOwner) ->
                         if isOwner then modifiedList.push(vb)
         if filterType is 'notOwned'
             for vb in list
                 do (vb) ->
-                    vb.isOwner user, (isOwner) ->
+                    vb.api.isOwner user, (isOwner) ->
                         if not isOwner then modifiedList.push(vb)
         if filterType is 'shared'
             for vb in list
                 do (vb) ->
-                    vb.getNumReaderWriters (numReaderWriters) ->
+                    vb.api.getNumReaderWriters (numReaderWriters) ->
                         if numReaderWriters then modifiedList.push(vb)
-                        else vb.getNumOwners (numOwners) ->
+                        else vb.api.getNumOwners (numOwners) ->
                             if numOwners > 1 then modifiedList.push(vb)
         if filterType is 'notShared'
             for vb in list
                 do (vb) ->
-                    vb.getNumOwners (numOwners) ->
+                    vb.api.getNumOwners (numOwners) ->
                         if numOwners is 1
-                            vb.getNumReaderWriters (numReaderWriters) ->
+                            vb.api.getNumReaderWriters (numReaderWriters) ->
                                 if not numReaderWriters
                                     modifiedList.push(vb)
         if filterType is 'all'
@@ -331,10 +354,10 @@ CBLandingPage.directive 'ngHasfocus', () ->
             if (nVal)
                 element[0].focus()
         element.bind 'blur', () ->
-            scope.$apply(attrs.ngHasfocus + " = false";scope.vb.rename(scope.vb.name))
+            scope.$apply(attrs.ngHasfocus + " = false";scope.vb.api.rename(scope.vb.name))
         element.bind 'keydown', (e) ->
             if e.which is 13
-                scope.$apply(attrs.ngHasfocus + " = false";scope.vb.rename(scope.vb.name))
+                scope.$apply(attrs.ngHasfocus + " = false";scope.vb.api.rename(scope.vb.name))
 
 CBLandingPage.directive 'typeahead', () ->
     directive =
@@ -352,9 +375,9 @@ CBLandingPage.directive 'typeahead', () ->
                                 while index < users.length
                                     user = users[index]
                                     do (user) ->
-                                        vb.isOwner user, (isOwner) ->
+                                        vb.api.isOwner user, (isOwner) ->
                                             if isOwner then scope.safeApply -> users.splice(index, 1)
-                                            else vb.isReaderWriter user, (isReaderWriter) ->
+                                            else vb.api.isReaderWriter user, (isReaderWriter) ->
                                                 scope.safeApply ->
                                                     if isReaderWriter then users.splice(index, 1)
                                                     else index++
@@ -362,7 +385,7 @@ CBLandingPage.directive 'typeahead', () ->
                                 while index < users.length
                                     user = users[index]
                                     do (user) ->
-                                        vb.isOwner user, (isOwner) ->
+                                        vb.api.isOwner user, (isOwner) ->
                                             scope.safeApply ->
                                                 if isOwner then users.splice(index, 1)
                                                 else index++

@@ -9,7 +9,6 @@ Weak           = require('weak')
 # Dummy callback, does nothing
 cleanupApp = (mountPoint) ->
     return () ->
-        #TODO : Should log module messages into file
         console.log("Garbage collected application #{mountPoint}")
 
 class ApplicationManager extends EventEmitter
@@ -24,58 +23,217 @@ class ApplicationManager extends EventEmitter
 
         # Mount the home page
         if @server.config.homePage
-            @createAppFromDir(Path.resolve(@cbAppDir, "home_page"), "/")
+            @createAppFromDir
+                path : Path.resolve(@cbAppDir, "home_page")
+                type : "admin"
+                mountPoint : "/"
 
         # Mount the admin interface
         if @server.config.adminInterface
-            @createAppFromDir(Path.resolve(@cbAppDir, "admin_interface"))
+            @createAppFromDir
+                path : Path.resolve(@cbAppDir, "admin_interface")
+                type : "admin"
 
-        @load(options.paths) if options.paths?
+        # On server restart, load all the apps that were part of the
+        # app manager before shutdown.
+        @_loadFromDb()
 
-    # Parses the configuration files app_config.json and deployment_config.json
-    # to obtain the application configuration details
-    _configure : (path) ->
+        # Load applications corresponding at the paths provided as part
+        # of the command line args
+        @_loadFromCmdLine(options.paths) if options.paths?
+
+    _validDeploymentConfig :
+        isPublic                : true
+        owner                   : true
+        mountPoint              : true
+        collectionName          : true
+        mountOnStartup          : true
+        authenticationInterface : true
+
+    _validAppConfig :
+        entryPoint            : true
+        description           : true
+        browserLimit          : true
+        instantiationStrategy : true
+        applicationStateFile  : true
+
+    _isValidConfig : (config, validConfig) ->
+        for k of config
+            if not validConfig.hasOwnProperty(k)
+                console.log("Invalid configuration parameter #{k}")
+                return false
+        return true
+
+    _loadFromDb : () ->
+        {mongoInterface, permissionManager} = @server
+
+        mongoInterface.getApps (apps) =>
+            for app in apps
+
+                if not Fs.existsSync(app.path) or
+                not Fs.existsSync("#{app.path}/app_config\.json") or
+                not Fs.existsSync("#{app.path}/deployment_config\.json")
+                    # Removing app if the path stored in the database or the
+                    # configuration files at that path don't exist in the
+                    # file-system anymore
+                    console.log("Removing app at #{app.path}")
+                    permissionManager.rmAppPermRec(
+                        app.owner,
+                        app.mountPoint)
+                    mongoInterface.removeApp({path:app.path})
+
+                else @createAppFromDir
+                    path : app.path
+                    type : "uploaded"
+
+
+    # Parsing the json file into opts
+    _getConfigFromFile : (path) ->
+        try
+            fileContent = Fs.readFileSync(path, {encoding:"utf8"})
+            content = JSON.parse(fileContent)
+        catch e
+            console.log "Parse error in file #{path}."
+            console.log "The file's content was:"
+            console.log fileContent
+            throw e
+        
+        return content
+
+    _getInitialConfiguration : (path, type) ->
         opts = {}
         appConfigPath = "#{path}/app_config\.json"
         deploymentConfigPath = "#{path}/deployment_config\.json"
 
-        #Application configuration file is mandatory
+        # App Configuration file is mandatory
         if not Fs.existsSync(appConfigPath)
-            throw new Error("Missing mandatory configuration file #{appConfigPath}")
+            console.log("Failed to load application at #{path}," +
+                " missing mandatory configuration file #{appConfigPath}")
+            return
 
-        # Parsing the json file into opts
-        appConfig = JSON.parse(Fs.readFileSync(appConfigPath))
-        for key,value of appConfig
-            opts[key] = value
+        opts.appConfig = @_getConfigFromFile(appConfigPath)
 
-        # Instantiation strategy is mandatory for apps with authentication
-        # enabled
-        if opts.authenticationInterface
-            if not opts.instantiationStrategy
-                throw new Error("Missing required parameter instantiationStrategy in #{path}")
+        if not @_isValidConfig(opts.appConfig, @_validAppConfig)
+            console.log("In #{appConfigPath}")
+            return null
+        
+        # Getting the deployment configuration depending on the type of app
+        switch type
+            # apps uploaded by users
+            when "uploaded"
+                if not Fs.existsSync(deploymentConfigPath)
+                    console.log("Failed to load application at #{path}," +
+                        " missing mandatory configuration file" +
+                        " #{deploymentConfigPath}")
+                    return
+                # Parsing the json file into configuration opts
+                opts.deploymentConfig =
+                    @_getConfigFromFile(deploymentConfigPath)
 
-        # Checking for a valid browser limit
-        if opts.browserLimit? and isNaN(opts.browserLimit)
-            throw new Error("browserLimit must be a valid number in #{path}")
+            # admin apps like admin_interface and home page
+            when "admin"
+                if Fs.existsSync(deploymentConfigPath)
+                    opts.deploymentConfig =
+                        @_getConfigFromFile(deploymentConfigPath)
+                else opts.deploymentConfig = {}
 
-        # Getting the absolute path to the entryPoint
-        opts.entryPoint = Path.resolve(path, opts.entryPoint)
+                # The first admin is the owner of 
+                opts.deploymentConfig.owner = @server.config.admins[0]
+                # Don't save the path to this application in the database
+                opts.dontPersistConfigChanges = true
 
-        if Fs.existsSync(deploymentConfigPath)
-            # Parsing the json file into opts
-            deploymentConfig = JSON.parse(Fs.readFileSync(deploymentConfigPath))
-            for key,value of deploymentConfig
-                if opts.hasOwnProperty(key)
-                    # Configuration values from app_config are given a higher priority and
-                    # in case of a collision, values from app_config are retained
-                    console.log "Conflicting values for #{key} in #{appConfigPath} and #{deploymentConfigPath}"
-                    console.log "Keeping value #{key} = #{opts[key]} from #{appConfigPath}"
-                else
-                    opts[key] = value
+            # sub apps like landing_page, password_reset etc.
+            when "sub"
+                # Don't save the path to this application in the database
+                opts.dontPersistConfigChanges = true
+                opts.deploymentConfig = {}
+                
+            else
+                opts.deploymentConfig = {}
+
+        if not @_isValidConfig(opts.deploymentConfig, @_validDeploymentConfig)
+            console.log("In #{deploymentConfigPath}")
+            return null
 
         return opts
 
-    _getMountPoint : (path) ->
+    # Validates data in the configuration files and constructs the final
+    # application configuration
+    _configure : (appInfo) ->
+        {path, mountPoint, type, mountFunc} = appInfo
+
+        if not (opts = @_getInitialConfiguration(path, type)) then return null
+
+        {appConfig, deploymentConfig} = opts
+
+        if deploymentConfig.mountPoint? and @find(deploymentConfig.mountPoint)
+            console.log "#{deploymentConfig.mountPoint} is already in use." +
+            " Please configure another mountPoint in #{path}/deployment_config.json"
+            return null
+
+        # Configure the mountPoint if not already configured
+        if not deploymentConfig.mountPoint? or
+        typeof deploymentConfig.mountPoint is "undefined"
+            # If the mountPoint was not configured in the config file
+            deploymentConfig.mountPoint =
+                # Use the mountPoint specified as an argument
+                # to _configure
+                if mountPoint then mountPoint
+                # Else construct the mountPoint from its path
+                else @_constructMountPoint(path)
+
+        {applicationStateFile, browserLimit, instantiationStrategy} = appConfig
+        {authenticationInterface, mountPoint} = deploymentConfig
+
+        # Load initial (local/shared) application state
+        if applicationStateFile and typeof applicationStateFile isnt "undefined"
+            require(Path.resolve(path, applicationStateFile)).initialize(opts)
+
+        # Validation
+        if authenticationInterface
+            # browserLimit is mandatory for applications with
+            # multiInstance instantiation strategy
+            if instantiationStrategy is "multiInstance"
+                if not browserLimit
+                    console.log("browserLimit must be provided as the" +
+                        " instantiation strategy has been set to" +
+                        " multiInstance in #{appConfigPath}")
+                    return
+
+        # Checking for a valid browser limit
+        if browserLimit? and isNaN(browserLimit)
+            console.log("browserLimit must be a valid number in" +
+                " #{appConfigPath}")
+            return
+
+        # Configure the db collection name
+        if authenticationInterface
+            # Get the name of the mongo db collection corresponding to the app
+            if not deploymentConfig.collectionName or
+            typeof deploymentConfig.collectionName is "undefined"
+                deploymentConfig.collectionName =
+                    ApplicationManager.constructCollectionName(mountPoint)
+            # Adding unique index to the collection
+            @server.mongoInterface.addIndex(
+                deploymentConfig.collectionName,
+                {email:1, ns:1})
+
+        # Pointers to sub applications like landing_page etc.
+        opts.subApps = []
+
+        # Path to the application
+        opts.path = path
+
+        # Getting the absolute path to the entryPoint
+        appConfig.entryPoint = Path.resolve(path, appConfig.entryPoint)
+
+        # The default function for setting up the routes is setupMountPoint
+        # others are setupAuthenticationInterface and setupLandingPage
+        opts.mountFunc = mountFunc
+
+        return opts
+
+    _constructMountPoint : (path) ->
         # Removing the trailing slash
         if path.charAt(path.length-1) is "/" then path = path.slice(0, - 1)
         # Get the components of the path
@@ -94,67 +252,118 @@ class ApplicationManager extends EventEmitter
         # then, the application at that path has already been mounted or
         # that there are multiple apps sharing a config file.
         if index is splitPath.length
-            throw new Error("Multiple applications in the same directory #{path} are not supported")
-
+            # App has already been mounted
+            return
         else return mountPoint
 
     # Used for landing page and authentication interface as they need
     # special routes and hence a special mount function in the http server
-    # Similar to combination of createAppFromDir and _add
-    _createSubApplication : (subApp) ->
-        opts = @_configure(Path.resolve(@cbAppDir, subApp.path))
+    _createSubApplication : (appInfo) ->
+        appInfo.type = "sub"
+        opts = @_configure(appInfo)
 
-        # Use path as the default mountPoint unless a mountPoint
-        # is specified
-        opts.mountPoint = "#{subApp.parentMountPoint}/" +
-        "#{if subApp.mountPoint? then subApp.mountPoint else subApp.path}"
+        {mountPoint} = opts.deploymentConfig
 
         # Store strong ref
-        @applications[opts.mountPoint] = new Application(opts)
+        @applications[mountPoint] = new Application(opts, @server)
 
         # Store weak ref
-        app = @weakRefsToApps[opts.mountPoint] = Weak(@applications[opts.mountPoint],
-        cleanupApp(opts.mountPoint))
+        app = @weakRefsToApps[mountPoint] =
+            Weak(@applications[mountPoint], cleanupApp(mountPoint))
 
-        # Setting up the routes for the application
-        @server.mount.call(@server, app, subApp.mountFunc)
+        @emit("added", app)
 
-        @emit("Added", app)
-
+        return app
+    
     # Creates a new CloudBrowser application object and 
     # adds it to the pool of CloudBrowser applications
     _add : (opts) ->
+        {mountPoint, owner} = opts.deploymentConfig
+
+        {mongoInterface, permissionManager} = @server
+
+        {owner,
+         mountOnStartup,
+         instantiationStrategy,
+         authenticationInterface} = opts.deploymentConfig
+
+        # If there already is an application corresponding to the mountPoint
+        # then don't add it. Prompt to update the mountPoint in the config file
+        if @find(mountPoint)
+            console.log("Application with mountPoint #{mountPoint} already " +
+                "exists. Change the mountPoint in #{opts.path}/app_config.json")
+
+
+        # Add the permission record for this application's owner 
+        permissionManager.addAppPermRec(owner, mountPoint, {own:true})
+
+        # Add the application path details to the DB for the server
+        # to know the location of applications to be loaded at startup
+        if not opts.dontPersistConfigChanges
+            mongoInterface.addApp
+                path        : opts.path
+                owner       : owner
+                mountPoint  : mountPoint
+
+        if authenticationInterface then @createSubApplications(opts)
+
         # Store strong ref
-        @applications[opts.mountPoint] = new Application(opts)
+        @applications[mountPoint] = new Application(opts, @server)
 
         # Store weak ref
-        app = @weakRefsToApps[opts.mountPoint] = Weak(@applications[opts.mountPoint],
-        cleanupApp(opts.mountPoint))
+        app = @weakRefsToApps[mountPoint] =
+            Weak(@applications[mountPoint], cleanupApp(mountPoint))
+
+        @setupEventListeners(app)
 
         # Setting up the routes for the application
-        @server.mount.call(@server, app, "setupMountPoint")
+        if mountOnStartup
+            app.mount()
 
-        if opts.authenticationInterface
-            @_createSubApplication
-                path       : "authentication_interface"
-                mountPoint : "authenticate"
-                mountFunc  : "setupAuthenticationInterface"
-                parentMountPoint : opts.mountPoint
-            # Landing page is only needed when the authentication interface is
-            # enabled and the instantiation strategy is multiInstance
-            if opts.instantiationStrategy is "multiInstance"
-                @_createSubApplication
-                    path       : "landing_page"
-                    mountFunc  : "setupLandingPage"
-                    parentMountPoint : opts.mountPoint
+        @emit("added", app)
 
-        @emit("Added", app)
         return app
+
+    setupEventListeners : (app) ->
+
+        app.on 'madePublic', () =>
+            @emit 'madePublic', app
+
+        app.on 'madePrivate', () =>
+            @emit 'madePrivate', app
+
+    # Creates the sub applications and push a pointer to each one
+    # of them in the parent's subApp array
+    createSubApplications : (opts) ->
+        {mountPoint} = opts.deploymentConfig
+        {instantiationStrategy} = opts.appConfig
+        
+        opts.subApps.push @_createSubApplication
+            path       : Path.resolve(@cbAppDir, "authentication_interface")
+            mountPoint : "#{mountPoint}/authenticate"
+            mountFunc  : "setupAuthenticationInterface"
+
+        # The password reset application doesn't require any special routes
+        # Use default mountFunc
+        opts.subApps.push @_createSubApplication
+            path      : Path.resolve(@cbAppDir, "password_reset")
+            mountPoint : "#{mountPoint}/password_reset"
+
+        # Landing page is only needed when the authentication interface is
+        # enabled and the instantiation strategy is multiInstance
+        if instantiationStrategy is "multiInstance"
+            opts.subApps.push @_createSubApplication
+                path       : Path.resolve(@cbAppDir, "landing_page")
+                mountFunc  : "setupLandingPage"
+                mountPoint : "#{mountPoint}/landing_page"
 
     # Walks a path recursively and finds all CloudBrowser applications
     _walk : (path) =>
         Fs.readdir path, (err, list) =>
+            # Don't allow external mounting of these apps
+            # landing_page, password_reset etc.
             throw err if err
+            if path is @cbAppDir then return
             for filename in list
                 filename = Path.resolve(path, filename)
                 do(filename) =>
@@ -162,82 +371,80 @@ class ApplicationManager extends EventEmitter
                         throw err if err
                         # If directory contains an app_config file 
                         # then create cloudbrowser application
-                        if /app_config\.json$/.test(filename) then @createAppFromDir(path)
+                        if /app_config\.json$/.test(filename)
+                            @server.mongoInterface.findApp {path:path}, (app) =>
+                                if not app
+                                    @createAppFromDir
+                                        path : path
+                                        type : "uploaded"
                         # Else continue walking
                         else if stats.isDirectory() then @_walk(filename)
                         
     # Constructs the name of the database collection from the mountPoint
-    _constructDbName : (mountPoint) ->
+    @constructCollectionName : (mountPoint) ->
         # Remove the trailing slash
-        dbName = mountPoint
-        if dbName[dbName.length-1] is "\/"
-            dbName = dbName.pop()
+        collectionName = mountPoint
+        if collectionName[collectionName.length-1] is "\/"
+            collectionName = collectionName.pop()
         # Remove the beginning slash
-        if dbName[0] is "\/"
-            dbName = dbName.substring(1)
+        if collectionName[0] is "\/"
+            collectionName = collectionName.substring(1)
         # Replace all other slashes with dots
-        dbName = dbName.replace('\/', '\.')
-        dbName += ".users"
-        return dbName
+        collectionName = collectionName.replace('\/', '\.')
+        collectionName += ".users"
+        # As the mountPoint is unique, the collection name must also be unique
+        # as it is constructed from the mountPoint
+        return collectionName
             
     # Checks if path in the list of paths supplied as the command line arg 
     # is a file or directory and takes the appropriate action
-    load : (paths) ->
+    _loadFromCmdLine : (paths) ->
         for path in paths
             path = Path.resolve(process.cwd(), path)
             do(path) =>
                 Fs.lstat path, (err, stats) =>
                     throw err if err
-                    throw new Error("Path #{path} not found") if not stats
+                    if not stats
+                        console.log("\nPath #{path} does not exist")
                     # If path corresponds to a file then mount it directly
                     #TODO : Check for symlink
-                    if stats.isFile() then @createAppFromFile(path)
+                    else if stats.isFile() then @createAppFromFile(path)
                     # Else recursively walk down the path to find cloudbrowser
                     # applications
                     else if stats.isDirectory() then @_walk(path)
                 
     # Creates a CloudBrowser application given the absolute path to the html file
     createAppFromFile : (path) ->
-        # As there is no app_config.json file, manually set the basic
-        # configuration options - entryPoint and mountPoint
-        opts = {}
-
         # Removing the extension
         indexOfExt = path.lastIndexOf(".")
-        newPath = path.substring 0,
-        if indexOfExt isnt -1 then indexOfExt else path.length
+        pathWithoutExt = path.substring(
+            0,
+            if indexOfExt isnt -1 then indexOfExt else path.length)
 
-        opts.mountPoint = @_getMountPoint(newPath)
+        opts = {}
+        # As there is no app_config.json file, manually set the basic
+        # configuration options - entryPoint and mountPoint
+        opts.appConfig =
+            entryPoint : path
+        opts.deploymentConfig =
+            mountPoint : @_constructMountPoint(pathWithoutExt)
 
-        opts.entryPoint = path
         # Add the application to the application manager's pool of apps
         @_add(opts)
 
     # Creates a CloudBrowser application given the absolute path to the app
     # directory 
-    createAppFromDir : (path, mountPoint) ->
+    createAppFromDir : (appInfo) ->
         # Get the application configuration
-        opts = @_configure(path)
-        # Get the mountPoint
-        opts.mountPoint = if mountPoint then mountPoint else @_getMountPoint(path)
-        # Load initial (local/shared) state
-        if opts.state
-            require(Path.resolve(path, opts.state)).initialize(opts)
-
-        if opts.authenticationInterface
-            # Get the name of the mongo db collection corresponding to the app
-            opts.dbName = @_constructDbName(opts.mountPoint)
-            # The password reset application doesn't require any special routes
-            @createAppFromDir(Path.resolve(@cbAppDir, "password_reset"), "#{opts.mountPoint}/password_reset")
+        if not (opts = @_configure(appInfo)) then return null
 
         # Add the application to the application manager's pool of apps
         @_add(opts)
 
     remove : (mountPoint) ->
-        # TODO : Must unmount app + all sub-applications and remove all routes
         delete @applications[mountPoint]
         delete @weakRefsToApps[mountPoint]
-        @emit("Removed", mountPoint)
+        @emit("removed", mountPoint)
 
     find : (mountPoint) ->
         # Hand out weak references to other modules
@@ -245,6 +452,8 @@ class ApplicationManager extends EventEmitter
 
     get : () ->
         # Hand out weak references to other modules
+        # Permission Check Required
+        # for all apps and for only a particular user's apps
         return @weakRefsToApps
 
 module.exports = ApplicationManager

@@ -9,10 +9,11 @@ CBAuthentication.controller "LoginCtrl", ($scope) ->
     $scope.resetSuccessMsg  = null
     $scope.isDisabled       = false
     $scope.showEmailButton  = false
-    currentVirtualBrowser   = cloudbrowser.getCurrentVirtualBrowser()
+    currentVirtualBrowser   = cloudbrowser.currentVirtualBrowser
     appConfig               = currentVirtualBrowser.getAppConfig()
-    googleStrategy          = appConfig.getGoogleStrategy()
-    localStrategy           = appConfig.getLocalStrategy()
+    auth                    = cloudbrowser.auth
+    googleStrategy          = auth.getGoogleStrategy()
+    localStrategy           = auth.getLocalStrategy()
 
     $scope.$watch "email + password", ->
         $scope.loginError       = null
@@ -46,7 +47,7 @@ CBAuthentication.controller "LoginCtrl", ($scope) ->
 
         else
             $scope.resetDisabled = true
-            appConfig.sendResetLink new cloudbrowser.app.User($scope.email, 'local'), (success) ->
+            auth.sendResetLink new cloudbrowser.app.User($scope.email, 'local'), (success) ->
                 if success
                     $scope.resetSuccessMsg = "A password reset link has been sent to your email ID."
                 else
@@ -64,10 +65,10 @@ CBAuthentication.controller "SignupCtrl", ($scope) ->
     $scope.passwordError    = null
     $scope.successMessage   = false
     $scope.isDisabled       = false
-    currentVirtualBrowser   = cloudbrowser.getCurrentVirtualBrowser()
+    currentVirtualBrowser   = cloudbrowser.currentVirtualBrowser
     appConfig               = currentVirtualBrowser.getAppConfig()
-    googleStrategy          = appConfig.getGoogleStrategy()
-    localStrategy           = appConfig.getLocalStrategy()
+    googleStrategy          = cloudbrowser.auth.getGoogleStrategy()
+    localStrategy           = cloudbrowser.auth.getLocalStrategy()
 
     $scope.$watch "email", (nval, oval) ->
         $scope.emailError       = null

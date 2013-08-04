@@ -126,9 +126,10 @@ class HTTPServer extends EventEmitter
         else
             res.send("The requested browser #{id} was not found", 403)
 
-    setupLandingPage: (browsers, app) ->
-        {mountPoint} = app
-        @mountedBrowserManagers[app.mountPoint] = browsers
+    setupLandingPage: (app) ->
+        {browsers} = app
+        mountPoint = app.getMountPoint()
+        @mountedBrowserManagers[app.getMountPoint()] = browsers
 
         @server.get mountPoint,
         (req, res, next) => @isAuthenticated(req, res, next, mountPoint),
@@ -149,8 +150,9 @@ class HTTPServer extends EventEmitter
         (req, res, next) => @isAuthenticated(req, res, next, mountPoint),
         (req, res, next) => @resourceProxyRouteHandler(req, res, next, mountPoint)
 
-    setupAuthenticationInterface: (browsers, app) ->
-        {mountPoint} = app
+    setupAuthenticationInterface: (app) ->
+        {browsers} = app
+        mountPoint = app.getMountPoint()
         @mountedBrowserManagers[mountPoint] = browsers
 
         @server.get mountPoint,
@@ -172,7 +174,7 @@ class HTTPServer extends EventEmitter
         (req, res, next) => @resourceProxyRouteHandler(req, res, next, mountPoint)
 
     setupAuthRoutes : (app, mountPoint) ->
-        browsers = @mountedBrowserManagers[mountPoint]
+        {browsers} = app
 
         @server.get mountPoint,
         (req, res, next) => @isAuthenticated(req, res, next, mountPoint),
@@ -199,15 +201,12 @@ class HTTPServer extends EventEmitter
             @redirect(res, mountPoint)
 
         @server.get "#{mountPoint}/activate/:token", (req, res) =>
-            @cbServer.mongoInterface.findUser {token:req.params.token}, app.dbName, (user) =>
-                @addPermRec user, mountPoint, () =>
-                    @cbServer.mongoInterface.unsetUser {token: req.params.token},
-                    app.dbName, {token: "", status: ""}, () =>
-                        res.render 'activate.jade',
-                            url: "http://#{@cbServer.config.domain}:#{@cbServer.config.port}#{mountPoint}"
+            app.activateUser req.params.token, () =>
+                res.render 'activate.jade',
+                    url: "http://#{@cbServer.config.domain}:#{@cbServer.config.port}#{mountPoint}"
 
         @server.get "#{mountPoint}/deactivate/:token", (req, res) =>
-            @cbServer.mongoInterface.removeUser {token: req.params.token}, app.dbName, () =>
+            app.deactivateUser req.params.token, () ->
                 res.render 'deactivate.jade'
 
     browserRoute : (mountPoint) ->
@@ -239,8 +238,9 @@ class HTTPServer extends EventEmitter
 
     # Sets up a server endpoints that serves browsers from the
     # application's BrowserManager.
-    setupMountPoint : (browsers, app) ->
-        {mountPoint} = app
+    setupMountPoint : (app) ->
+        {browsers} = app
+        mountPoint = app.getMountPoint()
         @mountedBrowserManagers[mountPoint] = browsers
 
         # Route to reserve a virtual browser.
@@ -250,8 +250,25 @@ class HTTPServer extends EventEmitter
         # strategies for creating browsers should be pluggable (e.g. creating
         # a browser from a URL sent via POST).
 
-        if app.authenticationInterface then @setupAuthRoutes(app, mountPoint)
+        if app.isAuthConfigured() then @setupAuthRoutes(app, mountPoint)
         else @setupRoutes(app, mountPoint)
+
+    removeMountPoint : (app) ->
+        mountPoint = app.getMountPoint()
+        @removeRoute(mountPoint)
+        @removeRoute(@browserRoute(mountPoint))
+        @removeRoute(@resourceProxyRoute(mountPoint))
+        if app.isAuthConfigured()
+            @removeRoute("#{mountPoint}/logout")
+            @removeRoute("#{mountPoint}/activate/:token")
+            @removeRoute("#{mountPoint}/deactivate/:token")
+            for subApp in app.getSubApps()
+                @removeMountPoint(subApp)
+
+    removeRoute : (path) ->
+        @server.routes.routes.get =
+            for route in @server.routes.routes.get when route.path isnt path
+                route
 
     bundleJS : () ->
         b = Browserify
@@ -283,7 +300,6 @@ class HTTPServer extends EventEmitter
         else res.send(500)
 
     addPermRec : (user, mountPoint, callback) ->
-        # Wrong way of doing it!
         # Add a user permission record associated with the system
         @cbServer.permissionManager.addSysPermRec user, {}, (sysRec) =>
             # Add a user permission record associated with the application

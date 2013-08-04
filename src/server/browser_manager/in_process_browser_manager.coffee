@@ -29,12 +29,15 @@ class InProcessBrowserManager extends BrowserManager
         @bservers[id] = new browserInfo.type
             id          : id
             server      : @server
-            mountPoint  : @app.mountPoint
+            mountPoint  : @app.getMountPoint()
             creator     : browserInfo.creator,
             permissions : browserInfo.permissions
 
+
         # Store weak reference
         @weakRefsToBservers[id] = Weak(@bservers[id], cleanupBserver(id))
+
+        @emit("added", id)
 
         # Load the application code into the browser
         @bservers[id].load(@app)
@@ -49,6 +52,11 @@ class InProcessBrowserManager extends BrowserManager
 
         bserver.close()
 
+        # TODO : Is copying into a local variable required?
+        id = bserver.id
+        
+        @emit("removed", id)
+
         # Removing stored weak ref
         delete @weakRefsToBservers[bserver.id]
 
@@ -56,7 +64,7 @@ class InProcessBrowserManager extends BrowserManager
         delete @bservers[bserver.id]
 
     _grantBrowserPerm : (user, id, permissions, callback) ->
-        @server.permissionManager.addBrowserPermRec user, @app.mountPoint,
+        @server.permissionManager.addBrowserPermRec user, @app.getMountPoint(),
         id, permissions, (browserRec) ->
             if not browserRec
                 throw new Error("Could not grant permissions associated with " +
@@ -70,7 +78,7 @@ class InProcessBrowserManager extends BrowserManager
         # Checking the browser limit configured for the application
         @server.permissionManager.checkPermissions
             user        : user
-            mountPoint  : @app.mountPoint
+            mountPoint  : @app.getMountPoint()
             permissions : {createbrowsers:true}
             callback    : (canCreate) =>
                 if not canCreate
@@ -100,7 +108,7 @@ class InProcessBrowserManager extends BrowserManager
                                     callback(null, @app.bserver)
                         when "singleUserInstance"
                             @server.permissionManager.getBrowserPermRecs user,
-                            @app.mountPoint, (browserRecs) =>
+                            @app.getMountPoint(), (browserRecs) =>
                                 # Create new bserver and grant permissions only if
                                 # one associated with the user doesn't exist
                                 if not browserRecs or
@@ -120,9 +128,9 @@ class InProcessBrowserManager extends BrowserManager
                         when "multiInstance"
                             userLimit = @app.getBrowserLimit()
                             if not userLimit
-                                throw new Error("BrowserLimit for app #{@app.mountPoint} not specified")
+                                throw new Error("BrowserLimit for app #{@app.getMountPoint()} not specified")
                             @server.permissionManager.getBrowserPermRecs user,
-                            @app.mountPoint, (browserRecs) =>
+                            @app.getMountPoint(), (browserRecs) =>
                                 if not browserRecs or
                                 Object.keys(browserRecs).length < userLimit
                                     permissions = {own:true, readwrite:true, remove:true}
@@ -149,7 +157,7 @@ class InProcessBrowserManager extends BrowserManager
 
     create : (user, callback, id = @generateUUID()) ->
 
-        if @app.authenticationInterface or /landing_page$/.test(@app.mountPoint)
+        if @app.isAuthConfigured() or /landing_page$/.test(@app.getMountPoint())
             @_createSecure(user, callback, id)
 
         else @_create(id)
@@ -160,13 +168,13 @@ class InProcessBrowserManager extends BrowserManager
             @_closeBserver(bserver)
     
     close : (bserver, user, callback) ->
-        if @app.authenticationInterface
+        if @app.isAuthConfigured()
             if not user?
                 callback(new Error("Permission Denied"))
             # Check if the user has permissions to delete this bserver
             @server.permissionManager.checkPermissions
                 user        : user
-                mountPoint  : @app.mountPoint
+                mountPoint  : @app.getMountPoint()
                 browserId   : bserver.id
                 permissions :{remove:true}
                 callback    : (canRemove) =>
@@ -174,7 +182,7 @@ class InProcessBrowserManager extends BrowserManager
                         # Not respecting asynchronous nature of function call here!
                         for user in bserver.getAllUsers()
                             @server.permissionManager.rmBrowserPermRec user,
-                            @app.mountPoint, bserver.id, (err) ->
+                            @app.getMountPoint(), bserver.id, (err) ->
                                 if err then callback(err)
                             @_closeBserver(bserver)
                             callback(null)

@@ -2,8 +2,8 @@ CBPasswordReset         = angular.module("CBPasswordReset", [])
 
 CBPasswordReset.controller "ResetCtrl", ($scope) ->
 
-    currentVirtualBrowser = cloudbrowser.getCurrentVirtualBrowser()
-    appConfig = currentVirtualBrowser.getAppConfig()
+    currentVirtualBrowser = cloudbrowser.currentVirtualBrowser
+    auth = cloudbrowser.auth
     currentVirtualBrowser.getResetEmail (userEmail) ->
         $scope.$apply ->
             $scope.email = userEmail.split("@")[0]
@@ -29,7 +29,7 @@ CBPasswordReset.controller "ResetCtrl", ($scope) ->
             " Spaces are not allowed."
 
         else
-            appConfig.resetPassword $scope.password, (success) ->
+            auth.resetPassword $scope.password, (success) ->
                 $scope.$apply ->
                     if success
                             $scope.passwordSuccess = "The password has been successfully reset"

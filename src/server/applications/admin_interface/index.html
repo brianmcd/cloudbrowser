@@ -1,37 +1,153 @@
 <html ng-app="CBAdmin">
     <head>
         <title>CloudBrowser - Administration Interface</title>
-        <script type="text/javascript" src='js/angular.js'></script>
-        <script type="text/javascript" src='js/controller.js'></script>
-        <link href="css/bootstrap.css" rel="stylesheet">
-        <link href="css/bootstrap-responsive.css" rel="stylesheet">
-        <link rel='stylesheet' href='css/font-awesome.css'>
-        <link rel='stylesheet' href='css/style.css'>
+        <link rel="stylesheet" href="css/bootstrap.css">
+        <link rel="stylesheet" href="css/bootstrap-responsive.css">
+        <link rel="stylesheet" href="css/font-awesome.css">
+        <link rel="stylesheet" href="css/style.css">
+        <script type="text/javascript" src="js/angular.js"></script>
+        <script type="text/javascript" src="js/controller.js"></script>
+        <script type="text/javascript" src="js/jquery.js"></script>
+        <meta charset="UTF-8">
     </head>
     <body>
         <div class="container-fluid">
-            <div class="row-fluid">
-                <div class="span8 offset2" ng-controller="AppCtrl">
-                    <div class="page-header pagination-centered">
-                        <h3>CloudBrowser Administration Interface</h3>
-                    </div>
-                    <table class="table table-bordered">
+            <div class="row-fluid" ng-controller="AppCtrl">
+                <div class="page-header pagination-centered">
+                    <h3>CloudBrowser Administration Interface</h3>
+                </div>
+                <div class="span7">
+                    <input type="text" class="input-small search-query margin-bottom"
+                    placeholder="search" ng-model="search">
+                    <table class="table table-bordered" id="data-table">
                         <thead>
-                            <th>Application</th>
-                            <th>Virtual Browsers</th>
+                            <th class="align-left"
+                            ng-click="predicate='mountPoint'; mreverse=!mreverse; reverse=mreverse">
+                                MountPoint
+                            </th>
+                            <th
+                            ng-click="predicate='users.length'; ureverse=!ureverse; reverse=ureverse">
+                                # Users
+                            </th>
+                            <th
+                            ng-click="predicate='virtualBrowsers.length'; ireverse=!ireverse; reverse=ireverse">
+                                # Instances
+                            </th>
+                            <th
+                            ng-click="predicate='privacy'; preverse=!preverse; reverse=preverse">
+                                Privacy
+                            </th>
+                            <th
+                            ng-click="predicate='mounted'; sreverse=!sreverse; reverse=sreverse">
+                                State
+                            </th>
+                            <th
+                            ng-click="predicate='isAuthEnabled'; areverse=!areverse; reverse=areverse">
+                                Authentication
+                            </th>
                         </thead>
                         <tbody>
-                        <tr ng-repeat="(mountPoint,app) in apps">
-                            <td><a href="{{mountPoint}}" ng-click="click(mountPoint)" target="_blank">{{mountPoint}}</a></td>
-                            <td>
-                                <!--<div ng-repeat="(id,browser) in app.browsers.browsers">-->
-                                    <a href="http://{{domain}}:{{port}}{{mountPoint}}/browsers/{{id}}/index">{{id}}</a>
-                                    <i id="remove" class="icon-remove-sign icon-large" ng-click="deleteVB(mountPoint,id)"></i>
-                                </div>
-                            </td>
-                        </tr> 
+                            <tr ng-repeat="app in apps | filter:search| orderBy:predicate:reverse"
+                            ng-click="selectApp(app.mountPoint)"
+                            ng-class="getAppClass(app)">
+                                <td class="align-left">{{app.mountPoint}}</td>
+                                <td>{{app.users.length}}</td>
+                                <td>{{app.virtualBrowsers.length}}</td>
+                                <td ng-show='app.isPublic'>Public</td>
+                                <td ng-hide='app.isPublic'>Private</td>
+                                <td ng-show='app.mounted'>Mounted</td>
+                                <td ng-hide='app.mounted'>Disabled</td>
+                                <td ng-show='app.isAuthEnabled'>On</td>
+                                <td ng-hide='app.isAuthEnabled'>Off</td>
+                            </tr> 
                         </tbody>
                     </table>
+                </div>
+
+                <div ng-show="selectedApp"
+                class="span4 pagination-centered box"
+                ng-class="getBoxClass(selectedApp.mountPoint)">
+
+                    <legend>
+                        {{selectedApp.mountPoint | removeSlash}}
+                    </legend>
+
+                    <a ng-click="leftClick(selectedApp.url)" title="Visit the app">
+                        {{selectedApp.url}}
+                        <i class="icon-external-link"></i>
+                    </a>
+
+                    <p class="well">
+                        <span ng-hide="selectedApp.editing">
+                            {{selectedApp.description}}
+                            <a ng-click="editDescription(selectedApp.mountPoint)">
+                                Edit
+                            </a>
+                        </span>
+                        <textarea ng-show="selectedApp.editing" type="text"
+                        ng-hasfocus="selectedApp.editing" class="span11"
+                        ng-model="selectedApp.description"></textarea>
+                    </p>
+
+                    <table class="table table-striped">
+                        <tr ng-show="selectedApp.users">
+                            <td>
+                                <strong>
+                                    {{selectedApp.users.length}}
+                                </strong> Users
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <strong>
+                                    {{selectedApp.virtualBrowsers.length}}
+                                </strong> Instances</td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <strong>
+                                    {{selectedApp.instantiationStrategy}}
+                                </strong> Instantiation Strategy
+                                <span ng-show="selectedApp.browserLimit">
+                                    with a browser limit of 
+                                    <strong>
+                                        {{selectedApp.browserLimit}}
+                                    </strong>
+                                </span>
+                            </td>
+                        </tr>
+                    </table>
+
+                    <div class="span3 offset4 align-left">
+                        <div class="onoffswitch onoffswitch-privacy">
+                            <input type="checkbox" id="onoffswitch1"
+                            class="onoffswitch-checkbox" ng-model="selectedApp.isPublic">
+                            <label class="onoffswitch-label"
+                            for="onoffswitch1" ng-click="togglePrivacy(selectedApp.mountPoint)">
+                                <div class="onoffswitch-inner"></div>
+                                <div class="onoffswitch-switch"></div>
+                            </label>
+                        </div>
+                        <div class="onoffswitch onoffswitch-auth">
+                            <input type="checkbox" id="onoffswitch1"
+                            class="onoffswitch-checkbox" ng-model="selectedApp.isAuthEnabled">
+                            <label class="onoffswitch-label"
+                            for="onoffswitch1" ng-click="toggleAuthentication(selectedApp.mountPoint)">
+                                <div class="onoffswitch-inner"></div>
+                                <div class="onoffswitch-switch"></div>
+                            </label>
+                        </div>
+                        <div class="onoffswitch onoffswitch-mounted">
+                            <input type="checkbox" id="onoffswitch1"
+                            class="onoffswitch-checkbox" ng-model="selectedApp.mounted">
+                            <label class="onoffswitch-label"
+                            for="onoffswitch1" ng-click="toggleMountDisable(selectedApp.mountPoint)">
+                                <div class="onoffswitch-inner"></div>
+                                <div class="onoffswitch-switch"></div>
+                            </label>
+                        </div>
+                    </div>
+
                 </div>
             </div>
         </div> 

@@ -51,7 +51,7 @@ class Browser extends EventEmitter
         if arg.entryURL?
             url = arg.entryURL()
             app = arg
-            @bserver.mountPoint = arg.mountPoint
+            @bserver.mountPoint = arg.getMountPoint()
         else url = arg
 
         @emit 'PageLoading',
