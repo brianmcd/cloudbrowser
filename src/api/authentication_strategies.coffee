@@ -135,7 +135,7 @@ class LocalStrategy
                 # indicate that the email ID has not been activated
                 # and any login request from this account must not be
                 # allowed to pass.
-                hashPassword {password:password}, (result) =>
+                hashPassword {password:password}, (result) ->
                     userRec =
                         email   : user.getEmail()
                         key     : result.key.toString('hex')

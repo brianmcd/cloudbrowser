@@ -47,7 +47,9 @@
     "xmlhttprequest"   : "1.2.2",
     "coffee-script-mapped" : "0.1.4",
     "mocha"            : "1.12.0",
-    "sinon-chai"       : "2.4.0"
+    "sinon-chai"       : "2.4.0",
+    "read"             : "1.0.5",
+    "async"            : "0.2.9"
   },
   "devDependencies": {
     "nodeunit": "0.6.4"

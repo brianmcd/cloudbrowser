@@ -1,5 +1,6 @@
 Mongo      = require('mongodb')
 Express    = require('express')
+Async      = require('async')
 MongoStore = require('connect-mongo')(Express)
 
 # TODO : use Mongoose and rewrite this code
@@ -13,24 +14,34 @@ class MongoInterface
         @appCollection = "applications"
 
     findUser : (searchKey, collName, callback) ->
-        @dbClient.collection collName, (err, collection) ->
+        Async.waterfall [
+            (next) =>
+                @dbClient.collection(collName, next)
+            (collection, next) ->
+                collection.findOne(searchKey, next)
+            (user, next) ->
+                next(null, user)
+        ], (err, user) ->
             throw err if err
-            collection.findOne searchKey, (err, user) ->
-                throw err if err
-                callback(user)
+            callback(user)
 
     addUser : (users, collName, callback) ->
-        @dbClient.collection collName, (err, collection) ->
-            throw err if err
-            collection.insert users, (err, userRecs) ->
-                throw err if err
+        Async.waterfall [
+            (next) =>
+                @dbClient.collection(collName, next)
+            (collection, next) ->
+                collection.insert(users, next)
+            (userRecs, next) ->
                 # If an array of users was provided to be added
                 # return the array of records added
                 if users instanceof Array
-                    callback?(userRecs)
+                    next(null, userRecs)
                 # Return only one object not the array that contains
                 # the single object
-                else callback?(userRecs[0])
+                else next(null, userRecs[0])
+        ], (err, users) ->
+            throw err if err
+            callback?(users)
 
     getUsers : (collName, callback) ->
         @dbClient.collection collName, (err, collection) ->

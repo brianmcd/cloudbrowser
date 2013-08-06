@@ -140,11 +140,15 @@ class ApplicationManager extends EventEmitter
                 # The first admin is the owner of 
                 opts.deploymentConfig.owner = @server.config.admins[0]
                 # Don't save the path to this application in the database
-                opts.dontPersistConfigChanges = true
+                opts.dontSaveToDb = true
 
             # sub apps like landing_page, password_reset etc.
             when "sub"
                 # Don't save the path to this application in the database
+                opts.dontSaveToDb = true
+                # Don't save changes to the app_config and deployment_config
+                # as the configuration of the sub apps depends on the
+                # parent app anyway
                 opts.dontPersistConfigChanges = true
                 opts.deploymentConfig = {}
                 
@@ -299,7 +303,7 @@ class ApplicationManager extends EventEmitter
 
         # Add the application path details to the DB for the server
         # to know the location of applications to be loaded at startup
-        if not opts.dontPersistConfigChanges
+        if not opts.dontSaveToDb
             mongoInterface.addApp
                 path        : opts.path
                 owner       : owner

@@ -6,7 +6,6 @@ sio                 = require('socket.io')
 ParseCookie         = require('cookie').parse
 ApplicationManager  = require('./application_manager')
 PermissionManager   = require('./permission_manager')
-MongoInterface      = require('./mongo_interface')
 DebugServer         = require('./debug_server')
 HTTPServer          = require('./http_server')
 require('ofe').call()
@@ -60,7 +59,7 @@ defaults =
     useRouter           : false
 
 class Server extends EventEmitter
-    constructor : (@config = {}, paths, projectRoot) ->
+    constructor : (@config = {}, paths, projectRoot, @mongoInterface) ->
         for own k, v of defaults
             if not @config.hasOwnProperty k
                 @config[k] = v
@@ -72,20 +71,18 @@ class Server extends EventEmitter
 
         # There may be a synchronization issue
         # The final server may be usable only if all the components have been initialized
-        server = this
-        @mongoInterface = new MongoInterface 'cloudbrowser', () =>
 
-            server.permissionManager = new PermissionManager(@mongoInterface)
+        @permissionManager = new PermissionManager(@mongoInterface)
 
-            server.httpServer = new HTTPServer server, () =>
-                @emit('ready')
+        @httpServer = new HTTPServer this, () =>
+            @emit('ready')
 
-            server.socketIOServer = @createSocketIOServer(@httpServer.server, @config.apps)
+        @socketIOServer = @createSocketIOServer(@httpServer.server, @config.apps)
 
-            server.applications = new ApplicationManager
-                paths     : paths
-                server    : server
-                cbAppDir  : projectRoot
+        @applications = new ApplicationManager
+            paths     : paths
+            server    : this
+            cbAppDir  : projectRoot
 
         @setupEventTracker() if @config.printEventStats
 
