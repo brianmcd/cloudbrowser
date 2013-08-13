@@ -25,8 +25,8 @@
     });
     return $scope.reset = function() {
       $scope.isDisabled = true;
-      if (($scope.password == null) || !/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^\da-zA-Z])\S{8,15}$/.test($scope.password)) {
-        return $scope.passwordError = "Password must be have a length between 8 - 15 characters," + " must contain atleast 1 uppercase, 1 lowercase, 1 digit and 1 special character." + " Spaces are not allowed.";
+      if ($scope.password == null) {
+        return $scope.passwordError = "Please enter the password.";
       } else {
         return auth.resetPassword($scope.password, function(success) {
           return $scope.$apply(function() {

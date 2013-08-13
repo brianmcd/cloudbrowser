@@ -97,10 +97,6 @@ CBAuthentication.controller "SignupCtrl", ($scope) ->
         else if not /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}$/.test $scope.email.toUpperCase()
             $scope.emailError = "Not a valid Email ID!"
 
-        else if not /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^\da-zA-Z])\S{8,15}$/.test $scope.password
-            $scope.passwordError = "Password must be have a length between 8 - 15 characters," +
-            " must contain atleast 1 uppercase, 1 lowercase, 1 digit and 1 special character." +
-            " Spaces are not allowed."
         else
             localStrategy.signup
                 user     : new cloudbrowser.app.User($scope.email, 'local')

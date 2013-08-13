@@ -22,11 +22,8 @@ CBPasswordReset.controller "ResetCtrl", ($scope) ->
 
         $scope.isDisabled   = true
 
-        if not $scope.password? or
-        not /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^\da-zA-Z])\S{8,15}$/.test($scope.password)
-            $scope.passwordError = "Password must be have a length between 8 - 15 characters," +
-            " must contain atleast 1 uppercase, 1 lowercase, 1 digit and 1 special character." +
-            " Spaces are not allowed."
+        if not $scope.password?
+            $scope.passwordError = "Please enter the password."
 
         else
             auth.resetPassword $scope.password, (success) ->
