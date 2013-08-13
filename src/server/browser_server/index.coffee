@@ -393,8 +393,7 @@ RPCMethods =
             # Hack for textarea, as it doesn't have a value attribute
             # in the DOM.
             if target.tagName.toLowerCase() is "textarea" and
-            attribute is "value"
-                target.value = value
+            attribute is "value" then target.value = value
             else target.setAttribute(attribute, value)
             @setByClient = null
 
