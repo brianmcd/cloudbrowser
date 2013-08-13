@@ -4,6 +4,8 @@
         "email": "ashimaathri@gmail.com",
         "ns": "local"
     },
+    "browserLimit": 0,
+    "description": "",
     "mountOnStartup": true,
     "authenticationInterface": false,
     "mountPoint": "/person",

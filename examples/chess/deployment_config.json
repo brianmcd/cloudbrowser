@@ -5,6 +5,8 @@
         "email": "godmar@gmail.com",
         "ns": "google"
     },
+    "description": "A one player chess application from http://p4wn.sf.net/ w/o animation",
+    "browserLimit": 0,
     "mountOnStartup": true,
     "mountPoint": "/chess",
     "collectionName": "chess.users"

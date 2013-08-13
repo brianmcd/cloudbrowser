@@ -3,6 +3,7 @@ Managers = require('../browser_manager')
 Fs       = require('fs')
 {EventEmitter} = require('events')
 {MultiProcessBrowserManager, InProcessBrowserManager} = Managers
+{hashPassword} = require('../../api/utils')
 
 ###
 _validDeploymentConfig :
@@ -12,11 +13,11 @@ _validDeploymentConfig :
     mountOnStartup          : bool - "Should the app be mounted on server start"
     authenticationInterface : bool - "Enable authentication"
     mountPoint   : str - "The url location of the app"
+    description  : str - "Text describing the application."
+    browserLimit : num - "Cap on number of browsers per user. Only for multiInstance."
 
 _validAppConfig :
     entryPoint   : str - "The location of the html file of the the single page app"
-    description  : str - "Text describing the application."
-    browserLimit : num - "Cap on number of browsers per user. Only for multiInstance."
     instantiationStrategy : str - "Strategy for the instantiation of browsers"
     applicationStateFile    : str  - "Location of the file that contains app state"
 ###
@@ -24,12 +25,12 @@ _validAppConfig :
 class Application extends EventEmitter
 
     appConfigDefaults :
-        browserLimit : 0
-        description  : ""
         applicationStateFile  : ""
         instantiationStrategy : "default"
 
     deploymentConfigDefaults :
+        browserLimit   : 0
+        description    : ""
         isPublic       : false
         mountOnStartup : false
         authenticationInterface : false
@@ -63,7 +64,6 @@ class Application extends EventEmitter
 
         @createBrowserManager()
         
-        @writeConfigToFile(@appConfig, "app_config.json")
         @writeConfigToFile(@deploymentConfig, "deployment_config.json")
 
     setDefaults : (options, defaults...) ->
@@ -99,17 +99,16 @@ class Application extends EventEmitter
 
     setInstantiationStrategy : (strategy) ->
         @appConfig.instantiationStrategy = @validateStrategy(this, strategy)
-        @writeConfigToFile(@appConfig, "app_config.json")
 
     getBrowserLimit : () ->
-        return @appConfig.browserLimit
+        return @deploymentConfig.browserLimit
 
     setBrowserLimit : (limit) ->
         if @getBrowserLimit() is limit then return
         # and limit > LOWERLIMIT and limit < UPPERLIMIT
        
-        @appConfig.browserLimit = limit
-        @writeConfigToFile(@appConfig, "app_config.json")
+        @deploymentConfig.browserLimit = limit
+        @writeConfigToFile(@deploymentConfig, "deployment_config.json")
 
     isAppPublic : () ->
         return @deploymentConfig.isPublic
@@ -130,7 +129,7 @@ class Application extends EventEmitter
         @emit 'madePrivate'
 
     getDescription : () ->
-        return @appConfig.description
+        return @deploymentConfig.description
 
     getMountPoint : () ->
         return @deploymentConfig.mountPoint
@@ -146,11 +145,11 @@ class Application extends EventEmitter
         @writeConfigToFile(@deploymentConfig, "deployment_config.json")
 
     setDescription : (value) ->
-        if @appConfig.description is value then return
+        if @deploymentConfig.description is value then return
 
-        @appConfig.description = value
+        @deploymentConfig.description = value
 
-        @writeConfigToFile(@appConfig, "app_config.json")
+        @writeConfigToFile(@deploymentConfig, "deployment_config.json")
 
     isAuthConfigured : () ->
         return @deploymentConfig.authenticationInterface
@@ -310,6 +309,25 @@ class Application extends EventEmitter
         content = JSON.stringify(config, null, 4)
 
         Fs.writeFileSync(configPath, content)
+
+    authenticate : (options) ->
+        {user, password, callback} = options
+        # Checking if the user is already registered with the app
+        @findUser user, (userRec) ->
+            # Passes only if the user's email ID has been confirmed by the user.
+            if not userRec or userRec.status is 'unverified'
+                callback(false)
+            else
+                # Hashing the password using pbkdf2.
+                hashPassword
+                    password : password
+                    salt : new Buffer(userRec.salt, 'hex')
+                , (result) ->
+                    # Comparing the hashed user supplied password
+                    # to the one stored in the database.
+                    if result.key.toString('hex') is userRec.key
+                        callback(true)
+                    else callback(false)
 
     createBrowserManager : () ->
         if @browsers? then return

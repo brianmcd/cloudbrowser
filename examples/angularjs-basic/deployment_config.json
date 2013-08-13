@@ -5,6 +5,8 @@
         "ns": "google"
     },
     "mountOnStartup": true,
+    "description": "A basic AngularJS web application.",
+    "browserLimit": 0,
     "mountPoint": "/angularjs-basic",
     "authenticationInterface": true,
     "collectionName": "angularjs-basic.users"

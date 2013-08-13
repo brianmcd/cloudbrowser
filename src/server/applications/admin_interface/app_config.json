@@ -1,4 +1,5 @@
 {
-    "entryPoint" : "index.html",
-    "instantiationStrategy" : "singleUserInstance"
+    "entryPoint": "/home/ashima/cloudbrowser_versions/0.10.5/cloudbrowser/src/server/applications/admin_interface/index.html",
+    "instantiationStrategy": "singleUserInstance",
+    "applicationStateFile": ""
 }

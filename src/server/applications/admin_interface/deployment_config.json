@@ -1,4 +1,13 @@
 {
-    "authenticationInterface" : true,
-    "mountOnStartup"          : true
+    "authenticationInterface": true,
+    "mountOnStartup": true,
+    "owner": {
+        "email": "ashimaathri@gmail.com",
+        "ns": "local"
+    },
+    "mountPoint": "/admin_interface",
+    "collectionName": "admin_interface.users",
+    "browserLimit": 0,
+    "description": "No Desc",
+    "isPublic": false
 }

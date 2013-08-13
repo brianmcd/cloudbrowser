@@ -5,6 +5,8 @@
         "ns": "local"
     },
     "mountOnStartup": true,
+    "browserLimit": 0,
+    "description": "",
     "mountPoint": "/movejs",
     "authenticationInterface": false,
     "collectionName": null

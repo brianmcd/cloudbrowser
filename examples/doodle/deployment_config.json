@@ -4,6 +4,8 @@
         "email": "ashimaathri@gmail.com",
         "ns": "local"
     },
+    "browserLimit": 0,
+    "description": "A sample doodle app.",
     "mountOnStartup": false,
     "authenticationInterface": true,
     "mountPoint": "/doodle",

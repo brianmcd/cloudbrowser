@@ -5,7 +5,9 @@
         "email": "godmar@gmail.com",
         "ns": "google"
     },
-    "mountOnStartup": false,
+    "description": "A multi user chat application written using AngularJS",
+    "browserLimit": 0,
+    "mountOnStartup": true,
     "mountPoint": "/chat3",
     "collectionName": "chat3.users"
 }

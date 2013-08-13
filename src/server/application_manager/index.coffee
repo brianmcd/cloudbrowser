@@ -49,11 +49,11 @@ class ApplicationManager extends EventEmitter
         collectionName          : true
         mountOnStartup          : true
         authenticationInterface : true
+        description             : true
+        browserLimit            : true
 
     _validAppConfig :
         entryPoint            : true
-        description           : true
-        browserLimit          : true
         instantiationStrategy : true
         applicationStateFile  : true
 
@@ -186,8 +186,8 @@ class ApplicationManager extends EventEmitter
                 # Else construct the mountPoint from its path
                 else @_constructMountPoint(path)
 
-        {applicationStateFile, browserLimit, instantiationStrategy} = appConfig
-        {authenticationInterface, mountPoint} = deploymentConfig
+        {applicationStateFile, instantiationStrategy} = appConfig
+        {authenticationInterface, mountPoint, browserLimit} = deploymentConfig
 
         # Load initial (local/shared) application state
         if applicationStateFile and typeof applicationStateFile isnt "undefined"

@@ -1,7 +1,5 @@
 {
     "entryPoint": "/home/ashima/cloudbrowser_versions/0.10.5/cloudbrowser/examples/leaderboard/index.html",
-    "browserLimit": 0,
-    "description": "A simple leaderboard app",
     "applicationStateFile": "",
     "instantiationStrategy": "singleUserInstance"
 }

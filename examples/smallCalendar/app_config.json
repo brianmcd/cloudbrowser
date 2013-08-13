@@ -1,7 +1,5 @@
 {
     "entryPoint": "/home/ashima/cloudbrowser_versions/0.10.5/cloudbrowser/examples/smallCalendar/index.html",
-    "browserLimit": 0,
-    "description": "",
     "applicationStateFile": "",
     "instantiationStrategy": "singleUserInstance"
 }
