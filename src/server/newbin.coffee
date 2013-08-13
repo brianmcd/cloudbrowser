@@ -161,8 +161,7 @@ class Runner
             paths = []
             
             # List of all the unmatched positional args (the path names)
-            for item in Opts._
-                paths.push item
+            paths.push path for path in Opts._
             
             server = new Server(serverConfig, paths, projectRoot, mongoInterface)
 
