@@ -7,20 +7,23 @@ CBHomePage.controller "MainCtrl", ($scope) ->
     $scope.apps = []
 
     class App
-        @add : (app) ->
+        @add : (api) ->
+            app = {}
+            app.api = api
             $scope.$apply ->
                 $scope.apps.push(app)
 
         @remove : (mountPoint) ->
             $scope.$apply ->
                 $scope.apps = $.grep $scope.apps, (element, index) ->
-                    return element.getMountPoint() isnt mountPoint
+                    return element.api.getMountPoint() isnt mountPoint
 
     server.listApps
         filters :
             public : true
         callback : (apps) ->
-            $scope.apps = apps
+            for app in apps
+                App.add(app)
 
     server.addEventListener 'madePublic', (app) ->
         App.add(app)

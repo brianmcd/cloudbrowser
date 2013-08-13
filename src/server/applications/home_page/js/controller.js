@@ -12,7 +12,10 @@
     App = (function() {
       function App() {}
 
-      App.add = function(app) {
+      App.add = function(api) {
+        var app;
+        app = {};
+        app.api = api;
         return $scope.$apply(function() {
           return $scope.apps.push(app);
         });
@@ -21,7 +24,7 @@
       App.remove = function(mountPoint) {
         return $scope.$apply(function() {
           return $scope.apps = $.grep($scope.apps, function(element, index) {
-            return element.getMountPoint() !== mountPoint;
+            return element.api.getMountPoint() !== mountPoint;
           });
         });
       };
@@ -34,7 +37,13 @@
         "public": true
       },
       callback: function(apps) {
-        return $scope.apps = apps;
+        var app, _i, _len, _results;
+        _results = [];
+        for (_i = 0, _len = apps.length; _i < _len; _i++) {
+          app = apps[_i];
+          _results.push(App.add(app));
+        }
+        return _results;
       }
     });
     server.addEventListener('madePublic', function(app) {

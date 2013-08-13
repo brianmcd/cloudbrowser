@@ -14,9 +14,9 @@
                 <h2 class="page-header pagination-centered">CloudBrowser Applications</h2>
                 <div class="span8 offset2" ng-controller="MainCtrl">
                     <div class="well" ng-repeat="app in apps">
-                        <h4><u><a ng-click="leftClick(app.getUrl())">{{app.getMountPoint() | removeSlash}}</a></u></h4> 
-                        <span>{{app.getDescription()}}</span><br>
-                        <a ng-click="leftClick('https://github.com/brianmcd/cloudbrowser/tree/deployment/examples' + app.getMountPoint())">View Source Code</a>
+                        <h4><u><a ng-click="leftClick(app.api.getUrl())">{{app.api.getMountPoint() | removeSlash}}</a></u></h4> 
+                        <span>{{app.api.getDescription()}}</span><br>
+                        <a ng-click="leftClick('https://github.com/brianmcd/cloudbrowser/tree/deployment/examples' + app.api.getMountPoint())">View Source Code</a>
                         <br>
                     </div>
                 </div>
