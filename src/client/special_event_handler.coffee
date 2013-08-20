@@ -39,7 +39,6 @@ class SpecialEventHandler
                          clientEvent.target.__nodeID,
                          'value',
                          clientEvent.target.value)
-            # Do some special processing for files here
         @socket.emit('processEvent', remoteEvent, id)
 
     keyup : (rEvent, event, id) =>
