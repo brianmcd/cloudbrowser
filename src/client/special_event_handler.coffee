@@ -8,6 +8,9 @@ class SpecialEventHandler
         @_queuedKeyEvents = []
 
     click : (remoteEvent, clientEvent, id) ->
+        # Allow the default action for input type file
+        if clientEvent.target.getAttribute('type') is 'file' then return
+
         clientEvent.preventDefault()
         @socket.emit('processEvent',
                      remoteEvent,
@@ -36,6 +39,7 @@ class SpecialEventHandler
                          clientEvent.target.__nodeID,
                          'value',
                          clientEvent.target.value)
+            # Do some special processing for files here
         @socket.emit('processEvent', remoteEvent, id)
 
     keyup : (rEvent, event, id) =>
