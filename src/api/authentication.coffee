@@ -1,6 +1,8 @@
 Crypto = require("crypto")
 {hashPassword, getParentMountPoint} = require('./utils')
 {LocalStrategy, GoogleStrategy} = require('./authentication_strategies')
+Async = require('async')
+cloudbrowserError = require('../shared/cloudbrowser_error')
 
 class Auth
 
@@ -28,39 +30,50 @@ class Auth
             localStrategy  : new LocalStrategy(bserver, cbCtx)
             googleStrategy : new GoogleStrategy(bserver)
             parentApp : server.applications.find(parentMountPoint)
+            cbCtx     : cbCtx
 
     ###*
-        Sends a password reset link to the user at their registered email ID.
+        Sends a password reset link to the user to the email
+        registered with the application.
         @instance
         @method sendResetLink
-        @memberOf cloudbrowser.app.AppConfig
+        @memberOf cloudbrowser.auth
         @param {booleanCallback} callback
     ###
     sendResetLink : (user, callback) ->
         {bserver, cbCtx, parentApp} = _pvts[@_idx]
-        {mongoInterface, config} = bserver.server
+        {mongoInterface} = bserver.server
+        {domain, port}   = bserver.server.config
         {util} = cbCtx
-        appUrl = "http://#{config.domain}:#{config.port}#{parentApp.getMountPoint()}"
+        appUrl = "http://#{domain}:#{port}#{parentApp.getMountPoint()}"
 
-        parentApp.findUser user.toJson(), (userRec) ->
-            if userRec
-                Crypto.randomBytes 32, (err, token) ->
-                    throw err if err
-                    token = token.toString('hex')
-                    esc_email = encodeURIComponent(userRec.email)
-                    subject = "Link to reset your CloudBrowser password"
-                    message = "You have requested to change your password." +
-                    " If you want to continue click " +
-                    "<a href='#{appUrl}/password_reset?resettoken=#{token}&resetuser=#{esc_email}'>reset</a>." +
-                    " If you have not requested a change in password then take no action."
-
-                    util.sendEmail userRec.email, subject, message, () ->
-                        parentApp.addResetMarkerToUser
-                            user     : user.toJson()
-                            token    : token
-                            callback : () -> callback(true)
-
-            else callback(false)
+        Async.waterfall [
+            (next) ->
+                parentApp.findUser(user.toJson(), next)
+            (userRec, next) ->
+                if userRec then Crypto.randomBytes(32, next)
+                else next(cloudbrowserError('USER_NOT_REGISTERED'))
+            (token, next) ->
+                token = token.toString('hex')
+                parentApp.addResetMarkerToUser
+                    user     : user.toJson()
+                    token    : token
+                    callback : (err) -> next(err, token)
+            (token, next) ->
+                esc_email = encodeURIComponent(user.getEmail())
+                subject   = "Link to reset your CloudBrowser password"
+                message   = "You have requested to change your password."      +
+                            " If you want to continue click <a href="          +
+                            "'#{appUrl}/password_reset?resettoken=#{token}"    +
+                            "&resetuser=#{esc_email}'>reset</a>. If you have"  +
+                            " not requested a change in password then take no" +
+                            " action."
+                util.sendEmail
+                    to       : user.getEmail()
+                    subject  : subject
+                    html     : message
+                    callback : next
+        ], callback
 
     ###*
         Resets the password for a valid user request.     
@@ -73,24 +86,28 @@ class Auth
     ###
     # TODO : Fix this code. Rename bserver.getSessions to getConnectedClients
     # Add a configuration in app_config that allows only one user to connect to some
-    # VBs at a time.
+    # VB types at a time.
     resetPassword : (password, callback) ->
         {bserver, parentApp} = _pvts[@_idx]
         {mongoInterface} = bserver.server
 
-        bserver.getSessions (sessionIDs) ->
-            if sessionIDs.length
-                mongoInterface.getSession sessionIDs[0], (session) ->
-                    # Get the key and salt for the new password
-                    hashPassword {password:password}, (result) ->
-                        # Reset the key and salt for the corresponding user
-                        parentApp.resetUserPassword
-                            email : session.resetuser
-                            token : token
-                            salt  : result.salt.toString('hex')
-                            key   : result.key.toString('hex')
-                            callback : callback
-            else callback(false)
+        Async.waterfall [
+            (next) ->
+                bserver.getSessions((sessionIDs) -> next(null, sessionIDs[0]))
+            (sessionID, next) ->
+                mongoInterface.getSession(sessionID, next)
+            (session, next) ->
+                hashPassword({password : password}, (err, result) ->
+                    next(err, result, session))
+            (result, session, next) ->
+                # Reset the key and salt for the corresponding user
+                parentApp.resetUserPassword
+                    email : session.resetuser
+                    token : session.resettoken
+                    salt  : result.salt.toString('hex')
+                    key   : result.key.toString('hex')
+                    callback : next
+        ], callback
 
     ###*
         Logs out all connected clients from the current application.

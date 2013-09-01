@@ -3,6 +3,7 @@ Fs             = require('fs')
 Path           = require('path')
 {EventEmitter} = require('events')
 Weak           = require('weak')
+Async          = require('async')
 
 # Defining callback at the highest level
 # see https://github.com/TooTallNate/node-weak#weak-callback-function-best-practices
@@ -22,25 +23,27 @@ class ApplicationManager extends EventEmitter
         {@server} = options
 
         # Mount the home page
-        if @server.config.homePage
-            @createAppFromDir
-                path : Path.resolve(@cbAppDir, "home_page")
-                type : "admin"
-                mountPoint : "/"
+        if @server.config.homePage then @createAppFromDir
+            path : Path.resolve(@cbAppDir, "home_page")
+            type : "admin"
+            mountPoint : "/"
+        , (err) -> if err then console.log(err)
 
         # Mount the admin interface
-        if @server.config.adminInterface
-            @createAppFromDir
-                path : Path.resolve(@cbAppDir, "admin_interface")
-                type : "admin"
+        if @server.config.adminInterface then @createAppFromDir
+            path : Path.resolve(@cbAppDir, "admin_interface")
+            type : "admin"
+        , (err) -> if err then console.log(err)
 
-        # On server restart, load all the apps that were part of the
-        # app manager before shutdown.
-        @_loadFromDb()
-
-        # Load applications corresponding at the paths provided as part
-        # of the command line args
-        @_loadFromCmdLine(options.paths) if options.paths?
+        Async.series [
+            (next) =>
+                # On server restart, load all the apps that were part of the
+                # app manager before shutdown.
+                @_loadFromDb(next)
+            (next) =>
+                # Load applications at the paths provided as command line args
+                @_loadFromCmdLine(options.paths) if options.paths?
+        ], (err) -> if err then console.log(err)
 
     _validDeploymentConfig :
         isPublic                : true
@@ -64,30 +67,48 @@ class ApplicationManager extends EventEmitter
                 return false
         return true
 
-    _loadFromDb : () ->
+    _loadFromDb : (callback) ->
         {mongoInterface, permissionManager} = @server
 
-        mongoInterface.getApps (apps) =>
-            for app in apps
-
-                if not Fs.existsSync(app.path) or
-                not Fs.existsSync("#{app.path}/app_config\.json") or
-                not Fs.existsSync("#{app.path}/deployment_config\.json")
+        Async.waterfall [
+            (next) ->
+                mongoInterface.getApps(next)
+            (apps, next) =>
+                if apps then Async.each apps
+                , (app, callback) =>
                     # Removing app if the path stored in the database or the
                     # configuration files at that path don't exist in the
                     # file-system anymore
-                    console.log("Removing app at #{app.path}")
-                    permissionManager.rmAppPermRec(
-                        app.owner,
-                        app.mountPoint)
-                    mongoInterface.removeApp({path:app.path})
-
-                else @createAppFromDir
-                    path : app.path
-                    type : "uploaded"
+                    if not Fs.existsSync(app.path) or
+                    not Fs.existsSync("#{app.path}/app_config\.json") or
+                    not Fs.existsSync("#{app.path}/deployment_config\.json")
+                        console.log("Removing app at #{app.path}")
+                        Async.waterfall [
+                            (next) ->
+                                permissionManager.rmAppPermRec
+                                    user       : app.owner
+                                    mountPoint : app.mountPoint
+                                    callback   : next
+                            (removedApp, next) ->
+                                mongoInterface.removeApp({path:app.path}, next)
+                        ], (err) ->
+                            if err then console.log(err)
+                            # Not propogating the error to the final callback
+                            # as that will stop execution of all the others
+                            callback(null)
+                    else
+                        @createAppFromDir
+                            path : app.path
+                            type : "uploaded"
+                        , (err) ->
+                            if err then console.log(err)
+                            callback(null)
+                , next
+        ], callback
 
 
     # Parsing the json file into opts
+    # TODO : Move this to shared/utils
     _getConfigFromFile : (path) ->
         try
             fileContent = Fs.readFileSync(path, {encoding:"utf8"})
@@ -275,66 +296,67 @@ class ApplicationManager extends EventEmitter
         app = @weakRefsToApps[mountPoint] =
             Weak(@applications[mountPoint], cleanupApp(mountPoint))
 
-        @emit("added", app)
+        @emit("add", app)
 
         return app
     
     # Creates a new CloudBrowser application object and 
     # adds it to the pool of CloudBrowser applications
-    _add : (opts) ->
-        {mountPoint, owner} = opts.deploymentConfig
-
-        {mongoInterface, permissionManager} = @server
-
+    _add : (opts, callback) ->
         {owner,
+         mountPoint
          mountOnStartup,
          instantiationStrategy,
          authenticationInterface} = opts.deploymentConfig
 
-        # If there already is an application corresponding to the mountPoint
-        # then don't add it. Prompt to update the mountPoint in the config file
+        {mongoInterface, permissionManager} = @server
+
         if @find(mountPoint)
-            console.log("Application with mountPoint #{mountPoint} already " +
-                "exists. Change the mountPoint in #{opts.path}/app_config.json")
-
-
-        # Add the permission record for this application's owner 
-        permissionManager.addAppPermRec(owner, mountPoint, {own:true})
-
-        # Add the application path details to the DB for the server
-        # to know the location of applications to be loaded at startup
-        if not opts.dontSaveToDb
-            mongoInterface.addApp
-                path        : opts.path
-                owner       : owner
-                mountPoint  : mountPoint
-
-        if authenticationInterface then @createSubApplications(opts)
+            callback(cloudbrowserError('MOUNTPOINT_IN_USE'), "-#{mountPoint}")
 
         # Store strong ref
         @applications[mountPoint] = new Application(opts, @server)
-
         # Store weak ref
         app = @weakRefsToApps[mountPoint] =
             Weak(@applications[mountPoint], cleanupApp(mountPoint))
-
         @setupEventListeners(app)
+        if authenticationInterface then @createSubApplications(opts)
+        if mountOnStartup then app.mount()
+        @emit("add", app)
 
-        # Setting up the routes for the application
-        if mountOnStartup
-            app.mount()
-
-        @emit("added", app)
-
-        return app
+        # Must add record to DB after actually creating the application
+        # else the API object is created before the application object
+        # and queries on the application object fail
+        Async.series [
+            (next) ->
+                # Add the permission record for this application's owner 
+                permissionManager.addAppPermRec
+                    user        : owner
+                    mountPoint  : mountPoint
+                    permissions : {own : true}
+                    callback    : next
+            (next) ->
+                # Add the application path details to the DB for the server
+                # to know the location of applications to be loaded at startup
+                if not opts.dontSaveToDb then mongoInterface.addApp
+                    path        : opts.path
+                    owner       : owner
+                    mountPoint  : mountPoint
+                , next
+                else next(null)
+        ], (err) ->
+            if err then callback(err)
+            else callback(null, app)
 
     setupEventListeners : (app) ->
-
         app.on 'madePublic', () =>
             @emit 'madePublic', app
-
         app.on 'madePrivate', () =>
             @emit 'madePrivate', app
+        app.on 'mount', () =>
+            @emit 'mount', app
+        app.on 'disable', () =>
+            @emit 'disable', app
 
     # Creates the sub applications and push a pointer to each one
     # of them in the parent's subApp array
@@ -363,6 +385,7 @@ class ApplicationManager extends EventEmitter
 
     # Walks a path recursively and finds all CloudBrowser applications
     _walk : (path) =>
+        {mongoInterface} = @server
         Fs.readdir path, (err, list) =>
             # Don't allow external mounting of these apps
             # landing_page, password_reset etc.
@@ -376,11 +399,16 @@ class ApplicationManager extends EventEmitter
                         # If directory contains an app_config file 
                         # then create cloudbrowser application
                         if /app_config\.json$/.test(filename)
-                            @server.mongoInterface.findApp {path:path}, (app) =>
-                                if not app
-                                    @createAppFromDir
+                            Async.waterfall [
+                                (next) =>
+                                    mongoInterface.findApp({path:path}, next)
+                                (app, next) =>
+                                    if app then next(null)
+                                    else @createAppFromDir
                                         path : path
                                         type : "uploaded"
+                                    , next
+                            ], (err) -> if err then console.log(err)
                         # Else continue walking
                         else if stats.isDirectory() then @_walk(filename)
                         
@@ -412,43 +440,41 @@ class ApplicationManager extends EventEmitter
                         console.log("\nPath #{path} does not exist")
                     # If path corresponds to a file then mount it directly
                     #TODO : Check for symlink
-                    else if stats.isFile() then @createAppFromFile(path)
+                    else if stats.isFile()
+                        @createAppFromFile path, (err) -> console.log(err)
                     # Else recursively walk down the path to find cloudbrowser
                     # applications
                     else if stats.isDirectory() then @_walk(path)
                 
     # Creates a CloudBrowser application given the absolute path to the html file
-    createAppFromFile : (path) ->
+    createAppFromFile : (path, callback) ->
         # Removing the extension
         indexOfExt = path.lastIndexOf(".")
         pathWithoutExt = path.substring(
-            0,
-            if indexOfExt isnt -1 then indexOfExt else path.length)
-
+            0, if indexOfExt isnt -1 then indexOfExt else path.length)
         opts = {}
         # As there is no app_config.json file, manually set the basic
         # configuration options - entryPoint and mountPoint
-        opts.appConfig =
-            entryPoint : path
+        opts.appConfig = {entryPoint : path}
         opts.deploymentConfig =
             mountPoint : @_constructMountPoint(pathWithoutExt)
-
         # Add the application to the application manager's pool of apps
-        @_add(opts)
+        @_add(opts, callback)
 
     # Creates a CloudBrowser application given the absolute path to the app
     # directory 
-    createAppFromDir : (appInfo) ->
+    createAppFromDir : (appInfo, callback) ->
         # Get the application configuration
-        if not (opts = @_configure(appInfo)) then return null
+        opts = @_configure(appInfo)
+        if not opts then return null
 
         # Add the application to the application manager's pool of apps
-        @_add(opts)
+        @_add(opts, callback)
 
     remove : (mountPoint) ->
         delete @applications[mountPoint]
         delete @weakRefsToApps[mountPoint]
-        @emit("removed", mountPoint)
+        @emit("remove", mountPoint)
 
     find : (mountPoint) ->
         # Hand out weak references to other modules

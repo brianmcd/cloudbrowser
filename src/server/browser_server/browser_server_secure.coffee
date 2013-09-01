@@ -16,14 +16,17 @@ class BrowserServerSecure extends BrowserServer
         @addUserToLists(@creator, permissions)
 
     addUserToLists : (user, listTypes, callback) ->
-        @server.permissionManager.findSysPermRec user, (sysRec) =>
-            for k,v of listTypes
-                if v and @.hasOwnProperty(k) and
-                not @findUserInList(user, k)
-                    @[k].push(sysRec)
-                    @emit('shared', sysRec.getUser(), k)
-
-            if callback? then callback()
+        @server.permissionManager.findSysPermRec
+            user     : user
+            callback : (err, sysRec) =>
+                if err then callback?(err)
+                for listName, hasPerm of listTypes
+                    if hasPerm is true and
+                    @hasOwnProperty(listName) and
+                    not @findUserInList(user, listName)
+                        @[listName].push(sysRec)
+                        @emit('shared', sysRec.getUser(), listName)
+                callback?(null, sysRec)
 
     removeUserFromLists : (user, listType) ->
         if @.hasOwnProperty(listType)

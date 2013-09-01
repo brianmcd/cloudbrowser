@@ -23,22 +23,25 @@ exports.hashPassword = hashPassword = (config={}, callback) ->
 
     if not config.password
         Crypto.randomBytes config.randomPasswordStartLen, (err, buf) =>
-            throw err if err
-            config.password = buf.toString('base64')
-            hashPassword(config, callback)
+            if err then callback(err)
+            else
+                config.password = buf.toString('base64')
+                hashPassword(config, callback)
 
     else if not config.salt
         Crypto.randomBytes config.saltLength, (err, buf) =>
-            throw err if err
-            config.salt = new Buffer(buf)
-            hashPassword(config, callback)
+            if err then callback(err)
+            else
+                config.salt = new Buffer(buf)
+                hashPassword(config, callback)
 
     else
         Crypto.pbkdf2 config.password, config.salt,
         config.iterations, config.saltLength, (err, key) ->
-            throw err if err
-            config.key = key
-            callback(config)
+            if err then callback(err)
+            else
+                config.key = key
+                callback(null, config)
 
 exports.compare = (app1, app2) ->
     if(app1.getMountPoint() < app2.getMountPoint())

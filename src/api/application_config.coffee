@@ -1,21 +1,35 @@
+Async = require('async')
 {getParentMountPoint} = require("./utils")
+cloudbrowserError   = require("../shared/cloudbrowser_error")
 
 ###*
-    @description Configuration details of the application including details
-    in the app_config.json file of the application
+    Browser of this application added
+    @event cloudbrowser.app.AppConfig#Added
+    @type {cloudbrowser.app.VirtualBrowser} 
+###
+###*
+    Browser of this application removed 
+    @event cloudbrowser.app.AppConfig#Removed
+    @type {Number}
+###
+###*
+    API for applications (constructed internally).
+    Provides access to configuration details of the application. 
+    @param {Object} options 
+    @property [String]        mountPoint The mountPoint of the appliation.
+    @property [User]          userCtx    The current user.
+    @property [Server]        server     The cloudbrowser server.
+    @property [Cloudbrowser]  cbCtx      The cloudbrowser API object.
     @class cloudbrowser.app.AppConfig
-    @param {cloudbrowser}  cbCtx
     @fires cloudbrowser.app.AppConfig#Added
     @fires cloudbrowser.app.AppConfig#Removed
 ###
 class AppConfig
 
     # Private Properties inside class closure
-    # This is not enumerable, not configurable, not writable
     _pvts = []
 
     constructor : (options) ->
-
         {userCtx, mountPoint, server, cbCtx} = options
 
         # Gets the mountpoint of the parent app for sub-apps like
@@ -23,22 +37,43 @@ class AppConfig
         # If the app is not a sub-app then the app is its own parent.
         parentMountPoint = getParentMountPoint(mountPoint)
 
+        parentApp = server.applications.find(parentMountPoint)
+        if not parentApp then return null
+
         # Defining @_idx as a read-only property
         Object.defineProperty this, "_idx",
             value : _pvts.length
 
-        # Setting private properties
         _pvts.push
-            # Redundant pointers to the server
-            server            : server
-            userCtx           : userCtx
-            cbCtx             : cbCtx
-            parentApp         : server.applications.find(parentMountPoint)
-            mountPoint        : mountPoint
+            # Duplicate pointers to the server
+            server      : server
+            userCtx     : userCtx
+            cbCtx       : cbCtx
+            parentApp   : parentApp
+            mountPoint  : mountPoint
 
         Object.freeze(this.__proto__)
         Object.freeze(this)
 
+    ###*
+        Checks if the user is the owner of the application
+        @method isOwner
+        @memberof cloudbrowser.app.AppConfig
+        @instance
+        @param {cloudbrowser.app.User} user
+        @param {booleanCallback} callback
+    ###
+    isOwner : (callback) ->
+        if typeof callback isnt "function" then return
+
+        {server, parentApp, userCtx} = _pvts[@_idx]
+        {permissionManager} = server
+
+        permissionManager.checkPermissions
+            user        : userCtx.toJson()
+            mountPoint  : parentApp.getMountPoint()
+            permissions : {'own' : true}
+            callback    : callback
     ###*
         Gets the absolute URL at which the application is hosted/mounted.    
         @instance
@@ -48,14 +83,14 @@ class AppConfig
     ###
     getUrl : () ->
         {server, parentApp} = _pvts[@_idx]
+        {domain, port}   = server.config
         parentMountPoint = parentApp.getMountPoint()
-        {config} = server
 
-        return "http://#{config.domain}:#{config.port}#{parentMountPoint}"
+        return "http://#{domain}:#{port}#{parentMountPoint}"
 
     ###*
         Gets the description of the application as provided in the
-        app_config.json configuration file.    
+        deployment_config.json configuration file.    
         @instance
         @method getDescription
         @memberOf cloudbrowser.app.AppConfig
@@ -64,23 +99,31 @@ class AppConfig
     getDescription: () ->
         _pvts[@_idx].parentApp.getDescription()
 
-    setDescription: (description) ->
-        if not description then return new Error("Missing required parameter - description")
+    ###*
+        Sets the description of the application in the
+        deployment_config.json configuration file.    
+        @instance
+        @method setDescription
+        @memberOf cloudbrowser.app.AppConfig
+        @param {String} Description
+        @param {booleanCallback} callback
+    ###
+    setDescription: (description, callback) ->
+        if typeof description isnt "string"
+            callback?(cloudbrowserError('PARAM_MISSING', '-description'))
 
-        {server, parentApp, userCtx} = _pvts[@_idx]
-        {permissionManager} = server
+        {parentApp} = _pvts[@_idx]
 
-        # Permission Check
-        permissionManager.findAppPermRec userCtx.toJson(),
-        parentApp.getMountPoint(), (appRec) ->
-            if appRec
+        @isOwner (err, isOwner) ->
+            if err then callback?(err)
+            else if isOwner
                 parentApp.setDescription(description)
-                return null
-            else return new Error('Permission Denied')
-        , {'own' : true}
+                callback?(null)
+            # Do nothing if not the owner
         
     ###*
-        Gets the path relative to the root URL at which the application was mounted.     
+        Gets the path relative to the root URL at which the application
+        was mounted.
         @instance
         @method getMountPoint
         @memberOf cloudbrowser.app.AppConfig
@@ -89,166 +132,212 @@ class AppConfig
     getMountPoint : () ->
         return _pvts[@_idx].parentApp.getMountPoint()
 
+    ###*
+        Checks if the application is configured as public.
+        @instance
+        @method isAppPublic
+        @memberOf cloudbrowser.app.AppConfig
+        @return {Bool}
+    ###
     isAppPublic : () ->
         return _pvts[@_idx].parentApp.isAppPublic()
 
-    makePublic : () ->
-        {server, parentApp, userCtx} = _pvts[@_idx]
-        {permissionManager} = server
+    ###*
+        Sets the privacy of the application to public.
+        @instance
+        @method makePublic
+        @memberOf cloudbrowser.app.AppConfig
+        @param {errorCallback} callback
+    ###
+    makePublic : (callback) ->
+        {parentApp} = _pvts[@_idx]
 
-        # Permission Check
-        permissionManager.findAppPermRec userCtx.toJson(),
-        parentApp.getMountPoint(), (appRec) ->
-            if appRec
+        @isOwner (err, isOwner) ->
+            if err then callback?(err)
+            else if isOwner
                 parentApp.makePublic()
-                return null
-            else return new Error('Permission Denied')
-        , {'own' : true}
+                callback?(null)
+            # Do nothing if not owner
 
-    makePrivate : () ->
-        {server, parentApp, userCtx} = _pvts[@_idx]
-        {permissionManager} = server
+    ###*
+        Sets the privacy of the application to private.
+        @instance
+        @method makePrivate
+        @memberOf cloudbrowser.app.AppConfig
+        @param {errorCallback} callback
+    ###
+    makePrivate : (callback) ->
+        {parentApp} = _pvts[@_idx]
 
-        # Permission Check
-        permissionManager.findAppPermRec userCtx.toJson(),
-        parentApp.getMountPoint(), (appRec) ->
-            if appRec
+        @isOwner (err, isOwner) ->
+            if err then callback?(err)
+            else if isOwner
                 parentApp.makePrivate()
-                return null
-            else return new Error('Permission Denied')
-        , {'own' : true}
+                callback?(null)
+            # Do nothing if not owner
 
+    ###*
+        Checks if the authentication interface has been enabled.
+        @instance
+        @method isAuthConfigured
+        @memberOf cloudbrowser.app.AppConfig
+        @return {Bool}
+    ###
     isAuthConfigured : () ->
         return _pvts[@_idx].parentApp.isAuthConfigured()
 
-    enableAuthentication : () ->
-        {server, parentApp, userCtx} = _pvts[@_idx]
-        {permissionManager} = server
+    ###*
+        Enables the authentication interface.
+        @instance
+        @method enableAuthentication
+        @memberOf cloudbrowser.app.AppConfig
+        @param {errorCallback} callback
+    ###
+    enableAuthentication : (callback) ->
+        {parentApp} = _pvts[@_idx]
 
-        # Permission Check
-        permissionManager.findAppPermRec userCtx.toJson(),
-        parentApp.getMountPoint(), (appRec) ->
-            if appRec
+        @isOwner (err, isOwner) ->
+            if err then callback?(err)
+            else if isOwner
                 parentApp.enableAuthentication()
-                return null
-            else return new Error('Permission Denied')
-        , {'own' : true}
+                callback?(null)
+            # Do nothing if not the owner
 
-    disableAuthentication : () ->
-        {server, parentApp, userCtx} = _pvts[@_idx]
-        {permissionManager} = server
+    ###*
+        Disables the authentication interface.
+        @instance
+        @method disableAuthentication
+        @memberOf cloudbrowser.app.AppConfig
+        @param {errorCallback} callback
+    ###
+    disableAuthentication : (callback) ->
+        {parentApp} = _pvts[@_idx]
 
-        # Permission Check
-        permissionManager.findAppPermRec userCtx.toJson(),
-        parentApp.getMountPoint(), (appRec) ->
-            if appRec
+        @isOwner (err, isOwner) ->
+            if err then callback?(err)
+            else if isOwner
                 parentApp.disableAuthentication()
-                return null
-            else return new Error('Permission Denied')
-        , {'own' : true}
+                callback?(null)
+            # Do nothing if not the owner
 
+    ###*
+        Gets the instantiation strategy configured in the app_config.json file.
+        @instance
+        @method getInstantiationStrategy
+        @memberOf cloudbrowser.app.AppConfig
+        return {String} 
+    ###
     getInstantiationStrategy : () ->
         return _pvts[@_idx].parentApp.getInstantiationStrategy()
 
-    setInstantiationStrategy : (strategy) ->
-        if not strategy then return new Error("Strategy can't be empty")
-        {server, parentApp, userCtx} = _pvts[@_idx]
-        {permissionManager} = server
-
-        # Permission Check
-        permissionManager.findAppPermRec userCtx.toJson(),
-        parentApp.getMountPoint(), (appRec) ->
-            if appRec
-                parentApp.setInstantiationStrategy(strategy)
-                return null
-            else return new Error('Permission Denied')
-        , {'own' : true}
-
+    ###*
+        Gets the browser limit configured in the
+        deployment_config.json file.
+        @instance
+        @method getBrowserLimit
+        @memberOf cloudbrowser.app.AppConfig
+        return {Number} 
+    ###
     getBrowserLimit : () ->
         return _pvts[@_idx].parentApp.getBrowserLimit()
 
-    setBrowserLimit : (limit) ->
-        if not limit then return new Error("Limit can't be empty")
+    ###*
+        Sets the browser limit in the
+        deployment_config.json file.
+        @instance
+        @method setBrowserLimit
+        @memberOf cloudbrowser.app.AppConfig
+        @param {Number} limit 
+        @param {errorCallback} callback
+    ###
+    setBrowserLimit : (limit, callback) ->
+        if typeof limit isnt "number"
+            callback?(cloudbrowserError('PARAM_MISSING', '-limit'))
         
-        {server, parentApp, userCtx} = _pvts[@_idx]
-        {permissionManager} = server
+        {parentApp} = _pvts[@_idx]
 
-        # Permission Check
-        permissionManager.findAppPermRec userCtx.toJson(),
-        parentApp.getMountPoint(), (appRec) ->
-            if appRec
+        @isOwner (err, isOwner) ->
+            if err then callback?(err)
+            else if isOwner
                 parentApp.setBrowserLimit(limit)
-                return null
-            else return new Error('Permission Denied')
-        , {'own' : true}
-
-    mount : () ->
-        # Permission Check Required
-        {server, parentApp, userCtx} = _pvts[@_idx]
-        {permissionManager} = server
-
-        # Permission Check
-        permissionManager.findAppPermRec userCtx.toJson(),
-        parentApp.getMountPoint(), (appRec) ->
-            if appRec
-                parentApp.mount()
-                return null
-            else return new Error('Permission Denied')
-        , {'own' : true}
-
-    # Unmounts the application running at `mountPoint`.
-    # Move to app config
-    disable : () ->
-        {userCtx, server, parentApp} = _pvts[@_idx]
-        {permissionManager} = server
-
-        # Permission Check
-        permissionManager.findAppPermRec userCtx.toJson(),
-        parentApp.getMountPoint(), (appRec) ->
-            if appRec
-                parentApp.disable()
-                return null
-            else return new Error('Permission Denied')
-        , {'own' : true}
+                callback?(null)
+            # Do nothing if not owner
 
     ###*
-        A list of all the registered users of the application.          
+        Mounts the routes for the application
+        @instance
+        @method mount
+        @memberOf cloudbrowser.app.AppConfig
+        @param {errorCallback} callback
+    ###
+    mount : (callback) ->
+        {parentApp} = _pvts[@_idx]
+
+        @isOwner (err, isOwner) ->
+            if err then callback?(err)
+            else if isOwner
+                parentApp.mount()
+                callback?(null)
+            # Do nothing if not owner
+
+    ###*
+        Unmounts the routes for the application
+        @instance
+        @method disable
+        @memberOf cloudbrowser.app.AppConfig
+        @param {errorCallback} callback
+    ###
+    disable : (callback) ->
+        {parentApp} = _pvts[@_idx]
+
+        @isOwner (err, isOwner) ->
+            if err then callback?(err)
+            else if isOwner
+                parentApp.disable()
+                callback?(null)
+            # Do nothing if not owner
+
+    ###*
+        Gets a list of all the registered users of the application. 
         @instance
         @method getUsers
         @memberOf cloudbrowser.app.AppConfig
         @param {userListCallback} callback
     ###
     getUsers : (callback) ->
-        # Permission Check Required
-        # Only a VB from the app itself or a sub-app specifically auth int and landing page
-        # should have access to the users of an app
-        {parentApp, server, cbCtx, userCtx} = _pvts[@_idx]
+        if typeof callback isnt "function" then return
+
+        {parentApp, cbCtx, userCtx} = _pvts[@_idx]
         
+        # There will be no users if authentication is disabled
         if not parentApp.isAuthConfigured() then return
 
-        # Remove this once permission check is added
+        # TODO : Check if this is still required
         if userCtx.getNameSpace() is "public" then return
 
-        {User}   = cbCtx.app
+        {User} = cbCtx.app
 
-        {permissionManager} = server
+        Async.waterfall [
+            (next) ->
+                parentApp.getUsers(next)
+            (users, next) ->
+                userList = []
+                for user in users
+                    userList.push(new User(user.email, user.ns))
+                next(null, userList)
+        ], callback
 
-        # Permission Check
-        permissionManager.findAppPermRec userCtx.toJson(),
-        parentApp.getMountPoint(), (appRec) ->
-            if appRec
-                parentApp.getUsers (users) ->
-                    userList = []
-                    for user in users
-                        userList.push(new User(user.email, user.ns))
-                    callback(userList)
-            else callback(new Error('Permission Denied'))
-        , {'own' : true}
-
+    ###*
+        Checks if the routes for the application have been mounted.
+        @instance
+        @method isMounted
+        @memberOf cloudbrowser.app.AppConfig
+        @param {Bool} isMounted
+    ###
     isMounted : () ->
         return _pvts[@_idx].parentApp.isMounted()
     ###*
-        Creates a new instance of this application.    
+        Creates a new virtual browser instance of this application.    
         @instance
         @method createVirtualBrowser
         @memberOf cloudbrowser.app.AppConfig
@@ -257,38 +346,46 @@ class AppConfig
     createVirtualBrowser : (callback) ->
         {userCtx, parentApp} = _pvts[@_idx]
 
-        if userCtx.getNameSpace() is "public"
-            parentApp.browsers.create()
-        else
-            parentApp.browsers.create userCtx.toJson(),
-            (err, bsvr) -> callback(err)
+        if userCtx.getNameSpace() is "public" then parentApp.browsers.create()
+        else parentApp.browsers.create userCtx.toJson(), (err, bsvr) ->
+            callback?(err)
 
     ###*
-        Gets all the instances of the application associated with the given user.    
+        Gets all the instances of the application associated with the given user.
         @instance
         @method getVirtualBrowsers
         @memberOf cloudbrowser.app.AppConfig
         @param {instanceListCallback} callback
     ###
     getVirtualBrowsers : (callback) ->
-        # Write one method for getting all virtual browsers
+        if typeof callback isnt "function" then return
+
         {server, userCtx, parentApp, cbCtx} = _pvts[@_idx]
         parentMountPoint = parentApp.getMountPoint()
-        permMgr        = server.permissionManager
+        {permissionManager} = server
+        # Requiring here to avoid circular reference problem that
+        # results in an empty module.
         VirtualBrowser = require('./virtual_browser')
 
-        permMgr.getBrowserPermRecs userCtx.toJson(), parentMountPoint,
-            (browserRecs) ->
+        Async.waterfall [
+            (next) ->
+                permissionManager.getBrowserPermRecs
+                    user       : userCtx.toJson()
+                    mountPoint : parentMountPoint
+                    callback   : next
+            (browserRecs, next) ->
                 browsers = []
                 for id, browserRec of browserRecs
                     browsers.push new VirtualBrowser
                         bserver : parentApp.browsers.find(id)
                         userCtx : userCtx
                         cbCtx   : cbCtx
-                callback(browsers)
+                next(null, browsers)
+        ], callback
 
     ###*
-        Registers a listener on the application for an event associated with the given user.     
+        Registers a listener for an event on an application
+        associated with the given user.
         @instance
         @method addEventListener
         @memberOf cloudbrowser.app.AppConfig
@@ -296,44 +393,59 @@ class AppConfig
         @param {instanceCallback} callback
     ###
     addEventListener : (event, callback) ->
-        # Another version required for the owner of the app that listens for all browsers
+        if typeof callback isnt "function" then return
+
+        # TODO : Check if event is valid
         {server, userCtx, cbCtx, parentApp} = _pvts[@_idx]
         parentMountPoint = parentApp.getMountPoint()
-        permMgr        = server.permissionManager
+        {permissionManager} = server
         # Requiring the module here to prevent the circular reference
         # problem which will result in the required module being empty
         VirtualBrowser = require('./virtual_browser')
 
-        permMgr.findAppPermRec userCtx.toJson(), parentMountPoint,
-            (appRec) ->
-                if appRec
-                    permMgr.checkPermissions
-                        user : userCtx.toJson()
-                        mountPoint : parentMountPoint
-                        permTypes  : {own : true}
-                        callback   : (isOwner) ->
-                            if isOwner
-                                switch event
-                                    when "added"
-                                        parentApp.addEventListener event, (id) ->
-                                            callback new VirtualBrowser
-                                                bserver : parentApp.browsers.find(id)
-                                                userCtx : userCtx
-                                                cbCtx   : cbCtx
-                                    else
-                                        parentApp.addEventListener(event, callback)
-                            else
-                                switch event
-                                    when "added"
-                                        appRec.on event, (id) ->
-                                            callback new VirtualBrowser
-                                                bserver : parentApp.browsers.find(id)
-                                                userCtx : userCtx
-                                                cbCtx   : cbCtx
-                                    else appRec.on(event, callback)
+        Async.waterfall [
+            (next) ->
+                permissionManager.findAppPermRec
+                    user       : userCtx.toJson()
+                    mountPoint : parentMountPoint
+                    callback   : next
+            (appRec, next) ->
+                if appRec then permissionManager.checkPermissions
+                    user         : userCtx.toJson()
+                    mountPoint   : parentMountPoint
+                    permissions  : {own : true}
+                    callback     : (err, isOwner) -> next(err, isOwner, appRec)
+            (isOwner, appRec, next) ->
+                # If the user is the owner of the application then
+                # the user is notified on all events of all browsers
+                # of that application
+                if isOwner then switch event
+                    when "added"
+                        parentApp.addEventListener event, (id) ->
+                            next null, new VirtualBrowser
+                                bserver : parentApp.browsers.find(id)
+                                userCtx : userCtx
+                                cbCtx   : cbCtx
+                    else
+                        parentApp.addEventListener(event, (eventInfo) ->
+                            next(null, eventInfo))
+                # If the user is not the owner then the user will be
+                # notified of events on only those browsers with which
+                # he/she is associated.
+                else switch event
+                    when "added"
+                        appRec.on event, (id) ->
+                            next null, new VirtualBrowser
+                                bserver : parentApp.browsers.find(id)
+                                userCtx : userCtx
+                                cbCtx   : cbCtx
+                    else appRec.on(event, (eventInfo) -> next(null, eventInfo))
+        ], (err, info) ->
+            if err then console.log(err)
+            else callback(info)
 
     ###*
-        Checks if a user is already registered/signed up with the application.     
+        Checks if a user is already registered/signed up with the application.
         @instance
         @method isUserRegistered
         @memberOf cloudbrowser.app.AppConfig
@@ -341,30 +453,16 @@ class AppConfig
         @param {booleanCallback} callback 
     ###
     isUserRegistered : (user, callback) ->
-        {userCtx, server, parentApp} = _pvts[@_idx]
-        {permissionManager} = server
+        if typeof callback isnt "function" then return
+        {parentApp} = _pvts[@_idx]
 
-        # Permission Check
-        permissionManager.findAppPermRec userCtx.toJson(),
-        parentApp.getMountPoint(), (appRec) ->
-            if appRec
-                parentApp.findUser user.toJson(), (user) ->
-                    if user then callback(true)
-                    else callback(false)
-            else return new Error('Permission Denied')
-        , {'own' : true}
-
-
+        # Can not perform any permission check in this case
+        Async.waterfall [
+            (next) =>
+                parentApp.findUser(user.toJson(), next)
+            (user, next) ->
+                if user then next(null, true)
+                else next(null, false)
+        ], callback
 
 module.exports = AppConfig
-
-###*
-    Browser Added event
-    @event cloudbrowser.app.AppConfig#Added
-    @type {cloudbrowser.app.VirtualBrowser} 
-###
-###*
-    Browser Removed event
-    @event cloudbrowser.app.AppConfig#Removed
-    @type {Number}
-###

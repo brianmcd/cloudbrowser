@@ -3,32 +3,30 @@ Express    = require('express')
 Async      = require('async')
 MongoStore = require('connect-mongo')(Express)
 
-# TODO : use Mongoose and rewrite this code
+# TODO : Use Mongoose
+
 class MongoInterface
     constructor : (dbName, callback) ->
-        @dbClient = new Mongo.Db(dbName, new Mongo.Server("127.0.0.1", 27017, options:{auto_reconnect:true}))
+        @dbClient = new Mongo.Db(dbName,
+            new Mongo.Server("127.0.0.1", 27017, options:{auto_reconnect:true}))
         @dbClient.open (err, pClient) ->
             throw err if err
             callback?()
         @mongoStore = new MongoStore({db:"#{dbName}_sessions"})
         @appCollection = "applications"
 
-    findUser : (searchKey, collName, callback) ->
+    findUser : (searchKey, collectionName, callback) ->
         Async.waterfall [
             (next) =>
-                @dbClient.collection(collName, next)
+                @dbClient.collection(collectionName, next)
             (collection, next) ->
                 collection.findOne(searchKey, next)
-            (user, next) ->
-                next(null, user)
-        ], (err, user) ->
-            throw err if err
-            callback(user)
+        ], callback
 
-    addUser : (users, collName, callback) ->
+    addUser : (users, collectionName, callback) ->
         Async.waterfall [
             (next) =>
-                @dbClient.collection(collName, next)
+                @dbClient.collection(collectionName, next)
             (collection, next) ->
                 collection.insert(users, next)
             (userRecs, next) ->
@@ -39,100 +37,108 @@ class MongoInterface
                 # Return only one object not the array that contains
                 # the single object
                 else next(null, userRecs[0])
-        ], (err, users) ->
-            throw err if err
-            callback?(users)
+        ], callback
 
-    getUsers : (collName, callback) ->
-        @dbClient.collection collName, (err, collection) ->
-            throw err if err
-            collection.find {}, (err, cursor) ->
-                throw err if err
-                cursor.toArray (err, users) ->
-                    throw err if err
-                    callback(users)
+    getUsers : (collectionName, callback) ->
+        Async.waterfall [
+            (next) =>
+                @dbClient.collection(collectionName, next)
+            (collection, next) ->
+                collection.find({}, next)
+            (cursor, next) ->
+                cursor.toArray(next)
+        ], callback
 
-    addToUser : (searchKey, collName, addedInfo, callback) ->
-        @dbClient.collection collName, (err, collection) ->
-            throw err if err
-            collection.update searchKey, {$addToSet:addedInfo}, {w:1}, (err, result) ->
-                throw err if err
-                callback?()
+    addToUser : (searchKey, collectionName, addedInfo, callback) ->
+        Async.waterfall [
+            (next) =>
+                @dbClient.collection(collectionName, next)
+            (collection, next) ->
+                collection.update(searchKey, {$addToSet:addedInfo}, {w:1}, next)
+        ], callback
 
-    removeFromUser : (searchKey, collName, removedInfo, callback) ->
-        @dbClient.collection collName, (err, collection) ->
-            throw err if err
-            collection.update searchKey, {$pull:removedInfo}, {w:1}, (err, result) ->
-                throw err if err
-                callback?()
+    removeFromUser : (searchKey, collectionName, removedInfo, callback) ->
+        Async.waterfall [
+            (next) =>
+                @dbClient.collection(collectionName, next)
+            (collection, next) ->
+                collection.update(searchKey, {$pull:removedInfo}, {w:1}, next)
+        ], callback
 
-    setUser : (searchKey, collName, updatedInfo, callback) ->
-        @dbClient.collection collName, (err, collection) ->
-            throw err if err
-            collection.update searchKey, {$set:updatedInfo}, {w:1}, (err, result) ->
-                throw err if err
-                callback?()
+    setUser : (searchKey, collectionName, updatedInfo, callback) ->
+        Async.waterfall [
+            (next) =>
+                @dbClient.collection(collectionName, next)
+            (collection, next) ->
+                collection.update(searchKey, {$set:updatedInfo}, {w:1}, next)
+        ], callback
 
-    unsetUser : (searchKey, collName, updatedInfo, callback) ->
-        @dbClient.collection collName, (err, collection) ->
-            throw err if err
-            collection.update searchKey, {$unset:updatedInfo}, {w:1}, (err, result) ->
-                throw err if err
-                callback?()
+    unsetUser : (searchKey, collectionName, updatedInfo, callback) ->
+        Async.waterfall [
+            (next) =>
+                @dbClient.collection(collectionName, next)
+            (collection, next) ->
+                collection.update(searchKey, {$unset:updatedInfo}, {w:1}, next)
+        ], callback
 
-    removeUser : (searchKey, collName, callback) ->
-        @dbClient.collection collName, (err, collection) ->
-            throw err if err
-            collection.remove searchKey, (err, result) ->
-                throw err if err
-                callback?()
+    removeUser : (searchKey, collectionName, callback) ->
+        Async.waterfall [
+            (next) =>
+                @dbClient.collection(collectionName, next)
+            (collection, next) ->
+                collection.remove(searchKey, next)
+        ], callback
 
     getSession : (sessionID, callback) ->
-        @mongoStore.get sessionID, (err, session) ->
-            throw err if err
-            callback(session)
+        @mongoStore.get(sessionID, callback)
 
     setSession : (sessionID, session, callback) ->
-        @mongoStore.set sessionID, session, (err) ->
-            throw err if err
-            callback?()
+        @mongoStore.set(sessionID, session, callback)
 
     findApp : (searchKey, callback) ->
-        @dbClient.collection @appCollection, (err, collection) ->
-            throw err if err
-            collection.findOne searchKey, (err, app) ->
-                throw err if err
-                callback(app)
+        Async.waterfall [
+            (next) =>
+                @dbClient.collection(@appCollection, next)
+            (collection, next) ->
+                collection.findOne(searchKey, next)
+        ], callback
 
     addApp : (app, callback) ->
-        @findApp app, (appRec) =>
-            if appRec then callback?(appRec)
-            else
-                @dbClient.collection @appCollection, (err, collection) ->
-                    throw err if err
-                    collection.insert app, (err, app) ->
-                        throw err if err
-                        callback?(app)
+        Async.waterfall [
+            (next) =>
+                @findApp(app, next)
+            (appRec, next) =>
+                # Bypass the waterfall
+                if appRec then callback(null, appRec)
+                else @dbClient.collection(@appCollection, next)
+            (collection, next) ->
+                collection.insert(app, next)
+        ], callback
 
     removeApp : (searchKey, callback) ->
-        @dbClient.collection @appCollection, (err, collection) ->
-            throw err if err
-            collection.remove searchKey, (err, numResults) ->
-                throw err if err
-                callback?(numResults)
+        Async.waterfall [
+            (next) =>
+                @dbClient.collection(@appCollection, next)
+            (collection, next) ->
+                collection.remove(searchKey, next)
+        ], callback
 
     getApps : (callback) ->
-        @dbClient.collection @appCollection, (err, collection) ->
-            throw err if err
-            collection.find {}, (err, cursor) ->
-                throw err if err
-                cursor.toArray (err, apps) ->
-                    throw err if err
-                    callback(apps)
+        Async.waterfall [
+            (next) =>
+                @dbClient.collection(@appCollection, next)
+            (collection, next) ->
+                collection.find({}, next)
+            (cursor, next) ->
+                cursor.toArray(next)
+        ], callback
 
-    addIndex : (collName, index, callback) ->
-        @dbClient.collection collName, (err, collection) ->
-            collection.ensureIndex index, {unique:true}, (err, indexName) ->
-                callback?(indexName)
+    addIndex : (collectionName, index, callback) ->
+        Async.waterfall [
+            (next) =>
+                @dbClient.collection(collectionName, next)
+            (collection, next) ->
+                collection.ensureIndex(index, {unique:true}, next)
+        ], callback
 
 module.exports = MongoInterface

@@ -1,5 +1,6 @@
 {compare} = require('./utils')
 AppConfig = require('./application_config')
+Async     = require('async')
 
 ###*
     @class cloudbrowser.ServerConfig
@@ -15,7 +16,6 @@ class ServerConfig
         Object.defineProperty this, "_idx",
             value : _pvts.length
 
-        # Setting private properties
         _pvts.push
             # Duplicate pointers to server
             server  : server
@@ -26,12 +26,10 @@ class ServerConfig
         Object.freeze(this)
 
     ###*
-        Returns the domain as configured in the server_config.json configuration
-        file or as provided through the command line at the time of starting
-        CloudBrowser.    
-        @static
+        Returns the server domain.
         @method getDomain
         @memberOf cloudbrowser.ServerConfig
+        @instance
         @return {String}
     ###
     getDomain : () ->
@@ -39,12 +37,10 @@ class ServerConfig
         return server.config.domain
 
     ###*
-        Returns the port as configured in the server_config.json configuration
-        file or as provided through the command line at the time of starting
-        CloudBrowser.    
-        @static
+        Returns the server port
         @method getPort
         @memberOf cloudbrowser.ServerConfig
+        @instance
         @return {Number}
     ###
     getPort : () ->
@@ -53,7 +49,7 @@ class ServerConfig
 
     ###*
         Returns the URL at which the CloudBrowser server is hosted.    
-        @static
+        @instance
         @method getUrl
         @memberOf cloudbrowser.ServerConfig
         @return {String} 
@@ -61,69 +57,110 @@ class ServerConfig
     getUrl : () ->
         return "http://#{@getDomain()}:#{@getPort()}"
 
-    # Lists all the applications mounted by the creator of this browser.
     ###*
-        Returns the list of apps mounted on CloudBrowser by the current user   
-        @static
+        Returns the list of apps mounted on CloudBrowser
+        Can be filtered by user or privacy
+        @instance
         @method listApps
         @memberOf cloudbrowser.ServerConfig
+        @param {Object} options
+        @param {appListCallback} options.callback
+        @param {Object} options.filters
+        @property [Bool] perUser
+        @property [Bool] public 
         @return {Array<appObject>} 
     ###
     listApps : (options) ->
-
-        # TODO: Better error handling here
-        if not options or not options.callback then return
+        if not options or typeof options.callback isnt "function" then return
 
         {userCtx, server, cbCtx} = _pvts[@_idx]
         {permissionManager} = server
         {filters, callback} = options
         appConfigs = []
 
-        # Apps that the user using the current
-        # cloudbrowser API object owns
+        # Apps that the current user owns
         if filters.perUser
-            permissionManager.getAppPermRecs userCtx.toJson(), (appRecs) ->
-                for rec in appRecs
-                    if filters.public
-                        # Find the app from the application manager
-                        app = server.applications.find(rec.getMountPoint())
-                        # Check if it is configured as public and if it is then
-                        # don't push into the array to be returned
-                        if not app.isAppPublic() then continue
-                    appConfigs.push new AppConfig
-                        userCtx : userCtx
-                        server  : server
-                        cbCtx   : cbCtx
-                        mountPoint : rec.getMountPoint()
-                callback(appConfigs)
-            , {'own' : true}
-
-        # or get a list of all apps.
-        # Though the method get is synchronous,
-        # we still use the callback for uniformity
+            Async.waterfall [
+                (next) ->
+                    permissionManager.getAppPermRecs
+                        user        : userCtx.toJson()
+                        permissions : {'own' : true}
+                        callback    : next
+                (appRecs, next) ->
+                    for rec in appRecs
+                        if filters.public
+                            app = server.applications.find(rec.getMountPoint())
+                            if not app.isAppPublic() then continue
+                        appConfigs.push new AppConfig
+                            userCtx : userCtx
+                            server  : server
+                            cbCtx   : cbCtx
+                            mountPoint : rec.getMountPoint()
+                    next(null, appConfigs)
+            ], callback
+                    
+        # Get all public apps
         else if filters.public
             apps = server.applications.get()
             for mountPoint, app of apps
-                if app.isAppPublic()
+                if app.isAppPublic() and app.isMounted()
                     appConfigs.push new AppConfig
                         userCtx : userCtx
                         server  : server
                         cbCtx   : cbCtx
                         mountPoint : mountPoint
-            callback(appConfigs)
+            callback(null, appConfigs)
 
+    ###*
+        Registers a listener for an event on the server
+        @instance
+        @method addEventListener
+        @memberOf cloudbrowser.ServerConfig
+        @param {String} event
+        @param {customCallback} callback
+    ###
     addEventListener : (event, callback) ->
-
+        # TODO : Check validity of event
         {userCtx, server, cbCtx} = _pvts[@_idx]
+        {permissionManager} = server
 
-        server.applications.on event, (app) ->
-            switch event
-                when "added", "madePublic"
+        switch event
+            # No permission check required
+            when "madePublic", "mount"
+                server.applications.on event, (app) ->
                     callback new AppConfig
                         userCtx : userCtx
                         server  : server
                         cbCtx   : cbCtx
                         mountPoint : app.getMountPoint()
-                else callback(app.getMountPoint())
+            # No permission check required
+            when "madePrivate", "disable"
+                server.applications.on event, (app) ->
+                    callback(app.getMountPoint())
+            # Listening on all other events requires the user to be the
+            # owner of the application
+            else
+                Async.waterfall [
+                    (next) ->
+                        permissionManager.findSysPermRec
+                            user     : userCtx.toJson()
+                            callback : next
+                    (userPermRec, next) ->
+                        if userPermRec then userPermRec.on(event, (mountPoint) ->
+                            next(null, mountPoint))
+                        # Do nothing if there's no record associated
+                        # with the user
+                    (mountPoint, next) ->
+                        switch event
+                            when 'added'
+                                next null, new AppConfig
+                                    userCtx : userCtx
+                                    server  : server
+                                    cbCtx   : cbCtx
+                                    mountPoint : mountPoint
+                            else next(null, mountPoint)
+                ], (err, result) ->
+                    if err then console.log(err)
+                    else callback(result)
 
 module.exports = ServerConfig

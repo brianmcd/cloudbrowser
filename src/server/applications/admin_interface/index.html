@@ -18,37 +18,41 @@
                 </div>
                 <div class="span7">
                     <input type="text" class="input-small search-query margin-bottom"
-                    placeholder="search" ng-model="search">
-                    <table class="table table-bordered" id="data-table">
+                    placeholder="search" ng-model="search" ng-show="apps.length">
+                    <div class="pull-right">
+                        {{user.getEmail()}} &nbsp;|
+                        <a ng-click="logout()">Logout</a>
+                    </div>
+                    <table ng-show="apps.length" class="table table-bordered" id="data-table">
                         <thead>
                             <th class="align-left"
-                            ng-click="predicate='mountPoint'; mreverse=!mreverse; reverse=mreverse">
+                            ng-click="sortBy('mountPoint')">
                                 MountPoint
                             </th>
                             <th
-                            ng-click="predicate='users.length'; ureverse=!ureverse; reverse=ureverse">
-                                # Users
+                            ng-click="sortBy('users.length')">
+                                <i class="icon-group" title="Number of Users"></i>
                             </th>
                             <th
-                            ng-click="predicate='virtualBrowsers.length'; ireverse=!ireverse; reverse=ireverse">
-                                # Instances
+                            ng-click="sortBy('virtualBrowsers.length')">
+                                <i class="icon-file" title="Number of Instances"></i>
                             </th>
                             <th
-                            ng-click="predicate='privacy'; preverse=!preverse; reverse=preverse">
-                                Privacy
+                            ng-click="sortBy('isPublic')">
+                                <i class="icon-eye-open" title="Privacy"></i>
                             </th>
                             <th
-                            ng-click="predicate='mounted'; sreverse=!sreverse; reverse=sreverse">
-                                State
+                            ng-click="sortBy('mounted')">
+                                <i class="icon-off" title="State"></i>
                             </th>
                             <th
-                            ng-click="predicate='isAuthEnabled'; areverse=!areverse; reverse=areverse">
-                                Authentication
+                            ng-click="sortBy('isAuthEnabled')">
+                                <i class="icon-lock" title="Authentication"></i>
                             </th>
                         </thead>
                         <tbody>
-                            <tr ng-repeat="app in apps | filter:search| orderBy:predicate:reverse"
-                            ng-click="selectApp(app.mountPoint)"
+                            <tr ng-repeat="app in apps|filter:search|orderBy:predicate:reverse"
+                            ng-click="selectApp(app)"
                             ng-class="getAppClass(app)">
                                 <td class="align-left">{{app.mountPoint}}</td>
                                 <td>{{app.users.length}}</td>
@@ -62,11 +66,13 @@
                             </tr> 
                         </tbody>
                     </table>
+                    <!-- Use class instead of id-->
+                    <div id="file-uploader"></div>
                 </div>
 
                 <div ng-show="selectedApp"
                 class="span4 pagination-centered box"
-                ng-class="getBoxClass(selectedApp.mountPoint)">
+                ng-class="getBoxClass(selectedApp)">
 
                     <legend>
                         {{selectedApp.mountPoint | removeSlash}}
@@ -80,7 +86,7 @@
                     <p class="well">
                         <span ng-hide="selectedApp.editing">
                             {{selectedApp.description}}
-                            <a ng-click="editDescription(selectedApp.mountPoint)">
+                            <a ng-click="editDescription(selectedApp)">
                                 Edit
                             </a>
                         </span>
@@ -121,27 +127,33 @@
                     <div class="span3 offset4 align-left">
                         <div class="onoffswitch onoffswitch-privacy">
                             <input type="checkbox" id="onoffswitch1"
-                            class="onoffswitch-checkbox" ng-model="selectedApp.isPublic">
+                            class="onoffswitch-checkbox"
+                            ng-model="selectedApp.isPublic">
                             <label class="onoffswitch-label"
-                            for="onoffswitch1" ng-click="togglePrivacy(selectedApp.mountPoint)">
+                            for="onoffswitch1"
+                            ng-click="togglePrivacy(selectedApp)">
                                 <div class="onoffswitch-inner"></div>
                                 <div class="onoffswitch-switch"></div>
                             </label>
                         </div>
                         <div class="onoffswitch onoffswitch-auth">
                             <input type="checkbox" id="onoffswitch1"
-                            class="onoffswitch-checkbox" ng-model="selectedApp.isAuthEnabled">
+                            class="onoffswitch-checkbox"
+                            ng-model="selectedApp.isAuthEnabled">
                             <label class="onoffswitch-label"
-                            for="onoffswitch1" ng-click="toggleAuthentication(selectedApp.mountPoint)">
+                            for="onoffswitch1"
+                            ng-click="toggleAuthentication(selectedApp)">
                                 <div class="onoffswitch-inner"></div>
                                 <div class="onoffswitch-switch"></div>
                             </label>
                         </div>
                         <div class="onoffswitch onoffswitch-mounted">
                             <input type="checkbox" id="onoffswitch1"
-                            class="onoffswitch-checkbox" ng-model="selectedApp.mounted">
+                            class="onoffswitch-checkbox"
+                            ng-model="selectedApp.mounted">
                             <label class="onoffswitch-label"
-                            for="onoffswitch1" ng-click="toggleMountDisable(selectedApp.mountPoint)">
+                            for="onoffswitch1"
+                            ng-click="toggleMountDisable(selectedApp)">
                                 <div class="onoffswitch-inner"></div>
                                 <div class="onoffswitch-switch"></div>
                             </label>

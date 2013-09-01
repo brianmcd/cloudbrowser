@@ -208,8 +208,8 @@ class Runner
                         user.ns = "local"
                         # Find if the user already exists
                         # in the admin interface collection
-                        mongoInterface.findUser user,
-                        'admin_interface.users', (userRec) ->
+                        mongoInterface.findUser user, 'admin_interface.users',
+                        (err, userRec) ->
                             if userRec then next(null, null, null)
                             else Read
                                 prompt : "Password: "
@@ -238,7 +238,7 @@ class Runner
                         key   : result.key.toString('hex')
                         salt  : result.salt.toString('hex')
                     , 'admin_interface.users'
-                    , (userRec) -> next(null, user)
+                    , (err, userRec) -> next(null, user)
         ], callback
 
     @run : () ->

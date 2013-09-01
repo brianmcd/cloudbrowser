@@ -8,25 +8,51 @@
     var App, currentVirtualBrowser, server;
     server = cloudbrowser.serverConfig;
     currentVirtualBrowser = cloudbrowser.currentVirtualBrowser;
+    $scope.safeApply = function(fn) {
+      var phase;
+      phase = this.$root.$$phase;
+      if (phase === '$apply' || phase === '$digest') {
+        if (fn) {
+          return fn();
+        }
+      } else {
+        return this.$apply(fn);
+      }
+    };
+    $scope.leftClick = function(url) {
+      return currentVirtualBrowser.redirect(url);
+    };
+    $scope.redirectToGithub = function(app) {
+      var completeUrl;
+      completeUrl = "https://github.com/brianmcd/cloudbrowser/tree/" + ("deployment/examples" + app.mountPoint);
+      return $scope.leftClick(completeUrl);
+    };
     $scope.apps = [];
     App = (function() {
       function App() {}
 
-      App.add = function(api) {
+      App.add = function(appConfig) {
         var app;
-        app = {};
-        app.api = api;
-        return $scope.$apply(function() {
-          return $scope.apps.push(app);
-        });
+        app = {
+          api: appConfig,
+          url: appConfig.getUrl(),
+          mountPoint: appConfig.getMountPoint(),
+          description: appConfig.getDescription()
+        };
+        return $scope.apps.push(app);
       };
 
       App.remove = function(mountPoint) {
-        return $scope.$apply(function() {
-          return $scope.apps = $.grep($scope.apps, function(element, index) {
-            return element.api.getMountPoint() !== mountPoint;
-          });
-        });
+        var app, idx, _i, _len, _ref;
+        _ref = $scope.apps;
+        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+          app = _ref[_i];
+          if (!(app.api.getMountPoint() === mountPoint)) {
+            continue;
+          }
+          idx = $scope.apps.indexOf(app);
+          return $scope.apps.splice(idx, 1);
+        }
       };
 
       return App;
@@ -36,25 +62,54 @@
       filters: {
         "public": true
       },
-      callback: function(apps) {
-        var app, _i, _len, _results;
-        _results = [];
-        for (_i = 0, _len = apps.length; _i < _len; _i++) {
-          app = apps[_i];
-          _results.push(App.add(app));
+      callback: function(err, apps) {
+        if (err) {
+          return $scope.safeApply(function() {
+            return $scope.error = err.message;
+          });
+        } else {
+          return $scope.safeApply(function() {
+            var app, _i, _len, _results;
+            _results = [];
+            for (_i = 0, _len = apps.length; _i < _len; _i++) {
+              app = apps[_i];
+              _results.push(App.add(app));
+            }
+            return _results;
+          });
         }
-        return _results;
       }
     });
-    server.addEventListener('madePublic', function(app) {
-      return App.add(app);
+    server.addEventListener('madePublic', function(appConfig) {
+      return $scope.safeApply(function() {
+        return App.add(appConfig);
+      });
+    });
+    server.addEventListener('added', function(appConfig) {
+      return $scope.safeApply(function() {
+        return App.add(appConfig);
+      });
+    });
+    server.addEventListener('mount', function(appConfig) {
+      return $scope.safeApply(function() {
+        return App.add(appConfig);
+      });
     });
     server.addEventListener('madePrivate', function(mountPoint) {
-      return App.remove(mountPoint);
+      return $scope.safeApply(function() {
+        return App.remove(mountPoint);
+      });
     });
-    return $scope.leftClick = function(url) {
-      return currentVirtualBrowser.redirect(url);
-    };
+    server.addEventListener('removed', function(mountPoint) {
+      return $scope.safeApply(function() {
+        return App.remove(mountPoint);
+      });
+    });
+    return server.addEventListener('disable', function(mountPoint) {
+      return $scope.safeApply(function() {
+        return App.remove(mountPoint);
+      });
+    });
   });
 
   CBHomePage.filter("removeSlash", function() {

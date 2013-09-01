@@ -5,35 +5,53 @@
   CBPasswordReset = angular.module("CBPasswordReset", []);
 
   CBPasswordReset.controller("ResetCtrl", function($scope) {
-    var auth, currentVirtualBrowser;
+    var PASSWORD_EMPTY, RESET_SUCCESS, auth, currentVirtualBrowser;
+    PASSWORD_EMPTY = "Please enter the password";
+    RESET_SUCCESS = "The password has been successfully reset";
+    $scope.safeApply = function(fn) {
+      var phase;
+      phase = this.$root.$$phase;
+      if (phase === '$apply' || phase === '$digest') {
+        if (fn) {
+          return fn();
+        }
+      } else {
+        return this.$apply(fn);
+      }
+    };
     currentVirtualBrowser = cloudbrowser.currentVirtualBrowser;
     auth = cloudbrowser.auth;
-    currentVirtualBrowser.getResetEmail(function(userEmail) {
-      return $scope.$apply(function() {
-        return $scope.email = userEmail.split("@")[0];
-      });
-    });
     $scope.password = null;
     $scope.vpassword = null;
     $scope.isDisabled = false;
     $scope.passwordError = null;
-    $scope.passwordSuccess = null;
+    $scope.resetSuccess = null;
+    $scope.resetError = null;
+    currentVirtualBrowser.getResetEmail(function(err, userEmail) {
+      if (err) {
+        return console.log(err);
+      } else {
+        return $scope.safeApply(function() {
+          return $scope.email = userEmail.split("@")[0];
+        });
+      }
+    });
     $scope.$watch("password", function() {
       $scope.passwordError = null;
-      $scope.passwordSuccess = null;
+      $scope.resetSuccess = null;
       return $scope.isDisabled = false;
     });
     return $scope.reset = function() {
       $scope.isDisabled = true;
-      if ($scope.password == null) {
-        return $scope.passwordError = "Please enter the password.";
+      if (!$scope.password) {
+        return $scope.passwordError = PASSWORD_EMPTY;
       } else {
-        return auth.resetPassword($scope.password, function(success) {
-          return $scope.$apply(function() {
-            if (success) {
-              $scope.passwordSuccess = "The password has been successfully reset";
+        return auth.resetPassword($scope.password, function(err) {
+          return $scope.safeApply(function() {
+            if (err) {
+              $scope.resetError = err.message;
             } else {
-              $scope.passwordError = "Password can not be changed as the reset link is invalid.";
+              $scope.resetSuccess = RESET_SUCCESS;
             }
             return $scope.isDisabled = false;
           });

@@ -17,7 +17,7 @@
                     {{mountPoint|removeSlash}}
                 </h3>
                 <div class="span5 offset3">
-                    {{user.getEmail()}} &nbsp;| &nbsp;<a ng-click="logout()">Logout</a>
+                    {{user.email}} &nbsp;| &nbsp;<a ng-click="logout()">Logout</a>
 
                     <div class="well" ng-show="description">
                         {{description}}
@@ -26,7 +26,11 @@
                     <div class="hero-unit" ng-show="!(virtualBrowserList.length)">
                         <h2>Welcome to {{mountPoint|removeSlash}}.</h2>
                         <p>You don't have any virtual browsers yet.</p>
-                        <p><button class="btn btn-success" ng-click="createVB()">Create</button> one now!</p>
+                        <p>
+                            <button class="btn btn-success"
+                            ng-click="createVB()">
+                            Create</button> one now!
+                        </p>
                     </div>
 
                     <div ng-show="virtualBrowserList.length">
@@ -78,7 +82,8 @@
 
                         <div class="btn-group margin-bottom">
                             <a class="btn dropdown-toggle"
-                            data-toggle="dropdown" ng-class="{true:'disabled'}[isDisabled.share]">
+                            data-toggle="dropdown"
+                            ng-class="{true:'disabled'}[isDisabled.share]">
                                 Share <i class="icon-group"></i>
                                 <span class="caret" ></span>
                             </a>
@@ -107,44 +112,68 @@
                     </div>
 
                     <div class="alert alert-success" ng-show="boxMessage">
-                        <button type="button" class="close" ng-click="boxMessage=null">&times;</button>
+                        <button type="button" class="close"
+                        ng-click="boxMessage=null">&times;</button>
                         <strong>Success!</strong> {{boxMessage}}.
                     </div>
 
                     <div class="alert alert-error" ng-show="error">
-                        <button type="button" class="close" ng-click="error=null">&times;</button>
+                        <button type="button" class="close"
+                        ng-click="error=null">&times;</button>
                         <strong>Error!</strong> Can not perform requested action. {{error}}.
                     </div>
 
-                    <div class="alert alert-error" ng-show="confirmDelete && virtualBrowserList.length">
-                        <button type="button" class="close" ng-click="confirmDelete=false">&times;</button>
+                    <div class="alert alert-error"
+                    ng-show="confirmDelete && virtualBrowserList.length">
+                    <button type="button"
+                    class="close" ng-click="confirmDelete=false">&times;</button>
                         <strong>Warning!</strong> The selected virtual browsers will be permanently deleted.<br>
                         <button class="btn btn-danger" ng-click="remove()">Continue</button>
                     </div>
 
-                    <div class="span8 offset2 box margin-bottom" ng-show="addingReaderWriter && virtualBrowserList.length">
-                        <button type="button" class="close" ng-click="addingReaderWriter = false">×</button>
+                    <div class="span8 offset2 box margin-bottom"
+                    ng-show="addingReaderWriter && virtualBrowserList.length">
+                        <button type="button"
+                        class="close"
+                        ng-click="addingReaderWriter=false">×</button>
                         <legend>Add Collaborator</legend>
                             <form class="form-inline" ng-submit="addReaderWriter()">
                                 <label>
-                                    Enter a google ID or select from existing users of {{mountPoint|removeSlash}}.
+                                    Enter a google ID or
+                                    select from existing users
+                                    of {{mountPoint|removeSlash}}.
                                 </label>
-                                <input type="text" data-provide="typeahead" typeahead="selectedReaderWriter" ng-model="selectedReaderWriter">
-                                <button type="submit" class="btn btn-primary" ng-disabled="!selectedReaderWriter">
+                                <input type="text" 
+                                data-provide="typeahead"
+                                typeahead="selectedReaderWriter"
+                                ng-model="selectedReaderWriter">
+                                <button type="submit"
+                                class="btn btn-primary"
+                                ng-disabled="!selectedReaderWriter">
                                     Add
                                 </button>
                             </form>
                     </div>
 
-                    <div class="box span8 offset2" ng-show="addingOwner && virtualBrowserList.length">
-                        <button type="button" class="close" ng-click="addingOwner = false">×</button>
+                    <div class="box span8 offset2"
+                    ng-show="addingOwner && virtualBrowserList.length">
+                        <button type="button"
+                        class="close"
+                        ng-click="addingOwner = false">×</button>
                         <legend>Add Owner</legend>
                             <form class="form-inline" ng-submit="addOwner()">
                                 <label>
-                                    Enter a google ID or select from existing users of {{mountPoint|removeSlash}}.
+                                    Enter a google ID or
+                                    select from existing
+                                    users of {{mountPoint|removeSlash}}.
                                 </label>
-                                <input type="text" data-provide="typeahead" typeahead="selectedOwner" ng-model = "selectedOwner">
-                                <button type="submit" class="btn btn-primary" ng-disabled="!selectedOwner">
+                                <input type="text"
+                                data-provide="typeahead"
+                                typeahead="selectedOwner"
+                                ng-model = "selectedOwner">
+                                <button type="submit"
+                                class="btn btn-primary"
+                                ng-disabled="!selectedOwner">
                                     Add
                                 </button>
                             </form>
@@ -152,7 +181,8 @@
 
                 </div>
 
-                <div class="span9 offset1" ng-show="virtualBrowserList.length">
+                <div class="span9 offset1"
+                ng-show="virtualBrowserList.length">
                     <table class="table table-bordered">
                         <thead>
                             <th><input type="checkbox"
@@ -160,20 +190,39 @@
                                 ng-checked="areAllSelected()">
                             </th>
                             <th>
-                                <span ng-click="predicate = 'name'; reverse = !reverse" class="pointer">Name</span>
-                                <span ng-show="predicate == 'name' && reverse"><i class="icon-caret-down icon-large"></i></span>
-                                <span ng-show="predicate == 'name' && !reverse"><i class="icon-caret-up icon-large"></i></span>
+                                <span
+                                ng-click="predicate='name';reverse=!reverse"
+                                class="pointer">
+                                    Name
+                                </span>
+                                <span ng-show="predicate=='name' && reverse">
+                                    <i class="icon-caret-down icon-large"></i>
+                                </span>
+                                <span ng-show="predicate=='name' && !reverse">
+                                    <i class="icon-caret-up icon-large"></i>
+                                </span>
                             </th>
                             <th>
-                                <span ng-click="predicate = 'dateCreated'; reverse = !reverse" class="pointer">Date Created</span>
-                                <span ng-show="predicate == 'dateCreated' && reverse"><i class="icon-caret-down icon-large"></i></span>
-                                <span ng-show="predicate == 'dateCreated' && !reverse"><i class="icon-caret-up icon-large"></i></span>
+                                <span
+                                ng-click="predicate='dateCreated';reverse=!reverse"
+                                class="pointer">
+                                    Date Created
+                                </span>
+                                <span
+                                ng-show="predicate=='dateCreated' && reverse">
+                                    <i class="icon-caret-down icon-large"></i>
+                                </span>
+                                <span
+                                ng-show="predicate=='dateCreated' && !reverse">
+                                    <i class="icon-caret-up icon-large"></i>
+                                </span>
                             </th>
                             <th>Owner(s)</th>
                             <th>Collaborator(s)</th>
                         </thead>
                         <tbody>
-                            <tr ng-repeat="vb in virtualBrowserList | virtualBrowserFilter:{user:user,type:filterType} | orderBy:predicate:reverse"
+                            <tr
+                                ng-repeat="vb in virtualBrowserList | virtualBrowserFilter:{user:user,type:filterType} | orderBy:predicate:reverse"
                                 ng-class="getSelectedClass(vb.id)">
                                 <td>
                                     <input type="checkbox"
@@ -185,7 +234,11 @@
                                     ng-click="clickRename(vb.id)" class="pointer">
                                         {{vb.name}}
                                     </span>
-                                    <input ng-show="vb.editing" ng-hasfocus="vb.editing" type="text" class="span11" ng-model="vb.name">
+                                    <input
+                                    ng-show="vb.editing"
+                                    ng-hasfocus="vb.editing"
+                                    type="text" class="span11"
+                                    ng-model="vb.name">
                                 </td>
                                 <td>
                                     {{vb.dateCreated}}
@@ -197,7 +250,8 @@
                                 </td>
                                 <td>
                                     <div ng-repeat="collaborator in vb.collaborators">
-                                        {{collaborator.getEmail()}} ({{collaborator.getNameSpace()}})
+                                        {{collaborator.getEmail()}}
+                                        ({{collaborator.getNameSpace()}})
                                     </div>
                                 </td>
                             </tr> 

@@ -1,62 +1,89 @@
 CBAuthentication = angular.module("CBAuthentication", [])
 
-CBAuthentication.controller "LoginCtrl", ($scope) ->
+# API Objects
+curVB          = cloudbrowser.currentVirtualBrowser
+auth           = cloudbrowser.auth
+appConfig      = curVB.getAppConfig()
+googleStrategy = auth.getGoogleStrategy()
+localStrategy  = auth.getLocalStrategy()
+{User}         = cloudbrowser.app
 
+# Status Strings
+AUTH_FAIL            = "Invalid credentials"
+EMAIL_IN_USE         = "Account with this Email ID already exists"
+EMAIL_INVALID        = "Please provide a valid email ID"
+RESET_SUCCESS        = "A password reset link has been sent to your email ID"
+EMAIL_EMPTY          = "Please provide the Email ID"
+PASSWORD_EMPTY       = "Please provide the password"
+
+# Regular expressions
+EMAIL_RE             = /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}$/
+
+CBAuthentication.controller "LoginCtrl", ($scope) ->
+    $scope.safeApply = (fn) ->
+        phase = this.$root.$$phase
+        if phase is '$apply' or phase is '$digest'
+            if fn then fn()
+        else this.$apply(fn)
+
+    # Initialization
     $scope.email            = null
     $scope.password         = null
     $scope.emailError       = null
+    $scope.passwordError    = null
     $scope.loginError       = null
     $scope.resetSuccessMsg  = null
     $scope.isDisabled       = false
     $scope.showEmailButton  = false
-    currentVirtualBrowser   = cloudbrowser.currentVirtualBrowser
-    appConfig               = currentVirtualBrowser.getAppConfig()
-    auth                    = cloudbrowser.auth
-    googleStrategy          = auth.getGoogleStrategy()
-    localStrategy           = auth.getLocalStrategy()
 
-    $scope.$watch "email + password", ->
+    # Watches
+    $scope.$watch "email + password", () ->
         $scope.loginError       = null
         $scope.isDisabled       = false
         $scope.resetSuccessMsg  = null
     
-    $scope.$watch "email", ->
-        $scope.emailError = null
+    $scope.$watch "email", () -> $scope.emailError = null
+    $scope.$watch "password", () -> $scope.passwordError = null
 
+    # Methods on angular scope
     $scope.googleLogin = () -> googleStrategy.login()
 
     $scope.login = () ->
-
-        if not $scope.email or not $scope.password
-            $scope.loginError = "Please provide both the Email ID and the password to login"
-
+        if not $scope.email then $scope.emailError = EMAIL_EMPTY
+        else if not $scope.password then $scope.passwordError = PASSWORD_EMPTY
         else
             $scope.isDisabled = true
             localStrategy.login
-                user     : new cloudbrowser.app.User($scope.email, 'local')
+                user     : new User($scope.email, 'local')
                 password : $scope.password
-                callback : (success) ->
-                    if not success
-                        $scope.$apply -> $scope.loginError = "Invalid Credentials"
-                    $scope.isDisabled = false
+                callback : (err, success) ->
+                    $scope.safeApply ->
+                        if err then $scope.loginError = err.message
+                        else if not success then $scope.loginError = AUTH_FAIL
+                        # We redirect on success and kill this VB
+                        # so there's no need to display a success message
+                        $scope.isDisabled = false
 
     $scope.sendResetLink = () ->
-
-        if !$scope.email? or not /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}$/.test $scope.email.toUpperCase()
-            $scope.emailError = "Please provide a valid email ID"
-
+        if not ($scope.email and EMAIL_RE.test($scope.email.toUpperCase()))
+            $scope.emailError = EMAIL_INVALID
         else
+            user = new User($scope.email, 'local')
             $scope.resetDisabled = true
-            auth.sendResetLink new cloudbrowser.app.User($scope.email, 'local'), (success) ->
-                if success
-                    $scope.resetSuccessMsg = "A password reset link has been sent to your email ID."
-                else
-                    $scope.$apply ->
-                        $scope.emailError = "This email ID is not registered with us."
-                $scope.$apply ->
+            auth.sendResetLink user, (err, success) ->
+                $scope.safeApply ->
+                    if err then $scope.emailError = err.message
+                    else $scope.resetSuccessMsg = RESET_SUCCESS
                     $scope.resetDisabled = false
 
 CBAuthentication.controller "SignupCtrl", ($scope) ->
+    $scope.safeApply = (fn) ->
+        phase = this.$root.$$phase
+        if phase is '$apply' or phase is '$digest'
+            if fn then fn()
+        else this.$apply(fn)
+
+    # Initialization
     $scope.email            = null
     $scope.password         = null
     $scope.vpassword        = null
@@ -65,41 +92,39 @@ CBAuthentication.controller "SignupCtrl", ($scope) ->
     $scope.passwordError    = null
     $scope.successMessage   = false
     $scope.isDisabled       = false
-    currentVirtualBrowser   = cloudbrowser.currentVirtualBrowser
-    appConfig               = currentVirtualBrowser.getAppConfig()
-    googleStrategy          = cloudbrowser.auth.getGoogleStrategy()
-    localStrategy           = cloudbrowser.auth.getLocalStrategy()
 
+    # Watches
     $scope.$watch "email", (nval, oval) ->
-        $scope.emailError       = null
-        $scope.signupError      = null
-        $scope.isDisabled       = false
-        $scope.successMessage   = false
-
-        appConfig.isUserRegistered new cloudbrowser.app.User($scope.email, 'local'), (exists) ->
-            if exists then $scope.$apply ->
-                $scope.emailError = "Account with this Email ID already exists!"
+        $scope.emailError     = null
+        $scope.signupError    = null
+        $scope.isDisabled     = false
+        $scope.successMessage = false
+        user = new User($scope.email, 'local')
+        appConfig.isUserRegistered user, (err, exists) ->
+            $scope.safeApply () ->
+                if err then $scope.emailError = err.message
+                else if not exists then return
+                $scope.emailError = EMAIL_IN_USE
                 $scope.isDisabled = true
 
     $scope.$watch "password+vpassword", ->
-        $scope.signupError      = null
-        $scope.passwordError    = null
-        $scope.isDisabled       = false
+        $scope.isDisabled    = false
+        $scope.signupError   = null
+        $scope.passwordError = null
 
+    # Methods on the angular scope
     $scope.googleLogin = () -> googleStrategy.signup()
 
-    $scope.signup = ->
+    $scope.signup = () ->
         $scope.isDisabled = true
-
-        if !$scope.email? or !$scope.password?
-            $scope.signupError = "Must provide both Email and Password!"
-
-        else if not /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}$/.test $scope.email.toUpperCase()
-            $scope.emailError = "Not a valid Email ID!"
-
+        if not ($scope.email and EMAIL_RE.test($scope.email.toUpperCase()))
+            $scope.emailError = EMAIL_INVALID
+        else if not $scope.password then $scope.passwordError = PASSWORD_EMPTY
         else
             localStrategy.signup
-                user     : new cloudbrowser.app.User($scope.email, 'local')
+                user     : new User($scope.email, 'local')
                 password : $scope.password
-                callback : () ->
-                    $scope.$apply -> $scope.successMessage = true
+                callback : (err) ->
+                    $scope.safeApply ->
+                        if err then $scope.signupError = err.message
+                        else $scope.successMessage = true

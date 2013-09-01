@@ -59,7 +59,14 @@ defaults =
     useRouter           : false
 
 class Server extends EventEmitter
-    constructor : (@config = {}, paths, projectRoot, @mongoInterface) ->
+
+    # Keeps track of the current server instance
+    server = null
+
+    @getCurrentInstance : () ->
+        return server
+
+    constructor : (@config = {}, paths, @projectRoot, @mongoInterface) ->
         for own k, v of defaults
             if not @config.hasOwnProperty k
                 @config[k] = v
@@ -69,6 +76,7 @@ class Server extends EventEmitter
                 if @config.debug
                     console.log "#{k} : #{@config[k]}"
 
+            server = this
         # There may be a synchronization issue
         # The final server may be usable only if all the components have been initialized
 
@@ -82,7 +90,7 @@ class Server extends EventEmitter
         @applications = new ApplicationManager
             paths     : paths
             server    : this
-            cbAppDir  : projectRoot
+            cbAppDir  : @projectRoot
 
         @setupEventTracker() if @config.printEventStats
 
@@ -113,55 +121,60 @@ class Server extends EventEmitter
                 if handshakeData.headers?.cookie?
                     handshakeData.cookie = ParseCookie(handshakeData.headers.cookie)
                     handshakeData.sessionID = handshakeData.cookie['cb.id']
-                    @mongoInterface.getSession handshakeData.sessionID, (session) ->
-                        handshakeData.session = session
-                        callback(null, true)
+                    @mongoInterface.getSession handshakeData.sessionID,
+                    (err, session) ->
+                        if err then callback(null, false)
+                        else
+                            handshakeData.session = session
+                            callback(null, true)
                 else callback(null, false)
 
         io.sockets.on 'connection', (socket) =>
             @addLatencyToClient(socket) if @config.simulateLatency
             socket.on 'auth', (app, browserID) =>
-                # app, browserID are provided by the client and cannot be trusted
-                if app is "" then app = "/"
-                decoded = decodeURIComponent(browserID)
-                if browserManagers[app] and @isAuthorized(socket.handshake.session, app, browserID)
-                    bserver = browserManagers[app].find(decoded)
-                    bserver?.addSocket(socket)
-                else
-                    socket.disconnect()
+                # NOTE : app, browserID are provided by the client
+                # and cannot be trusted
+                browserID = decodeURIComponent(browserID)
+                if browserManagers[app] then @isAuthorized
+                    session    : socket.handshake.session
+                    mountPoint : if app is "" then "/" else app
+                    browserID  : browserID
+                    callback   : (err, isAuthorized) ->
+                        if err or not isAuthorized
+                            socket.disconnect()
+                        else
+                            bserver = browserManagers[app].find(browserID)
+                            bserver?.addSocket(socket)
+                else socket.disconnect()
         return io
 
-    isAuthorized : (session, mountPoint, browserID) ->
+    isAuthorized : (options) ->
+        {session, mountPoint, browserID, callback} = options
 
-        if /landing_page$/.test(mountPoint)
-            mountPoint  = mountPoint.split("/")
-            mountPoint.pop()
-            mountPoint = mountPoint.join('/')
-            # TODO: Check for undefined.
-            if not session or not session.user then return false
-            appUser = session.user.filter (item) ->
-                item.app is mountPoint
-            if appUser[0] then return true
-            else return false
+        if typeof callback isnt "function" then return
 
-        app = @applications.find(mountPoint)
+        parentMountPoint = mountPoint.replace(/\/landing_page$/, "")
 
-        if not app
-            return false
-        else if not app.isAuthConfigured()
-            return true
-        else if not session.user
-            return false
+        app = @applications.find(parentMountPoint)
+
+        if not app then callback(null, false)
+
+        else if not app.isAuthConfigured() then callback(null, true)
+
+        else if not session or not session.user then callback(null, false)
+
         else
-            appUser = session.user.filter (item) ->
-                item.app is mountPoint
-            if appUser[0]
-                @permissionManager.findBrowserPermRec appUser[0],
-                mountPoint, browserID, (browserRec) ->
-                    if browserRec and Object.keys(browserRec).length isnt 0
-                        return true
-                    else return false
-            else return false
+            for user in session.user when user.app is parentMountPoint
+                appUser = user
+            if appUser then @permissionManager.findBrowserPermRec
+                user       : appUser
+                mountPoint : mountPoint
+                browserID  : browserID
+                callback   : (err, browserRec) ->
+                    if err then callback(err)
+                    else if browserRec then callback(null, true)
+                    else callback(null, false)
+            else callback(null, false)
     
     addLatencyToClient : (socket) ->
         if typeof @config.simulateLatency == 'number'

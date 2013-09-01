@@ -81,7 +81,7 @@ class BrowserServer extends EventEmitter
             for socket in @sockets
                 sessions.push(socket.handshake.sessionID)
             callback(sessions)
-        , 1000
+        , 2000
 
     # arg can be an Application or URL string.
     load : (arg) ->
@@ -366,7 +366,7 @@ DOMEventHandlers =
                         event.args)
 
     CreateComponent : (component) ->
-        console.log("Inside createComponent: #{@browserLoading}")
+        #console.log("Inside createComponent: #{@browserLoading}")
         return if @browserLoading
         {target, name, options} = component
         @broadcastEvent('CreateComponent', name, target.id, options)

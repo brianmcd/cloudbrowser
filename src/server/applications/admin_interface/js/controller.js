@@ -5,81 +5,7 @@
   CBAdmin = angular.module("CBAdmin", []);
 
   CBAdmin.controller("AppCtrl", function($scope) {
-    var App, curInstance, serverConfig;
-    $scope.apps = [];
-    App = (function() {
-      function App(appConfig) {
-        var _this = this;
-        this.description = appConfig.getDescription();
-        this.mountPoint = appConfig.getMountPoint();
-        this.url = appConfig.getUrl();
-        this.instantiationStrategy = this.camelCaseToWords(appConfig.getInstantiationStrategy());
-        this.browserLimit = appConfig.getBrowserLimit();
-        this.isAuthEnabled = appConfig.isAuthConfigured();
-        this.isPublic = appConfig.isAppPublic();
-        this.mounted = appConfig.isMounted();
-        this.api = appConfig;
-        appConfig.getUsers(function(users) {
-          return $scope.safeApply(function() {
-            return _this.users = users;
-          });
-        });
-        appConfig.getVirtualBrowsers(function(virtualBrowsers) {
-          return $scope.safeApply(function() {
-            return _this.virtualBrowsers = virtualBrowsers;
-          });
-        });
-        this.setupEventListeners();
-        App.add(this);
-      }
-
-      App.prototype.camelCaseToWords = function(camelCaseString) {
-        return camelCaseString.replace(/([A-Z])/g, ' $1').replace(/^./, function(str) {
-          return str.toUpperCase();
-        });
-      };
-
-      App.find = function(mountPoint) {
-        var app;
-        app = $.grep($scope.apps, function(element, index) {
-          return element.mountPoint === mountPoint;
-        });
-        return app[0];
-      };
-
-      App.add = function(app) {
-        return $scope.safeApply(function() {
-          return $scope.apps.push(app);
-        });
-      };
-
-      App.remove = function(mountPoint) {
-        return $scope.safeApply(function() {
-          return $scope.apps = $.grep($scope.apps, function(element, index) {
-            return element.mountPoint !== mountPoint;
-          });
-        });
-      };
-
-      App.prototype.setupEventListeners = function() {
-        var _this = this;
-        this.api.addEventListener("added", function(vb) {
-          return $scope.safeApply(function() {
-            return _this.virtualBrowsers.push(vb);
-          });
-        });
-        return this.api.addEventListener("removed", function(vbID) {
-          return $scope.safeApply(function() {
-            return _this.virtualBrowsers = $.grep(_this.virtualBrowsers, function(element, index) {
-              return element.id !== vbID;
-            });
-          });
-        });
-      };
-
-      return App;
-
-    })();
+    var App, curVB, fileUploader, fileUploaderDiv, serverConfig, toggle;
     $scope.safeApply = function(fn) {
       var phase;
       phase = this.$root.$$phase;
@@ -91,99 +17,219 @@
         return this.$apply(fn);
       }
     };
-    curInstance = cloudbrowser.currentVirtualBrowser;
+    $scope.apps = [];
+    App = (function() {
+      function App() {}
+
+      App.camelCaseToWords = function(camelCaseString) {
+        return camelCaseString.replace(/([A-Z])/g, ' $1').replace(/^./, function(str) {
+          return str.toUpperCase();
+        });
+      };
+
+      App.add = function(appConfig) {
+        var app;
+        app = {
+          url: appConfig.getUrl(),
+          api: appConfig,
+          description: appConfig.getDescription(),
+          mountPoint: appConfig.getMountPoint(),
+          isPublic: appConfig.isAppPublic(),
+          mounted: appConfig.isMounted(),
+          browserLimit: appConfig.getBrowserLimit(),
+          isAuthEnabled: appConfig.isAuthConfigured(),
+          instantiationStrategy: App.camelCaseToWords(appConfig.getInstantiationStrategy())
+        };
+        appConfig.getUsers(function(err, users) {
+          if (err) {
+            return console.log(err);
+          } else {
+            return $scope.safeApply(function() {
+              return app.users = users;
+            });
+          }
+        });
+        appConfig.getVirtualBrowsers(function(err, virtualBrowsers) {
+          if (err) {
+            return console.log(err);
+          } else {
+            return $scope.safeApply(function() {
+              return app.virtualBrowsers = virtualBrowsers;
+            });
+          }
+        });
+        App.setupEventListeners(app);
+        return $scope.apps.push(app);
+      };
+
+      App.remove = function(mountPoint) {
+        var app, idx, _i, _len, _ref;
+        _ref = $scope.apps;
+        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+          app = _ref[_i];
+          if (!(app.mountPoint === mountPoint)) {
+            continue;
+          }
+          idx = $scope.apps.indexOf(app);
+          return $scope.apps.splice(idx, 1);
+        }
+      };
+
+      App.setupEventListeners = function(app) {
+        app.api.addEventListener("added", function(vb) {
+          return $scope.safeApply(function() {
+            return app.virtualBrowsers.push(vb);
+          });
+        });
+        return app.api.addEventListener("removed", function(vbID) {
+          return $scope.safeApply(function() {
+            var idx, vb, _i, _len, _ref, _results;
+            _ref = app.virtualBrowsers;
+            _results = [];
+            for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+              vb = _ref[_i];
+              if (!(vb.id === vbID)) {
+                continue;
+              }
+              idx = app.virtualBrowsers.indexOf(vb);
+              _results.push(app.virtualBrowsers.splice(idx, 1));
+            }
+            return _results;
+          });
+        });
+      };
+
+      return App;
+
+    })();
+    curVB = cloudbrowser.currentVirtualBrowser;
     serverConfig = cloudbrowser.serverConfig;
+    serverConfig.addEventListener("added", function(appConfig) {
+      return App.add(appConfig);
+    });
+    serverConfig.addEventListener("removed", function(appConfig) {
+      return App.remove(appConfig);
+    });
+    fileUploaderDiv = document.getElementById('file-uploader');
+    fileUploader = curVB.createComponent('fileUploader', fileUploaderDiv, {
+      form: {
+        action: "" + (serverConfig.getUrl()) + "/gui-deploy",
+        "class": "form-inline well",
+        enctype: "multipart/form-data"
+      },
+      legend: "Upload an Application",
+      inputSubmit: {
+        name: "Upload",
+        "class": "btn btn-primary"
+      },
+      inputText: {
+        placeholder: "App Name",
+        style: "margin-right: 10px",
+        name: "appName"
+      },
+      inputFile: {
+        accept: "application/x-gzip",
+        name: "newApp"
+      }
+    });
+    $scope.user = curVB.getCreator();
     $scope.selectedApp = null;
-    $scope.areverse = $scope.ureverse = $scope.mreverse = $scope.ireverse = $scope.preverse = false;
     serverConfig.listApps({
       filters: {
         perUser: true
       },
-      callback: function(appConfigs) {
-        var appConfig, _i, _len;
-        for (_i = 0, _len = appConfigs.length; _i < _len; _i++) {
-          appConfig = appConfigs[_i];
-          new App(appConfig);
-        }
-        if ($scope.apps.length) {
+      callback: function(err, appConfigs) {
+        if (err) {
+          return console.log(err);
+        } else {
           return $scope.safeApply(function() {
-            return $scope.selectedApp = $scope.apps[0];
+            var appConfig, _i, _len;
+            for (_i = 0, _len = appConfigs.length; _i < _len; _i++) {
+              appConfig = appConfigs[_i];
+              App.add(appConfig);
+            }
+            if ($scope.apps.length) {
+              return $scope.safeApply(function() {
+                return $scope.selectedApp = $scope.apps[0];
+              });
+            }
           });
         }
       }
     });
-    $scope.user = curInstance.getCreator();
     $scope.leftClick = function(url) {
-      return curInstance.redirect(url);
+      return curVB.redirect(url);
     };
-    $scope.editDescription = function(mountPoint) {
-      var app;
-      app = App.find(mountPoint);
-      /*
-      app.isOwner $scope.user, (isOwner) ->
-          if isOwner then $scope.safeApply -> app.editing = true
-      */
-
-      return app.editing = true;
+    $scope.editDescription = function(app) {
+      return app.api.isOwner($scope.user, function(err, isOwner) {
+        if (isOwner) {
+          return $scope.safeApply(function() {
+            return app.editing = true;
+          });
+        }
+      });
     };
-    $scope.getBoxClass = function(mountPoint) {
-      if (!mountPoint) {
+    $scope.getBoxClass = function(app) {
+      if (!app) {
         return;
       }
-      if (App.find(mountPoint).mounted === true) {
+      if (app.mounted === true) {
         return "mounted";
       } else {
         return "disabled";
       }
     };
-    $scope.toggleMountDisable = function(mountPoint) {
-      var app;
-      app = App.find(mountPoint);
-      if (app.mounted) {
-        if (!app.api.disable()) {
-          return app.mounted = false;
-        }
+    toggle = function(app, property, method1, method2) {
+      if (app[property]) {
+        return app.api[method1](function(err) {
+          if (err) {
+            return console.log(err);
+          } else {
+            return $scope.safeApply(function() {
+              return app[property] = false;
+            });
+          }
+        });
       } else {
-        if (!app.api.mount()) {
-          return app.mounted = true;
-        }
+        return app.api[method2](function(err) {
+          if (err) {
+            return console.log(err);
+          } else {
+            return $scope.safeApply(function() {
+              return app[property] = true;
+            });
+          }
+        });
       }
     };
-    $scope.togglePrivacy = function(mountPoint) {
-      var app;
-      app = App.find(mountPoint);
-      if (app.isPublic) {
-        if (!app.api.makePrivate()) {
-          return app.isPublic = false;
-        }
-      } else {
-        if (!app.api.makePublic()) {
-          return app.isPublic = true;
-        }
-      }
+    $scope.toggleMountDisable = function(app) {
+      return toggle(app, 'mounted', 'disable', 'mount');
     };
-    $scope.toggleAuthentication = function(mountPoint) {
-      var app;
-      app = App.find(mountPoint);
-      if (app.isAuthEnabled) {
-        if (!app.api.disableAuthentication()) {
-          return app.isAuthEnabled = false;
-        }
-      } else {
-        if (!app.api.enableAuthentication()) {
-          return app.isAuthEnabled = true;
-        }
-      }
+    $scope.togglePrivacy = function(app) {
+      return toggle(app, 'isPublic', 'makePrivate', 'makePublic');
     };
-    $scope.selectApp = function(mountPoint) {
-      return $scope.selectedApp = App.find(mountPoint);
+    $scope.toggleAuthentication = function(app) {
+      return toggle(app, 'isAuthEnabled', 'disableAuthentication', 'enableAuthentication');
     };
-    return $scope.getAppClass = function(app) {
+    $scope.selectApp = function(app) {
+      return $scope.selectedApp = app;
+    };
+    $scope.getAppClass = function(app) {
       if ($scope.selectedApp === app) {
         return "selected";
       } else {
         return "";
       }
+    };
+    $scope.logout = function() {
+      return cloudbrowser.auth.logout();
+    };
+    return $scope.sortBy = function(predicate) {
+      var reverseProp;
+      $scope.predicate = predicate;
+      reverseProp = "" + predicate + "-reverse";
+      $scope[reverseProp] = !$scope[reverseProp];
+      return $scope.reverse = $scope[reverseProp];
     };
   });
 

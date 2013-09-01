@@ -38,11 +38,12 @@ class GoogleStrategy
         # Check if the client needs to be redirected to some virtual browser
         # after authentication
         redirectto = @_getRedirectUrl(req.session)
+        console.log(req.user)
         newUser =
             email : req.user.email
             ns    : 'google'
 
-        app.addNewUser newUser, (user) ->
+        app.addNewUser newUser, (err, user) ->
             servers.http.redirect(res, redirectto)
             servers.http.updateSession(req, user, req.session.mountPoint)
 

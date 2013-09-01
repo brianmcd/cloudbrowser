@@ -1,4 +1,5 @@
 Nodemailer        = require("nodemailer")
+cloudbrowserError = require("../shared/cloudbrowser_error")
 
 ###*
     @class cloudbrowser.Util
@@ -28,32 +29,27 @@ class Util
         @static
         @method sendEmail
         @memberOf cloudbrowser.Util
-        @param {string} toEmailID
+        @param {string} to
         @param {string} subject
-        @param {string} message
+        @param {string} html
         @param {emptyCallback} callback
     ###
-    sendEmail : (toEmailID, subject, message, callback) ->
-        if not _pvts[@_idx].emailerConfig.email or
-        not _pvts[@_idx].emailerConfig.password
-            throw new Error("Please provide an email ID and the corresponding" +
-            " password in emailer_config.json to enable sending confirmation emails")
+    sendEmail : (options) ->
+        {callback} = options
+        {email, password} = _pvts[@_idx].emailerConfig
+
+        if not (email and password)
+            callback?(cloudbrowserError('NO_EMAIL_CONFIG'))
+            return
 
         smtpTransport = Nodemailer.createTransport "SMTP",
             service: "Gmail"
-            auth:
-                user: _pvts[@_idx].emailerConfig.email
-                pass: _pvts[@_idx].emailerConfig.password
+            auth: {user : email, pass : password}
 
-        mailOptions =
-            from    : _pvts[@_idx].emailerConfig.email
-            to      : toEmailID
-            subject : subject
-            html    : message
+        options.from = email
 
-        smtpTransport.sendMail mailOptions, (err, response) ->
-            throw err if err
+        smtpTransport.sendMail options, (err, response) ->
             smtpTransport.close()
-            callback()
+            callback?(err)
 
 module.exports = Util

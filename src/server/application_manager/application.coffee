@@ -1,9 +1,11 @@
 Path     = require('path')
 Managers = require('../browser_manager')
 Fs       = require('fs')
+Async    = require('async')
 {EventEmitter} = require('events')
 {MultiProcessBrowserManager, InProcessBrowserManager} = Managers
 {hashPassword} = require('../../api/utils')
+cloudbrowserError = require('../../shared/cloudbrowser_error')
 
 ###
 _validDeploymentConfig :
@@ -118,7 +120,7 @@ class Application extends EventEmitter
 
         @deploymentConfig.isPublic = true
         @writeConfigToFile(@deploymentConfig, "deployment_config.json")
-        @emit 'madePublic'
+        if @isMounted() then @emit 'madePublic'
 
     makePrivate : () ->
         if not @isAppPublic() then return
@@ -126,7 +128,7 @@ class Application extends EventEmitter
         @deploymentConfig.isPublic = false
         @writeConfigToFile(@deploymentConfig, "deployment_config.json")
 
-        @emit 'madePrivate'
+        if @isMounted() then @emit 'madePrivate'
 
     getDescription : () ->
         return @deploymentConfig.description
@@ -220,6 +222,8 @@ class Application extends EventEmitter
             @deploymentConfig.mountOnStartup = true
             @writeConfigToFile(@deploymentConfig, "deployment_config.json")
 
+        if @isAppPublic() then @emit 'mount'
+
     disable : () ->
         if not @isMounted() then return
 
@@ -237,34 +241,51 @@ class Application extends EventEmitter
         @deploymentConfig.mountOnStartup = false
 
         @writeConfigToFile(@deploymentConfig, "deployment_config.json")
+
+        if @isAppPublic() then @emit 'disable'
         
     # Insert user into list of registered users of the application
     addNewUser : (newUser, callback) ->
-        {mongoInterface, permissionManager} = @server
+        {mongoInterface} = @server
         # Add a new user to the applications collection
-        mongoInterface.addUser newUser, @getCollectionName(), (user) =>
-            # Add a perm rec associated with the application
-            # in the user's db record
-            permissionManager.addAppPermRec user, @getMountPoint(),
-            {createbrowsers:true}, (appRec) =>
-                # Add a perm rec associated with the application's
-                # landing_page in the user's db record
-                permissionManager.addAppPermRec user, "#{@getMountPoint()}/landing_page",
-                {createbrowsers:true}, (appRec) ->
-                    callback(user)
+        Async.waterfall [
+            (next) =>
+                mongoInterface.addUser(newUser, @getCollectionName(), next)
+            (user, next) =>
+                @addAppPermRecs(user, (err) -> next(err, user))
+        ], callback
+
+    addAppPermRecs : (user, callback) ->
+        {permissionManager} = @server
+        # Add a perm rec associated with the application's mount point
+        permissionManager.addAppPermRec
+            user        : user
+            mountPoint  : @getMountPoint()
+            permissions : {createbrowsers : true}
+            callback    : (err) =>
+                if err then console.log(err)
+                # Add a perm rec associated with the application's landing page
+                else permissionManager.addAppPermRec
+                    user        : user
+                    mountPoint  : "#{@getMountPoint()}/landing_page"
+                    permissions : {createbrowsers:true}
+                    callback    : callback
 
     activateUser : (token, callback) ->
-        {mongoInterface, permissionManager} = @server
+        {mongoInterface} = @server
         
-        mongoInterface.findUser {token:token}, @getCollectionName(), (user) =>
-            permissionManager.addAppPermRec user, @getMountPoint(),
-            {createbrowsers:true}, (appRec) =>
-                # Add a perm rec associated with the application's
-                # landing_page in the user's db record
-                permissionManager.addAppPermRec user, "#{@getMountPoint()}/landing_page",
-                {createbrowsers:true}, (appRec) =>
-                    mongoInterface.unsetUser {token: token},
-                    @getCollectionName(), {token: "", status: ""}, () ->
+        Async.waterfall [
+            (next) =>
+                mongoInterface.findUser({token:token}, @getCollectionName(), next)
+            (user, next) =>
+                if user then @addAppPermRecs(user, next)
+                else next(cloudbrowserError("INVALID_TOKEN"))
+            (appPerms, next) =>
+                mongoInterface.unsetUser {token: token}, @getCollectionName(),
+                    token  : ""
+                    status : ""
+                , next
+        ], callback
 
     deactivateUser : (token, callback) ->
         @server.mongoInterface.removeUser({token: token}, @getCollectionName())
@@ -279,29 +300,42 @@ class Application extends EventEmitter
         {email, token, salt, key, callback} = options
         {mongoInterface} = @server
 
-        @findUser {email: email, ns: 'local'}, (userRec) ->
-            # If the user rec is marked as one who requested for a reset
+        @findUser {email: email, ns: 'local'}, (err, userRec) =>
+            # If the user rec is marked as the one who requested for a reset
             if userRec and userRec.status is "reset_password" and
             userRec.token is token
-                # Remove the reset markers
-                mongoInterface.unsetUser {email:userRec.email, ns:userRec.ns},
-                @getCollectionName(), {token: "", status: ""}, () ->
-                    # Set the hash key and salt for the new password
-                    mongoInterface.setUser {email:userRec.email, ns:userRec.ns},
-                    @getCollectionName(), {key: key, salt: salt}, () ->
-                        callback(true)
-            # If the user hasn't requested for a change in password then
-            # ignore the request
-            else callback(false)
+                Async.series [
+                    (next) =>
+                        # Remove the reset markers
+                        mongoInterface.unsetUser
+                            email : userRec.email
+                            ns    : userRec.ns
+                        , @getCollectionName(),
+                            token  : ""
+                            status : ""
+                        , next
+                    (next) =>
+                        # Set the hash key and salt for the new password
+                        mongoInterface.setUser
+                            email : userRec.email
+                            ns    : userRec.ns
+                        , @getCollectionName(),
+                            key  : key
+                            salt : salt
+                        , next
+                ], callback
+            else callback?(cloudbrowserError('PERM_DENIED'))
     
     addResetMarkerToUser : (options) ->
         {user, token, callback} = options
         {mongoInterface} = @server
 
         mongoInterface.setUser user, @getCollectionName(),
-        {status: "reset_password", token: token}, (result) ->
-            callback(true)
+            status : "reset_password"
+            token  : token
+        , (err, result) -> callback(err)
 
+    # TODO : move to shared/utils
     writeConfigToFile: (config, configName) ->
         if @dontPersistConfigChanges then return
 
@@ -313,21 +347,24 @@ class Application extends EventEmitter
     authenticate : (options) ->
         {user, password, callback} = options
         # Checking if the user is already registered with the app
-        @findUser user, (userRec) ->
-            # Passes only if the user's email ID has been confirmed by the user.
-            if not userRec or userRec.status is 'unverified'
-                callback(false)
-            else
-                # Hashing the password using pbkdf2.
-                hashPassword
+        Async.waterfall [
+            (next) =>
+                @findUser(user, next)
+            (userRec, next) ->
+                if not userRec or userRec.status is 'unverified'
+                    # Bypassing the waterfall
+                    callback(null, false)
+                else hashPassword
                     password : password
                     salt : new Buffer(userRec.salt, 'hex')
-                , (result) ->
-                    # Comparing the hashed user supplied password
-                    # to the one stored in the database.
-                    if result.key.toString('hex') is userRec.key
-                        callback(true)
-                    else callback(false)
+                , (err, result) -> next(err, result, userRec.key)
+            (result, key, next) ->
+                # Comparing the hashed user supplied password
+                # to the one stored in the database.
+                if result.key.toString('hex') is key
+                    next(null, true)
+                else next(null, false)
+        ], callback
 
     createBrowserManager : () ->
         if @browsers? then return
