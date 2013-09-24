@@ -186,6 +186,7 @@ class ApplicationManager extends EventEmitter
     # application configuration
     _configure : (appInfo) ->
         {path, mountPoint, type, mountFunc} = appInfo
+        appConfigPath = "#{path}/app_config\.json"
 
         if not (opts = @_getInitialConfiguration(path, type)) then return null
 

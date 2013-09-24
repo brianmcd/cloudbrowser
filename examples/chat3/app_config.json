@@ -1,5 +1,5 @@
 {
     "applicationStateFile": "chatboot.js",
-    "entryPoint": "/home/ashima/cloudbrowser_versions/0.10.5/cloudbrowser/examples/chat3/index.html",
-    "instantiationStrategy": "singleUserInstance"
+    "entryPoint": "index.html",
+    "instantiationStrategy": "multiInstance"
 }

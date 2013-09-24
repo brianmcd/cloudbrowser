@@ -6,7 +6,7 @@
         "ns": "google"
     },
     "description": "A multi user chat application written using AngularJS",
-    "browserLimit": 0,
+    "browserLimit": 5,
     "mountOnStartup": true,
     "mountPoint": "/chat3",
     "collectionName": "chat3.users"
