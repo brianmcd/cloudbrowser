@@ -1,5 +1,5 @@
 {
-    "entryPoint": "/home/ashima/cloudbrowser_versions/0.10.5/cloudbrowser/examples/angularjs-basic/index.html",
+    "entryPoint": "index.html",
     "applicationStateFile": "",
     "instantiationStrategy": "singleUserInstance"
 }
