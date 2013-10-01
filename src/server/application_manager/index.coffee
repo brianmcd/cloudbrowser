@@ -185,7 +185,8 @@ class ApplicationManager extends EventEmitter
     # Validates data in the configuration files and constructs the final
     # application configuration
     _configure : (appInfo) ->
-        {path, mountPoint, type, mountFunc, parent} = appInfo
+        {path, mountPoint, type, mountFunc} = appInfo
+        appConfigPath = "#{path}/app_config\.json"
 
         if not (opts = @_getInitialConfiguration(path, type)) then return null
 
