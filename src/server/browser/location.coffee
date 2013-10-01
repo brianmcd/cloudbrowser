@@ -13,6 +13,8 @@ exports.LocationBuilder = (browser) ->
     class Location
         # url can be absolute or relative
         constructor : (url) ->
+            # Location object that holds the old location
+            @oldLocation = null
             # The POJO that holds location info as properties.
             @parsed = {}
 
@@ -24,8 +26,11 @@ exports.LocationBuilder = (browser) ->
                     return @parsed[attr] || ''
 
                 @__defineSetter__ attr, (value) ->
+                    if not value or value is '' then return
+                    @oldLocation = new Location(@parsed.href)
                     @parsed[attr] = value
                     # This still doesn't work, but it's closer.
+                    # Recomputing href
                     @parsed = URL.parse(URL.format(@parsed), true)
                     @assign(@parsed.href)
 
@@ -53,7 +58,9 @@ exports.LocationBuilder = (browser) ->
         # Navigates to the given page
         assign : (url) ->
             # window.location could be 1 of 2 things right now:
-            #   1. 'this' if user used window.location.assign(url).
+            #   1. 'this' if user used window.location.assign(url)
+            #      or if the user changed only a property of the location
+            #      object
             #   2. A different Location object if user used
             #      window.location = url
             oldLoc = browser.window.location
@@ -65,7 +72,9 @@ exports.LocationBuilder = (browser) ->
             # Set up our POJO for the new URL.
             @parsed = URL.parse(url, true)
 
-
+            # For the case where the object has not changed but the
+            # properties have
+            if this is oldLoc then oldLoc = @oldLocation
             switch checkChange(this, oldLoc)
                 when 'hashchange'
                     event = browser.window.document.createEvent('HTMLEvents')
@@ -98,6 +107,7 @@ exports.LocationBuilder = (browser) ->
 #   'hashchange' - URLs are the same except for hash
 #   'pagechange' - URLs are different
 checkChange = (newloc, oldloc) ->
+    if not oldloc then return 'pagechange'
     if (newloc.protocol != oldloc.protocol) ||
        (newloc.host     != oldloc.host)     ||
        (newloc.hostname != oldloc.hostname) ||
@@ -107,8 +117,6 @@ checkChange = (newloc, oldloc) ->
         return 'pagechange'
     if newloc.hash != oldloc.hash
         return 'hashchange'
-    return undefined
-
 
 ###
 interface Location {

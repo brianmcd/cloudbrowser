@@ -461,11 +461,11 @@ class ApplicationManager extends EventEmitter
             0, if indexOfExt isnt -1 then indexOfExt else path.length)
         opts = {}
         # As there is no app_config.json file, manually set the basic
-        # configuration options - entryPoint and mountPoint
+        # configuration options
         opts.appConfig = {entryPoint : path}
         opts.deploymentConfig =
             mountPoint : @_constructMountPoint(pathWithoutExt)
-        # Add the application to the application manager's pool of apps
+            owner : @server.config.defaultUser
         @_add(opts, callback)
 
     # Creates a CloudBrowser application given the absolute path to the app

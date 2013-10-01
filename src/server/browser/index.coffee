@@ -44,7 +44,7 @@ class Browser extends EventEmitter
         @emit('BrowserClose')
         @removeAllListeners()
 
-    # Loads the application @app
+    # Loads the application
     load : (arg) ->
         url = null
         app = null
@@ -61,8 +61,12 @@ class Browser extends EventEmitter
         @window = @DOMWindowFactory.create(url)
         # The first time we call this, it won't navigate. 
         {domain} = @server.config
-        # file:///
-        @window.location = "file://#{url}"
+        # TODO : Implement node.baseURI to resolve relative
+        # paths instead of using this hack
+        if not URL.parse(url).protocol
+            @window.location = "file://#{url}"
+        else
+            @window.location = url
         @document = @window.document
         @initializeApplication(app) if app? && !app.remoteBrowsing
 

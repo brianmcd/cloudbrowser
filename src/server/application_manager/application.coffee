@@ -350,6 +350,8 @@ class Application extends EventEmitter
         configPath = "#{@path}/#{configName}"
         content = JSON.stringify(config, null, 4)
 
+        if not Fs.existsSync(configPath) then return
+
         Fs.writeFileSync(configPath, content)
 
     authenticate : (options) ->
