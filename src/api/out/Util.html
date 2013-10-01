@@ -3,7 +3,7 @@
 <html lang="en">
 <head>
 	<meta charset="utf-8">
-	<title>CloudBrowser Class: GoogleStrategy</title>
+	<title>CloudBrowser Class: Util</title>
 
 	<!--[if lt IE 9]>
 	<script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
@@ -47,15 +47,7 @@
 					<ul class="dropdown-menu ">
 						
 						<li>
-							<a href="cloudbrowser.app.AppConfig.html">AppConfig</a>
-						</li>
-						
-						<li>
-							<a href="cloudbrowser.app.GoogleStrategy.html">GoogleStrategy</a>
-						</li>
-						
-						<li>
-							<a href="cloudbrowser.app.LocalStrategy.html">LocalStrategy</a>
+							<a href="AppConfig.html">AppConfig</a>
 						</li>
 						
 						<li>
@@ -63,15 +55,27 @@
 						</li>
 						
 						<li>
-							<a href="cloudbrowser.app.VirtualBrowser.html">VirtualBrowser</a>
+							<a href="GoogleStrategy.html">GoogleStrategy</a>
 						</li>
 						
 						<li>
-							<a href="cloudbrowser.ServerConfig.html">ServerConfig</a>
+							<a href="LocalStrategy.html">LocalStrategy</a>
 						</li>
 						
 						<li>
-							<a href="cloudbrowser.Util.html">Util</a>
+							<a href="ServerConfig.html">ServerConfig</a>
+						</li>
+						
+						<li>
+							<a href="SharedState.html">SharedState</a>
+						</li>
+						
+						<li>
+							<a href="Util.html">Util</a>
+						</li>
+						
+						<li>
+							<a href="VirtualBrowser.html">VirtualBrowser</a>
 						</li>
 						
 
@@ -85,19 +89,35 @@
 					<ul class="dropdown-menu ">
 						
 						<li>
-							<a href="cloudbrowser.app.AppConfig.html#event:Added">Added</a>
+							<a href="AppConfig.html#event:Add">Add</a>
 						</li>
 						
 						<li>
-							<a href="cloudbrowser.app.AppConfig.html#event:Removed">Removed</a>
+							<a href="AppConfig.html#event:Remove">Remove</a>
 						</li>
 						
 						<li>
-							<a href="cloudbrowser.app.VirtualBrowser.html#event:Renamed">Renamed</a>
+							<a href="SharedState.html#event:addBrowser">addBrowser</a>
 						</li>
 						
 						<li>
-							<a href="cloudbrowser.app.VirtualBrowser.html#event:Shared">Shared</a>
+							<a href="SharedState.html#event:removeBrowser">removeBrowser</a>
+						</li>
+						
+						<li>
+							<a href="SharedState.html#event:rename">rename</a>
+						</li>
+						
+						<li>
+							<a href="SharedState.html#event:share">share</a>
+						</li>
+						
+						<li>
+							<a href="VirtualBrowser.html#event:rename">rename</a>
+						</li>
+						
+						<li>
+							<a href="VirtualBrowser.html#event:share">share</a>
 						</li>
 						
 
@@ -117,14 +137,12 @@
 					
 
 
-	<h1 class="page-title">Class: GoogleStrategy</h1>
+	<h1 class="page-title">Class: Util</h1>
 <section>
 
 <header>
     <h2>
-        <span class="ancestors"><a href="cloudbrowser.html">cloudbrowser</a><a href="cloudbrowser.app.html">.app</a>.</span>
-    
-    GoogleStrategy
+    Util
     </h2>
     
 </header>
@@ -136,7 +154,7 @@
     
         
 <dt>
-    <h4 class="name" id="GoogleStrategy"><span class="type-signature"></span>new GoogleStrategy<span class="signature">(bserver)</span><span class="type-signature"></span></h4>
+    <h4 class="name" id="Util"><span class="type-signature"></span>new Util<span class="signature">(emailerConfig)</span><span class="type-signature"></span></h4>
     
     
 </dt>
@@ -174,13 +192,13 @@
 
         <tr>
             
-                <td class="name"><code>bserver</code></td>
+                <td class="name"><code>emailerConfig</code></td>
             
 
             <td class="type">
             
                 
-<span class="param-type">BrowserServer</span>
+<span class="param-type">object</span>
 
 
             
@@ -222,7 +240,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="authentication_strategies.js.html">authentication_strategies.js</a>, <a href="authentication_strategies.js.html#sunlight-1-line-155">line 155</a>
+        <a href="util.js.html">util.js</a>, <a href="util.js.html#sunlight-1-line-9">line 9</a>
     </li></ul></dd>
     
 
@@ -268,7 +286,7 @@
         <dl>
             
 <dt>
-    <h4 class="name" id="login"><span class="type-signature"></span>login<span class="signature">()</span><span class="type-signature"></span></h4>
+    <h4 class="name" id="sendEmail"><span class="type-signature">&lt;static> </span>sendEmail<span class="signature">(to, subject, html, callback)</span><span class="type-signature"></span></h4>
     
     
 </dt>
@@ -276,7 +294,7 @@
     
     
     <div class="description">
-        <p>Log in through a google ID</p>
+        <p>Sends an email to the specified user.</p>
     </div>
     
 
@@ -285,74 +303,123 @@
     
     
     
-    
-    
-<dl class="details">
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-    <dt class="tag-source">Source:</dt>
-    <dd class="tag-source"><ul class="dummy"><li>
-        <a href="authentication_strategies.js.html">authentication_strategies.js</a>, <a href="authentication_strategies.js.html#sunlight-1-line-176">line 176</a>
-    </li></ul></dd>
-    
-
-    
-
-    
-
-    
-</dl>
-
-    
-    
-
-    
-
-    
-    
-    
-    
-    
-    
-    
-</dd>
-
+        <h5>Parameters:</h5>
         
-            
-<dt>
-    <h4 class="name" id="signup"><span class="type-signature"></span>signup<span class="signature">()</span><span class="type-signature"></span></h4>
-    
-    
-</dt>
-<dd>
-    
-    
-    <div class="description">
-        <p>Registers a user with the _application</p>
-    </div>
-    
 
-    
-    
-    
-    
+<table class="params table table-striped">
+    <thead>
+	<tr>
+		
+		<th>Name</th>
+		
+
+		<th>Type</th>
+
+		
+
+		
+
+		<th class="last">Description</th>
+	</tr>
+	</thead>
+
+	<tbody>
+	
+
+        <tr>
+            
+                <td class="name"><code>to</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">string</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"></td>
+        </tr>
+
+	
+
+        <tr>
+            
+                <td class="name"><code>subject</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">string</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"></td>
+        </tr>
+
+	
+
+        <tr>
+            
+                <td class="name"><code>html</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">string</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"></td>
+        </tr>
+
+	
+
+        <tr>
+            
+                <td class="name"><code>callback</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">emptyCallback</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"></td>
+        </tr>
+
+	
+	</tbody>
+</table>
+
     
     
     
@@ -378,7 +445,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="authentication_strategies.js.html">authentication_strategies.js</a>, <a href="authentication_strategies.js.html#sunlight-1-line-201">line 201</a>
+        <a href="util.js.html">util.js</a>, <a href="util.js.html#sunlight-1-line-38">line 38</a>
     </li></ul></dd>
     
 
@@ -429,7 +496,7 @@
 					
 		<span class="jsdoc-message">
 		Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.2.0-dev</a>
-		on Fri Jun 21 2013 10:11:12 GMT-0400 (EDT) using the <a href="https://github.com/terryweiss/docstrap">DocStrap template</a>.
+		on Wed Sep 18 2013 13:57:09 GMT-0400 (EDT) using the <a href="https://github.com/terryweiss/docstrap">DocStrap template</a>.
 		</span>
 				</footer>
 			</div>

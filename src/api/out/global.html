@@ -47,15 +47,7 @@
 					<ul class="dropdown-menu ">
 						
 						<li>
-							<a href="cloudbrowser.app.AppConfig.html">AppConfig</a>
-						</li>
-						
-						<li>
-							<a href="cloudbrowser.app.GoogleStrategy.html">GoogleStrategy</a>
-						</li>
-						
-						<li>
-							<a href="cloudbrowser.app.LocalStrategy.html">LocalStrategy</a>
+							<a href="AppConfig.html">AppConfig</a>
 						</li>
 						
 						<li>
@@ -63,15 +55,27 @@
 						</li>
 						
 						<li>
-							<a href="cloudbrowser.app.VirtualBrowser.html">VirtualBrowser</a>
+							<a href="GoogleStrategy.html">GoogleStrategy</a>
 						</li>
 						
 						<li>
-							<a href="cloudbrowser.ServerConfig.html">ServerConfig</a>
+							<a href="LocalStrategy.html">LocalStrategy</a>
 						</li>
 						
 						<li>
-							<a href="cloudbrowser.Util.html">Util</a>
+							<a href="ServerConfig.html">ServerConfig</a>
+						</li>
+						
+						<li>
+							<a href="SharedState.html">SharedState</a>
+						</li>
+						
+						<li>
+							<a href="Util.html">Util</a>
+						</li>
+						
+						<li>
+							<a href="VirtualBrowser.html">VirtualBrowser</a>
 						</li>
 						
 
@@ -85,19 +89,35 @@
 					<ul class="dropdown-menu ">
 						
 						<li>
-							<a href="cloudbrowser.app.AppConfig.html#event:Added">Added</a>
+							<a href="AppConfig.html#event:Add">Add</a>
 						</li>
 						
 						<li>
-							<a href="cloudbrowser.app.AppConfig.html#event:Removed">Removed</a>
+							<a href="AppConfig.html#event:Remove">Remove</a>
 						</li>
 						
 						<li>
-							<a href="cloudbrowser.app.VirtualBrowser.html#event:Renamed">Renamed</a>
+							<a href="SharedState.html#event:addBrowser">addBrowser</a>
 						</li>
 						
 						<li>
-							<a href="cloudbrowser.app.VirtualBrowser.html#event:Shared">Shared</a>
+							<a href="SharedState.html#event:removeBrowser">removeBrowser</a>
+						</li>
+						
+						<li>
+							<a href="SharedState.html#event:rename">rename</a>
+						</li>
+						
+						<li>
+							<a href="SharedState.html#event:share">share</a>
+						</li>
+						
+						<li>
+							<a href="VirtualBrowser.html#event:rename">rename</a>
+						</li>
+						
+						<li>
+							<a href="VirtualBrowser.html#event:share">share</a>
 						</li>
 						
 
@@ -188,132 +208,7 @@
         <dl>
                 
 <dt>
-    <h4 class="name" id="appObject">appObject</h4>
-    
-    
-</dt>
-<dd>
-    
-    
-    
-
-    
-<dl class="details">
-    
-
-        <h5 class="subsection-title">Properties:</h5>
-
-        <dl>
-
-<table class="props table table-striped">
-    <thead>
-	<tr>
-		
-		<th>Name</th>
-		
-
-		<th>Type</th>
-
-		
-
-		
-
-		<th class="last">Description</th>
-	</tr>
-	</thead>
-
-	<tbody>
-	
-
-        <tr>
-            
-                <td class="name"><code>mountPoint</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">string</span>
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last"></td>
-        </tr>
-
-	
-
-        <tr>
-            
-                <td class="name"><code>description</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">string</span>
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last"></td>
-        </tr>
-
-	
-	</tbody>
-</table>
-</dl>
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-    <dt class="tag-source">Source:</dt>
-    <dd class="tag-source"><ul class="dummy"><li>
-        <a href="server_config.js.html">server_config.js</a>, <a href="server_config.js.html#sunlight-1-line-88">line 88</a>
-    </li></ul></dd>
-    
-
-    
-
-    
-
-    
-</dl>
-
-    
-    
-</dd>
-
-            
-                
-<dt>
-    <h4 class="name" id="booleanCallback"><span class="type-signature"></span>booleanCallback<span class="signature">(status)</span><span class="type-signature"></span></h4>
+    <h4 class="name" id="booleanCallback"><span class="type-signature"></span>booleanCallback<span class="signature">(error, status)</span><span class="type-signature"></span></h4>
     
     
 </dt>
@@ -351,16 +246,13 @@
 
         <tr>
             
-                <td class="name"><code>status</code></td>
+                <td class="name"><code>error</code></td>
             
 
             <td class="type">
             
                 
-<span class="param-type">Bool</span>
-|
-
-<span class="param-type">Null</span>
+<span class="param-type">Error</span>
 
 
             
@@ -370,7 +262,30 @@
 
             
 
-            <td class="description last"><p>Null indicates that the user does not have the permission to perform this action.</p></td>
+            <td class="description last"></td>
+        </tr>
+
+	
+
+        <tr>
+            
+                <td class="name"><code>status</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Bool</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"></td>
         </tr>
 
 	
@@ -402,7 +317,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="index.js.html">index.js</a>, <a href="index.js.html#sunlight-1-line-104">line 104</a>
+        <a href="index.js.html">index.js</a>, <a href="index.js.html#sunlight-1-line-110">line 110</a>
     </li></ul></dd>
     
 
@@ -516,7 +431,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="index.js.html">index.js</a>, <a href="index.js.html#sunlight-1-line-100">line 100</a>
+        <a href="index.js.html">index.js</a>, <a href="index.js.html#sunlight-1-line-104">line 104</a>
     </li></ul></dd>
     
 
@@ -544,7 +459,7 @@
             
                 
 <dt>
-    <h4 class="name" id="instanceCallback"><span class="type-signature"></span>instanceCallback<span class="signature">(instance)</span><span class="type-signature"></span></h4>
+    <h4 class="name" id="instanceCallback"><span class="type-signature"></span>instanceCallback<span class="signature">(error, instance)</span><span class="type-signature"></span></h4>
     
     
 </dt>
@@ -582,13 +497,36 @@
 
         <tr>
             
+                <td class="name"><code>error</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Error</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"></td>
+        </tr>
+
+	
+
+        <tr>
+            
                 <td class="name"><code>instance</code></td>
             
 
             <td class="type">
             
                 
-<span class="param-type"><a href="cloudbrowser.app.VirtualBrowser.html">cloudbrowser.app.VirtualBrowser</a></span>
+<span class="param-type"><a href="VirtualBrowser.html">VirtualBrowser</a></span>
 |
 
 <span class="param-type">Number</span>
@@ -633,7 +571,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="index.js.html">index.js</a>, <a href="index.js.html#sunlight-1-line-102">line 102</a>
+        <a href="index.js.html">index.js</a>, <a href="index.js.html#sunlight-1-line-107">line 107</a>
     </li></ul></dd>
     
 
@@ -661,7 +599,7 @@
             
                 
 <dt>
-    <h4 class="name" id="instanceListCallback"><span class="type-signature"></span>instanceListCallback<span class="signature">(instances)</span><span class="type-signature"></span></h4>
+    <h4 class="name" id="instanceListCallback"><span class="type-signature"></span>instanceListCallback<span class="signature">(error, instances)</span><span class="type-signature"></span></h4>
     
     
 </dt>
@@ -695,6 +633,29 @@
 	</thead>
 
 	<tbody>
+	
+
+        <tr>
+            
+                <td class="name"><code>error</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Error</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"></td>
+        </tr>
+
 	
 
         <tr>
@@ -705,7 +666,7 @@
             <td class="type">
             
                 
-<span class="param-type">Array.&lt;<a href="cloudbrowser.app.VirtualBrowser.html">cloudbrowser.app.VirtualBrowser</a>></span>
+<span class="param-type">Array.&lt;<a href="VirtualBrowser.html">VirtualBrowser</a>></span>
 
 
             
@@ -716,234 +677,6 @@
             
 
             <td class="description last"><p>A list of all the instances associated with the current user.</p></td>
-        </tr>
-
-	
-	</tbody>
-</table>
-
-    
-    
-    
-<dl class="details">
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-    <dt class="tag-source">Source:</dt>
-    <dd class="tag-source"><ul class="dummy"><li>
-        <a href="index.js.html">index.js</a>, <a href="index.js.html#sunlight-1-line-96">line 96</a>
-    </li></ul></dd>
-    
-
-    
-
-    
-
-    
-</dl>
-
-    
-    
-
-    
-
-    
-    
-    
-    
-    
-    
-    
-</dd>
-
-            
-                
-<dt>
-    <h4 class="name" id="numberCallback"><span class="type-signature"></span>numberCallback<span class="signature">(number)</span><span class="type-signature"></span></h4>
-    
-    
-</dt>
-<dd>
-    
-    
-
-    
-    
-    
-    
-    
-        <h5>Parameters:</h5>
-        
-
-<table class="params table table-striped">
-    <thead>
-	<tr>
-		
-		<th>Name</th>
-		
-
-		<th>Type</th>
-
-		
-
-		
-
-		<th class="last">Description</th>
-	</tr>
-	</thead>
-
-	<tbody>
-	
-
-        <tr>
-            
-                <td class="name"><code>number</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">Number</span>
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last"></td>
-        </tr>
-
-	
-	</tbody>
-</table>
-
-    
-    
-    
-<dl class="details">
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-    <dt class="tag-source">Source:</dt>
-    <dd class="tag-source"><ul class="dummy"><li>
-        <a href="index.js.html">index.js</a>, <a href="index.js.html#sunlight-1-line-106">line 106</a>
-    </li></ul></dd>
-    
-
-    
-
-    
-
-    
-</dl>
-
-    
-    
-
-    
-
-    
-    
-    
-    
-    
-    
-    
-</dd>
-
-            
-                
-<dt>
-    <h4 class="name" id="userListCallback"><span class="type-signature"></span>userListCallback<span class="signature">(users)</span><span class="type-signature"></span></h4>
-    
-    
-</dt>
-<dd>
-    
-    
-
-    
-    
-    
-    
-    
-        <h5>Parameters:</h5>
-        
-
-<table class="params table table-striped">
-    <thead>
-	<tr>
-		
-		<th>Name</th>
-		
-
-		<th>Type</th>
-
-		
-
-		
-
-		<th class="last">Description</th>
-	</tr>
-	</thead>
-
-	<tbody>
-	
-
-        <tr>
-            
-                <td class="name"><code>users</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">Array.&lt;<a href="cloudbrowser.app.User.html">cloudbrowser.app.User</a>></span>
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last"></td>
         </tr>
 
 	
@@ -1000,6 +733,554 @@
     
 </dd>
 
+            
+                
+<dt>
+    <h4 class="name" id="numberCallback"><span class="type-signature"></span>numberCallback<span class="signature">(error, number)</span><span class="type-signature"></span></h4>
+    
+    
+</dt>
+<dd>
+    
+    
+
+    
+    
+    
+    
+    
+        <h5>Parameters:</h5>
+        
+
+<table class="params table table-striped">
+    <thead>
+	<tr>
+		
+		<th>Name</th>
+		
+
+		<th>Type</th>
+
+		
+
+		
+
+		<th class="last">Description</th>
+	</tr>
+	</thead>
+
+	<tbody>
+	
+
+        <tr>
+            
+                <td class="name"><code>error</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Error</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"></td>
+        </tr>
+
+	
+
+        <tr>
+            
+                <td class="name"><code>number</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Number</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"></td>
+        </tr>
+
+	
+	</tbody>
+</table>
+
+    
+    
+    
+<dl class="details">
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="index.js.html">index.js</a>, <a href="index.js.html#sunlight-1-line-113">line 113</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+    
+    
+
+    
+
+    
+    
+    
+    
+    
+    
+    
+</dd>
+
+            
+                
+<dt>
+    <h4 class="name" id="sharedStateCallback"><span class="type-signature"></span>sharedStateCallback<span class="signature">(error, sharedState)</span><span class="type-signature"></span></h4>
+    
+    
+</dt>
+<dd>
+    
+    
+
+    
+    
+    
+    
+    
+        <h5>Parameters:</h5>
+        
+
+<table class="params table table-striped">
+    <thead>
+	<tr>
+		
+		<th>Name</th>
+		
+
+		<th>Type</th>
+
+		
+
+		
+
+		<th class="last">Description</th>
+	</tr>
+	</thead>
+
+	<tbody>
+	
+
+        <tr>
+            
+                <td class="name"><code>error</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Error</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"></td>
+        </tr>
+
+	
+
+        <tr>
+            
+                <td class="name"><code>sharedState</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type"><a href="SharedState.html">SharedState</a></span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"></td>
+        </tr>
+
+	
+	</tbody>
+</table>
+
+    
+    
+    
+<dl class="details">
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="index.js.html">index.js</a>, <a href="index.js.html#sunlight-1-line-119">line 119</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+    
+    
+
+    
+
+    
+    
+    
+    
+    
+    
+    
+</dd>
+
+            
+                
+<dt>
+    <h4 class="name" id="userListCallback"><span class="type-signature"></span>userListCallback<span class="signature">(error, users)</span><span class="type-signature"></span></h4>
+    
+    
+</dt>
+<dd>
+    
+    
+
+    
+    
+    
+    
+    
+        <h5>Parameters:</h5>
+        
+
+<table class="params table table-striped">
+    <thead>
+	<tr>
+		
+		<th>Name</th>
+		
+
+		<th>Type</th>
+
+		
+
+		
+
+		<th class="last">Description</th>
+	</tr>
+	</thead>
+
+	<tbody>
+	
+
+        <tr>
+            
+                <td class="name"><code>error</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Error</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"></td>
+        </tr>
+
+	
+
+        <tr>
+            
+                <td class="name"><code>users</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Array.&lt;<a href="cloudbrowser.app.User.html">cloudbrowser.app.User</a>></span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"></td>
+        </tr>
+
+	
+	</tbody>
+</table>
+
+    
+    
+    
+<dl class="details">
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="index.js.html">index.js</a>, <a href="index.js.html#sunlight-1-line-101">line 101</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+    
+    
+
+    
+
+    
+    
+    
+    
+    
+    
+    
+</dd>
+
+            
+                
+<dt>
+    <h4 class="name" id="virtualBrowserCallback"><span class="type-signature"></span>virtualBrowserCallback<span class="signature">(error, browser)</span><span class="type-signature"></span></h4>
+    
+    
+</dt>
+<dd>
+    
+    
+
+    
+    
+    
+    
+    
+        <h5>Parameters:</h5>
+        
+
+<table class="params table table-striped">
+    <thead>
+	<tr>
+		
+		<th>Name</th>
+		
+
+		<th>Type</th>
+
+		
+
+		
+
+		<th class="last">Description</th>
+	</tr>
+	</thead>
+
+	<tbody>
+	
+
+        <tr>
+            
+                <td class="name"><code>error</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Error</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"></td>
+        </tr>
+
+	
+
+        <tr>
+            
+                <td class="name"><code>browser</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type"><a href="VirtualBrowser.html">VirtualBrowser</a></span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"></td>
+        </tr>
+
+	
+	</tbody>
+</table>
+
+    
+    
+    
+<dl class="details">
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="index.js.html">index.js</a>, <a href="index.js.html#sunlight-1-line-116">line 116</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+    
+    
+
+    
+
+    
+    
+    
+    
+    
+    
+    
+</dd>
+
             </dl>
     
 
@@ -1024,7 +1305,7 @@
 					
 		<span class="jsdoc-message">
 		Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.2.0-dev</a>
-		on Fri Jun 21 2013 10:11:12 GMT-0400 (EDT) using the <a href="https://github.com/terryweiss/docstrap">DocStrap template</a>.
+		on Wed Sep 18 2013 13:57:08 GMT-0400 (EDT) using the <a href="https://github.com/terryweiss/docstrap">DocStrap template</a>.
 		</span>
 				</footer>
 			</div>

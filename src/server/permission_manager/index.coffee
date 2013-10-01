@@ -1,20 +1,21 @@
-{EventEmitter} = require('events')
-Async          = require('async')
+Async = require('async')
+CacheManager           = require('./cache_manager')
+AppPermissions         = require('./application_permissions')
+SystemPermissions      = require('./system_permissions')
+BrowserPermissions     = require('./browser_permissions')
+SharedStatePermissions = require('./shared_state_permissions')
 ###
 Permission Types:
     Common
         own 
     Browser Permissions
-        remove 
         readwrite
         readonly 
     App Permissions
-        unmount
-        listbrowsers
-        createbrowsers
+        createBrowsers
+        createSharedState
     System Permissions
         mountapps
-        listapps
 
 Every user is associated with one permission record of the form
 
@@ -43,198 +44,6 @@ Every user is associated with one permission record of the form
 
 ###
 
-class PermissionManager extends EventEmitter
-    # Finds an item from the list of contained items
-    findItem : (key, permissions) ->
-        item = @containedItems[key]
-        if not item then return null
-        # Filtering by permissions
-        if permissions
-            valid = true
-            for type, v of permissions
-                if item.permissions[type] isnt true
-                    valid = false
-                    break
-            if valid is true then return item
-            else return null
-        else return item
-
-    # Gets all contained items
-    getItems : (permissions) ->
-        # Filtering based on permissions
-        if permissions
-            items = []
-            valid = true
-            for key, item of @containedItems
-                for type, v of permissions
-                    if item.permissions[type] isnt true
-                        valid = false
-                        break
-                if valid is true then items.push(item)
-                else valid = true
-            return items
-        else
-            # Returning all items
-            return @containedItems
-
-    # Adds a new item to the list of contained items
-    addItem : (key, permissions) ->
-        if not @findItem(key)
-            @containedItems[key] = new @containedItemType(key)
-            @emit('added', key)
-
-        item = @containedItems[key]
-
-        if permissions and Object.keys(permissions).length isnt 0
-            item.set(permissions)
-
-        return item
-
-    # Removes an items from the list of contained items
-    removeItem : (key) ->
-        if not @findItem(key) then return
-
-        delete @containedItems[key]
-        @emit('removed', key)
-
-    # Sets allowed permissions on the object (not on the contained items)
-    verifyAndSetPerm : (permissions, types) ->
-        if not permissions or Object.keys(permissions).length is 0 then return
-        
-        for type in types
-            # Setting only those permissions types that are valid for this
-            # object
-            if permissions.hasOwnProperty(type)
-                if permissions[type] is true
-                    @permissions[type] = true
-                else @permissions[type] = false
-
-    set : () ->
-        throw new Error("PermissionManager subclass must implement set")
-
-    # Returns the current permissions on the object (not on the contained
-    # items)
-    get : () ->
-        return @permissions
-
-# Per user virtual browser permissions stored in memory
-# Objects of this class form the leaves of the permission tree
-# SystemPermissions > AppPermissions > BrowserPermissions
-class BrowserPermissions extends PermissionManager
-    constructor : (@id, permissions) ->
-        @set permissions if permissions?
-        @permissions = {}
-        # Does not have any contained items
-
-    getId : () -> return @id
-
-    findItem : () ->
-        throw new Error("BrowserPermissions does not support findItem")
-
-    getItems : () ->
-        throw new Error("BrowserPermissions does not support getItems")
-
-    addItem : () ->
-        throw new Error("BrowserPermissions does not support addItem")
-
-    removeItem : () ->
-        throw new Error("BrowserPermissions does not support removeItem")
-
-    # Does custom checking on the permissions provided
-    set : (permissions) ->
-        # Can not have both readonly and readwrite
-        if permissions.hasOwnProperty('readonly') and
-        permissions.hasOwnProperty('readwrite')
-            permissions.readonly = false
-        else
-            @verifyAndSetPerm(permissions,
-            ['own', 'remove', 'readonly', 'readwrite'])
-        return @permissions
-            
-# Per user application permissions
-# Contains all the browser permission records for the user too.
-class AppPermissions extends PermissionManager
-    constructor : (@mountPoint) ->
-        @permissions = {}
-        @containedItems = {}
-        @containedItemType = BrowserPermissions
-
-    getMountPoint : () -> return @mountPoint
-
-    set : (permissions) ->
-
-        @verifyAndSetPerm(permissions,
-        ['own', 'unmount', 'createbrowsers', 'listbrowsers'])
-
-        return @permissions
-
-# Per user system permissions
-# Contains all the app permission records for the user too.
-class SystemPermissions extends PermissionManager
-    constructor : (@user) ->
-        @permissions = {}
-        @containedItems = {}
-        # Type of items that an SystemPermissions object contains
-        @containedItemType = AppPermissions
-
-    getUser : () -> return @user
-
-    set : (permissions) ->
-        @verifyAndSetPerm(permissions,
-        ['listapps', 'mountapps'])
-
-        return @permissions
-
-class CacheManager
-    constructor : () ->
-        # Cache entry per email ID is of the form
-        # [{ns, sysPerms}, {ns, sysPerms}, ...]
-        @cache = {}
-
-    # Returns the system permissions object not the internal cache object
-    add : (user, permissions) ->
-        if not user then return null
-
-        rec =
-            ns       : user.ns
-            sysPerms : new SystemPermissions(user)
-
-        rec.sysPerms.set(permissions)
-
-        if not @cache[user.email] then @cache[user.email] = [rec]
-        else @cache[user.email].push(rec)
-
-        return rec.sysPerms
-
-    # Returns the removed system permissions object
-    remove : (user) ->
-        if not user then return null
-
-        recs = @cache[user.email]
-        if not recs then return
-
-        for rec in recs when rec.ns is user.ns
-            idx = recs.indexOf(rec)
-            removed = recs.splice(idx, 1)
-            return(removed[0].sysRec)
-
-    # Returns the system permissions object not the internal cache object
-    find : (user) ->
-        if not user then return null
-
-        recs = @cache[user.email]
-        if not recs then return null
-
-        return rec.sysPerms for rec in recs when rec.ns is user.ns
-
-    get : () ->
-        sysPermCollection = []
-        for email, recs of @cache
-            for rec in recs
-                sysPermCollection.push(rec.sysPerms)
-
-        return sysPermCollection
-
 class UserPermissionManager extends CacheManager
     collectionName = "Permissions"
 
@@ -245,23 +54,17 @@ class UserPermissionManager extends CacheManager
     dbOperation : (op, user, info, callback) ->
         if not typeof @mongoInterface[op] is "function" then return
 
-        if user
-            userObj =
-                email : user.email
-                ns    : user.ns
-            if user.apps? then userObj.apps = user.apps
+        if user then userObj = {email : user.email, ns : user.ns}
 
         switch op
             when 'findUser', 'addUser', 'removeUser'
                 @mongoInterface[op](userObj, collectionName, callback)
-            when 'getUsers'
-                @mongoInterface[op](collectionName, callback)
-            when 'addToUser', 'removeFromUser', 'setUser', 'unsetUser'
+            when 'setUser'
                 @mongoInterface[op](userObj, collectionName, info, callback)
             when 'addIndex'
                 @mongoInterface[op](collectionName, info, callback)
 
-    # TODO : Load all the records into memory at startup?
+    # TODO : Load all the records into memory at startup? 
     findSysPermRec : (options) ->
         {user, callback, permissions} = options
 
@@ -287,8 +90,8 @@ class UserPermissionManager extends CacheManager
                 else
                     # Add user record and associated app records to cache
                     sysPerms = @add(user, dbRecord.permissions)
-                    if dbRecord.apps then for app in dbRecord.apps
-                        sysPerms.addItem(app.mountPoint, app.permissions)
+                    for mountPoint, value of dbRecord.apps
+                        sysPerms.addItem(mountPoint, value.permissions)
                     filterOnPerms(sysPerms, next)
         ], callback
 
@@ -361,8 +164,6 @@ class UserPermissionManager extends CacheManager
     addAppPermRec : (options) ->
         {user, mountPoint, permissions, callback} = options
         
-        appInfo = {apps : {mountPoint : mountPoint}}
-
         setPerm = (callback) =>
             @setAppPerm
                 user        : user
@@ -383,17 +184,10 @@ class UserPermissionManager extends CacheManager
                 # Bypassing the async waterfall
                 else setPerm(callback)
             (sysPerms, next) =>
-                if sysPerms
-                    @dbOperation 'addToUser', user, appInfo, (err) ->
-                        next(err, sysPerms)
-                else
-                    @addSysPermRec(
-                        user     : user
-                        callback : (err, sysPerms) =>
-                            if err then next(err)
-                            else @dbOperation 'addToUser', user, appInfo,
-                                (err) -> next(err, sysPerms)
-                    )
+                if sysPerms then next(null, sysPerms)
+                else @addSysPermRec
+                    user     : user
+                    callback : next
             (sysPerms, next) ->
                 appPerms = sysPerms.addItem(mountPoint)
                 setPerm(next)
@@ -401,7 +195,8 @@ class UserPermissionManager extends CacheManager
             
     rmAppPermRec : (options) ->
         {user, mountPoint, callback} = options
-        appInfo = {apps : {mountPoint : mountPoint}}
+        appInfo = {}
+        appInfo["apps.#{mountPoint}"] = {}
 
         Async.waterfall [
             (next) =>
@@ -412,9 +207,9 @@ class UserPermissionManager extends CacheManager
             (appPerms, next) =>
                 if appPerms
                     # Remove from db
-                    @dbOperation('removeFromUser', user, appInfo, next)
+                    @dbOperation('setUser', user, appInfo, next)
                 # Bypassing the waterfall
-                else callback(null, null)
+                else callback?(null, null)
             (count, info, next) =>
                 @findSysPermRec
                     user     : user
@@ -435,7 +230,7 @@ class UserPermissionManager extends CacheManager
                     callback   : next
             (appPerms, next) ->
                 if appPerms
-                    next(null, appPerms.findItem(browserID, permissions))
+                    next(null, appPerms.findBrowser(browserID, permissions))
                 else next(null, null)
         ], callback
 
@@ -449,7 +244,7 @@ class UserPermissionManager extends CacheManager
                     mountPoint : mountPoint
                     callback   : next
             (appPerms, next) ->
-                if appPerms then next(null, appPerms.getItems(permissions))
+                if appPerms then next(null, appPerms.getBrowsers(permissions))
                 else next(null, null)
         ], callback
     
@@ -471,10 +266,10 @@ class UserPermissionManager extends CacheManager
                 else
                     browserPerms.set(permissions)
                     # Bypassing the async waterfall
-                    callback(null, browserPerms)
+                    callback?(null, browserPerms)
             (appPerms, next) ->
                 if appPerms
-                    browserPerms = appPerms.addItem(browserID, permissions)
+                    browserPerms = appPerms.addBrowser(browserID, permissions)
                     next(null, browserPerms)
                 # Not adding app perm rec if it doesn't exist as browser's can't
                 # be created without the app perm rec being created first (when
@@ -498,27 +293,148 @@ class UserPermissionManager extends CacheManager
                     mountPoint : mountPoint
                     callback   : next
                 # Bypassing the waterfall
-                else callback(null, null)
+                else callback?(null, null)
             (appPerms, next) ->
                 # Removing from cache
-                if appPerms then next(null, appPerms.removeItem(browserID))
+                if appPerms then next(null, appPerms.removeBrowser(browserID))
                 else next(null, null)
         ], callback
 
+    findSharedStatePermRec : (options) ->
+        {user, mountPoint, sharedStateID, permissions, callback} = options
+
+        Async.waterfall [
+            (next) =>
+                @findAppPermRec
+                    user       : user
+                    mountPoint : mountPoint
+                    callback   : next
+            (appPerms, next) ->
+                if appPerms
+                    sharedStateRec =
+                        appPerms.findSharedState(sharedStateID, permissions)
+                    next(null, sharedStateRec)
+                else next(null, null)
+        ], callback
+
+    getSharedStatePermRecs : (options) ->
+        {user, mountPoint, callback, permissions} = options
+
+        Async.waterfall [
+            (next) =>
+                @findAppPermRec
+                    user       : user
+                    mountPoint : mountPoint
+                    callback   : next
+            (appPerms, next) ->
+                if appPerms
+                    next(null, appPerms.getSharedStates(permissions))
+                else next(null, null)
+        ], callback
+    
+    addSharedStatePermRec : (options) ->
+        {user, mountPoint, sharedStateID, permissions, callback} = options
+
+        setPerm = (callback) =>
+            @setSharedStatePerm
+                user        : user
+                callback    : callback
+                mountPoint  : mountPoint
+                permissions : permissions
+                sharedStateID : sharedStateID
+
+        Async.waterfall [
+            (next) =>
+                @findSharedStatePermRec
+                    user       : user
+                    mountPoint : mountPoint
+                    callback   : next
+                    sharedStateID : sharedStateID
+            (sharedStatePerms, next) =>
+                if not sharedStatePerms then @findAppPermRec
+                    user       : user
+                    mountPoint : mountPoint
+                    callback   : next
+                # Bypassing the async waterfall
+                else setPerm(callback)
+            (appPerms, next) ->
+                if appPerms
+                    sharedStatePerms =
+                        appPerms.addSharedState(sharedStateID, permissions)
+                    setPerm(next)
+                else next(null, null)
+        ], callback
+
+    rmSharedStatePermRec: (options) ->
+        {user, mountPoint, sharedStateID, callback} = options
+        info = {}
+        info["apps.#{mountPoint}.sharedStates.#{sharedStateID}"] = {}
+
+        Async.waterfall [
+            (next) =>
+                @findSharedStatePermRec
+                    user       : user
+                    mountPoint : mountPoint
+                    callback   : next
+                    sharedStateID : sharedStateID
+            (sharedStatePerms, next) =>
+                if sharedStatePerms
+                    @dbOperation('setUser', user, info, next)
+                # Bypassing the waterfall
+                else callback?(null, null)
+            (count, info, next) =>
+                @findAppPermRec
+                    user       : user
+                    mountPoint : mountPoint
+                    callback   : next
+            (appPerms, next) ->
+                # Removing from cache
+                next(null, appPerms.removeSharedState(sharedStateID))
+        ], callback
+
     checkPermissions : (options) ->
-        {user, mountPoint, browserID, permissions, callback} = options
+        {user,
+         callback,
+         browserID,
+         mountPoint,
+         permissions,
+         sharedStateID} = options
+
+        # Permissions can be an array of objects or just one object
+        if not (permissions instanceof Array) then permissions = [permissions]
+        numChecks = permissions.length
+        sentResponse = false
 
         check = (err, rec) ->
+            numChecks--
             if err then callback(err)
-            else if rec then callback(null, true)
-            else callback(null, false)
+            else if rec and not sentResponse
+                sentResponse = true
+                callback(null, true)
+            else if numChecks is 0 and not sentResponse
+                callback(null, false)
 
         options.callback = check
 
-        if browserID then @findBrowserPermRec(options)
-        else if mountPoint then @findAppPermRec(options)
-        else if user then @findSysPermRec(options)
+        # Depending on the arguments, the type of permission checking
+        # to be done is called
+        method = null
+        if browserID
+            method = @findBrowserPermRec
+        else if sharedStateID
+            method = @findSharedStatePermRec
+        else if mountPoint
+            method = @findAppPermRec
+        else if user
+            method = @findSysPermRec
         else callback(null, false)
+
+        # Perform permission checking for each permission type
+        # and callback true even if one passes
+        if method then for permission in permissions
+            do (permission) =>
+                options.permissions = permission
+                method.call(@, options)
         
     setSysPerm : (options) ->
         {user, permissions, callback} = options
@@ -529,14 +445,13 @@ class UserPermissionManager extends CacheManager
                     user     : user
                     callback : next
             (sysPerms, next) =>
-                if sysPerms
-                    if not permissions or Object.keys(permissions).length is 0
-                        next(null, sysPerms)
-                    else
-                        info = {permissions : sysPerms.set(permissions)}
-                        @dbOperation('setUser', user, info, (err) ->
-                            next(err, sysPerms))
-                else next(null, null)
+                if not sysPerms then next(null, null)
+                else if not permissions or Object.keys(permissions).length is 0
+                    next(null, sysPerms)
+                else
+                    info = {permissions : sysPerms.set(permissions)}
+                    @dbOperation('setUser', user, info, (err) ->
+                        next(err, sysPerms))
         ], callback
 
     setAppPerm : (options) ->
@@ -550,21 +465,38 @@ class UserPermissionManager extends CacheManager
                     callback   : next
             (appPerms, next) =>
                 if not appPerms then next(null, null)
+                else if not permissions or Object.keys(permissions).length is 0
+                    next(null, appPerms)
                 else
-                    if not permissions or Object.keys(permissions).length is 0
-                        next(null, appPerms)
-                    else
-                        # Search key to search for the correct app in the db
-                        searchKey =
-                            email : user.email
-                            ns    : user.ns
-                            apps  : {'$elemMatch':{mountPoint:mountPoint}}
-                        info =
-                            'apps.$.permissions' : appPerms.set(permissions)
-                        @dbOperation('setUser', searchKey, info, (err) ->
-                            next(err, appPerms))
+                    key = "apps.#{mountPoint}.permissions"
+                    info = {}
+                    info["#{key}"] = appPerms.set(permissions)
+                    @dbOperation('setUser', user, info, (err) ->
+                        next(err, appPerms))
         ], callback
         
+    setSharedStatePerm : (options) ->
+        {user, mountPoint, sharedStateID, permissions, callback} = options
+        key = "apps.#{mountPoint}.sharedStates.#{sharedStateID}.permissions"
+
+        Async.waterfall [
+            (next) =>
+                @findSharedStatePermRec
+                    user          : user
+                    mountPoint    : mountPoint
+                    sharedStateID : sharedStateID
+                    callback      : next
+            (sharedStatePerms, next) =>
+                if not sharedStatePerms then next(null, null)
+                else if not permissions or Object.keys(permissions).length is 0
+                    next(null, sharedStatePerms)
+                else
+                    info = {}
+                    info["#{key}"] = sharedStatePerms.set(permissions)
+                    @dbOperation('setUser', user, info, (err) ->
+                        next(err, sharedStatePerms))
+        ], callback
+
     setBrowserPerm: (options) ->
         {user, mountPoint, browserID, permissions, callback} = options
 
@@ -576,9 +508,9 @@ class UserPermissionManager extends CacheManager
                 if err then callback(err)
                 else if not browserPerms then callback(null, null)
                 else if not permissions or Object.keys(permissions).length is 0
-                    callback(null, browserPerms)
+                    callback?(null, browserPerms)
                 else
                     permissions = browserPerms.set(permissions)
-                    callback(null, browserPerms)
+                    callback?(null, browserPerms)
 
 module.exports = UserPermissionManager

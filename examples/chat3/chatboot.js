@@ -4,11 +4,31 @@ var ChatManager = require('./model/shared/chatmanager'),
 
 module.exports = {
     initialize : function (options) {
-        options.onFirstInstance = {
-            chats : new ChatManager()
+        // Can be shared between multiple virtual browsers
+        // Created on demand
+        // applicationInstance provider/factory
+        options.sharedStateTemplate = {
+            create : function(){
+                return new ChatManager()
+            }
+            // Name can also be a function
+            , name : 'Chat Manager'
+            , save : function(chatManager){}
+            , load : function(){}
         }
-        options.onEveryInstance = function () {
-            this.user = new User();
+        // Local to the virtual browser
+        // Created automatically by cloudbrowser
+        options.localState = {
+            // 
+            create : function(cloudbrowser){
+                var user = cloudbrowser.currentVirtualBrowser.getCreator()
+                return new User(user);
+            }
+            , name : 'user'
+        }
+        // Shared between all virtual browsers of the application
+        // Created automatically by cloudbrowser
+        options.callOnStart = function () {
         }
     }
 }

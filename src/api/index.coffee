@@ -6,10 +6,10 @@
 ###
 Ko             = require('./ko')
 Util           = require('./util')
-Browser        = require('../server/browser')
 ServerConfig   = require('./server_config')
 VirtualBrowser = require('./virtual_browser')
 Authentication = require('./authentication')
+cloudbrowserError = require('../shared/cloudbrowser_error')
 
 class CloudBrowser
 
@@ -72,29 +72,40 @@ class CloudBrowser
 
 module.exports = (bserver) ->
     bserver.browser.window.cloudbrowser = new CloudBrowser(bserver)
+    {window, server} = bserver.browser
+    {cloudbrowser} = window
 
-    # TODO : Refactor the code below
     app = bserver.server.applications.find(bserver.mountPoint)
-    bserver.browser.window.cloudbrowser.app.shared = app.onFirstInstance || {}
-    bserver.browser.window.cloudbrowser.app.local  = if app.onEveryInstance then new app.onEveryInstance() else {}
+    if app.localState?
+        if typeof app.localState.create is "function"
+            property = if typeof app.localState.name is "string"
+                           app.localState.name
+                       else "local"
+            localState = app.localState.create(cloudbrowser)
+            if not bserver.getLocalState(property)
+                bserver.setLocalState(property, localState)
+            else console.log(cloudbrowserError('PROPERTY_EXISTS', "- #{property}"))
 
     # TODO : Fix ko
-    bserver.browser.window.cloudbrowser.ko = Ko
+    cloudbrowser.ko = Ko
 
     # If an app needs server-side knockout, we have to monkey patch
     # some ko functions.
-    if bserver.server.config.knockout
-        bserver.browser.window.run(Browser.jQScript, "jquery-1.6.2.js")
-        bserver.browser.window.run(Browser.koScript, "knockout-latest.debug.js")
-        bserver.browser.window.run(Browser.koPatch, "ko-patch.js")
+    if server.config.knockout
+        Browser = require('../server/browser')
+        window.run(Browser.jQScript, "jquery-1.6.2.js")
+        window.run(Browser.koScript, "knockout-latest.debug.js")
+        window.run(Browser.koPatch, "ko-patch.js")
 
 # TODO : Put the documentation of these callbacks somewhere else.
 ###*
     @callback instanceListCallback 
-    @param {Array<cloudbrowser.app.VirtualBrowser>} instances A list of all the instances associated with the current user.
+    @param {Error} error
+    @param {Array<VirtualBrowser>} instances A list of all the instances associated with the current user.
 ###
 ###*
     @callback userListCallback
+    @param {Error} error
     @param {Array<cloudbrowser.app.User>} users
 ###
 ###*
@@ -102,14 +113,30 @@ module.exports = (bserver) ->
     @param {Error} error 
 ###
 ###*
-    @callback instanceCallback
-    @param {cloudbrowser.app.VirtualBrowser | Number} instance | ID VirtualBrowser if the event is "Added", else ID.
+    @callback applicationConfigEventCallback
+    @param {VirtualBrowser | Number} eventArg
 ###
 ###*
     @callback booleanCallback
-    @param {Bool | Null} status Null indicates that the user does not have the permission to perform this action.
+    @param {Error} error
+    @param {Bool} status
 ###
 ###*
     @callback numberCallback
+    @param {Error} error
     @param {Number} number
+###
+###*
+    @callback virtualBrowserCallback
+    @param {Error} error
+    @param {VirtualBrowser} browser
+###
+###*
+    @callback sharedStateCallback
+    @param {Error} error
+    @param {SharedState} sharedState
+###
+###*
+    @callback sharedStateEventCallback
+    @param {SharedState | Number | Null} eventArg
 ###

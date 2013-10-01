@@ -8,10 +8,10 @@ ResourceProxy        = require('./resource_proxy')
 DebugClient          = require('./debug_client')
 TestClient           = require('./test_client')
 Compressor           = require('../../shared/compressor')
+EmbedAPI             = require('../../api')
 TaggedNodeCollection = require('../../shared/tagged_node_collection')
 {serialize}          = require('./serializer')
 {isVisibleOnClient}  = require('../../shared/utils')
-EmbedAPI             = require('../../api')
 
 {eventTypeToGroup,
  clientEvents,
@@ -34,6 +34,7 @@ class BrowserServer extends EventEmitter
 
         @browser = new Browser(@id, weakRefToThis, @server)
         @dateCreated = new Date()
+        @localState = {}
 
         # TODO : Causes memory leak, must fix
         @browser.on 'PageLoaded', () =>
@@ -65,6 +66,18 @@ class BrowserServer extends EventEmitter
                     handler.apply(weakRefToThis, arguments)
         @initLogs() if !@server.config.noLogs
 
+    setSharedState : (sharedState) ->
+        @sharedState = sharedState
+
+    getSharedState : () ->
+        return @sharedState
+
+    setLocalState : (property, value) ->
+        @localState[property] = value
+
+    getLocalState : (property) ->
+        return @localState[property]
+
     redirect : (URL) ->
         @broadcastEvent('Redirect', URL)
        
@@ -85,6 +98,8 @@ class BrowserServer extends EventEmitter
 
     # arg can be an Application or URL string.
     load : (arg) ->
+        if not arg
+            arg = @server.applications.find(@mountPoint)
         @browser.load(arg)
         weakRefToThis = Weak(this, cleanupBserver(@id))
         EmbedAPI(weakRefToThis)

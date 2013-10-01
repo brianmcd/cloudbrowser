@@ -8,6 +8,7 @@ errorTypes =
     MOUNTPOINT_IN_USE : "MountPoint in use"
     INVALID_TOKEN : "The link has expired"
     USER_NOT_REGISTERED : "This email ID is not registered with us"
+    PROPERTY_EXISTS : "Can not overwrite property"
     NO_EMAIL_CONFIG : "Please provide an email ID and the corresponding" +
                       " password in emailer_config.json to enable sending" +
                       " confirmation emails."

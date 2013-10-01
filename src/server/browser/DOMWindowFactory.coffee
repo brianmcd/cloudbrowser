@@ -1,6 +1,6 @@
 HTML5                  = require('html5')
 {LocationBuilder}      = require('./location')
-{ImportXMLHttpRequest} = require('./XMLHttpRequest')
+{XMLHttpRequest}       = require('./XMLHttpRequest')
 {addAdvice}            = require('./advice')
 {noCacheRequire}       = require('../../shared/utils')
 {applyPatches}         = require('./jsdom_patches')
@@ -32,7 +32,7 @@ class DOMWindowFactory
         @patchNavigator(window)
         # This sets window.XMLHttpRequest, and gives the XHR code access to
         # the window object.
-        ImportXMLHttpRequest(window)
+        window.XMLHttpRequest = XMLHttpRequest
         @patchNavigator(window)
         @patchLocation(window)
         @patchTimers(window)

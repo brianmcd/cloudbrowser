@@ -2,10 +2,11 @@ Path     = require('path')
 Managers = require('../browser_manager')
 Fs       = require('fs')
 Async    = require('async')
-{EventEmitter} = require('events')
+{EventEmitter}     = require('events')
+SharedStateManager = require('./shared_state_manager')
+{hashPassword}     = require('../../api/utils')
+cloudbrowserError  = require('../../shared/cloudbrowser_error')
 {MultiProcessBrowserManager, InProcessBrowserManager} = Managers
-{hashPassword} = require('../../api/utils')
-cloudbrowserError = require('../../shared/cloudbrowser_error')
 
 ###
 _validDeploymentConfig :
@@ -54,12 +55,14 @@ class Application extends EventEmitter
                                         opts.appConfig.instantiationStrategy)
 
         {@path,
+         @parent,
          @subApps,
          @mountFunc,
          @appConfig,
-         @onFirstInstance,
-         @onEveryInstance,
+         @localState,
+         @callOnStart,
          @deploymentConfig,
+         @sharedStateTemplate,
          @dontPersistConfigChanges} = opts
 
         @remoteBrowsing = /^http/.test(@appConfig.entryPoint)
@@ -67,6 +70,11 @@ class Application extends EventEmitter
         @createBrowserManager()
         
         @writeConfigToFile(@deploymentConfig, "deployment_config.json")
+
+        if @sharedStateTemplate
+            @sharedStates = new SharedStateManager(@sharedStateTemplate,
+                                                   @server.permissionManager,
+                                                   this)
 
     setDefaults : (options, defaults...) ->
         for defaultObj in defaults
@@ -261,14 +269,14 @@ class Application extends EventEmitter
         permissionManager.addAppPermRec
             user        : user
             mountPoint  : @getMountPoint()
-            permissions : {createbrowsers : true}
+            permissions : {createBrowsers : true, createSharedState : true}
             callback    : (err) =>
                 if err then console.log(err)
                 # Add a perm rec associated with the application's landing page
                 else permissionManager.addAppPermRec
                     user        : user
                     mountPoint  : "#{@getMountPoint()}/landing_page"
-                    permissions : {createbrowsers:true}
+                    permissions : {createBrowsers:true}
                     callback    : callback
 
     activateUser : (token, callback) ->
@@ -390,5 +398,8 @@ class Application extends EventEmitter
         for subApp in @getSubApps()
             @server.applications.remove(subApp.getMountPoint())
         @subApps.length = 0
+
+    getSharedStateName : () ->
+        if @sharedStateTemplate then return @sharedStateTemplate.name
 
 module.exports = Application

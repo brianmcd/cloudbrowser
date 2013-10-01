@@ -47,15 +47,7 @@
 					<ul class="dropdown-menu ">
 						
 						<li>
-							<a href="cloudbrowser.app.AppConfig.html">AppConfig</a>
-						</li>
-						
-						<li>
-							<a href="cloudbrowser.app.GoogleStrategy.html">GoogleStrategy</a>
-						</li>
-						
-						<li>
-							<a href="cloudbrowser.app.LocalStrategy.html">LocalStrategy</a>
+							<a href="AppConfig.html">AppConfig</a>
 						</li>
 						
 						<li>
@@ -63,15 +55,27 @@
 						</li>
 						
 						<li>
-							<a href="cloudbrowser.app.VirtualBrowser.html">VirtualBrowser</a>
+							<a href="GoogleStrategy.html">GoogleStrategy</a>
 						</li>
 						
 						<li>
-							<a href="cloudbrowser.ServerConfig.html">ServerConfig</a>
+							<a href="LocalStrategy.html">LocalStrategy</a>
 						</li>
 						
 						<li>
-							<a href="cloudbrowser.Util.html">Util</a>
+							<a href="ServerConfig.html">ServerConfig</a>
+						</li>
+						
+						<li>
+							<a href="SharedState.html">SharedState</a>
+						</li>
+						
+						<li>
+							<a href="Util.html">Util</a>
+						</li>
+						
+						<li>
+							<a href="VirtualBrowser.html">VirtualBrowser</a>
 						</li>
 						
 
@@ -85,19 +89,35 @@
 					<ul class="dropdown-menu ">
 						
 						<li>
-							<a href="cloudbrowser.app.AppConfig.html#event:Added">Added</a>
+							<a href="AppConfig.html#event:Add">Add</a>
 						</li>
 						
 						<li>
-							<a href="cloudbrowser.app.AppConfig.html#event:Removed">Removed</a>
+							<a href="AppConfig.html#event:Remove">Remove</a>
 						</li>
 						
 						<li>
-							<a href="cloudbrowser.app.VirtualBrowser.html#event:Renamed">Renamed</a>
+							<a href="SharedState.html#event:addBrowser">addBrowser</a>
 						</li>
 						
 						<li>
-							<a href="cloudbrowser.app.VirtualBrowser.html#event:Shared">Shared</a>
+							<a href="SharedState.html#event:removeBrowser">removeBrowser</a>
+						</li>
+						
+						<li>
+							<a href="SharedState.html#event:rename">rename</a>
+						</li>
+						
+						<li>
+							<a href="SharedState.html#event:share">share</a>
+						</li>
+						
+						<li>
+							<a href="VirtualBrowser.html#event:rename">rename</a>
+						</li>
+						
+						<li>
+							<a href="VirtualBrowser.html#event:share">share</a>
 						</li>
 						
 
@@ -122,8 +142,6 @@
 
 <header>
     <h2>
-        <span class="ancestors"><a href="cloudbrowser.html">cloudbrowser</a><a href="cloudbrowser.app.html">.app</a>.</span>
-    
     VirtualBrowser
     </h2>
     
@@ -136,7 +154,7 @@
     
         
 <dt>
-    <h4 class="name" id="VirtualBrowser"><span class="type-signature"></span>new VirtualBrowser<span class="signature">(browser, userContext)</span><span class="type-signature"></span></h4>
+    <h4 class="name" id="VirtualBrowser"><span class="type-signature"></span>new VirtualBrowser<span class="signature">(options)</span><span class="type-signature"></span></h4>
     
     
 </dt>
@@ -144,7 +162,7 @@
     
     
     <div class="description">
-        <p>CloudBrowser application instances a.k.a. virtual browsers.</p>
+        <p>API for virtual browsers (internal object).</p>
     </div>
     
 
@@ -178,13 +196,13 @@
 
         <tr>
             
-                <td class="name"><code>browser</code></td>
+                <td class="name"><code>options</code></td>
             
 
             <td class="type">
             
                 
-<span class="param-type">BrowserServer</span>
+<span class="param-type">Object</span>
 
 
             
@@ -194,30 +212,7 @@
 
             
 
-            <td class="description last"><p>The corresponding browser object.</p></td>
-        </tr>
-
-	
-
-        <tr>
-            
-                <td class="name"><code>userContext</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">User</span>
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last"><p>The user that is going to communicate with the instance.</p></td>
+            <td class="description last"></td>
         </tr>
 
 	
@@ -228,6 +223,115 @@
     
     
 <dl class="details">
+    
+
+        <h5 class="subsection-title">Properties:</h5>
+
+        <dl>
+
+<table class="props table table-striped">
+    <thead>
+	<tr>
+		
+		<th>Name</th>
+		
+
+		<th>Type</th>
+
+		
+		<th>Argument</th>
+		
+
+		
+
+		<th class="last">Description</th>
+	</tr>
+	</thead>
+
+	<tbody>
+	
+
+        <tr>
+            
+                <td class="name"><code>BrowserServer</code></td>
+            
+
+            <td class="type">
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+                </td>
+            
+
+            
+
+            <td class="description last"><p>bserver The virtual browser.</p></td>
+        </tr>
+
+	
+
+        <tr>
+            
+                <td class="name"><code>User</code></td>
+            
+
+            <td class="type">
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+                </td>
+            
+
+            
+
+            <td class="description last"><p>userCtx The current user.</p></td>
+        </tr>
+
+	
+
+        <tr>
+            
+                <td class="name"><code>Cloudbrowser</code></td>
+            
+
+            <td class="type">
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+                </td>
+            
+
+            
+
+            <td class="description last"><p>cbCtx   The cloudbrowser API object.</p></td>
+        </tr>
+
+	
+	</tbody>
+</table>
+</dl>
+
     
 
     
@@ -249,7 +353,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="virtual_browser.js.html">virtual_browser.js</a>, <a href="virtual_browser.js.html#sunlight-1-line-6">line 6</a>
+        <a href="virtual_browser.js.html">virtual_browser.js</a>, <a href="virtual_browser.js.html#sunlight-1-line-17">line 17</a>
     </li></ul></dd>
     
 
@@ -264,9 +368,9 @@
     
     <h5>Fires:</h5>
     <ul>
-        <li><a href="cloudbrowser.app.VirtualBrowser.html#event:Shared">cloudbrowser.app.VirtualBrowser#event:Shared</a></li>
+        <li><a href="VirtualBrowser.html#event:share">VirtualBrowser#event:share</a></li>
     
-        <li><a href="cloudbrowser.app.VirtualBrowser.html#event:Renamed">cloudbrowser.app.VirtualBrowser#event:Renamed</a></li>
+        <li><a href="VirtualBrowser.html#event:rename">VirtualBrowser#event:rename</a></li>
     </ul>
     
 
@@ -295,330 +399,6 @@
     
 
     
-        <h3 class="subsection-title">Members</h3>
-
-        <dl>
-            
-<dt>
-    <h4 class="name" id="collaborators"><span class="type-signature"></span>collaborators<span class="type-signature"> :Array.&lt;<a href="cloudbrowser.app.User.html">cloudbrowser.app.User</a>></span></h4>
-    
-    
-</dt>
-<dd>
-    
-    <div class="description">
-        <p>The users that can read and write to the instance.</p>
-    </div>
-    
-    
-    
-        <h5>Type:</h5>
-        <ul>
-            <li>
-                
-<span class="param-type">Array.&lt;<a href="cloudbrowser.app.User.html">cloudbrowser.app.User</a>></span>
-
-
-            </li>
-        </ul>
-    
-
-    
-<dl class="details">
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-    <dt class="tag-source">Source:</dt>
-    <dd class="tag-source"><ul class="dummy"><li>
-        <a href="virtual_browser.js.html">virtual_browser.js</a>, <a href="virtual_browser.js.html#sunlight-1-line-65">line 65</a>
-    </li></ul></dd>
-    
-
-    
-
-    
-
-    
-</dl>
-
-    
-    
-</dd>
-
-        
-            
-<dt>
-    <h4 class="name" id="dateCreated"><span class="type-signature"></span>dateCreated<span class="type-signature"> :Date</span></h4>
-    
-    
-</dt>
-<dd>
-    
-    <div class="description">
-        <p>The date of creation of the instance.</p>
-    </div>
-    
-    
-    
-        <h5>Type:</h5>
-        <ul>
-            <li>
-                
-<span class="param-type">Date</span>
-
-
-            </li>
-        </ul>
-    
-
-    
-<dl class="details">
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-    <dt class="tag-source">Source:</dt>
-    <dd class="tag-source"><ul class="dummy"><li>
-        <a href="virtual_browser.js.html">virtual_browser.js</a>, <a href="virtual_browser.js.html#sunlight-1-line-48">line 48</a>
-    </li></ul></dd>
-    
-
-    
-
-    
-
-    
-</dl>
-
-    
-    
-</dd>
-
-        
-            
-<dt>
-    <h4 class="name" id="id"><span class="type-signature"></span>id<span class="type-signature"> :Number</span></h4>
-    
-    
-</dt>
-<dd>
-    
-    <div class="description">
-        <p>The (hash) ID of the instance.</p>
-    </div>
-    
-    
-    
-        <h5>Type:</h5>
-        <ul>
-            <li>
-                
-<span class="param-type">Number</span>
-
-
-            </li>
-        </ul>
-    
-
-    
-<dl class="details">
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-    <dt class="tag-source">Source:</dt>
-    <dd class="tag-source"><ul class="dummy"><li>
-        <a href="virtual_browser.js.html">virtual_browser.js</a>, <a href="virtual_browser.js.html#sunlight-1-line-34">line 34</a>
-    </li></ul></dd>
-    
-
-    
-
-    
-
-    
-</dl>
-
-    
-    
-</dd>
-
-        
-            
-<dt>
-    <h4 class="name" id="name"><span class="type-signature"></span>name<span class="type-signature"> :String</span></h4>
-    
-    
-</dt>
-<dd>
-    
-    <div class="description">
-        <p>The name of the instance.</p>
-    </div>
-    
-    
-    
-        <h5>Type:</h5>
-        <ul>
-            <li>
-                
-<span class="param-type">String</span>
-
-
-            </li>
-        </ul>
-    
-
-    
-<dl class="details">
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-    <dt class="tag-source">Source:</dt>
-    <dd class="tag-source"><ul class="dummy"><li>
-        <a href="virtual_browser.js.html">virtual_browser.js</a>, <a href="virtual_browser.js.html#sunlight-1-line-41">line 41</a>
-    </li></ul></dd>
-    
-
-    
-
-    
-
-    
-</dl>
-
-    
-    
-</dd>
-
-        
-            
-<dt>
-    <h4 class="name" id="owners"><span class="type-signature"></span>owners<span class="type-signature"> :Array.&lt;<a href="cloudbrowser.app.User.html">cloudbrowser.app.User</a>></span></h4>
-    
-    
-</dt>
-<dd>
-    
-    <div class="description">
-        <p>The owners of the instance.</p>
-    </div>
-    
-    
-    
-        <h5>Type:</h5>
-        <ul>
-            <li>
-                
-<span class="param-type">Array.&lt;<a href="cloudbrowser.app.User.html">cloudbrowser.app.User</a>></span>
-
-
-            </li>
-        </ul>
-    
-
-    
-<dl class="details">
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-    <dt class="tag-source">Source:</dt>
-    <dd class="tag-source"><ul class="dummy"><li>
-        <a href="virtual_browser.js.html">virtual_browser.js</a>, <a href="virtual_browser.js.html#sunlight-1-line-56">line 56</a>
-    </li></ul></dd>
-    
-
-    
-
-    
-
-    
-</dl>
-
-    
-    
-</dd>
-
-        </dl>
-    
 
     
         <h3 class="subsection-title">Methods</h3>
@@ -634,7 +414,7 @@
     
     
     <div class="description">
-        <p>Registers a listener on the instance for an event. The system supported events are &quot;Shared&quot; and &quot;Renamed&quot;.</p>
+        <p>Registers a listener for an event on the virtual browser instance.</p>
     </div>
     
 
@@ -739,7 +519,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="virtual_browser.js.html">virtual_browser.js</a>, <a href="virtual_browser.js.html#sunlight-1-line-148">line 148</a>
+        <a href="virtual_browser.js.html">virtual_browser.js</a>, <a href="virtual_browser.js.html#sunlight-1-line-261">line 261</a>
     </li></ul></dd>
     
 
@@ -775,7 +555,8 @@
     
     
     <div class="description">
-        <p>Checks if the user has permissions to perform a set of actions on the instance.</p>
+        <p>Checks if the user has permissions to perform a set of actions
+        on the instance.</p>
     </div>
     
 
@@ -825,7 +606,8 @@
 
             
 
-            <td class="description last"><p>Permissible members are 'own', 'remove', 'readwrite', 'readonly'. The values of these properties must be set to true to check for the corresponding permission.</p></td>
+            <td class="description last"><p>The values of these properties must be set to
+        true to check for the corresponding permission.</p></td>
         </tr>
 
 	
@@ -861,6 +643,141 @@
 <dl class="details">
     
 
+        <h5 class="subsection-title">Properties:</h5>
+
+        <dl>
+
+<table class="props table table-striped">
+    <thead>
+	<tr>
+		
+		<th>Name</th>
+		
+
+		<th>Type</th>
+
+		
+		<th>Argument</th>
+		
+
+		
+
+		<th class="last">Description</th>
+	</tr>
+	</thead>
+
+	<tbody>
+	
+
+        <tr>
+            
+                <td class="name"><code>boolean</code></td>
+            
+
+            <td class="type">
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+                </td>
+            
+
+            
+
+            <td class="description last"><p>own</p></td>
+        </tr>
+
+	
+
+        <tr>
+            
+                <td class="name"><code>boolean</code></td>
+            
+
+            <td class="type">
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+                </td>
+            
+
+            
+
+            <td class="description last"><p>remove</p></td>
+        </tr>
+
+	
+
+        <tr>
+            
+                <td class="name"><code>boolean</code></td>
+            
+
+            <td class="type">
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+                </td>
+            
+
+            
+
+            <td class="description last"><p>readwrite</p></td>
+        </tr>
+
+	
+
+        <tr>
+            
+                <td class="name"><code>boolean</code></td>
+            
+
+            <td class="type">
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+                </td>
+            
+
+            
+
+            <td class="description last"><p>readonly</p></td>
+        </tr>
+
+	
+	</tbody>
+</table>
+</dl>
+
+    
+
     
 
     
@@ -880,7 +797,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="virtual_browser.js.html">virtual_browser.js</a>, <a href="virtual_browser.js.html#sunlight-1-line-343">line 343</a>
+        <a href="virtual_browser.js.html">virtual_browser.js</a>, <a href="virtual_browser.js.html#sunlight-1-line-532">line 532</a>
     </li></ul></dd>
     
 
@@ -916,7 +833,7 @@
     
     
     <div class="description">
-        <p>Closes the instance.</p>
+        <p>Closes the virtual browser.</p>
     </div>
     
 
@@ -998,7 +915,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="virtual_browser.js.html">virtual_browser.js</a>, <a href="virtual_browser.js.html#sunlight-1-line-136">line 136</a>
+        <a href="virtual_browser.js.html">virtual_browser.js</a>, <a href="virtual_browser.js.html#sunlight-1-line-182">line 182</a>
     </li></ul></dd>
     
 
@@ -1084,7 +1001,7 @@
 
             
 
-            <td class="description last"><p>The identifying name of the component.</p></td>
+            <td class="description last"><p>The registered name of the component.</p></td>
         </tr>
 
 	
@@ -1107,7 +1024,7 @@
 
             
 
-            <td class="description last"><p>The target node at which the component must be created.</p></td>
+            <td class="description last"><p>The DOM node in which the component will be embedded.</p></td>
         </tr>
 
 	
@@ -1130,7 +1047,7 @@
 
             
 
-            <td class="description last"><p>Any extra options needed to customize the component.</p></td>
+            <td class="description last"><p>Extra options to customize the component.</p></td>
         </tr>
 
 	
@@ -1162,7 +1079,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="virtual_browser.js.html">virtual_browser.js</a>, <a href="virtual_browser.js.html#sunlight-1-line-77">line 77</a>
+        <a href="virtual_browser.js.html">virtual_browser.js</a>, <a href="virtual_browser.js.html#sunlight-1-line-119">line 119</a>
     </li></ul></dd>
     
 
@@ -1209,7 +1126,7 @@
         
             
 <dt>
-    <h4 class="name" id="getCreator"><span class="type-signature"></span>getCreator<span class="signature">()</span><span class="type-signature"> &rarr; {<a href="cloudbrowser.app.User.html">cloudbrowser.app.User</a>}</span></h4>
+    <h4 class="name" id="getAppConfig"><span class="type-signature"></span>getAppConfig<span class="signature">()</span><span class="type-signature"> &rarr; {<a href="AppConfig.html">AppConfig</a>}</span></h4>
     
     
 </dt>
@@ -1217,7 +1134,7 @@
     
     
     <div class="description">
-        <p>Gets the application configuration that created the instance.</p>
+        <p>Gets the Application API object.</p>
     </div>
     
 
@@ -1250,7 +1167,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="virtual_browser.js.html">virtual_browser.js</a>, <a href="virtual_browser.js.html#sunlight-1-line-112">line 112</a>
+        <a href="virtual_browser.js.html">virtual_browser.js</a>, <a href="virtual_browser.js.html#sunlight-1-line-161">line 161</a>
     </li></ul></dd>
     
 
@@ -1282,7 +1199,7 @@
 	</dt>
 	<dd>
 		
-<span class="param-type"><a href="cloudbrowser.app.User.html">cloudbrowser.app.User</a></span>
+<span class="param-type"><a href="AppConfig.html">AppConfig</a></span>
 
 
 	</dd>
@@ -1338,7 +1255,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="virtual_browser.js.html">virtual_browser.js</a>, <a href="virtual_browser.js.html#sunlight-1-line-124">line 124</a>
+        <a href="virtual_browser.js.html">virtual_browser.js</a>, <a href="virtual_browser.js.html#sunlight-1-line-248">line 248</a>
     </li></ul></dd>
     
 
@@ -1371,6 +1288,270 @@
 	<dd>
 		
 <span class="param-type"><a href="cloudbrowser.app.User.html">cloudbrowser.app.User</a></span>
+
+
+	</dd>
+</dl>
+
+
+        
+    
+    
+</dd>
+
+        
+            
+<dt>
+    <h4 class="name" id="getDateCreated"><span class="type-signature"></span>getDateCreated<span class="signature">()</span><span class="type-signature"> &rarr; {Date}</span></h4>
+    
+    
+</dt>
+<dd>
+    
+    
+    <div class="description">
+        <p>Gets the date of creation of the instance.</p>
+    </div>
+    
+
+    
+    
+    
+    
+    
+    
+    
+<dl class="details">
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="virtual_browser.js.html">virtual_browser.js</a>, <a href="virtual_browser.js.html#sunlight-1-line-93">line 93</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+    
+    
+
+    
+
+    
+    
+    
+    
+    
+    <h5>Returns:</h5>
+    
+            
+
+
+<dl>
+	<dt>
+		Type
+	</dt>
+	<dd>
+		
+<span class="param-type">Date</span>
+
+
+	</dd>
+</dl>
+
+
+        
+    
+    
+</dd>
+
+        
+            
+<dt>
+    <h4 class="name" id="getID"><span class="type-signature"></span>getID<span class="signature">()</span><span class="type-signature"> &rarr; {Number}</span></h4>
+    
+    
+</dt>
+<dd>
+    
+    
+    <div class="description">
+        <p>Gets the ID of the instance.</p>
+    </div>
+    
+
+    
+    
+    
+    
+    
+    
+    
+<dl class="details">
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="virtual_browser.js.html">virtual_browser.js</a>, <a href="virtual_browser.js.html#sunlight-1-line-63">line 63</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+    
+    
+
+    
+
+    
+    
+    
+    
+    
+    <h5>Returns:</h5>
+    
+            
+
+
+<dl>
+	<dt>
+		Type
+	</dt>
+	<dd>
+		
+<span class="param-type">Number</span>
+
+
+	</dd>
+</dl>
+
+
+        
+    
+    
+</dd>
+
+        
+            
+<dt>
+    <h4 class="name" id="getName"><span class="type-signature"></span>getName<span class="signature">()</span><span class="type-signature"> &rarr; {String}</span></h4>
+    
+    
+</dt>
+<dd>
+    
+    
+    <div class="description">
+        <p>Gets the name of the instance.</p>
+    </div>
+    
+
+    
+    
+    
+    
+    
+    
+    
+<dl class="details">
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="virtual_browser.js.html">virtual_browser.js</a>, <a href="virtual_browser.js.html#sunlight-1-line-106">line 106</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+    
+    
+
+    
+
+    
+    
+    
+    
+    
+    <h5>Returns:</h5>
+    
+            
+
+
+<dl>
+	<dt>
+		Type
+	</dt>
+	<dd>
+		
+<span class="param-type">String</span>
 
 
 	</dd>
@@ -1475,7 +1656,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="virtual_browser.js.html">virtual_browser.js</a>, <a href="virtual_browser.js.html#sunlight-1-line-239">line 239</a>
+        <a href="virtual_browser.js.html">virtual_browser.js</a>, <a href="virtual_browser.js.html#sunlight-1-line-401">line 401</a>
     </li></ul></dd>
     
 
@@ -1511,7 +1692,11 @@
     
     
     <div class="description">
-        <p>Gets the number of users that have the permission only to read and write to the instance.</p>
+        <p>Gets the number of users that have the permission only to read and
+        write to the instance. 
+        There is a separate method for this as it is faster to get only the
+        number of reader writers than to construct a list of them using
+        getReaderWriters and then get that number.</p>
     </div>
     
 
@@ -1593,7 +1778,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="virtual_browser.js.html">virtual_browser.js</a>, <a href="virtual_browser.js.html#sunlight-1-line-209">line 209</a>
+        <a href="virtual_browser.js.html">virtual_browser.js</a>, <a href="virtual_browser.js.html#sunlight-1-line-364">line 364</a>
     </li></ul></dd>
     
 
@@ -1629,7 +1814,10 @@
     
     
     <div class="description">
-        <p>Gets all users that are the owners of the instance</p>
+        <p>Gets all users that are the owners of the instance
+        There is a separate method for this as it is faster to get only the
+        number of owners than to construct a list of them using
+        getOwners and then get that number.</p>
     </div>
     
 
@@ -1711,7 +1899,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="virtual_browser.js.html">virtual_browser.js</a>, <a href="virtual_browser.js.html#sunlight-1-line-262">line 262</a>
+        <a href="virtual_browser.js.html">virtual_browser.js</a>, <a href="virtual_browser.js.html#sunlight-1-line-427">line 427</a>
     </li></ul></dd>
     
 
@@ -1747,7 +1935,8 @@
     
     
     <div class="description">
-        <p>Gets all users that have the permission only to read and write to the instance.</p>
+        <p>Gets all users that have the permission only to read and
+        write to the instance.</p>
     </div>
     
 
@@ -1829,7 +2018,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="virtual_browser.js.html">virtual_browser.js</a>, <a href="virtual_browser.js.html#sunlight-1-line-178">line 178</a>
+        <a href="virtual_browser.js.html">virtual_browser.js</a>, <a href="virtual_browser.js.html#sunlight-1-line-328">line 328</a>
     </li></ul></dd>
     
 
@@ -1865,7 +2054,8 @@
     
     
     <div class="description">
-        <p>Gets the user's email ID that is stored in the session.</p>
+        <p>Gets the email ID that is stored in the session
+        when the user identity can not be established through authentication.</p>
     </div>
     
 
@@ -1947,7 +2137,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="virtual_browser.js.html">virtual_browser.js</a>, <a href="virtual_browser.js.html#sunlight-1-line-452">line 452</a>
+        <a href="virtual_browser.js.html">virtual_browser.js</a>, <a href="virtual_browser.js.html#sunlight-1-line-221">line 221</a>
     </li></ul></dd>
     
 
@@ -1968,6 +2158,94 @@
     
     
     
+    
+    
+</dd>
+
+        
+            
+<dt>
+    <h4 class="name" id="getURL"><span class="type-signature"></span>getURL<span class="signature">()</span><span class="type-signature"> &rarr; {String}</span></h4>
+    
+    
+</dt>
+<dd>
+    
+    
+    <div class="description">
+        <p>Gets the url of the instance.</p>
+    </div>
+    
+
+    
+    
+    
+    
+    
+    
+    
+<dl class="details">
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="virtual_browser.js.html">virtual_browser.js</a>, <a href="virtual_browser.js.html#sunlight-1-line-76">line 76</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+    
+    
+
+    
+
+    
+    
+    
+    
+    
+    <h5>Returns:</h5>
+    
+            
+
+
+<dl>
+	<dt>
+		Type
+	</dt>
+	<dd>
+		
+<span class="param-type">String</span>
+
+
+	</dd>
+</dl>
+
+
+        
     
     
 </dd>
@@ -2033,7 +2311,8 @@
 
             
 
-            <td class="description last"><p>The values of these properties must be set to true to check for the corresponding permission.</p></td>
+            <td class="description last"><p>The values of these properties must be set to
+        true to check for the corresponding permission.</p></td>
         </tr>
 
 	
@@ -2246,7 +2525,126 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="virtual_browser.js.html">virtual_browser.js</a>, <a href="virtual_browser.js.html#sunlight-1-line-373">line 373</a>
+        <a href="virtual_browser.js.html">virtual_browser.js</a>, <a href="virtual_browser.js.html#sunlight-1-line-562">line 562</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+    
+    
+
+    
+
+    
+    
+    
+    
+    
+    
+    
+</dd>
+
+        
+            
+<dt>
+    <h4 class="name" id="isAssocWithCurrentUser"><span class="type-signature"></span>isAssocWithCurrentUser<span class="signature">(callback)</span><span class="type-signature"></span></h4>
+    
+    
+</dt>
+<dd>
+    
+    
+    <div class="description">
+        <p>Checks if the current user has some permissions associated with this
+        browser (readwrite, readonly, own, remove)</p>
+    </div>
+    
+
+    
+    
+    
+    
+    
+        <h5>Parameters:</h5>
+        
+
+<table class="params table table-striped">
+    <thead>
+	<tr>
+		
+		<th>Name</th>
+		
+
+		<th>Type</th>
+
+		
+
+		
+
+		<th class="last">Description</th>
+	</tr>
+	</thead>
+
+	<tbody>
+	
+
+        <tr>
+            
+                <td class="name"><code>callback</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type"><a href="global.html#errorCallback">errorCallback</a></span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"></td>
+        </tr>
+
+	
+	</tbody>
+</table>
+
+    
+    
+    
+<dl class="details">
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="virtual_browser.js.html">virtual_browser.js</a>, <a href="virtual_browser.js.html#sunlight-1-line-297">line 297</a>
     </li></ul></dd>
     
 
@@ -2387,7 +2785,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="virtual_browser.js.html">virtual_browser.js</a>, <a href="virtual_browser.js.html#sunlight-1-line-317">line 317</a>
+        <a href="virtual_browser.js.html">virtual_browser.js</a>, <a href="virtual_browser.js.html#sunlight-1-line-498">line 498</a>
     </li></ul></dd>
     
 
@@ -2528,7 +2926,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="virtual_browser.js.html">virtual_browser.js</a>, <a href="virtual_browser.js.html#sunlight-1-line-291">line 291</a>
+        <a href="virtual_browser.js.html">virtual_browser.js</a>, <a href="virtual_browser.js.html#sunlight-1-line-463">line 463</a>
     </li></ul></dd>
     
 
@@ -2564,7 +2962,8 @@
     
     
     <div class="description">
-        <p>Redirects all clients connected to the current instance to the given URL.</p>
+        <p>Redirects all clients that are connected to the current
+        instance to the given URL.</p>
     </div>
     
 
@@ -2646,7 +3045,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="virtual_browser.js.html">virtual_browser.js</a>, <a href="virtual_browser.js.html#sunlight-1-line-440">line 440</a>
+        <a href="virtual_browser.js.html">virtual_browser.js</a>, <a href="virtual_browser.js.html#sunlight-1-line-207">line 207</a>
     </li></ul></dd>
     
 
@@ -2682,7 +3081,7 @@
     
     
     <div class="description">
-        <p>Renames the instance and emits an event &quot;Renamed&quot; that can be listened for by registering a listener on the instance.</p>
+        <p>Renames the instance.</p>
     </div>
     
 
@@ -2764,7 +3163,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="virtual_browser.js.html">virtual_browser.js</a>, <a href="virtual_browser.js.html#sunlight-1-line-419">line 419</a>
+        <a href="virtual_browser.js.html">virtual_browser.js</a>, <a href="virtual_browser.js.html#sunlight-1-line-609">line 609</a>
     </li></ul></dd>
     
 
@@ -2776,6 +3175,11 @@
 </dl>
 
     
+    
+    <h5>Fires:</h5>
+    <ul>
+        <li><a href="VirtualBrowser.html#event:rename">VirtualBrowser#event:rename</a></li>
+    </ul>
     
 
     
@@ -2800,7 +3204,7 @@
         <dl>
             
 <dt>
-    <h4 class="name" id="event:Renamed">Renamed</h4>
+    <h4 class="name" id="event:rename">rename</h4>
     
     
 </dt>
@@ -2851,7 +3255,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="virtual_browser.js.html">virtual_browser.js</a>, <a href="virtual_browser.js.html#sunlight-1-line-482">line 482</a>
+        <a href="virtual_browser.js.html">virtual_browser.js</a>, <a href="virtual_browser.js.html#sunlight-1-line-14">line 14</a>
     </li></ul></dd>
     
 
@@ -2879,7 +3283,7 @@
         
             
 <dt>
-    <h4 class="name" id="event:Shared">Shared</h4>
+    <h4 class="name" id="event:share">share</h4>
     
     
 </dt>
@@ -2920,7 +3324,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="virtual_browser.js.html">virtual_browser.js</a>, <a href="virtual_browser.js.html#sunlight-1-line-480">line 480</a>
+        <a href="virtual_browser.js.html">virtual_browser.js</a>, <a href="virtual_browser.js.html#sunlight-1-line-11">line 11</a>
     </li></ul></dd>
     
 
@@ -2967,7 +3371,7 @@
 					
 		<span class="jsdoc-message">
 		Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.2.0-dev</a>
-		on Fri Jun 21 2013 10:11:12 GMT-0400 (EDT) using the <a href="https://github.com/terryweiss/docstrap">DocStrap template</a>.
+		on Wed Sep 18 2013 13:57:10 GMT-0400 (EDT) using the <a href="https://github.com/terryweiss/docstrap">DocStrap template</a>.
 		</span>
 				</footer>
 			</div>

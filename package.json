@@ -8,7 +8,7 @@
   "author": "Brian McDaniel <brianmcd05@gmail.com>",
   "main": "src/index.js",
   "engines": {
-    "node": ">=0.6.0"
+    "node": ">=0.10.5"
   },
   "directories": {
     "lib": "./lib"
@@ -44,7 +44,7 @@
     "passport"         : "0.1.16",
     "passport-google"  : "0.3.0",
     "jsdoc"            : "git://github.com/jsdoc3/jsdoc.git",
-    "xmlhttprequest"   : "1.2.2",
+    "xmlhttprequest"   : "1.5.0",
     "coffee-script-mapped" : "0.1.4",
     "mocha"            : "1.12.0",
     "sinon-chai"       : "2.4.0",

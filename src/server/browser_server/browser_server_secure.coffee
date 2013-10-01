@@ -25,7 +25,7 @@ class BrowserServerSecure extends BrowserServer
                     @hasOwnProperty(listName) and
                     not @findUserInList(user, listName)
                         @[listName].push(sysRec)
-                        @emit('shared', sysRec.getUser(), listName)
+                        @emit('share', sysRec.getUser(), listName)
                 callback?(null, sysRec)
 
     removeUserFromLists : (user, listType) ->
@@ -64,7 +64,7 @@ class BrowserServerSecure extends BrowserServer
             if userInList[0] then return true else return false
  
         userList = []
-        listTypes = ['own', 'readwrite', 'readonly', 'remove']
+        listTypes = ['own', 'readwrite', 'readonly']
 
         for listType in listTypes
            for userRec in @getUsersInList(listType)

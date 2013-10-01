@@ -3,7 +3,7 @@ Async = require('async')
 {getParentMountPoint, hashPassword} = require('./utils')
 
 ###*
-    @class cloudbrowser.app.LocalStrategy
+    @class LocalStrategy
     @param {BrowserServer} bserver
     @param {cloudbrowser} cbCtx
 ###
@@ -33,7 +33,7 @@ class LocalStrategy
     ###*
         Logs a user into the application.    
         @method login
-        @memberof cloudbrowser.app.LocalStrategy
+        @memberof LocalStrategy
         @instance
         @param options 
         @param {User} options.user
@@ -104,7 +104,7 @@ class LocalStrategy
     ###*
         Registers a user with the application and sends a confirmation email to the user's registered email ID.
         The email ID is not activated until it has been confirmed by the user.    
-        @memberof cloudbrowser.app.LocalStrategy
+        @memberof LocalStrategy
         @instance
         @method signup
         @param options 
@@ -168,7 +168,7 @@ class LocalStrategy
         ], callback
 
 ###*
-    @class cloudbrowser.app.GoogleStrategy
+    @class GoogleStrategy
     @param {BrowserServer} bserver
 ###
 class GoogleStrategy
@@ -189,7 +189,7 @@ class GoogleStrategy
     ###*
         Log in through a google ID
         @method login
-        @memberof cloudbrowser.app.GoogleStrategy
+        @memberof GoogleStrategy
         @instance
     ###
     login : (callback) ->
@@ -220,7 +220,7 @@ class GoogleStrategy
     ###*
         Registers a user with the _application
         @method signup
-        @memberof cloudbrowser.app.GoogleStrategy
+        @memberof GoogleStrategy
         @instance
     ###
     signup : GoogleStrategy::login

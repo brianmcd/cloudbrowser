@@ -2,7 +2,7 @@ Nodemailer        = require("nodemailer")
 cloudbrowserError = require("../shared/cloudbrowser_error")
 
 ###*
-    @class cloudbrowser.Util
+    @class Util
     @param {object} emailerConfig
 ###
 class Util
@@ -28,7 +28,7 @@ class Util
         Sends an email to the specified user.
         @static
         @method sendEmail
-        @memberOf cloudbrowser.Util
+        @memberOf Util
         @param {string} to
         @param {string} subject
         @param {string} html

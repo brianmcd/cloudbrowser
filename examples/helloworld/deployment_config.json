@@ -7,7 +7,7 @@
     "browserLimit": 0,
     "description": "",
     "mountOnStartup": true,
-    "authenticationInterface": true,
+    "authenticationInterface": false,
     "mountPoint": "/helloworld",
     "collectionName": "helloworld.users"
 }

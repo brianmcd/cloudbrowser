@@ -80,7 +80,7 @@ class Auth
         A boolean is passed as an argument to indicate success/failure.
         @instance
         @method resetPassword
-        @memberOf cloudbrowser.app.AppConfig
+        @memberOf AppConfig
         @param {String}   password     The new plaintext password provided by the user.
         @param {booleanCallback} callback     
     ###
@@ -113,7 +113,7 @@ class Auth
         Logs out all connected clients from the current application.
         @instance
         @method logout
-        @memberOf cloudbrowser.app.AppConfig
+        @memberOf AppConfig
     ###
     logout : () ->
         {bserver, parentApp} = _pvts[@_idx]
@@ -126,8 +126,8 @@ class Auth
         Returns an instance of local strategy for authentication
         @instance
         @method getLocalStrategy
-        @memberOf cloudbrowser.app.AppConfig
-        @return {cloudbrowser.app.LocalStrategy} 
+        @memberOf AppConfig
+        @return {LocalStrategy} 
     ###
     getLocalStrategy : () ->
         return _pvts[@_idx].localStrategy
@@ -136,8 +136,8 @@ class Auth
         Returns an instance of google strategy for authentication
         @instance
         @method getGoogleStrategy
-        @memberOf cloudbrowser.app.AppConfig
-        @return {cloudbrowser.app.GoogleStrategy} 
+        @memberOf AppConfig
+        @return {GoogleStrategy} 
     ###
     getGoogleStrategy : () ->
         return _pvts[@_idx].googleStrategy

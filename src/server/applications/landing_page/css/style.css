@@ -1,12 +1,73 @@
 .margin-bottom{margin-bottom:20px !important;}
-.highlight{background-color:#bdbdbd;}
 .box{
     border-radius:5px;
     border: 1px solid #ccc;
     padding:30px;
     -webkit-box-shadow: 0px 2px 10px #ccc;
     -moz-box-shadow: 0px 2px 10px #ccc;
+    margin-top: 7px;
 }
 .pointer{
     cursor:pointer;
+}
+.well-white{
+    background-color:#fff;
+}
+.visibleOnHover{
+    display:none;
+    margin-left:10px;
+}
+.enlargeOnHover:hover {
+    -webkit-transform: scale(1.2);
+    text-decoration: none;
+}
+table {
+    table-layout:fixed;
+}
+tr:hover .visibleOnHover {
+    display:inline-block;
+}
+@font-face{
+    font-family : museo;
+    src: url("../font/museo/Museo_Slab_500_2-webfont.eot");
+    src: url("../font/museo/Museo_Slab_500_2-webfont.eot") format('embedded-opentype'),
+         url("../font/museo/Museo_Slab_500_2-webfont.woff") format('woff'),
+         url("../font/museo/Museo_Slab_500_2-webfont.ttf") format('truetype');
+
+}
+.fade-hide, .fade-show {
+    -webkit-transition:all cubic-bezier(0.250, 0.460, 0.450, 0.940) 0.5s;
+       -moz-transition:all cubic-bezier(0.250, 0.460, 0.450, 0.940) 0.5s;
+         -o-transition:all cubic-bezier(0.250, 0.460, 0.450, 0.940) 0.5s;
+            transition:all cubic-bezier(0.250, 0.460, 0.450, 0.940) 0.5s;
+}
+.fade-hide {
+    opacity:1;
+}
+.fade-hide.fade-hide-active {
+    opacity:0;
+}
+.fade-show {
+    opacity:0;
+}
+.fade-show.fade-show-active {
+    opacity:1;
+}
+.fixed-modal {
+    position: relative;
+    top: auto;
+    left: auto;
+    right: auto;
+    margin: 10px auto 0;
+    z-index: 1;
+    max-width: 100%;
+}
+.fixed-modal .modal-body {
+    overflow: visible !important;
+}
+.input {
+    max-width: 95%;
+}
+.contain-text{
+    overflow : auto;
 }

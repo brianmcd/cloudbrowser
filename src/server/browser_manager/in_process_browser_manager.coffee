@@ -32,16 +32,15 @@ class InProcessBrowserManager extends BrowserManager
             creator     : browserInfo.creator,
             permissions : browserInfo.permissions
         @weakRefsToBservers[id] = Weak(@bservers[id], cleanupBserver(id))
-        @emit("added", id)
-        @bservers[id].load(@app)
+        @emit("add", id)
+        #@bservers[id].load(@app)
         return @weakRefsToBservers[id]
 
     _closeBserver : (bserver) ->
         bserver.removeAllListeners()
         bserver.close()
-        # TODO : Is copying into a local variable required?
         id = bserver.id
-        @emit("removed", id)
+        @emit("remove", id)
         delete @weakRefsToBservers[bserver.id]
         delete @bservers[bserver.id]
 
@@ -79,9 +78,7 @@ class InProcessBrowserManager extends BrowserManager
                 # one associated with the user doesn't exist
                 else if not browserRecs or Object.keys(browserRecs).length < 1
                     permissions =
-                        own       : true
-                        readwrite : true
-                        remove    : true
+                        own : true
                     bserver = @_createBserver
                         type        : BrowserServerSecure
                         id          : id
@@ -111,9 +108,7 @@ class InProcessBrowserManager extends BrowserManager
                 else if not browserRecs or
                 Object.keys(browserRecs).length < userLimit
                     permissions =
-                        own       : true
-                        readwrite : true
-                        remove    : true
+                        own : true
                     bserver = @_createBserver
                         type        : BrowserServerSecure
                         id          : id
@@ -136,7 +131,7 @@ class InProcessBrowserManager extends BrowserManager
                 @server.permissionManager.checkPermissions
                     user        : user
                     mountPoint  : @app.getMountPoint()
-                    permissions : {createbrowsers : true}
+                    permissions : {createBrowsers : true}
                     callback    : next
             (canCreate, next) =>
                 if not canCreate then next(cloudbrowserError('PERM_DENIED'))
@@ -165,9 +160,11 @@ class InProcessBrowserManager extends BrowserManager
                 id   : id
 
     create : (user, callback, id = @generateUUID()) ->
-        if @app.isAuthConfigured() or /landing_page$/.test(@app.getMountPoint())
+        if @app.isAuthConfigured() or
+        /landing_page$/.test(@app.getMountPoint())
             @_createSecure(user, id, callback)
-        else @_create(id)
+        else
+            @_create(id)
 
     ###
     TODO : Figure out who can perform this action
@@ -185,7 +182,7 @@ class InProcessBrowserManager extends BrowserManager
                     user        : user
                     mountPoint  : @app.getMountPoint()
                     browserID   : bserver.id
-                    permissions : {remove : true}
+                    permissions : {own : true}
                     callback    : next
             (canRemove, next) =>
                 if canRemove
@@ -199,7 +196,6 @@ class InProcessBrowserManager extends BrowserManager
                             browserID  : bserver.id
                             callback   : callback
                     , (err) =>
-                        # finally close the browser
                         if not err then @_closeBserver(bserver)
                         next(err)
                 else next(cloudbrowserError('PERM_DENIED'))

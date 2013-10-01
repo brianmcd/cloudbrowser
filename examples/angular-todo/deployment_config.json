@@ -1,5 +1,7 @@
 {
     "authenticationInterface": true,
+    "description": "A To Do application written in AngularJS",
+    "browserLimit": 0,
     "isPublic": true,
     "owner": {
         "email": "godmar@gmail.com",

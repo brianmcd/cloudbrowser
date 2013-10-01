@@ -49,10 +49,10 @@ CBAdmin.controller "AppCtrl", ($scope) ->
 
         # For virtual browser related events
         @setupEventListeners : (app) ->
-            app.api.addEventListener "added", (vb) ->
+            app.api.addEventListener "add", (vb) ->
                 $scope.safeApply -> app.virtualBrowsers.push(vb)
 
-            app.api.addEventListener "removed" , (vbID) ->
+            app.api.addEventListener "remove" , (vbID) ->
                 $scope.safeApply ->
                     for vb in app.virtualBrowsers when vb.id is vbID
                         idx = app.virtualBrowsers.indexOf(vb)
@@ -64,10 +64,10 @@ CBAdmin.controller "AppCtrl", ($scope) ->
     serverConfig = cloudbrowser.serverConfig
 
     # Application related events
-    serverConfig.addEventListener "added", (appConfig) ->
+    serverConfig.addEventListener "add", (appConfig) ->
         App.add(appConfig)
 
-    serverConfig.addEventListener "removed", (appConfig) ->
+    serverConfig.addEventListener "remove", (appConfig) ->
         App.remove(appConfig)
 
     # File uploader Component

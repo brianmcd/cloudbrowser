@@ -1,15 +1,16 @@
 {EventEmitter} = require('events')
 
 class User extends EventEmitter
-    constructor : () ->
+    constructor : (user) ->
         @name = null
         @namespace = null
         @joinedRooms = []
         @joinedRoomsByName = {}
+        @setUserDetails(user)
 
     setUserDetails : (user) ->
-        @name = user.email
-        @namespace = user.ns
+        @name = user.getEmail()
+        @namespace = user.getNameSpace()
 
     joinRoom :  (room)  ->
         name = room.name

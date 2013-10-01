@@ -3,7 +3,7 @@ AppConfig = require('./application_config')
 Async     = require('async')
 
 ###*
-    @class cloudbrowser.ServerConfig
+    @class ServerConfig
 ###
 class ServerConfig
     # Private Properties inside class closure
@@ -28,7 +28,7 @@ class ServerConfig
     ###*
         Returns the server domain.
         @method getDomain
-        @memberOf cloudbrowser.ServerConfig
+        @memberOf ServerConfig
         @instance
         @return {String}
     ###
@@ -39,7 +39,7 @@ class ServerConfig
     ###*
         Returns the server port
         @method getPort
-        @memberOf cloudbrowser.ServerConfig
+        @memberOf ServerConfig
         @instance
         @return {Number}
     ###
@@ -51,7 +51,7 @@ class ServerConfig
         Returns the URL at which the CloudBrowser server is hosted.    
         @instance
         @method getUrl
-        @memberOf cloudbrowser.ServerConfig
+        @memberOf ServerConfig
         @return {String} 
     ###
     getUrl : () ->
@@ -62,7 +62,7 @@ class ServerConfig
         Can be filtered by user or privacy
         @instance
         @method listApps
-        @memberOf cloudbrowser.ServerConfig
+        @memberOf ServerConfig
         @param {Object} options
         @param {appListCallback} options.callback
         @param {Object} options.filters
@@ -87,15 +87,14 @@ class ServerConfig
                         permissions : {'own' : true}
                         callback    : next
                 (appRecs, next) ->
+                    app = server.applications.find(rec.getMountPoint())
                     for rec in appRecs
                         if filters.public
-                            app = server.applications.find(rec.getMountPoint())
                             if not app.isAppPublic() then continue
                         appConfigs.push new AppConfig
                             userCtx : userCtx
-                            server  : server
                             cbCtx   : cbCtx
-                            mountPoint : rec.getMountPoint()
+                            app     : app
                     next(null, appConfigs)
             ], callback
                     
@@ -106,16 +105,15 @@ class ServerConfig
                 if app.isAppPublic() and app.isMounted()
                     appConfigs.push new AppConfig
                         userCtx : userCtx
-                        server  : server
                         cbCtx   : cbCtx
-                        mountPoint : mountPoint
+                        app     : app
             callback(null, appConfigs)
 
     ###*
         Registers a listener for an event on the server
         @instance
         @method addEventListener
-        @memberOf cloudbrowser.ServerConfig
+        @memberOf ServerConfig
         @param {String} event
         @param {customCallback} callback
     ###
@@ -130,9 +128,8 @@ class ServerConfig
                 server.applications.on event, (app) ->
                     callback new AppConfig
                         userCtx : userCtx
-                        server  : server
                         cbCtx   : cbCtx
-                        mountPoint : app.getMountPoint()
+                        app     : app
             # No permission check required
             when "madePrivate", "disable"
                 server.applications.on event, (app) ->
@@ -152,12 +149,11 @@ class ServerConfig
                         # with the user
                     (mountPoint, next) ->
                         switch event
-                            when 'added'
+                            when 'add'
                                 next null, new AppConfig
                                     userCtx : userCtx
-                                    server  : server
                                     cbCtx   : cbCtx
-                                    mountPoint : mountPoint
+                                    app     : server.applications.find(mountPoint)
                             else next(null, mountPoint)
                 ], (err, result) ->
                     if err then console.log(err)

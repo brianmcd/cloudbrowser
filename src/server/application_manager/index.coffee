@@ -185,7 +185,7 @@ class ApplicationManager extends EventEmitter
     # Validates data in the configuration files and constructs the final
     # application configuration
     _configure : (appInfo) ->
-        {path, mountPoint, type, mountFunc} = appInfo
+        {path, mountPoint, type, mountFunc, parent} = appInfo
 
         if not (opts = @_getInitialConfiguration(path, type)) then return null
 
@@ -222,13 +222,13 @@ class ApplicationManager extends EventEmitter
                 if not browserLimit
                     console.log("browserLimit must be provided as the" +
                         " instantiation strategy has been set to" +
-                        " multiInstance in #{appConfigPath}")
+                        " multiInstance in #{path}/app_config.json")
                     return
 
         # Checking for a valid browser limit
         if browserLimit? and isNaN(browserLimit)
             console.log("browserLimit must be a valid number in" +
-                " #{appConfigPath}")
+                " #{path}/app_config.json")
             return
 
         # Configure the db collection name
@@ -245,6 +245,9 @@ class ApplicationManager extends EventEmitter
 
         # Pointers to sub applications like landing_page etc.
         opts.subApps = []
+
+        # Pointer to the parent application
+        opts.parent = parent
 
         # Path to the application
         opts.path = path
@@ -368,12 +371,14 @@ class ApplicationManager extends EventEmitter
             path       : Path.resolve(@cbAppDir, "authentication_interface")
             mountPoint : "#{mountPoint}/authenticate"
             mountFunc  : "setupAuthenticationInterface"
+            parent     : @find(mountPoint)
 
         # The password reset application doesn't require any special routes
         # Use default mountFunc
         opts.subApps.push @_createSubApplication
             path      : Path.resolve(@cbAppDir, "password_reset")
             mountPoint : "#{mountPoint}/password_reset"
+            parent     : @find(mountPoint)
 
         # Landing page is only needed when the authentication interface is
         # enabled and the instantiation strategy is multiInstance
@@ -382,6 +387,7 @@ class ApplicationManager extends EventEmitter
                 path       : Path.resolve(@cbAppDir, "landing_page")
                 mountFunc  : "setupLandingPage"
                 mountPoint : "#{mountPoint}/landing_page"
+                parent     : @find(mountPoint)
 
     # Walks a path recursively and finds all CloudBrowser applications
     _walk : (path) =>

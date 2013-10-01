@@ -1,10 +1,10 @@
-Path                   = require('path')
-{EventEmitter}         = require('events')
-FS                     = require('fs')
-URL                    = require('url')
-Request                = require('request')
-DOMWindowFactory       = require('./DOMWindowFactory')
-Application            = require('../application_manager/application')
+Path             = require('path')
+{EventEmitter}   = require('events')
+FS               = require('fs')
+URL              = require('url')
+Request          = require('request')
+DOMWindowFactory = require('./DOMWindowFactory')
+Application      = require('../application_manager/application')
 
 TESTS_RUNNING = process.env.TESTS_RUNNING
 if TESTS_RUNNING
@@ -60,7 +60,9 @@ class Browser extends EventEmitter
         @window.close if @window?
         @window = @DOMWindowFactory.create(url)
         # The first time we call this, it won't navigate. 
-        @window.location = url
+        {domain} = @server.config
+        # file:///
+        @window.location = "file://#{url}"
         @document = @window.document
         @initializeApplication(app) if app? && !app.remoteBrowsing
 

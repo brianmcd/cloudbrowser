@@ -76,12 +76,12 @@
       };
 
       App.setupEventListeners = function(app) {
-        app.api.addEventListener("added", function(vb) {
+        app.api.addEventListener("add", function(vb) {
           return $scope.safeApply(function() {
             return app.virtualBrowsers.push(vb);
           });
         });
-        return app.api.addEventListener("removed", function(vbID) {
+        return app.api.addEventListener("remove", function(vbID) {
           return $scope.safeApply(function() {
             var idx, vb, _i, _len, _ref, _results;
             _ref = app.virtualBrowsers;
@@ -104,10 +104,10 @@
     })();
     curVB = cloudbrowser.currentVirtualBrowser;
     serverConfig = cloudbrowser.serverConfig;
-    serverConfig.addEventListener("added", function(appConfig) {
+    serverConfig.addEventListener("add", function(appConfig) {
       return App.add(appConfig);
     });
-    serverConfig.addEventListener("removed", function(appConfig) {
+    serverConfig.addEventListener("remove", function(appConfig) {
       return App.remove(appConfig);
     });
     fileUploaderDiv = document.getElementById('file-uploader');

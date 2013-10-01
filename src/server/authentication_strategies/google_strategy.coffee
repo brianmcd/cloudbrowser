@@ -38,7 +38,6 @@ class GoogleStrategy
         # Check if the client needs to be redirected to some virtual browser
         # after authentication
         redirectto = @_getRedirectUrl(req.session)
-        console.log(req.user)
         newUser =
             email : req.user.email
             ns    : 'google'

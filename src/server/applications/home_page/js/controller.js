@@ -85,7 +85,7 @@
         return App.add(appConfig);
       });
     });
-    server.addEventListener('added', function(appConfig) {
+    server.addEventListener('add', function(appConfig) {
       return $scope.safeApply(function() {
         return App.add(appConfig);
       });
@@ -100,7 +100,7 @@
         return App.remove(mountPoint);
       });
     });
-    server.addEventListener('removed', function(mountPoint) {
+    server.addEventListener('remove', function(mountPoint) {
       return $scope.safeApply(function() {
         return App.remove(mountPoint);
       });

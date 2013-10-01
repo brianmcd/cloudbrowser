@@ -1,0 +1,95 @@
+<!-- Note :
+    Any extra divs without content are to make the spans add up to 12 
+    Else, the spans in the fluid layout do not align properly on screen resize
+-->
+<!-- Shared States -->
+<div ng-repeat="sharedState in sharedStates" class="row-fluid"
+ng-controller="SharedStateCtrl">
+
+    <!-- Shared State -->
+    <div class="span12 well well-white">
+
+        <!-- Description Line-->
+        <div class="row-fluid">
+            <div class="span12">
+                <span ng-include="templates.buttons.expandCollapse"></span>
+                <span>
+                    {{sharedState.name}}
+                    <small class="muted"> Created {{sharedState.dateCreated}} </small>
+                    <span class="label label-info" ng-show="hasCollaborators()">
+                        Shared
+                    </span> 
+                    <i class="icon-spinner icon-spin icon-large"
+                    ng-show="isProcessing()"></i> 
+                </span>
+                <span class="pull-right">
+                    <span ng-include="templates.buttons.showLink"></span>
+                    <span ng-include="templates.buttons.removeSharedState"></span>
+                    <span ng-include="templates.buttons.addBrowser"></span>
+                    <span ng-include="templates.buttons.shareSharedState"></span>
+                </span>
+            </div>
+        </div>
+
+        <!-- Row -->
+        <div class="row-fluid" ng-show="success.message">
+            <!-- Success Message -->
+            <div class="span12" ng-include="templates.messages.success"></div>
+            <!-- Success Message -->
+        </div>
+        <!-- Row -->
+
+        <!-- Row -->
+        <div class="row-fluid" ng-show="error.message">
+            <!-- Error Message-->
+                <div class="span12" ng-include="templates.messages.error"></div>
+            <!-- Error Message-->
+        </div>
+        <!-- Row -->
+
+        <!-- Link -->
+        <div class="row-fluid" ng-show="isLinkVisible()">
+            <div class="span12 alert alert-info contain-text">
+                <button type="button" class="close" ng-click="closeLink()">
+                    &times;
+                </button>
+                <strong>{{link.entity.name}}</strong> - {{link.text}}
+            </div>
+        </div>
+        <!-- Link -->
+
+        <!-- Description Line-->
+
+        <!-- Browser Table -->
+        <div class="row-fluid">
+            <div class="span12" ng-animate="'fade'" ng-show="isBrowserTableVisible()"
+                ng-include="templates.browserTable"
+                onload="browsers=sharedState.browsers">
+            </div>
+        </div>
+        <!-- Browser Table -->
+
+        <!-- Collaborators -->
+        <div ng-repeat="c in sharedState.collaborators"
+        class="row-fluid">
+            <div class="span4 alert alert-info">
+                <button type="button" class="close">&times;</button>
+                {{c.getEmail()}} ({{c.getNameSpace()}})
+            </div>
+            <div class="span8"></div>
+        </div>
+        <!-- Collaborators -->
+
+        <!-- Share Form -->
+        <div class="row-fluid" ng-show="isShareFormOpen()">
+            <div class="span6" ng-include="templates.forms.addCollaborator"></div>
+            <div class="span6"></div>
+        </div>
+        <!-- Share Form -->
+
+
+    </div>
+    <!-- Shared State -->
+
+</div>
+<!-- Shared States -->

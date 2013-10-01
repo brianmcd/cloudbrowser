@@ -45,7 +45,7 @@ CBHomePage.controller "MainCtrl", ($scope) ->
     server.addEventListener 'madePublic', (appConfig) ->
         $scope.safeApply -> App.add(appConfig)
 
-    server.addEventListener 'added', (appConfig) ->
+    server.addEventListener 'add', (appConfig) ->
         $scope.safeApply -> App.add(appConfig)
 
     server.addEventListener 'mount', (appConfig) ->
@@ -54,7 +54,7 @@ CBHomePage.controller "MainCtrl", ($scope) ->
     server.addEventListener 'madePrivate', (mountPoint) ->
         $scope.safeApply -> App.remove(mountPoint)
 
-    server.addEventListener 'removed', (mountPoint) ->
+    server.addEventListener 'remove', (mountPoint) ->
         $scope.safeApply -> App.remove(mountPoint)
 
     server.addEventListener 'disable', (mountPoint) ->

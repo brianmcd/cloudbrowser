@@ -7,11 +7,10 @@
   Util = require('util');
 
   Chat3.controller("ChatCtrl", function($scope) {
-    var addRoom, chatManager, chatUser, currentVB, findRoom, getLastActiveRoom, lastActiveRoom, room, _i, _j, _len, _len1, _ref, _ref1;
+    var addRoom, chatManager, currentVB, findRoom, getLastActiveRoom, lastActiveRoom, room, _i, _len, _ref;
+    currentVB = cloudbrowser.currentVirtualBrowser;
     $scope.joinedRooms = [];
     $scope.otherRooms = [];
-    currentVB = cloudbrowser.currentVirtualBrowser;
-    $scope.username = currentVB.getCreator().getEmail();
     $scope.activeRoom = null;
     $scope.roomName = null;
     $scope.currentMessage = "";
@@ -43,16 +42,12 @@
     };
     addRoom = function(room, roomList, setupListeners) {
       if (!findRoom(room.name, roomList)) {
-        $scope.safeApply(function() {
-          return roomList.push(room);
+        roomList.push(room);
+      }
+      if (setupListeners) {
+        return room.on("NewMessage", function(message) {
+          return $scope.safeApply();
         });
-        if (setupListeners) {
-          return room.on("NewMessage", function(message) {
-            return $scope.safeApply(function() {
-              return room.messages;
-            });
-          });
-        }
       }
     };
     getLastActiveRoom = function() {
@@ -64,70 +59,76 @@
         return null;
       }
     };
-    chatManager = cloudbrowser.app.shared.chats;
-    chatManager.on("NewRoom", function(room) {
-      return setTimeout(function() {
+    $scope.user = currentVB.getLocalState('user');
+    chatManager = null;
+    setTimeout(function() {
+      var room, _i, _len, _ref, _results;
+      chatManager = currentVB.getSharedStateConfig().getObj();
+      $scope.rooms = chatManager.rooms;
+      chatManager.on("NewRoom", function(room) {
         if (!findRoom(room.name, $scope.joinedRooms)) {
           return $scope.safeApply(function() {
             return addRoom(room, $scope.otherRooms, false);
           });
         }
-      }, 100);
-    });
-    _ref = chatManager.getAllRooms();
-    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-      room = _ref[_i];
-      if (!findRoom(room.name, $scope.joinedRooms)) {
-        addRoom(room, $scope.otherRooms, false);
+      });
+      if (chatManager) {
+        _ref = chatManager.getAllRooms();
+        _results = [];
+        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+          room = _ref[_i];
+          if (!findRoom(room.name, $scope.joinedRooms)) {
+            _results.push(addRoom(room, $scope.otherRooms, false));
+          } else {
+            _results.push(void 0);
+          }
+        }
+        return _results;
       }
-    }
-    chatUser = cloudbrowser.app.local.user;
-    chatUser.setUserDetails(currentVB.getCreator().toJson());
-    chatUser.on("JoinedRoom", function(room) {
-      addRoom(room, $scope.joinedRooms, true);
-      $scope.safeApply(function() {
-        return $scope.otherRooms = $.grep($scope.otherRooms, function(element, index) {
+    }, 200);
+    $scope.user.on("JoinedRoom", function(room) {
+      return $scope.safeApply(function() {
+        addRoom(room, $scope.joinedRooms, true);
+        $scope.otherRooms = $.grep($scope.otherRooms, function(element, index) {
           return element.name !== room.name;
         });
+        return $scope.activate(room);
       });
-      return $scope.activate(room);
     });
-    chatUser.on("LeftRoom", function(name) {
-      $scope.safeApply(function() {
-        return $scope.joinedRooms = $.grep($scope.joinedRooms, function(element, index) {
+    $scope.user.on("LeftRoom", function(name) {
+      return $scope.safeApply(function() {
+        $scope.joinedRooms = $.grep($scope.joinedRooms, function(element, index) {
           return element.name !== name;
         });
-      });
-      addRoom(chatManager.getRoom(name), $scope.otherRooms, false);
-      lastActiveRoom = null;
-      return $scope.safeApply(function() {
+        addRoom(chatManager.getRoom(name), $scope.otherRooms, false);
+        lastActiveRoom = null;
         return $scope.activeRoom = getLastActiveRoom();
       });
     });
-    _ref1 = chatUser.getAllRooms();
-    for (_j = 0, _len1 = _ref1.length; _j < _len1; _j++) {
-      room = _ref1[_j];
+    _ref = $scope.user.getAllRooms();
+    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+      room = _ref[_i];
       addRoom(room, $scope.joinedRooms, true);
       $scope.activate(room);
     }
     $scope.joinRoom = function() {
-      chatManager.getRoom($scope.selectedRoom.name).join(chatUser);
+      chatManager.getRoom($scope.selectedRoom.name).join($scope.user);
       $scope.selectedRoom = null;
       return $scope.toggleForm('join');
     };
     $scope.leaveRoom = function(room) {
-      return room.leave(chatUser);
+      return room.leave($scope.user);
     };
     $scope.createRoom = function() {
       room = chatManager.createRoom($scope.roomName);
-      room.join(chatUser);
+      room.join($scope.user);
       $scope.roomName = null;
       $scope.activate(room);
       return $scope.toggleForm('create');
     };
     $scope.postMessage = function() {
       if ($scope.activeRoom) {
-        $scope.activeRoom.postMessage($scope.username, $scope.currentMessage);
+        $scope.activeRoom.postMessage($scope.user.name, $scope.currentMessage);
         return $scope.currentMessage = "";
       }
     };

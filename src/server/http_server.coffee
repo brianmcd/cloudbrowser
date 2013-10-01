@@ -100,7 +100,8 @@ class HTTPServer extends EventEmitter
             user         : @findAppUser(req, mountPoint)
             mountPoint   : mountPoint
             browserID    : req.params.browserID
-            permissions  : {readwrite : true}
+            # Checking for any one of these permissions to be true
+            permissions  : [{readwrite:true}, {own:true}, {readonly:true}]
             callback     : (err, hasPerm) ->
                 if not err and hasPerm then next()
                 else res.send("Permission Denied", 403)
@@ -138,8 +139,10 @@ class HTTPServer extends EventEmitter
             mp = mountPoint.replace(/\/landing_page$/, "")
             user = @findAppUser(req, mp)
             browsers.create user, (err, bserver) =>
-                if err then res.send(err.message, 400)
+                if err
+                    res.send(err.message, 400)
                 else
+                    bserver.load()
                     @redirect(res, "#{mountPoint}/browsers/#{bserver.id}/index")
 
         @server.get @getBrowserRoute(mountPoint),
@@ -161,6 +164,7 @@ class HTTPServer extends EventEmitter
             id = req.session.browserID
             if !id? || !browsers.find(id)
               bserver = browsers.create()
+              bserver.load()
               # Makes the browser stick to a particular client to
               # prevent creation a new virtual browser for every request
               # from the same client
@@ -187,7 +191,9 @@ class HTTPServer extends EventEmitter
                 user = @findAppUser(req, mountPoint)
                 browsers.create user, (err, bserver) =>
                     if err then res.send(err.message, 400)
-                    else @redirect(res,
+                    else
+                        bserver.load()
+                        @redirect(res,
                         "#{mountPoint}/browsers/#{bserver.id}/index")
 
         @server.get @getBrowserRoute(mountPoint),
@@ -210,9 +216,27 @@ class HTTPServer extends EventEmitter
                 else res.render 'activate.jade',
                     url: "http://#{@config.domain}:#{@config.port}#{mountPoint}"
 
-        @server.get "#{mountPoint}/deactivate/:token", (req, res) =>
+        @server.get "#{mountPoint}/deactivate/:token", (req, res) ->
             app.deactivateUser req.params.token, () ->
-                res.render 'deactivate.jade'
+                res.render('deactivate.jade')
+
+        @server.get "#{mountPoint}/application_state/:stateID", (req, res) =>
+            id = req.params.stateID
+            app = @cbServer.applications.find(mountPoint)
+            if not id or not app
+                res.send("Bad Request", 400)
+                return
+
+            sharedState = app.sharedStates.find(id)
+            user = @findAppUser(req, mountPoint)
+            if not sharedState or not user
+                res.send("Bad Request", 400)
+                return
+
+            sharedState.createBrowser user, (err, bserver) =>
+                if err then res.send(err.message, 400)
+                else @redirect(res,
+                    "#{mountPoint}/browsers/#{bserver.id}/index")
 
     getBrowserRoute : (mountPoint) ->
         mp = if mountPoint is "/" then "" else mountPoint
@@ -231,6 +255,7 @@ class HTTPServer extends EventEmitter
             id = req.session.browserID
             if !id? || !browsers.find(id)
                 bserver = browsers.create()
+                bserver.load()
                 # Makes the browser stick to a particular client to
                 # prevent creation a new virtual browser for every request
                 # from the same client

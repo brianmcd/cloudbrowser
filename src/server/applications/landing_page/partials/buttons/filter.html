@@ -1,0 +1,34 @@
+<div class="btn-group margin-bottom">
+    <a class="btn dropdown-toggle" data-toggle="dropdown">
+        Filter
+        <i class="icon-filter"></i>
+        <span class="caret"></span>
+    </a>
+    <ul class="dropdown-menu" style="text-align:left">
+        <li>
+            <a tabindex="-1" ng-click="filterBy('shared')">
+                Shared
+            </a>
+        </li>
+        <li>
+            <a tabindex="-1" ng-click="filterBy('notShared')">
+                Not shared 
+            </a>
+        </li>
+        <li>
+            <a tabindex="-1" ng-click="filterBy('owned')">
+                Owned by me
+            </a>
+        </li>
+        <li>
+            <a tabindex="-1" ng-click="filterBy('notOwned')">
+                Not owned by me
+            </a>
+        </li>
+        <li>
+            <a tabindex="-1" ng-click="filterBy('all')">
+                All 
+            </a>
+        </li>
+    </ul>
+</div>
