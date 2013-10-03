@@ -74,7 +74,7 @@ class Runner
     setProjectRoot = () ->
         projectRoot = process.argv[1]
         projectRoot = projectRoot.split("/")
-        projectRoot.pop();projectRoot.pop();projectRoot.pop()
+        projectRoot.pop() for i in [0..1]
         projectRoot = projectRoot.join("/")
 
     setInitialConfig = () ->
