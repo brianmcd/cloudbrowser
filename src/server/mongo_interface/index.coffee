@@ -7,6 +7,10 @@ MongoStore = require('connect-mongo')(Express)
 
 class MongoInterface
     constructor : (dbName, callback) ->
+        # Ensures unique database for every user of the system
+        # but will use the same database for multiple instances
+        # of cloudbrowser run by the same user
+        dbName = "UID#{process.getuid()}-#{dbName}"
         @dbClient = new Mongo.Db(dbName,
             new Mongo.Server("127.0.0.1", 27017, options:{auto_reconnect:true}))
         @dbClient.open (err, pClient) ->
