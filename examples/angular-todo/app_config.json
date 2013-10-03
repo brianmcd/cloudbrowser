@@ -1,7 +1,5 @@
 {
     "entryPoint": "index.html",
-    "description": "A To Do application written in AngularJS",
-    "browserLimit": 0,
     "applicationStateFile": "",
     "instantiationStrategy": "singleUserInstance"
 }

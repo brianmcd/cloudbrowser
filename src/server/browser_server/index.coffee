@@ -32,7 +32,7 @@ class BrowserServer extends EventEmitter
         {@server, @id, @mountPoint} = bserverInfo
         weakRefToThis = Weak(this, cleanupBserver(@id))
 
-        @browser = new Browser(@id, weakRefToThis, @server)
+        @browser = new Browser(@id, weakRefToThis, @server.config)
         @dateCreated = new Date()
         @localState = {}
 

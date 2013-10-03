@@ -72,7 +72,8 @@ class CloudBrowser
 
 module.exports = (bserver) ->
     bserver.browser.window.cloudbrowser = new CloudBrowser(bserver)
-    {window, server} = bserver.browser
+    {window} = bserver.browser
+    {server} = bserver
     {cloudbrowser} = window
 
     app = bserver.server.applications.find(bserver.mountPoint)

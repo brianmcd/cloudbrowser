@@ -11,7 +11,7 @@ if TESTS_RUNNING
     QUnit = require('./qunit')
 
 class Browser extends EventEmitter
-    constructor : (@id, @bserver, @server) ->
+    constructor : (@id, @bserver, @config) ->
         @window = null
         @components = {}
         @clientComponents = []
@@ -60,7 +60,7 @@ class Browser extends EventEmitter
         @window.close if @window?
         @window = @DOMWindowFactory.create(url)
         # The first time we call this, it won't navigate. 
-        {domain} = @server.config
+        {domain} = @config
         # TODO : Implement node.baseURI to resolve relative
         # paths instead of using this hack
         if not URL.parse(url).protocol

@@ -72,6 +72,7 @@ exports.addAdvice = (dom) ->
         # Note: unlike the DOM, we only emit DOMNodeInsertedIntoDocument
         # on the root of a removed subtree, meaning the handler should check
         # to see if it has children.
+        # TODO : Must fire for each element in the subtree of elem
         if isVisibleOnClient(parent, browser)
             browser.emit 'DOMNodeInsertedIntoDocument',
                 target : elem

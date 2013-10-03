@@ -2,10 +2,16 @@ module.exports = (grunt) ->
     grunt.loadNpmTasks('grunt-mocha-test')
     grunt.initConfig
         mochaTest :
-            location :
+            server :
                 options :
                     reporter : 'spec'
                     require: 'coffee-script-mapped'
-                src : ['test/server/bdd_location.coffee']
-    grunt.registerTask('default', 'mochaTest')
+                src : [
+                    'test/server/location.coffee'
+                    'test/server/advice.coffee'
+                    'test/server/browser.coffee'
+                    'test/server/resource_proxy.coffee'
+                    'test/server/serializer.coffee'
+                ]
 
+    grunt.registerTask('default', 'mochaTest')

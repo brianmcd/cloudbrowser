@@ -2,7 +2,7 @@
     "mountOnStartup": true,
     "owner": {
         "email": "ashimaathri@gmail.com",
-        "ns": "google"
+        "ns": "local"
     },
     "mountPoint": "/",
     "browserLimit": 0,

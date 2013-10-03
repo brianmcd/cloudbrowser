@@ -40,7 +40,7 @@ class DOMWindowFactory
         @patchDOMParser(window)
         @patchWindowMethods(window)
         @setupDocument(window, url)
-        if @browser.server.config.test_env
+        if @browser.config.test_env
             window.browser = @browser
         return window
 
