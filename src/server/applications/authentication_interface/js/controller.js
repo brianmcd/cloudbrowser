@@ -4,7 +4,7 @@
 
   CBAuthentication = angular.module("CBAuthentication", []);
 
-  curVB = cloudbrowser.currentVirtualBrowser;
+  curVB = cloudbrowser.currentBrowser;
 
   auth = cloudbrowser.auth;
 

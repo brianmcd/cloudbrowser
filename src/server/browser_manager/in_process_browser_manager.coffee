@@ -24,27 +24,29 @@ class InProcessBrowserManager extends BrowserManager
     # (for apps with authentication interface enabled)
     # returns weak reference to the browser
     _createBserver : (browserInfo) ->
-        id = browserInfo.id
-        @bservers[id] = new browserInfo.type
+        {id, type, preLoadMethod, creator, permissions} = browserInfo
+        @bservers[id] = new type
             id          : id
             server      : @server
             mountPoint  : @app.getMountPoint()
-            creator     : browserInfo.creator,
-            permissions : browserInfo.permissions
+            creator     : creator,
+            permissions : permissions
         @weakRefsToBservers[id] = Weak(@bservers[id], cleanupBserver(id))
         @emit("add", id)
-        #@bservers[id].load(@app)
+        preLoadMethod?(@weakRefsToBservers[id])
+        @bservers[id].load(@app)
         return @weakRefsToBservers[id]
 
     _closeBserver : (bserver) ->
         bserver.removeAllListeners()
         bserver.close()
         id = bserver.id
-        @emit("remove", id)
+        @emit("removeBrowser", id)
         delete @weakRefsToBservers[bserver.id]
         delete @bservers[bserver.id]
 
-    _createSingleAppInstance : (id, user, callback) ->
+    _createSingleAppInstance : (options) ->
+        {id, user, preLoadMethod, callback} = options
         permissions = {readwrite : true}
         # Attaching a single bserver to app.
         # This will be used for all requests to this application
@@ -54,6 +56,7 @@ class InProcessBrowserManager extends BrowserManager
                 id          : id
                 creator     : user
                 permissions : permissions
+                preLoadMethod : preLoadMethod
             @server.permissionManager.addBrowserPermRec
                 user        : user
                 mountPoint  : @app.getMountPoint()
@@ -68,7 +71,8 @@ class InProcessBrowserManager extends BrowserManager
                 permissions : permissions
                 callback    : (err) => callback(err, @find(@app.bserver.id))
 
-    _createSingleUserInstance : (id, user, callback) ->
+    _createSingleUserInstance : (options) ->
+        {id, user, preLoadMethod, callback} = options
         @server.permissionManager.getBrowserPermRecs
             user       : user
             mountPoint : @app.getMountPoint()
@@ -84,6 +88,7 @@ class InProcessBrowserManager extends BrowserManager
                         id          : id
                         creator     : user
                         permissions : permissions
+                        preLoadMethod : preLoadMethod
                     @server.permissionManager.addBrowserPermRec
                         user        : user
                         mountPoint  : @app.getMountPoint()
@@ -97,7 +102,8 @@ class InProcessBrowserManager extends BrowserManager
                         # in this list
                         break
 
-    _createMultiInstance : (id, user, callback) ->
+    _createMultiInstance : (options) ->
+        {id, user, preLoadMethod, callback} = options
         userLimit = @app.getBrowserLimit()
 
         @server.permissionManager.getBrowserPermRecs
@@ -114,6 +120,7 @@ class InProcessBrowserManager extends BrowserManager
                         id          : id
                         creator     : user
                         permissions : permissions
+                        preLoadMethod : preLoadMethod
                     @server.permissionManager.addBrowserPermRec
                         user        : user
                         mountPoint  : @app.getMountPoint()
@@ -122,7 +129,8 @@ class InProcessBrowserManager extends BrowserManager
                         callback    : (err) => callback(err, @find(id))
                 else callback(cloudbrowserError('LIMIT_REACHED'))
 
-    _createSecure : (user, id, callback) ->
+    _createSecure : (options) ->
+        {user, id, preLoadMethod, callback} = options
         if not user then callback(cloudbrowserError('PERM_DENIED'), null)
 
         # Checking the browser limit configured for the application
@@ -142,12 +150,18 @@ class InProcessBrowserManager extends BrowserManager
                             instantiationStrategy.slice(1)
 
                 if typeof @[methodName] is "function"
-                    @[methodName](id, user, next)
+                    @[methodName]
+                        id   : id
+                        user : user
+                        callback : next
+                        preLoadMethod : preLoadMethod
+
                 else next(cloudbrowserError("INVALID_INST_STRATEGY"),
                     instantiationStrategy)
         ], callback
 
-    _create : (id) ->
+    _create : (options) ->
+        {id, preLoadMethod} = options
         if @app.getInstantiationStrategy() is "singleAppInstance"
             if not @app.bserver
                 @app.bserver = @_createBserver
@@ -158,13 +172,13 @@ class InProcessBrowserManager extends BrowserManager
             return @_createBserver
                 type : BrowserServer
                 id   : id
+                preLoadMethod : preLoadMethod
 
-    create : (user, callback, id = @generateUUID()) ->
-        if @app.isAuthConfigured() or
-        /landing_page$/.test(@app.getMountPoint())
-            @_createSecure(user, id, callback)
-        else
-            @_create(id)
+    create : (options = {}) ->
+        options.id = options.id || @generateUUID()
+        if @app.isAuthConfigured() or /landing_page$/.test(@app.getMountPoint())
+            @_createSecure(options)
+        else @_create(options)
 
     ###
     TODO : Figure out who can perform this action

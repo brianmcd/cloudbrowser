@@ -5,9 +5,9 @@
   CBHomePage = angular.module("CBHomePage", []);
 
   CBHomePage.controller("MainCtrl", function($scope) {
-    var App, currentVirtualBrowser, server;
+    var App, currentBrowser, server;
     server = cloudbrowser.serverConfig;
-    currentVirtualBrowser = cloudbrowser.currentVirtualBrowser;
+    currentBrowser = cloudbrowser.currentBrowser;
     $scope.safeApply = function(fn) {
       var phase;
       phase = this.$root.$$phase;
@@ -20,7 +20,7 @@
       }
     };
     $scope.leftClick = function(url) {
-      return currentVirtualBrowser.redirect(url);
+      return currentBrowser.redirect(url);
     };
     $scope.redirectToGithub = function(app) {
       var completeUrl;

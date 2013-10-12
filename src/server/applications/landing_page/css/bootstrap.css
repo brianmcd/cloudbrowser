@@ -2243,6 +2243,7 @@ table th[class*="span"],
   background-color: #c4e3f3;
 }
 
+/*
 [class^="icon-"],
 [class*=" icon-"] {
   display: inline-block;
@@ -2256,6 +2257,7 @@ table th[class*="span"],
   background-position: 14px 14px;
   background-repeat: no-repeat;
 }
+*/
 
 /* White icons with optional class, or on hover/active states of certain elements */
 

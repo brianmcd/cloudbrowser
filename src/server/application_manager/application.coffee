@@ -3,7 +3,7 @@ Managers = require('../browser_manager')
 Fs       = require('fs')
 Async    = require('async')
 {EventEmitter}     = require('events')
-SharedStateManager = require('./shared_state_manager')
+AppInstanceManager = require('./app_instance_manager')
 {hashPassword}     = require('../../api/utils')
 cloudbrowserError  = require('../../shared/cloudbrowser_error')
 {MultiProcessBrowserManager, InProcessBrowserManager} = Managers
@@ -62,7 +62,7 @@ class Application extends EventEmitter
          @localState,
          @callOnStart,
          @deploymentConfig,
-         @sharedStateTemplate,
+         @appInstanceTemplate,
          @dontPersistConfigChanges} = opts
 
         @remoteBrowsing = /^http/.test(@appConfig.entryPoint)
@@ -71,8 +71,8 @@ class Application extends EventEmitter
         
         @writeConfigToFile(@deploymentConfig, "deployment_config.json")
 
-        if @sharedStateTemplate
-            @sharedStates = new SharedStateManager(@sharedStateTemplate,
+        if @appInstanceTemplate
+            @appInstances = new AppInstanceManager(@appInstanceTemplate,
                                                    @server.permissionManager,
                                                    this)
 
@@ -235,7 +235,7 @@ class Application extends EventEmitter
     disable : () ->
         if not @isMounted() then return
 
-        # TODO: Remove the virtual browsers associated with this app
+        # TODO: Remove the browsers associated with this app
 
         {domain, port} = @server.config
         console.log("Disabling http://#{domain}:#{port}#{@getMountPoint()}\n")
@@ -269,7 +269,7 @@ class Application extends EventEmitter
         permissionManager.addAppPermRec
             user        : user
             mountPoint  : @getMountPoint()
-            permissions : {createBrowsers : true, createSharedState : true}
+            permissions : {createBrowsers : true, createAppInstance : true}
             callback    : (err) =>
                 if err then console.log(err)
                 # Add a perm rec associated with the application's landing page
@@ -401,7 +401,7 @@ class Application extends EventEmitter
             @server.applications.remove(subApp.getMountPoint())
         @subApps.length = 0
 
-    getSharedStateName : () ->
-        if @sharedStateTemplate then return @sharedStateTemplate.name
+    getAppInstanceName : () ->
+        if @appInstanceTemplate then return @appInstanceTemplate.name
 
 module.exports = Application

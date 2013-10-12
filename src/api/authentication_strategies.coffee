@@ -82,10 +82,10 @@ class LocalStrategy
                     ns    : user.getNameSpace()
                 if not session.user then session.user = [sessionObj]
                 else session.user.push(sessionObj)
-                # When an unauthenticated request for a specific virtual browser arrives,
+                # When an unauthenticated request for a specific browser arrives,
                 # the url for that browser is stored in the session (session.redirectto)
                 # of the requesting user. Then, the user is redirected to the authentication
-                # virtual browser, where the user logs in using this method. Finally the user is
+                # browser, where the user logs in using this method. Finally the user is
                 # redirected to the originally requested browser stored in the session.
                 redirectto = session.redirectto
                 session.redirectto = null
@@ -213,7 +213,7 @@ class GoogleStrategy
             if err then callback(err)
             # Redirecting to google authentication mountpoint.
             bserver.redirect("http://#{config.domain}:#{config.port}/googleAuth")
-            # Killing the authentication virtual browser.
+            # Killing the authentication browser.
             # TODO : Remove this hack
             setTimeout((() -> browserMgr.close(bserver)), 500)
 

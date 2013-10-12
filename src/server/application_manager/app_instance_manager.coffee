@@ -1,34 +1,34 @@
 Weak           = require('weak')
 Hat            = require('hat')
 Async          = require('async')
-SharedState    = require('./shared_state')
+AppInstance    = require('./app_instance')
 {EventEmitter} = require('events')
 
 cleanupStates = (id) ->
     return () ->
-        console.log "[State Manager] - Garbage collected state #{id}"
+        console.log "[Application Instance Manager] - Garbage collected appliation instance #{id}"
 
-class SharedStateManager extends EventEmitter
+class AppInstanceManager extends EventEmitter
     constructor : (@template, @permissionManager, @app) ->
         @counter = 0
-        @states  = {}
-        @weakRefsToStates = {}
+        @appInstances  = {}
+        @weakRefsToAppInstances = {}
 
     create : (user, callback, id = @generateID(), name = @generateName()) ->
-        @states[id] = new SharedState(@app, @template, user, id, name)
-        @weakRefsToStates[id] = Weak(@states[id], cleanupStates(id))
-        @emit('create', @weakRefsToStates[id])
-        @permissionManager.addSharedStatePermRec
+        @appInstances[id] = new AppInstance(@app, @template, user, id, name)
+        @weakRefsToAppInstances[id] = Weak(@appInstances[id], cleanupStates(id))
+        @emit('create', @weakRefsToAppInstances[id])
+        @permissionManager.addAppInstancePermRec
             user        : user
             mountPoint  : @app.getMountPoint()
             permissions : {own : true}
-            sharedStateID : id
-            callback : (err, sharedStatePermRec) =>
+            appInstanceID : id
+            callback : (err, appInstancePermRec) =>
                 if err then callback?(err)
-                callback?(null, @weakRefsToStates[id])
+                callback?(null, @weakRefsToAppInstances[id])
 
     find : (id) ->
-        return @weakRefsToStates[id]
+        return @weakRefsToAppInstances[id]
 
     remove : (id, user, callback) ->
         state = @find(id)
@@ -37,13 +37,13 @@ class SharedStateManager extends EventEmitter
             (next) ->
                 state.close(user, next)
             (next) =>
-                delete @weakRefsToStates[id]
-                delete @states[id]
+                delete @weakRefsToAppInstances[id]
+                delete @appInstances[id]
                 @emit 'remove', id
-                @permissionManager.rmSharedStatePermRec
+                @permissionManager.rmAppInstancePermRec
                     user          : user
                     mountPoint    : @app.getMountPoint()
-                    sharedStateID : id
+                    appInstanceID : id
                     callback      : next
         ], callback
 
@@ -56,4 +56,4 @@ class SharedStateManager extends EventEmitter
             id = Hat()
         return id
 
-module.exports = SharedStateManager
+module.exports = AppInstanceManager

@@ -2,7 +2,7 @@ NwGlobal = require('nwglobal')
 Async    = require('async')
 
 # Cloudbrowser API objects
-curVB     = cloudbrowser.currentVirtualBrowser
+curVB     = cloudbrowser.currentBrowser
 creator   = curVB.getCreator()
 appConfig = curVB.getAppConfig()
 
@@ -25,22 +25,8 @@ app.controller 'BrowserCtrl', [
 
         $scope.redirect = () -> browser.redirect()
 
-        $scope.remove = () ->
-            #$scope.closeBox('confirmDelete')
-            $scope.browser.api.close (err) ->
-                if err then $scope.safeApply -> $scope.setError(err)
-                
         # Local functions
         ###
-        checkPermission = (type, callback) ->
-            Async.detect $scope.selected, (browser, callback) ->
-                browser.api.checkPermissions type, (err, hasPermission) ->
-                    if err then $scope.safeApply () ->
-                        $scope.error = err.message
-                    else callback(not hasPermission)
-            , (permissionDenied) -> callback(not permissionDenied)
-
-
         # Filter operations
         $scope.sortBy = (predicate) ->
             $scope.predicate = predicate
@@ -58,30 +44,24 @@ app.controller 'BrowserCtrl', [
         ###
             
         # Operation on browser
-        $scope.clickRename = () ->
-            browser.api.isOwner creator, (err, isOwner) ->
-                $scope.safeApply ->
-                    if err then $scope.setError(err)
-                    if isOwner then $scope.safeApply -> browser.editing = true
-
         $scope.isEditing = () -> return browser.editing
 
-        $scope.rename = () -> browser.editing = true
+        $scope.rename = () ->
+            Async.waterfall NwGlobal.Array(
+                (next) ->
+                    browser.api.isOwner(creator, next)
+            ), (err, isOwner) ->
+                $scope.safeApply ->
+                    if err then $scope.$parent.setError(err)
+                    if isOwner then browser.editing = true
+                    else $scope.$parent.setError(new Error("Permission Denied"))
 
         $scope.getURL = () -> return browser.api.getURL()
 
         # Event Handlers
         browser.api.addEventListener 'share', () ->
-            Async.waterfall NwGlobal.Array(
-                (next) ->
-                    browser.api.getOwners(next)
-                (owners, next) ->
-                    $scope.safeApply -> browser.owners = format.toJson(owners)
-                    browser.api.getReaderWriters(next)
-            ), (err, readerWriters) ->
-                $scope.safeApply () ->
-                    if err then $scope.setError(err)
-                    else browser.collaborators = format.toJson(readerWriters)
+            $scope.updateBrowserCollaborators browser, (err) ->
+                if err then $scope.safeApply -> $scope.$parent.setError(err)
 
         browser.api.addEventListener 'rename', (name) =>
             $scope.safeApply -> browser.name = name

@@ -34,9 +34,9 @@ CBAdmin.controller "AppCtrl", ($scope) ->
                 if err then console.log(err)
                 else $scope.safeApply -> app.users = users
 
-            appConfig.getVirtualBrowsers (err, virtualBrowsers) ->
+            appConfig.getBrowsers (err, browsers) ->
                 if err then console.log(err)
-                else $scope.safeApply -> app.virtualBrowsers = virtualBrowsers
+                else $scope.safeApply -> app.browsers = browsers
 
             App.setupEventListeners(app)
 
@@ -47,20 +47,20 @@ CBAdmin.controller "AppCtrl", ($scope) ->
                 idx = $scope.apps.indexOf(app)
                 return $scope.apps.splice(idx, 1)
 
-        # For virtual browser related events
+        # For browser related events
         @setupEventListeners : (app) ->
             app.api.addEventListener "add", (vb) ->
-                $scope.safeApply -> app.virtualBrowsers.push(vb)
+                $scope.safeApply -> app.browsers.push(vb)
 
             app.api.addEventListener "remove" , (vbID) ->
                 $scope.safeApply ->
-                    for vb in app.virtualBrowsers when vb.id is vbID
-                        idx = app.virtualBrowsers.indexOf(vb)
-                        app.virtualBrowsers.splice(idx, 1)
+                    for vb in app.browsers when vb.id is vbID
+                        idx = app.browsers.indexOf(vb)
+                        app.browsers.splice(idx, 1)
 
 
     # API objects
-    curVB        = cloudbrowser.currentVirtualBrowser
+    curVB        = cloudbrowser.currentBrowser
     serverConfig = cloudbrowser.serverConfig
 
     # Application related events

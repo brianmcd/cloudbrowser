@@ -94,7 +94,7 @@ class HTTPServer extends EventEmitter
         if @findAppUser(req, mountPoint) then @redirect(res, "#{mountPoint}")
         else next()
 
-    # Middleware that authorizes access to virtual browsers
+    # Middleware that authorizes access to browsers
     authorize : (req, res, next, mountPoint) =>
         @cbServer.permissionManager.checkPermissions
             user         : @findAppUser(req, mountPoint)
@@ -115,7 +115,7 @@ class HTTPServer extends EventEmitter
         # Note: fetch calls res.end()
         bserver?.resources.fetch(resourceID, res)
 
-    # Route handler for virtual browser request
+    # Route handler for browser request
     browserRouteHandler : (req, res, next, mountPoint) =>
         id = decodeURIComponent(req.params.browserID)
         browsers = @mountedBrowserManagers[mountPoint]
@@ -126,7 +126,7 @@ class HTTPServer extends EventEmitter
                 browserID : id
                 appid     : mountPoint
         else
-            res.send("The requested browser #{id} was not found", 403)
+            res.send("The requested browser #{id} was not found", 404)
 
     setupLandingPage: (app) ->
         {browsers} = app
@@ -138,12 +138,13 @@ class HTTPServer extends EventEmitter
         (req, res) =>
             mp = mountPoint.replace(/\/landing_page$/, "")
             user = @findAppUser(req, mp)
-            browsers.create user, (err, bserver) =>
-                if err
-                    res.send(err.message, 400)
-                else
-                    bserver.load()
-                    @redirect(res, "#{mountPoint}/browsers/#{bserver.id}/index")
+
+            browsers.create
+                user     : user
+                callback : (err, bserver) =>
+                    if err then res.send(err.message, 400)
+                    else @redirect(res,
+                        "#{mountPoint}/browsers/#{bserver.id}/index")
 
         @server.get @getBrowserRoute(mountPoint),
         (req, res, next) => @isAuthenticated(req, res, next, mountPoint),
@@ -164,9 +165,8 @@ class HTTPServer extends EventEmitter
             id = req.session.browserID
             if !id? || !browsers.find(id)
               bserver = browsers.create()
-              bserver.load()
               # Makes the browser stick to a particular client to
-              # prevent creation a new virtual browser for every request
+              # prevent creation a new browser for every request
               # from the same client
               id = req.session.browserID = bserver.id
             @redirect(res, "#{mountPoint}/browsers/#{id}/index")
@@ -189,12 +189,12 @@ class HTTPServer extends EventEmitter
                 @redirect(res, "#{mountPoint}/landing_page")
             else
                 user = @findAppUser(req, mountPoint)
-                browsers.create user, (err, bserver) =>
-                    if err then res.send(err.message, 400)
-                    else
-                        bserver.load()
-                        @redirect(res,
-                        "#{mountPoint}/browsers/#{bserver.id}/index")
+                browsers.create
+                    user     : user
+                    callback : (err, bserver) =>
+                        if err then res.send(err.message, 400)
+                        else @redirect(res,
+                            "#{mountPoint}/browsers/#{bserver.id}/index")
 
         @server.get @getBrowserRoute(mountPoint),
         (req, res, next) => @isAuthenticated(req, res, next, mountPoint),
@@ -227,13 +227,13 @@ class HTTPServer extends EventEmitter
                 res.send("Bad Request", 400)
                 return
 
-            sharedState = app.sharedStates.find(id)
+            appInstance = app.appInstances.find(id)
             user = @findAppUser(req, mountPoint)
-            if not sharedState or not user
+            if not appInstance or not user
                 res.send("Bad Request", 400)
                 return
 
-            sharedState.createBrowser user, (err, bserver) =>
+            appInstance.createBrowser user, (err, bserver) =>
                 if err then res.send(err.message, 400)
                 else @redirect(res,
                     "#{mountPoint}/browsers/#{bserver.id}/index")
@@ -255,15 +255,14 @@ class HTTPServer extends EventEmitter
             id = req.session.browserID
             if !id? || !browsers.find(id)
                 bserver = browsers.create()
-                bserver.load()
                 # Makes the browser stick to a particular client to
-                # prevent creation a new virtual browser for every request
+                # prevent creation a new browser for every request
                 # from the same client
                 id = req.session.browserID = bserver.id
             mp = if mountPoint is "/" then "" else mountPoint
             @redirect(res, "#{mp}/browsers/#{id}/index")
 
-        # Route to connect to a virtual browser.
+        # Route to connect to a browser.
         @server.get @getBrowserRoute(mountPoint),
         (req, res, next) => @browserRouteHandler(req, res, next, mountPoint)
 

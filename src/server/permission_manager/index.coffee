@@ -3,7 +3,7 @@ CacheManager           = require('./cache_manager')
 AppPermissions         = require('./application_permissions')
 SystemPermissions      = require('./system_permissions')
 BrowserPermissions     = require('./browser_permissions')
-SharedStatePermissions = require('./shared_state_permissions')
+AppInstancePermissions = require('./app_instance_permissions')
 ###
 Permission Types:
     Common
@@ -13,7 +13,7 @@ Permission Types:
         readonly 
     App Permissions
         createBrowsers
-        createSharedState
+        createAppInstance
     System Permissions
         mountapps
 
@@ -59,7 +59,7 @@ class UserPermissionManager extends CacheManager
         switch op
             when 'findUser', 'addUser', 'removeUser'
                 @mongoInterface[op](userObj, collectionName, callback)
-            when 'setUser'
+            when 'setUser', 'unsetUser'
                 @mongoInterface[op](userObj, collectionName, info, callback)
             when 'addIndex'
                 @mongoInterface[op](collectionName, info, callback)
@@ -296,12 +296,12 @@ class UserPermissionManager extends CacheManager
                 else callback?(null, null)
             (appPerms, next) ->
                 # Removing from cache
-                if appPerms then next(null, appPerms.removeBrowser(browserID))
-                else next(null, null)
+                if appPerms then appPerms.removeBrowser(browserID)
+                next(null)
         ], callback
 
-    findSharedStatePermRec : (options) ->
-        {user, mountPoint, sharedStateID, permissions, callback} = options
+    findAppInstancePermRec : (options) ->
+        {user, mountPoint, appInstanceID, permissions, callback} = options
 
         Async.waterfall [
             (next) =>
@@ -311,13 +311,13 @@ class UserPermissionManager extends CacheManager
                     callback   : next
             (appPerms, next) ->
                 if appPerms
-                    sharedStateRec =
-                        appPerms.findSharedState(sharedStateID, permissions)
-                    next(null, sharedStateRec)
+                    appInstanceRec =
+                        appPerms.findAppInstance(appInstanceID, permissions)
+                    next(null, appInstanceRec)
                 else next(null, null)
         ], callback
 
-    getSharedStatePermRecs : (options) ->
+    getAppInstancePermRecs : (options) ->
         {user, mountPoint, callback, permissions} = options
 
         Async.waterfall [
@@ -328,30 +328,30 @@ class UserPermissionManager extends CacheManager
                     callback   : next
             (appPerms, next) ->
                 if appPerms
-                    next(null, appPerms.getSharedStates(permissions))
+                    next(null, appPerms.getAppInstances(permissions))
                 else next(null, null)
         ], callback
     
-    addSharedStatePermRec : (options) ->
-        {user, mountPoint, sharedStateID, permissions, callback} = options
+    addAppInstancePermRec : (options) ->
+        {user, mountPoint, appInstanceID, permissions, callback} = options
 
         setPerm = (callback) =>
-            @setSharedStatePerm
+            @setAppInstancePerm
                 user        : user
                 callback    : callback
                 mountPoint  : mountPoint
                 permissions : permissions
-                sharedStateID : sharedStateID
+                appInstanceID : appInstanceID
 
         Async.waterfall [
             (next) =>
-                @findSharedStatePermRec
+                @findAppInstancePermRec
                     user       : user
                     mountPoint : mountPoint
                     callback   : next
-                    sharedStateID : sharedStateID
-            (sharedStatePerms, next) =>
-                if not sharedStatePerms then @findAppPermRec
+                    appInstanceID : appInstanceID
+            (appInstancePerms, next) =>
+                if not appInstancePerms then @findAppPermRec
                     user       : user
                     mountPoint : mountPoint
                     callback   : next
@@ -359,27 +359,28 @@ class UserPermissionManager extends CacheManager
                 else setPerm(callback)
             (appPerms, next) ->
                 if appPerms
-                    sharedStatePerms =
-                        appPerms.addSharedState(sharedStateID, permissions)
+                    appInstancePerms =
+                        appPerms.addAppInstance(appInstanceID, permissions)
                     setPerm(next)
-                else next(null, null)
+                else
+                    next(null, null)
         ], callback
 
-    rmSharedStatePermRec: (options) ->
-        {user, mountPoint, sharedStateID, callback} = options
+    rmAppInstancePermRec: (options) ->
+        {user, mountPoint, appInstanceID, callback} = options
         info = {}
-        info["apps.#{mountPoint}.sharedStates.#{sharedStateID}"] = {}
+        info["apps.#{mountPoint}.appInstances.#{appInstanceID}"] = {}
 
         Async.waterfall [
             (next) =>
-                @findSharedStatePermRec
+                @findAppInstancePermRec
                     user       : user
                     mountPoint : mountPoint
                     callback   : next
-                    sharedStateID : sharedStateID
-            (sharedStatePerms, next) =>
-                if sharedStatePerms
-                    @dbOperation('setUser', user, info, next)
+                    appInstanceID : appInstanceID
+            (appInstancePerms, next) =>
+                if appInstancePerms
+                    @dbOperation('unsetUser', user, info, next)
                 # Bypassing the waterfall
                 else callback?(null, null)
             (count, info, next) =>
@@ -389,7 +390,7 @@ class UserPermissionManager extends CacheManager
                     callback   : next
             (appPerms, next) ->
                 # Removing from cache
-                next(null, appPerms.removeSharedState(sharedStateID))
+                next(null, appPerms.removeAppInstance(appInstanceID))
         ], callback
 
     checkPermissions : (options) ->
@@ -398,7 +399,7 @@ class UserPermissionManager extends CacheManager
          browserID,
          mountPoint,
          permissions,
-         sharedStateID} = options
+         appInstanceID} = options
 
         # Permissions can be an array of objects or just one object
         if not (permissions instanceof Array) then permissions = [permissions]
@@ -421,8 +422,8 @@ class UserPermissionManager extends CacheManager
         method = null
         if browserID
             method = @findBrowserPermRec
-        else if sharedStateID
-            method = @findSharedStatePermRec
+        else if appInstanceID
+            method = @findAppInstancePermRec
         else if mountPoint
             method = @findAppPermRec
         else if user
@@ -475,26 +476,26 @@ class UserPermissionManager extends CacheManager
                         next(err, appPerms))
         ], callback
         
-    setSharedStatePerm : (options) ->
-        {user, mountPoint, sharedStateID, permissions, callback} = options
-        key = "apps.#{mountPoint}.sharedStates.#{sharedStateID}.permissions"
+    setAppInstancePerm : (options) ->
+        {user, mountPoint, appInstanceID, permissions, callback} = options
+        key = "apps.#{mountPoint}.appInstances.#{appInstanceID}.permissions"
 
         Async.waterfall [
             (next) =>
-                @findSharedStatePermRec
+                @findAppInstancePermRec
                     user          : user
                     mountPoint    : mountPoint
-                    sharedStateID : sharedStateID
+                    appInstanceID : appInstanceID
                     callback      : next
-            (sharedStatePerms, next) =>
-                if not sharedStatePerms then next(null, null)
+            (appInstancePerms, next) =>
+                if not appInstancePerms then next(null, null)
                 else if not permissions or Object.keys(permissions).length is 0
-                    next(null, sharedStatePerms)
+                    next(null, appInstancePerms)
                 else
                     info = {}
-                    info["#{key}"] = sharedStatePerms.set(permissions)
+                    info["#{key}"] = appInstancePerms.set(permissions)
                     @dbOperation('setUser', user, info, (err) ->
-                        next(err, sharedStatePerms))
+                        next(err, appInstancePerms))
         ], callback
 
     setBrowserPerm: (options) ->

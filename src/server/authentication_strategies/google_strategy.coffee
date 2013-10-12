@@ -35,7 +35,7 @@ class GoogleStrategy
         return redirectto
 
     @_successfulAuth : (app, req, res, servers) ->
-        # Check if the client needs to be redirected to some virtual browser
+        # Check if the client needs to be redirected to some browser
         # after authentication
         redirectto = @_getRedirectUrl(req.session)
         newUser =

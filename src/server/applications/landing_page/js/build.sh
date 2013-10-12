@@ -1,2 +1,2 @@
-#coffee -c `find * -name "*.coffee"`
+rm -rf lib
 coffee --output lib --compile src

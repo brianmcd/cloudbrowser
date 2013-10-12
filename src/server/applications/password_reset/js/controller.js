@@ -5,7 +5,7 @@
   CBPasswordReset = angular.module("CBPasswordReset", []);
 
   CBPasswordReset.controller("ResetCtrl", function($scope) {
-    var PASSWORD_EMPTY, RESET_SUCCESS, auth, currentVirtualBrowser;
+    var PASSWORD_EMPTY, RESET_SUCCESS, auth, currentBrowser;
     PASSWORD_EMPTY = "Please enter the password";
     RESET_SUCCESS = "The password has been successfully reset";
     $scope.safeApply = function(fn) {
@@ -19,7 +19,7 @@
         return this.$apply(fn);
       }
     };
-    currentVirtualBrowser = cloudbrowser.currentVirtualBrowser;
+    currentBrowser = cloudbrowser.currentBrowser;
     auth = cloudbrowser.auth;
     $scope.password = null;
     $scope.vpassword = null;
@@ -27,7 +27,7 @@
     $scope.passwordError = null;
     $scope.resetSuccess = null;
     $scope.resetError = null;
-    currentVirtualBrowser.getResetEmail(function(err, userEmail) {
+    currentBrowser.getResetEmail(function(err, userEmail) {
       if (err) {
         return console.log(err);
       } else {

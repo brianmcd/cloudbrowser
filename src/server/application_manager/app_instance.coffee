@@ -2,7 +2,7 @@ Async = require('async')
 {EventEmitter} = require('events')
 cloudbrowserError = require('../../shared/cloudbrowser_error')
 
-class SharedState extends EventEmitter
+class AppInstance extends EventEmitter
     constructor : (@app, template, owner, @id, @name) ->
         @obj = template.create()
         @owner = owner
@@ -36,6 +36,7 @@ class SharedState extends EventEmitter
 
     addReaderWriter : (user) ->
         @readerwriters.push(user)
+        @emit('share', user)
 
     save : (user) ->
         if @isOwner(user) or @isReaderWriter(user) then @template.save()
@@ -44,27 +45,28 @@ class SharedState extends EventEmitter
         if @isOwner(user) or @isReaderWriter(user)
             Async.waterfall [
                 (next) =>
-                    @app.browsers.create(user, next)
+                    @app.browsers.create
+                        user     : user
+                        callback : next
+                        preLoadMethod : (bserver) => bserver.setAppInstance(@)
                 (bserver, next) =>
-                    # Set shared state of browser
-                    bserver.setSharedState(this)
-                    # Load browser here
-                    bserver.load()
                     @browsers.push(bserver)
-                    @emit('addBrowser', bserver)
                     next(null, bserver)
             ], callback
         else callback(cloudbrowserError('PERM_DENIED'))
 
     removeBrowser : (bserver, user, callback) ->
         {id} = bserver
-        if @isOwner(user) or @isReaderWriter(user)
-            for browser in @browsers when browser.id is bserver.id
-                idx = @browsers.indexOf(browser)
-                @browsers.splice(idx, 1)
-            @emit('removeBrowser', id)
-            @app.browsers.close(bserver, user, callback)
-        else callback(cloudbrowserError('PERM_DENIED'))
+        Async.waterfall [
+            (next) =>
+                @app.browsers.close(bserver, user, next)
+            (next) =>
+                for browser in @browsers when browser.id is id
+                    idx = @browsers.indexOf(browser)
+                    @browsers.splice(idx, 1)
+                    break
+                next(null)
+        ], callback
 
     removeAllBrowsers : (user, callback) ->
         if @isOwner(user) or @isReaderWriter(user)
@@ -78,4 +80,4 @@ class SharedState extends EventEmitter
         @removeAllListeners()
         @removeAllBrowsers(user, callback)
 
-module.exports = SharedState
+module.exports = AppInstance

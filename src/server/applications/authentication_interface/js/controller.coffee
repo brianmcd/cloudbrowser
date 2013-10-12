@@ -1,7 +1,7 @@
 CBAuthentication = angular.module("CBAuthentication", [])
 
 # API Objects
-curVB          = cloudbrowser.currentVirtualBrowser
+curVB          = cloudbrowser.currentBrowser
 auth           = cloudbrowser.auth
 appConfig      = curVB.getAppConfig()
 googleStrategy = auth.getGoogleStrategy()

@@ -5,24 +5,26 @@ class ChatRoom extends EventEmitter
         @users = []
         @messages = []
 
-    postMessage : (username, message) ->
-        formattedMessage = "[#{username}]: #{message}"
+    postMessage : (user, message) ->
+        formattedMessage = "[#{user.getName()}]: #{message}"
         @messages.push(formattedMessage)
-        @emit('NewMessage', message)
+        @emit('newMessage', message)
+
+    add : (user) ->
+        @users.push(user)
+
+    remove : (user) ->
+        idx = @users.indexOf(user)
+        if idx isnt -1 then @users.splice(idx, 1)
 
     getMessages : () ->
         return @messages
 
-    join : (user) ->
-        @users.push(user)
-        user.joinRoom(@)
-        @emit('UserJoined', user)
+    getUsers : () ->
+        return @users
 
-    leave : (user) ->
-        @users = @users.filter (element, index) ->
-            return (element.name isnt user.name or element.namespace isnt user.namespace)
-        user.leaveRoom(@)
-        @emit('UserLeft', user)
+    close : () ->
+        @removeAllListeners()
 
 module.exports = ChatRoom
 

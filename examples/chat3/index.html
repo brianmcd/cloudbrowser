@@ -3,63 +3,149 @@
         <title>Another Chat Application</title>
         <link href="css/bootstrap.css" rel="stylesheet">
         <link href="css/bootstrap-responsive.css" rel="stylesheet">
-        <script type="text/javascript" src='javascript/angular.js'></script>
-        <script type="text/javascript" src='javascript/controller.js'></script>
-        <script type="text/javascript" src='javascript/jquery.js'></script>
-        <script type="text/javascript" src='javascript/bootstrap.js'></script>
-        <link rel='stylesheet' href='css/font-awesome.css'>
-        <link rel='stylesheet' href='css/style.css'>
+        <script src="js/angular.js"></script>
+        <script src="js/controller.js"></script>
+        <script src="js/jquery-latest.js"></script>
+        <link rel="stylesheet" href="css/font-awesome.css">
+        <link rel="stylesheet" href="css/style.css">
     </head>
     <body>
-        <div class="container-fluid">
-            <div class="row-fluid" ng-controller="ChatCtrl">
-                <h2 class="page-header pagination-centered">Chat3</h2>
-                <div class="span2 well sidebar pagination-centered">
-                    <h5 class="span12">{{user.name}}</h5>
-                    <div class="span12">
-                        <form class="span12 form-inline" ng-submit="createRoom()">
+        <!-- Container -->
+        <div class="container-fluid" ng-controller="ChatCtrl">
+            <!-- Row -->
+            <div class="row-fluid">
+                <!-- Header -->
+                <h2 class="page-header pagination-centered">
+                    Chat3
+                </h2>
+                <!-- Header -->
+            </div>
+            <!-- Row -->
+
+            <!-- Row -->
+            <div class="row-fluid">
+                <!-- Left Sidebar -->
+                <div class="span3 well pagination-centered fit-in-place">
+                    <p class="margin-bottom">{{user.name}}</p>
+                    <!-- Row -->
+                    <div class="row-fluid">
+                        <div class="span12">
+                            <!-- Create Chat Room -->
                             <legend>
-                               Create Room <i class="icon-plus-sign icon-large pointer" id="create"
-                               ng-click="toggleForm('create')" ng-class="{true:'active'}[showCreateForm]"></i>
+                                Create Room
+                                <button class="btn btn-mini btn-inverse"
+                                    ng-click="toggleForm('Create')">
+                                    <i class="icon-plus-sign icon-large pointer transition"
+                                        ng-class="{true:'active'}[showCreateForm]"></i>
+                                </button>
                             </legend>
-                            <input type="text" class="input-small" ng-model="roomName" ng-show="showCreateForm">
-                            <button type="submit" class="btn" ng-show="showCreateForm">Create</button>
-                        </form>
-                    </div>
-                    <form class="span12 form-inline" ng-submit="joinRoom()">
-                        <legend>
-                            Join Room <i class="icon-plus-sign icon-large pointer" id="create"
-                           ng-click="toggleForm('join')" ng-class="{true:'active'}[showJoinForm]"></i>
-                        </legend>
-                        <select class="margin-bottom span7"
-                        ng-options="room.name for room in otherRooms"
-                        ng-model="selectedRoom" ng-show="showJoinForm"></select>
-                        <button type="submit" class="btn" ng-show="showJoinForm">Join</button>
-                    </form>
-                    <legend ng-show="joinedRooms.length">My Rooms</legend>
-                    <div class="alert alert-info span12 pagination-centered"
-                    ng-repeat = "room in joinedRooms">
-                        <button type="button" class="close" ng-click="leaveRoom(room)">&times;</button>
-                        <strong ng-click="activate(room)" class="pointer">{{room.name}}</strong>
-                    </div>
-                </div>
-                <div class="span7 well" ng-show="activeRoom">
-                    <h3 class="page-header span11">{{activeRoom.name}}</h3>
-                    <button type="button" class="close pull-right" ng-click="leaveRoom(activeRoom)"><i class="icon-signout"></i></button>
-                    <div class="span11">
-                        <div class="span12 margin-bottom" id="chat-box">
-                            <div ng-repeat="message in activeRoom.messages">{{message}}</div>
+                            <form class="form-inline" ng-submit="createRoom()"
+                                ng-show="showCreateForm">
+                                <input type="text" class="input-small"
+                                    placeholder="Room Name" ng-model="roomName">
+                                <button class="btn" type="submit">
+                                    Create
+                                </button>
+                            </form>
+                            <!-- Create Chat Room -->
                         </div>
-                        <input class="span12" ng-model="currentMessage" id="chat-text" enter-submit="postMessage()">
                     </div>
+                    <!-- Row -->
+
+                    <!-- Row -->
+                    <div class="row-fluid">
+                        <div class="span12">
+                            <!-- Join Chat Room -->
+                            <legend>
+                                Join Room
+                                <button class="btn btn-mini btn-inverse"
+                                    ng-click="toggleForm('Join')">
+                                    <i class="icon-plus-sign icon-large pointer transition"
+                                       ng-class="{true:'active'}[showJoinForm]"></i>
+                               </button>
+                            </legend>
+                            <form class="form-inline" ng-submit="joinRoom()"
+                                ng-show="showJoinForm">
+                                <select class="input-small" ng-model="selectedRoom"
+                                    ng-options="room.name for room in user.otherRooms" >
+                                </select>
+                                <button class="btn" type="submit">
+                                    Join
+                                </button>
+                            </form>
+                            <!-- Join Chat Room -->
+                        </div>
+                    </div>
+                    <!-- Row -->
+
+                    <!-- Row -->
+                    <div class="row-fluid" ng-show="user.joinedRooms.length">
+                        <div class="span12">
+                            <h3>My Rooms</h3>
+                            <div class="alert alert-info pagination-centered"
+                            ng-repeat = "room in user.joinedRooms">
+                                <button type="button" class="close"
+                                    ng-click="leaveRoom(room)">
+                                    &times;
+                                </button>
+                                <strong ng-click="user.activateRoom(room)" class="pointer">
+                                    {{room.name}}
+                                </strong>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Row -->
                 </div>
-                <div class="span2 well sidebar" ng-show="activeRoom">
+                <!-- Left Sidebar -->
+
+                <!-- Chat Window -->
+                <div class="span7 well" ng-show="user.currentRoom">
+                    <!-- Header -->
+                    <div class="row-fluid">
+                        <div class="span12">
+                            <h3 class="page-header">
+                                {{user.currentRoom.name}}
+                                <small>
+                                    <button type="button" class="close"
+                                        ng-click="leaveRoom(user.currentRoom)">
+                                        <i class="icon-signout"></i>
+                                    </button>
+                                </small>
+                            </h3>
+                        </div>
+                    </div>
+                    <!-- Header -->
+
+                    <!-- Chat Box -->
+                    <div class="row-fluid">
+                        <div class="span12">
+                            <div class="margin-bottom" id="chat-box">
+                                <div ng-repeat="message in user.currentRoom.messages">
+                                    {{message}}
+                                </div>
+                            </div>
+                            <textarea ng-model="currentMessage" id="chat-text"
+                                class="span12" enter-submit="postMessage()">
+                            </textarea>
+                            {{currentMessage}}
+                        </div>
+                    </div>
+                    <!-- Chat Box -->
+                </div>
+                <!-- Chat Window -->
+
+                <!-- Right Sidebar -->
+                <div class="span2 well sidebar" ng-show="user.currentRoom">
                     <legend>Members</legend>
-                    <ul class="unstyled" ng-repeat = "user in activeRoom.users">
-                        <li>{{user.name}}</li>
+                    <ul class="unstyled" ng-repeat="user in user.currentRoom.users">
+                        <li>{{user.name}} ({{user.namespace}})</li>
                     </ul>
                 </div>
+                <!-- Right Sidebar -->
+
             </div>
+            <!-- Row -->
         </div>
+        <!-- Container -->
     </body>
 </html>

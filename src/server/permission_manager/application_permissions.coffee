@@ -2,7 +2,7 @@ Util = require('util')
 {EventEmitter}         = require('events')
 PermissionManager      = require('./permission_manager')
 BrowserPermissions     = require('./browser_permissions')
-SharedStatePermissions = require('./shared_state_permissions')
+AppInstancePermissions = require('./app_instance_permissions')
 
 # Per user application permissions
 # Contains all the browser permission records for the user too.
@@ -12,9 +12,9 @@ class AppPermissions extends PermissionManager
         @browsers.containedItems    = {}
         @browsers.containedItemType = BrowserPermissions
 
-        @sharedStates = new PermissionManager()
-        @sharedStates.containedItems    = {}
-        @sharedStates.containedItemType = SharedStatePermissions
+        @appInstances = new PermissionManager()
+        @appInstances.containedItems    = {}
+        @appInstances.containedItemType = AppInstancePermissions
 
         @permissions  = {}
 
@@ -22,29 +22,29 @@ class AppPermissions extends PermissionManager
 
     set : (permissions) ->
         @verifyAndSetPerm(permissions,
-        ['own', 'createBrowsers', 'createSharedState'])
+        ['own', 'createBrowsers', 'createAppInstance'])
         return @permissions
 
-    findSharedState : (key, permissions) ->
-        @sharedStates.findItem(key, permissions)
+    findAppInstance : (key, permissions) ->
+        @appInstances.findItem(key, permissions)
 
     findBrowser : (key, permissions) ->
         @browsers.findItem(key, permissions)
 
-    getSharedStates : (permissions) ->
-        @sharedStates.getItems(permissions)
+    getAppInstances : (permissions) ->
+        @appInstances.getItems(permissions)
 
     getBrowsers : (permissions) ->
         @browsers.getItems(permissions)
 
-    addSharedState : (key, permissions) ->
-        @sharedStates.addItem(key, permissions)
+    addAppInstance : (key, permissions) ->
+        @appInstances.addItem(key, permissions)
 
     addBrowser : (key, permissions) ->
         @browsers.addItem(key, permissions)
 
-    removeSharedState : (key) ->
-        @sharedStates.removeItem(key)
+    removeAppInstance : (key) ->
+        @appInstances.removeItem(key)
 
     removeBrowser : (key) ->
         @browsers.removeItem(key)

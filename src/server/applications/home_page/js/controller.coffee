@@ -2,7 +2,7 @@ CBHomePage = angular.module("CBHomePage", [])
 
 CBHomePage.controller "MainCtrl", ($scope) ->
     server = cloudbrowser.serverConfig
-    currentVirtualBrowser = cloudbrowser.currentVirtualBrowser
+    currentBrowser = cloudbrowser.currentBrowser
 
     $scope.safeApply = (fn) ->
         phase = this.$root.$$phase
@@ -10,7 +10,7 @@ CBHomePage.controller "MainCtrl", ($scope) ->
             if fn then fn()
         else this.$apply(fn)
 
-    $scope.leftClick = (url) -> currentVirtualBrowser.redirect(url)
+    $scope.leftClick = (url) -> currentBrowser.redirect(url)
 
     $scope.redirectToGithub = (app) ->
         completeUrl = "https://github.com/brianmcd/cloudbrowser/tree/" +

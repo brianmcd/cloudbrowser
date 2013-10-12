@@ -2,7 +2,7 @@ Async    = require('async')
 NwGlobal = require('nwglobal')
 
 app = angular.module('CBLandingPage.directives', [])
-curVB = cloudbrowser.currentVirtualBrowser
+curVB = cloudbrowser.currentBrowser
 appConfig = curVB.getAppConfig()
 
 app.directive 'cbTypeahead', () ->
@@ -16,9 +16,13 @@ app.directive 'cbTypeahead', () ->
         Async.each users
         , (user, callback) ->
             waterfallMethods = NwGlobal.Array()
-            # Dummy first method to ensure the following waterfall of methods works
-            # by making the function signatures match
-            waterfallMethods.push (next) -> next(null, true)
+            # Removing self from list
+            waterfallMethods.push (next) ->
+                if scope.user.email is user.getEmail() and
+                scope.user.ns is user.getNameSpace()
+                    callback(null, false)
+                else
+                    next(null, true)
 
             for method in role.checkMethods
                 do (method) ->
@@ -49,7 +53,7 @@ app.directive 'cbTypeahead', () ->
                         pruneList(users, scope, next)
                 ), (err, users) ->
                     if err
-                        scope.safeApply -> $scope.setError(err)
+                        scope.safeApply -> scope.setError(err)
                     else
                         data = []
                         for user in users

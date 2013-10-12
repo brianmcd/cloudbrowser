@@ -113,7 +113,7 @@ class DOMWindowFactory
 
     patchWindowMethods : (window) ->
         self = this
-        # Note: this loads the URL out of a virtual browser.
+        # Note: this loads the URL out of a browser.
         ['open', 'alert'].forEach (method) =>
             window[method] = () =>
                 self.browser.emit 'WindowMethodCalled',

@@ -25,8 +25,8 @@ class User
             email     : email
             namespace : namespace
 
-        Object.freeze(this.__proto__)
-        Object.freeze(this)
+        #Object.freeze(this.__proto__)
+        #Object.freeze(this)
 
     ###*
         Gets the email ID of the user.

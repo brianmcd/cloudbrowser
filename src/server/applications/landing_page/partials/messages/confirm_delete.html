@@ -1,14 +1,11 @@
 <!-- Delete Confirmation -->
-<div class="alert alert-error span10" ng-show="isBoxOpen('confirmDelete')">
-    <button type="button" class="close"
-    ng-click="closeBox('confirmDelete')">
+<div class="alert alert-warn">
+    <button type="button" class="close" ng-click="confirmDelete.entityName=null">
         &times;
     </button>
     <strong>Warning!</strong>
-    The selected virtual browsers will be permanently deleted.
-    <br>
-    <button class="btn btn-danger"
-    ng-click="delete()">
+    This will permanently remove {{confirmDelete.entityName}}.
+    <button class="btn btn-danger" ng-click="confirmDelete.remove()">
         Continue
     </button>
 </div>

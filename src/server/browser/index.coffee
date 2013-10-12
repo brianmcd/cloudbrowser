@@ -99,6 +99,7 @@ class Browser extends EventEmitter
         # based on a package.json manifest.
         @window.require = require
         @window.process = process
+        @window.__dirname = app.path
 
     @koPatch : do () ->
         koPatchPath = Path.resolve(__dirname, 'knockout', 'ko-patch.js')

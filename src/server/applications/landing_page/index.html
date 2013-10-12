@@ -13,10 +13,11 @@
         <script src="js/bootstrap.js"></script>
         <script src="js/lib/app.js"></script>
         <script src="js/lib/model/browser.js"></script>
-        <script src="js/lib/model/browser_manager.js"></script>
-        <script src="js/lib/model/shared_state_manager.js"></script>
+        <script src="js/lib/model/crud_manager.js"></script>
+        <script src="js/lib/model/app_instance.js"></script>
+        <script src="js/lib/model/app_instance_manager.js"></script>
         <script src="js/lib/controllers/app.js"></script>
-        <script src="js/lib/controllers/sharedState.js"></script>
+        <script src="js/lib/controllers/app_instance.js"></script>
         <script src="js/lib/controllers/browser.js"></script>
         <script src="js/lib/models.js"></script>
         <script src="js/lib/directives.js"></script>
@@ -47,7 +48,7 @@
             <!-- Row -->
 
             <!-- Row -->
-            <div class="row-fluid" ng-show="entity.length && success.message">
+            <div class="row-fluid" ng-show="appInstances.length && success.message">
                 <!-- Success Message -->
                 <div class="span3 hidden-phone"></div>
                 <div class="span5" ng-include="templates.messages.success"></div>
@@ -57,7 +58,7 @@
             <!-- Row -->
 
             <!-- Row -->
-            <div class="row-fluid" ng-show="entity.length && error.message">
+            <div class="row-fluid" ng-show="appInstances.length && error.message">
                 <!-- Error Message-->
                 <div class="span3 hidden-phone"></div>
                 <div class="span5"ng-include="templates.messages.error"></div>
@@ -67,7 +68,7 @@
             <!-- Row -->
 
             <!-- Row -->
-            <div class="row-fluid" ng-hide="entity.length">
+            <div class="row-fluid" ng-hide="appInstances.length">
                 <!-- Displayed when there are no entities -->
                 <div class="span4"></div>
                 <div class="span4" ng-include="templates.initial"></div>
@@ -77,7 +78,7 @@
             <!-- Row -->
 
             <!-- Row -->
-            <div class="row-fluid" ng-show="entity.length">
+            <div class="row-fluid" ng-show="appInstances.length">
                 <!-- Actions on the list of entities -->
                 <div class="span1 hidden-phone"></div>
                 <div class="span2">
@@ -93,7 +94,7 @@
                 </div>
                 <!-- Actions on the list of entities -->
                 <!-- Main Entity Table -->
-                <div class="span8" ng-include="templates.entity"></div>
+                <div class="span8" ng-include="templates.appInstanceTable"></div>
                 <div class="span1"></div>
                 <!-- Main Entity Table -->
             </div>

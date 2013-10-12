@@ -29,9 +29,9 @@
         </th>
         <!-- Browser Date Created -->
 
-        <!-- Shared with -->
-        <th>Shared with</th>
-        <!-- Shared with -->
+        <!-- Sharing Details -->
+        <th>Sharing Details</th>
+        <!-- Sharing Details -->
     </thead>
     <!-- Browser Table Headings -->
 
@@ -42,7 +42,7 @@
         ng-controller="BrowserCtrl">
             <!-- Name -->
             <td>
-                <span ng-hide="isEditing()" ng-click="clickRename()"
+                <span ng-hide="isEditing()" ng-click="rename()"
                 class="pointer">
                     {{browser.name}}
                 </span>
@@ -57,7 +57,7 @@
                     <i class="icon-pencil text-warning visibleOnHover enlargeOnHover pointer"
                         ng-click="rename()"></i>
                     <i class="icon-trash text-error visibleOnHover enlargeOnHover pointer"
-                        ng-click="remove()"></i>
+                        ng-click="tryToRemove(browser, 'removeBrowser')"></i>
                     <i class="icon-group text-success visibleOnHover enlargeOnHover pointer"
                         ng-click="openShareForm(browser)"></i>
                     <i class="icon-link text-info visibleOnHover enlargeOnHover pointer"

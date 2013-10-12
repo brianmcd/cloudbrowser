@@ -1,5 +1,5 @@
 PermissionManager = require('./permission_manager')
-# Per user virtual browser permissions stored in memory
+# Per user browser permissions stored in memory
 # Objects of this class form the leaves of the permission tree
 # SystemPermissions > AppPermissions > BrowserPermissions
 class BrowserPermissions extends PermissionManager

@@ -12,7 +12,7 @@ CBPasswordReset.controller "ResetCtrl", ($scope) ->
         else this.$apply(fn)
     
     # API Objects
-    currentVirtualBrowser = cloudbrowser.currentVirtualBrowser
+    currentBrowser = cloudbrowser.currentBrowser
     auth                  = cloudbrowser.auth
 
     # Initialization
@@ -23,7 +23,7 @@ CBPasswordReset.controller "ResetCtrl", ($scope) ->
     $scope.resetSuccess  = null
     $scope.resetError    = null
 
-    currentVirtualBrowser.getResetEmail (err, userEmail) ->
+    currentBrowser.getResetEmail (err, userEmail) ->
         if err then console.log err
         else $scope.safeApply -> $scope.email = userEmail.split("@")[0]
 

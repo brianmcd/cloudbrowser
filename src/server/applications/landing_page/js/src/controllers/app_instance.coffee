@@ -1,22 +1,22 @@
 Async    = require('async')
 NwGlobal = require('nwglobal')
 
-app = angular.module('CBLandingPage.controllers.sharedState',
+app = angular.module('CBLandingPage.controllers.appInstance',
     [
         'CBLandingPage.models'
         'CBLandingPage.services'
     ]
 )
 
-appConfig = cloudbrowser.currentVirtualBrowser.getAppConfig()
+appConfig = cloudbrowser.currentBrowser.getAppConfig()
 
-app.controller 'SharedStateCtrl', [
+app.controller 'AppInstanceCtrl', [
     '$scope'
     'cb-mail'
     'cb-format'
-    'cb-sharedStateManager'
-    ($scope, mail, format, sharedStateManager) ->
-        {sharedState} = $scope
+    'cb-appInstanceManager'
+    ($scope, mail, format, appInstanceMgr) ->
+        {appInstance} = $scope
 
         $scope.link = {}
         $scope.error = {}
@@ -24,6 +24,7 @@ app.controller 'SharedStateCtrl', [
         $scope.linkVisible  = false
         $scope.shareForm = {}
         $scope.shareFormOpen = false
+        $scope.confirmDelete = {}
 
         $scope.showLink = (entity) ->
             if $scope.isLinkVisible() then $scope.closeLink()
@@ -38,56 +39,52 @@ app.controller 'SharedStateCtrl', [
             $scope.link.text   = null
             $scope.linkVisible = false
 
-        $scope.remove = () -> sharedStateManager.remove(sharedState)
+        $scope.tryToRemove = (entity, removalMethod) ->
+            $scope.confirmDelete.entityName = entity.name
+            $scope.confirmDelete.remove = () ->
+                entity.api.close (err) ->
+                    $scope.safeApply ->
+                        if err then $scope.setError(err)
+                        else $scope[removalMethod](entity)
+                        $scope.confirmDelete.entityName = null
 
-        $scope.isProcessing = () -> return sharedState.processing
+        $scope.isProcessing = () -> return appInstance.processing
 
         $scope.isBrowserTableVisible = () ->
-            return sharedState.browsers.length and sharedState.showOptions
+            return appInstance.browserMgr.items.length and appInstance.showOptions
 
         $scope.isOptionsVisible = () ->
-            return sharedState.showOptions
+            return appInstance.showOptions
 
         $scope.hasCollaborators = () ->
-            if not sharedState.collaborators then return false
-            return sharedState.collaborators.length
+            if not appInstance.collaborators then return false
+            return appInstance.collaborators.length
 
-        $scope.addBrowser = () ->
-            sharedState.processing = true
-            sharedState.addBrowser()
+        $scope.create = () ->
+            appInstance.processing = true
+            appInstance.api.createBrowser (err, browserConfig) ->
+                if err then $scope.safeApply ->
+                    $scope.setError(err)
+                    appInstance.processing = false
+                else $scope.addBrowser(browserConfig, appInstance)
 
         $scope.areCollaboratorsVisible = () ->
-            return sharedState.showOptions and sharedState.collaborators.length
+            return appInstance.showOptions and appInstance.collaborators.length
 
         $scope.toggleOptions = () ->
-            sharedState.showOptions = not sharedState.showOptions
+            appInstance.showOptions = not appInstance.showOptions
 
-        # Event Handling
-        sharedState.api.addEventListener 'addBrowser', (browserConfig) ->
-            $scope.safeApply ->
-                sharedState.addBrowserToList(browserConfig, $scope)
-                sharedState.showOptions = true
-                sharedState.processing = false
+        appInstance.api.addEventListener 'rename', (name) ->
+            $scope.safeApply -> appInstance.name = name
 
-        sharedState.api.addEventListener 'removeBrowser', (id) ->
-            $scope.safeApply ->
-                sharedState.removeBrowserFromList(id)
-                sharedState.processing = false
-
-        sharedState.api.addEventListener 'share', () ->
-            sharedState.api.getReaderWriters (err, readersWriters) ->
-                $scope.safeApply ->
-                    if err then $scope.setError(err)
-                    else sharedState.readersWriters =
-                        format.toJson(readersWriters)
-
-        sharedState.api.addEventListener 'rename', (name) ->
-            $scope.safeApply -> sharedState.name = name
+        appInstance.api.addEventListener 'share', (user) ->
+            $scope.safeApply -> appInstance.collaborators.push(user)
 
         $scope.isShareFormOpen = () -> return $scope.shareFormOpen
 
         $scope.closeShareForm = () ->
             $scope.shareFormOpen = false
+            # clear all the properties of the form
             $scope.shareForm[k] = null for k of $scope.shareForm
 
         # This method is shared by this controller and its child scope
@@ -102,11 +99,10 @@ app.controller 'SharedStateCtrl', [
             {entity, role, collaborator} = form
             Async.series NwGlobal.Array(
                 (next) ->
+                    appInstance.processing = true
                     entity.api[role.grantMethod](user, next)
+                    $scope.safeApply -> $scope.closeShareForm()
                 (next) ->
-                    $scope.closeShareForm()
-                    $scope.success.message =
-                        "#{entity.name} is shared with #{collaborator}."
                     mail.send
                         to   : user.getEmail()
                         url  : appConfig.getUrl()
@@ -117,6 +113,10 @@ app.controller 'SharedStateCtrl', [
             ), (err) ->
                 $scope.safeApply ->
                     if err then $scope.setError(err)
+                    else $scope.success.message =
+                        "#{entity.name} is shared with #{collaborator}."
+                    appInstance.processing = false
+                    appInstance.showOptions = true
 
         $scope.addCollaborator = () ->
             {collaborator} = $scope.shareForm
@@ -143,7 +143,8 @@ app.controller 'SharedStateCtrl', [
             else if lParIdx is -1 and rParIdx is -1 and
             EMAIL_RE.test(collaborator.toUpperCase())
                 user = new cloudbrowser.app.User(collaborator, "google")
-                grantPermissions(user, $scope.shareForm)
+                appConfig.addNewUser user, () ->
+                    grantPermissions(user, $scope.shareForm)
 
             else $scope.error.message = "Invalid Collaborator"
 ]

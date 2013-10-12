@@ -73,7 +73,7 @@ class MongoInterface
             (next) =>
                 @dbClient.collection(collectionName, next)
             (collection, next) ->
-                collection.update(searchKey, {$set:updatedInfo}, {w:1}, next)
+                collection.update(searchKey, {$set:updatedInfo}, {w:1, upsert:true}, next)
         ], callback
 
     unsetUser : (searchKey, collectionName, updatedInfo, callback) ->

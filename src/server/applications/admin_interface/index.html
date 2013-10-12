@@ -34,7 +34,7 @@
                                 <i class="icon-group" title="Number of Users"></i>
                             </th>
                             <th
-                            ng-click="sortBy('virtualBrowsers.length')">
+                            ng-click="sortBy('browsers.length')">
                                 <i class="icon-file" title="Number of Instances"></i>
                             </th>
                             <th
@@ -56,7 +56,7 @@
                             ng-class="getAppClass(app)">
                                 <td class="align-left">{{app.mountPoint}}</td>
                                 <td>{{app.users.length}}</td>
-                                <td>{{app.virtualBrowsers.length}}</td>
+                                <td>{{app.browsers.length}}</td>
                                 <td ng-show='app.isPublic'>Public</td>
                                 <td ng-hide='app.isPublic'>Private</td>
                                 <td ng-show='app.mounted'>Mounted</td>
@@ -106,7 +106,7 @@
                         <tr>
                             <td>
                                 <strong>
-                                    {{selectedApp.virtualBrowsers.length}}
+                                    {{selectedApp.browsers.length}}
                                 </strong> Instances</td>
                         </tr>
                         <tr>

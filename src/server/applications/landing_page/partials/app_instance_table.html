@@ -2,11 +2,11 @@
     Any extra divs without content are to make the spans add up to 12 
     Else, the spans in the fluid layout do not align properly on screen resize
 -->
-<!-- Shared States -->
-<div ng-repeat="sharedState in sharedStates" class="row-fluid"
-ng-controller="SharedStateCtrl">
+<!-- Application Instances -->
+<div ng-repeat="appInstance in appInstances" class="row-fluid"
+ng-controller="AppInstanceCtrl">
 
-    <!-- Shared State -->
+    <!-- Application Instance-->
     <div class="span12 well well-white">
 
         <!-- Description Line-->
@@ -14,8 +14,8 @@ ng-controller="SharedStateCtrl">
             <div class="span12">
                 <span ng-include="templates.buttons.expandCollapse"></span>
                 <span>
-                    {{sharedState.name}}
-                    <small class="muted"> Created {{sharedState.dateCreated}} </small>
+                    {{appInstance.name}}
+                    <small class="muted"> Created {{appInstance.dateCreated}} </small>
                     <span class="label label-info" ng-show="hasCollaborators()">
                         Shared
                     </span> 
@@ -24,9 +24,9 @@ ng-controller="SharedStateCtrl">
                 </span>
                 <span class="pull-right">
                     <span ng-include="templates.buttons.showLink"></span>
-                    <span ng-include="templates.buttons.removeSharedState"></span>
+                    <span ng-include="templates.buttons.removeAppInstance"></span>
                     <span ng-include="templates.buttons.addBrowser"></span>
-                    <span ng-include="templates.buttons.shareSharedState"></span>
+                    <span ng-include="templates.buttons.shareAppInstance"></span>
                 </span>
             </div>
         </div>
@@ -42,8 +42,16 @@ ng-controller="SharedStateCtrl">
         <!-- Row -->
         <div class="row-fluid" ng-show="error.message">
             <!-- Error Message-->
-                <div class="span12" ng-include="templates.messages.error"></div>
+            <div class="span12" ng-include="templates.messages.error"></div>
             <!-- Error Message-->
+        </div>
+        <!-- Row -->
+
+        <!-- Row -->
+        <div class="row-fluid" ng-show="confirmDelete.entityName">
+            <!-- Confirm Delete Message -->
+            <div class="span12" ng-include="templates.messages.confirmDelete"></div>
+            <!-- Confirm Delete Message -->
         </div>
         <!-- Row -->
 
@@ -64,19 +72,22 @@ ng-controller="SharedStateCtrl">
         <div class="row-fluid">
             <div class="span12" ng-animate="'fade'" ng-show="isBrowserTableVisible()"
                 ng-include="templates.browserTable"
-                onload="browsers=sharedState.browsers">
+                onload="browsers=appInstance.browserMgr.items">
             </div>
         </div>
         <!-- Browser Table -->
 
         <!-- Collaborators -->
-        <div ng-repeat="c in sharedState.collaborators"
-        class="row-fluid">
-            <div class="span4 alert alert-info">
+        <div class="row-fluid" ng-show="areCollaboratorsVisible()">
+            <h4>Collaborators</h4>
+        </div>
+        <div ng-repeat="c in appInstance.collaborators"
+        class="row-fluid" ng-show="areCollaboratorsVisible()">
+            <div class="span6 alert alert-info">
                 <button type="button" class="close">&times;</button>
-                {{c.getEmail()}} ({{c.getNameSpace()}})
+                {{c.email}} <span ng-show="c.ns">({{c.ns}})</span>
             </div>
-            <div class="span8"></div>
+            <div class="span6"></div>
         </div>
         <!-- Collaborators -->
 
@@ -89,7 +100,7 @@ ng-controller="SharedStateCtrl">
 
 
     </div>
-    <!-- Shared State -->
+    <!-- Application Instances -->
 
 </div>
-<!-- Shared States -->
+<!-- Application Instances -->

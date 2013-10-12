@@ -4,7 +4,7 @@ CBLandingPage = angular.module('CBLandingPage', [
         'CBLandingPage.services',
         'CBLandingPage.directives',
         'CBLandingPage.controllers.app',
-        'CBLandingPage.controllers.sharedState',
+        'CBLandingPage.controllers.appInstance',
         'CBLandingPage.controllers.browser'
     ]
 )

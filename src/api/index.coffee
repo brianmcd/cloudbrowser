@@ -1,13 +1,13 @@
 ###*
     The cloudbrowser object that is attached to the global window object
-    of every application instance (virtual browser).
+    of every browser.
     It provides the CloudBrowser API to the instance.
     @namespace cloudbrowser
 ###
 Ko             = require('./ko')
 Util           = require('./util')
 ServerConfig   = require('./server_config')
-VirtualBrowser = require('./virtual_browser')
+BrowserAPI        = require('./browser')
 Authentication = require('./authentication')
 cloudbrowserError = require('../shared/cloudbrowser_error')
 
@@ -44,12 +44,12 @@ class CloudBrowser
 
         @util = new Util(bserver.server.config.emailerConfig)
 
-        @currentVirtualBrowser = new VirtualBrowser
-            bserver : bserver
+        @currentBrowser = new BrowserAPI
+            browser : bserver
             userCtx : creator
             cbCtx   : this
 
-        if @currentVirtualBrowser.getAppConfig().isAuthConfigured()
+        if @currentBrowser.getAppConfig().isAuthConfigured()
             @auth = new Authentication
                 bserver : bserver
                 cbCtx   : this
@@ -102,7 +102,7 @@ module.exports = (bserver) ->
 ###*
     @callback instanceListCallback 
     @param {Error} error
-    @param {Array<VirtualBrowser>} instances A list of all the instances associated with the current user.
+    @param {Array<BrowserAPI>} instances A list of all the instances associated with the current user.
 ###
 ###*
     @callback userListCallback
@@ -115,7 +115,7 @@ module.exports = (bserver) ->
 ###
 ###*
     @callback applicationConfigEventCallback
-    @param {VirtualBrowser | Number} eventArg
+    @param {BrowserAPI | Number} eventArg
 ###
 ###*
     @callback booleanCallback
@@ -128,16 +128,16 @@ module.exports = (bserver) ->
     @param {Number} number
 ###
 ###*
-    @callback virtualBrowserCallback
+    @callback browserCallback
     @param {Error} error
-    @param {VirtualBrowser} browser
+    @param {BrowserAPI} browser
 ###
 ###*
-    @callback sharedStateCallback
+    @callback appInstanceCallback
     @param {Error} error
-    @param {SharedState} sharedState
+    @param {AppInstance} appInstance
 ###
 ###*
-    @callback sharedStateEventCallback
-    @param {SharedState | Number | Null} eventArg
+    @callback appInstanceEventCallback
+    @param {AppInstance | Number | Null} eventArg
 ###

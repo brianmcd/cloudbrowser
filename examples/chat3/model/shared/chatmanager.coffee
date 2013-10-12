@@ -4,22 +4,33 @@ ChatRoom = require('./chatroom')
 class ChatManager extends EventEmitter
     constructor : () ->
         @rooms = []
-        @roomsByName = []
+        @errorStrings =
+            roomExists : "Room with this name exists"
 
     createRoom : (name) ->
-        if @roomsByName[name]
-            throw new Error("Room already exists")
-        
+        for room in @rooms
+            if room.name is name
+                return [new Error(@errorStrings.roomExists)]
         room = new ChatRoom(name)
-        @roomsByName[name] = room
         @rooms.push(room)
-        @emit("NewRoom", room)
-        return room
+        @emit("newRoom", room)
+        return [null, room]
 
-    getRoom :  (name) ->
-        return @roomsByName[name]
-    
-    getAllRooms : () ->
+    addUserToRoom : (user, room, newMessageHandler) ->
+        user.join(room, newMessageHandler)
+        room.add(user)
+
+    removeUserFromRoom : (user, room) ->
+        user.leave(room)
+        room.remove(user)
+
+    getRooms : () ->
         return @rooms
 
+    removeRoom : (room) ->
+        idx = @rooms.indexOf(room)
+        if idx isnt -1
+            room.close()
+            @rooms.splice(room, 1)
+            
 module.exports = ChatManager

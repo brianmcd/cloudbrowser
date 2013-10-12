@@ -5,24 +5,24 @@ cloudbrowserError = require('../shared/cloudbrowser_error')
 ###*
     Event to indicate that the current browser has been shared with 
     another user
-    @event VirtualBrowser#share
+    @event Browser#share
 ###
 ###*
     Event to indicate that the current browser has been renamed
-    @event VirtualBrowser#rename
+    @event Browser#rename
     @type {String}
 ###
 ###*
-    API for virtual browsers (internal object).
-    @class VirtualBrowser
+    API for  browsers (internal object).
+    @class Browser
     @param {Object}                options 
-    @param {BrowserServer}         options.bserver The virtual browser.
+    @param {BrowserServer}         options.browser The  browser.
     @param {cloudbrowser.app.User} options.userCtx The current user.
     @param {Cloudbrowser}          options.cbCtx   The cloudbrowser API object.
-    @fires VirtualBrowser#share
-    @fires VirtualBrowser#rename
+    @fires Browser#share
+    @fires Browser#rename
 ###
-class VirtualBrowser
+class Browser
 
     # Private Properties inside class closure
     _pvts = []
@@ -32,10 +32,10 @@ class VirtualBrowser
         Object.defineProperty this, "_idx",
             value : _pvts.length
 
-        {bserver, cbCtx, userCtx} = options
+        {browser, cbCtx, userCtx} = options
 
         browserInfo =
-            bserver : bserver
+            bserver : browser
             userCtx : userCtx
             cbCtx   : cbCtx
 
@@ -51,7 +51,7 @@ class VirtualBrowser
         @method getID
         @return {Number}
         @instance
-        @memberOf VirtualBrowser
+        @memberOf Browser
     ###
     getID : () ->
         return _pvts[@_idx].bserver.id
@@ -61,7 +61,7 @@ class VirtualBrowser
         @method getURL
         @return {String}
         @instance
-        @memberOf VirtualBrowser
+        @memberOf Browser
     ###
     getURL : () ->
         {bserver} = _pvts[@_idx]
@@ -74,7 +74,7 @@ class VirtualBrowser
         @method getDateCreated
         @return {Date}
         @instance
-        @memberOf VirtualBrowser
+        @memberOf Browser
     ###
     getDateCreated : () ->
         return _pvts[@_idx].bserver.dateCreated
@@ -84,7 +84,7 @@ class VirtualBrowser
         @method getName
         @return {String}
         @instance
-        @memberOf VirtualBrowser
+        @memberOf Browser
     ###
     getName : () ->
         return _pvts[@_idx].bserver.name
@@ -97,7 +97,7 @@ class VirtualBrowser
         @param {Object}  options Extra options to customize the component.          
         @return {DOMNode}
         @instance
-        @memberof VirtualBrowser
+        @memberof Browser
     ###
     createComponent : (name, target, options) ->
         {bserver} = _pvts[@_idx]
@@ -133,7 +133,7 @@ class VirtualBrowser
     ###*
         Gets the Application API object.
         @method getAppConfig
-        @memberof VirtualBrowser
+        @memberof Browser
         @instance
         @return {AppConfig}
     ###
@@ -147,9 +147,9 @@ class VirtualBrowser
             userCtx : userCtx
             app     : server.applications.find(mountPoint)
     ###*
-        Closes the virtual browser.
+        Closes the  browser.
         @method close
-        @memberof VirtualBrowser
+        @memberof Browser
         @instance
         @param {errorCallback} callback
     ###
@@ -157,11 +157,12 @@ class VirtualBrowser
         {bserver, userCtx} = _pvts[@_idx]
         app = bserver.server.applications.find(bserver.mountPoint)
 
-        if userCtx.getNameSpace() is "public" then app.browsers.close(bserver)
+        if userCtx.getNameSpace() is "public"
+            app.browsers.close(bserver)
         else
-            sharedState = bserver.getSharedState()
-            if sharedState
-                sharedState.removeBrowser(bserver, userCtx.toJson(), callback)
+            appInstance = bserver.getAppInstance()
+            if appInstance
+                appInstance.removeBrowser(bserver, userCtx.toJson(), callback)
             else
                 app.browsers.close(bserver, userCtx.toJson(), callback)
 
@@ -170,7 +171,7 @@ class VirtualBrowser
         instance to the given URL.
         @method redirect
         @param {String} url
-        @memberof VirtualBrowser
+        @memberof Browser
         @instance
     ###
     redirect : (url) ->
@@ -181,7 +182,7 @@ class VirtualBrowser
         when the user identity can not be established through authentication. 
         @method getResetEmail
         @param {emailCallback} callback
-        @memberof VirtualBrowser
+        @memberof Browser
         @instance
     ###
     getResetEmail : (callback) ->
@@ -200,7 +201,7 @@ class VirtualBrowser
     ###*
         Gets the user that created the instance.
         @method getCreator
-        @memberof VirtualBrowser
+        @memberof Browser
         @instance
         @return {cloudbrowser.app.User}
     ###
@@ -212,9 +213,9 @@ class VirtualBrowser
             return new User(email, ns)
 
     ###*
-        Registers a listener for an event on the virtual browser instance.
+        Registers a listener for an event on the  browser instance.
         @method addEventListener
-        @memberof VirtualBrowser
+        @memberof Browser
         @instance
         @param {String} event
         @param {errorCallback} callback 
@@ -226,16 +227,13 @@ class VirtualBrowser
         @isAssocWithCurrentUser (err, isAssoc) ->
             if err then callback(err)
             else if not isAssoc then callback(cloudbrowserError("PERM_DENIED"))
-            else switch(event)
-                when "share"
-                    bserver.on(event, (user, list) -> callback(event))
-                else bserver.on(event, callback)
+            else bserver.on(event, callback)
 
     ###*
         Checks if the current user has some permissions
         associated with this browser
         @method isAssocWithCurrentUser
-        @memberof VirtualBrowser
+        @memberof Browser
         @instance
         @param {booleanCallback} callback 
     ###
@@ -256,7 +254,7 @@ class VirtualBrowser
         Gets all users that have the permission only to read and
         write to the instance.
         @method getReaderWriters
-        @memberof VirtualBrowser
+        @memberof Browser
         @instance
         @param {userListCallback} callback
     ###
@@ -283,7 +281,7 @@ class VirtualBrowser
         number of reader writers than to construct a list of them using
         getReaderWriters and then get that number.
         @method getNumReaderWriters
-        @memberof VirtualBrowser
+        @memberof Browser
         @instance
         @param {numberCallback} callback
     ###
@@ -299,7 +297,7 @@ class VirtualBrowser
     ###*
         Gets the number of users that own the instance.
         @method getNumOwners
-        @memberof VirtualBrowser
+        @memberof Browser
         @instance
         @param {numberCallback} callback
     ###
@@ -318,7 +316,7 @@ class VirtualBrowser
         number of owners than to construct a list of them using
         getOwners and then get that number.
         @method getOwners
-        @memberof VirtualBrowser
+        @memberof Browser
         @instance
         @param {userListCallback} callback
     ###
@@ -342,7 +340,7 @@ class VirtualBrowser
     ###*
         Checks if the user is a reader-writer of the instance.
         @method isReaderWriter
-        @memberof VirtualBrowser
+        @memberof Browser
         @instance
         @param {cloudbrowser.app.User} user
         @param {booleanCallback} callback
@@ -370,7 +368,7 @@ class VirtualBrowser
     ###*
         Checks if the user is an owner of the instance
         @method isOwner
-        @memberof VirtualBrowser
+        @memberof Browser
         @instance
         @param {cloudbrowser.app.User} user
         @param {booleanCallback} callback
@@ -397,7 +395,7 @@ class VirtualBrowser
         Checks if the user has permissions to perform a set of actions
         on the instance.
         @method checkPermissions
-        @memberof VirtualBrowser
+        @memberof Browser
         @instance
         @param {Object} permTypes The values of these properties must be set to
         true to check for the corresponding permission.
@@ -420,7 +418,7 @@ class VirtualBrowser
     ###*
         Grants the user a set of permissions on the instance.
         @method grantPermissions
-        @memberof VirtualBrowser
+        @memberof Browser
         @instance
         @param {Object} permTypes The values of these properties must be set to
         true to check for the corresponding permission.
@@ -465,10 +463,10 @@ class VirtualBrowser
     ###*
         Renames the instance.
         @method rename
-        @memberof VirtualBrowser
+        @memberof Browser
         @instance
         @param {String} newName
-        @fires VirtualBrowser#rename
+        @fires Browser#rename
     ###
     rename : (newName, callback) ->
         if typeof newName isnt "string"
@@ -484,21 +482,20 @@ class VirtualBrowser
                 bserver.emit('rename', newName)
                 callback?(null)
 
-    getSharedStateConfig : () ->
+    getAppInstanceConfig : () ->
         {bserver, cbCtx, userCtx} = _pvts[@_idx]
         {mountPoint, server} = bserver
 
         # TODO : Permission check
-        SharedState = require('./shared_state')
-        return new SharedState
+        AppInstance = require('./app_instance')
+        return new AppInstance
             cbCtx       : cbCtx
-            sharedState : bserver.getSharedState()
             userCtx     : userCtx
-            parentApp   : server.applications.find(mountPoint)
+            appInstance : bserver.getAppInstance()
 
     getLocalState : (property) ->
         {bserver} = _pvts[@_idx]
         # TODO : Permission check
         return bserver.getLocalState(property)
 
-module.exports = VirtualBrowser
+module.exports = Browser

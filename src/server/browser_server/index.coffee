@@ -66,11 +66,11 @@ class BrowserServer extends EventEmitter
                     handler.apply(weakRefToThis, arguments)
         @initLogs() if !@server.config.noLogs
 
-    setSharedState : (sharedState) ->
-        @sharedState = sharedState
+    setAppInstance : (appInstance) ->
+        @appInstance = appInstance
 
-    getSharedState : () ->
-        return @sharedState
+    getAppInstance : () ->
+        return @appInstance
 
     setLocalState : (property, value) ->
         @localState[property] = value
@@ -98,8 +98,7 @@ class BrowserServer extends EventEmitter
 
     # arg can be an Application or URL string.
     load : (arg) ->
-        if not arg
-            arg = @server.applications.find(@mountPoint)
+        if not arg then arg = @server.applications.find(@mountPoint)
         @browser.load(arg)
         weakRefToThis = Weak(this, cleanupBserver(@id))
         EmbedAPI(weakRefToThis)

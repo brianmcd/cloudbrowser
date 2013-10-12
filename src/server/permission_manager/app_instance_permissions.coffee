@@ -1,7 +1,7 @@
 PermissionManager = require('./permission_manager')
 
-class SharedStatePermissions extends PermissionManager
-    doesNotSupport : "SharedStatePermissions does not support"
+class AppInstancePermissions extends PermissionManager
+    doesNotSupport : "AppInstancePermissions does not support"
 
     constructor : (@id, permissions) ->
         @set permissions if permissions?
@@ -29,4 +29,4 @@ class SharedStatePermissions extends PermissionManager
         @verifyAndSetPerm(permissions, ['own', 'readwrite'])
         return @permissions
             
-module.exports = SharedStatePermissions
+module.exports = AppInstancePermissions

@@ -1,35 +1,42 @@
 {EventEmitter} = require('events')
 
-class User extends EventEmitter
+class User
     constructor : (user) ->
-        @name = null
-        @namespace = null
-        @joinedRooms = []
-        @joinedRoomsByName = {}
-        @setUserDetails(user)
-
-    setUserDetails : (user) ->
         @name = user.getEmail()
         @namespace = user.getNameSpace()
+        @joinedRooms = []
+        @otherRooms  = []
+        @currentRoom = null
 
-    joinRoom :  (room)  ->
-        name = room.name
-        if @joinedRoomsByName[name]
-            #@activateRoom(room)
-            return
-        @joinedRooms.push(room)
-        @joinedRoomsByName[name] = room
-        @emit('JoinedRoom', room)
+    getName : () ->
+        return @name
 
-    leaveRoom : (room) ->
-        name = room.name
-        if @joinedRoomsByName[name]?
-            delete @joinedRoomsByName[name]
-            @joinedRooms = @joinedRooms.filter (element, index) ->
-                return element.name isnt name
-            @emit('LeftRoom', name)
+    activateRoom : (room) ->
+        @currentRoom = room
 
-    getAllRooms : () ->
-        return @joinedRooms
+    deactivateRoom : () ->
+        @currentRoom = null
+
+    join :  (room, newMessageHandler)  ->
+        if @joinedRooms.indexOf(room) is -1
+            @removeFromOtherRooms(room)
+            @joinedRooms.push(room)
+            room.on('newMessage', newMessageHandler)
+        @activateRoom(room)
+
+    leave : (room) ->
+        idx = @joinedRooms.indexOf(room)
+        if idx isnt -1 then @joinedRooms.splice(idx, 1)
+        @addToOtherRooms(room)
+        if @currentRoom is room
+            if @joinedRooms.length then @activateRoom(@joinedRooms[0])
+            else @deactivateRoom()
+
+    removeFromOtherRooms : (room) ->
+        idx = @otherRooms.indexOf(room)
+        if idx isnt -1 then @otherRooms.splice(idx, 1)
+
+    addToOtherRooms : (room) ->
+        if @otherRooms.indexOf(room) is -1 then @otherRooms.push(room)
 
 module.exports = User

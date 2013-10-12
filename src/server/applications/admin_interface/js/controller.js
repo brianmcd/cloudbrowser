@@ -49,12 +49,12 @@
             });
           }
         });
-        appConfig.getVirtualBrowsers(function(err, virtualBrowsers) {
+        appConfig.getBrowsers(function(err, browsers) {
           if (err) {
             return console.log(err);
           } else {
             return $scope.safeApply(function() {
-              return app.virtualBrowsers = virtualBrowsers;
+              return app.browsers = browsers;
             });
           }
         });
@@ -78,21 +78,21 @@
       App.setupEventListeners = function(app) {
         app.api.addEventListener("add", function(vb) {
           return $scope.safeApply(function() {
-            return app.virtualBrowsers.push(vb);
+            return app.browsers.push(vb);
           });
         });
         return app.api.addEventListener("remove", function(vbID) {
           return $scope.safeApply(function() {
             var idx, vb, _i, _len, _ref, _results;
-            _ref = app.virtualBrowsers;
+            _ref = app.browsers;
             _results = [];
             for (_i = 0, _len = _ref.length; _i < _len; _i++) {
               vb = _ref[_i];
               if (!(vb.id === vbID)) {
                 continue;
               }
-              idx = app.virtualBrowsers.indexOf(vb);
-              _results.push(app.virtualBrowsers.splice(idx, 1));
+              idx = app.browsers.indexOf(vb);
+              _results.push(app.browsers.splice(idx, 1));
             }
             return _results;
           });
@@ -102,7 +102,7 @@
       return App;
 
     })();
-    curVB = cloudbrowser.currentVirtualBrowser;
+    curVB = cloudbrowser.currentBrowser;
     serverConfig = cloudbrowser.serverConfig;
     serverConfig.addEventListener("add", function(appConfig) {
       return App.add(appConfig);

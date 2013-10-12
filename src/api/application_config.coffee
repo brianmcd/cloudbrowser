@@ -1,15 +1,14 @@
 Async             = require('async')
-SharedState       = require('./shared_state')
 cloudbrowserError = require('../shared/cloudbrowser_error')
 
 ###*
     A new browser of the current application has been added
-    @event AppConfig#Add
-    @type {VirtualBrowser}
+    @event AppConfig#addBrowser
+    @type {Browser}
 ###
 ###*
     A new browser of the current application has been removed
-    @event AppConfig#Remove
+    @event AppConfig#removeBrowser
     @type {Number}
 ###
 ###*
@@ -319,19 +318,19 @@ class AppConfig
     isMounted : () ->
         return _pvts[@_idx].app.isMounted()
     ###*
-        Creates a new virtual browser instance of this application.    
+        Creates a new browser instance of this application.    
         @instance
-        @method createVirtualBrowser
+        @method createBrowser
         @memberOf AppConfig
-        @param {virtualBrowserCallback} callback
+        @param {browserCallback} callback
     ###
-    createVirtualBrowser : (callback) ->
+    createBrowser : (callback) ->
         {userCtx, app, cbCtx} = _pvts[@_idx]
-        VirtualBrowser = require('./virtual_browser')
+        Browser = require('./browser')
 
         finalCallback = (bserver) ->
-            callback? null, new VirtualBrowser
-                bserver : bserver
+            callback? null, new Browser
+                browser : bserver
                 userCtx : userCtx
                 cbCtx   : cbCtx
 
@@ -346,13 +345,13 @@ class AppConfig
                 else finalCallback(bserver)
 
     ###*
-        Gets all the instances of the application associated with the given user.
+        Gets all the browsers of the application associated with the given user.
         @instance
-        @method getVirtualBrowsers
+        @method getBrowsers
         @memberOf AppConfig
         @param {instanceListCallback} callback
     ###
-    getVirtualBrowsers : (callback) ->
+    getBrowsers : (callback) ->
         if typeof callback isnt "function" then return
 
         {userCtx, app, cbCtx} = _pvts[@_idx]
@@ -360,7 +359,7 @@ class AppConfig
         mountPoint = app.getMountPoint()
         # Requiring here to avoid circular reference problem that
         # results in an empty module.
-        VirtualBrowser = require('./virtual_browser')
+        Browser = require('./browser')
 
         Async.waterfall [
             (next) ->
@@ -371,11 +370,44 @@ class AppConfig
             (browserRecs, next) ->
                 browsers = []
                 for id, browserRec of browserRecs
-                    browsers.push new VirtualBrowser
-                        bserver : app.browsers.find(id)
+                    browsers.push new Browser
+                        browser : app.browsers.find(id)
                         userCtx : userCtx
                         cbCtx   : cbCtx
                 next(null, browsers)
+        ], callback
+
+    ###*
+        Gets all the instances of the application associated with the given user.
+        @instance
+        @method getAppInstances
+        @memberOf AppConfig
+        @param {instanceListCallback} callback
+    ###
+    getAppInstances : (callback) ->
+        if typeof callback isnt "function" then return
+
+        {userCtx, app, cbCtx} = _pvts[@_idx]
+        {permissionManager} = app.server
+        mountPoint = app.getMountPoint()
+        # Requiring here to avoid circular reference problem that
+        # results in an empty module.
+        AppInstance = require('./app_instance')
+
+        Async.waterfall [
+            (next) ->
+                permissionManager.getAppInstancePermRecs
+                    user       : userCtx.toJson()
+                    mountPoint : mountPoint
+                    callback   : next
+            (appInstanceRecs, next) ->
+                appInstances = []
+                for id, appInstanceRec of appInstanceRecs
+                    appInstances.push new AppInstance
+                        appInstance : app.appInstances.find(id)
+                        userCtx : userCtx
+                        cbCtx   : cbCtx
+                next(null, appInstances)
         ], callback
 
     ###*
@@ -389,47 +421,67 @@ class AppConfig
     addEventListener : (event, callback) ->
         if typeof callback isnt "function" then return
 
-        validEvents = ['add', 'remove']
+        validEvents = [
+            'addBrowser'
+            'removeBrowser'
+            'addAppInstance'
+            'removeAppInstance'
+        ]
         if validEvents.indexOf(event) is -1 then return
 
         {userCtx, cbCtx, app} = _pvts[@_idx]
-        {permissionManager} = app.server
+        {permissionManager}   = app.server
         mountPoint = app.getMountPoint()
+        # Now event will be either 'add' or 'remove'
+        # And entity will be 'browser' or 'appInstance'
+        result = /([a-z]*)([A-Z].*)/g.exec(event)
+        event  = result[1]
+        entity = result[2].charAt(0).toLowerCase() + result[2].slice(1)
+        className = result[2]
+
         # Requiring the module here to prevent the circular reference
         # problem which will result in the required module being empty
-        VirtualBrowser = require('./virtual_browser')
+        Browser     = require('./browser')
+        AppInstance = require('./app_instance')
 
         Async.waterfall [
             (next) ->
-                permissionManager.findAppPermRec
+                permissionManager.checkPermissions
+                    user         : userCtx.toJson()
+                    mountPoint   : mountPoint
+                    permissions  : {own : true}
+                    callback     : (err, isOwner) -> next(err, isOwner)
+            (isOwner, next) ->
+                # If the user is the owner of the application then
+                # the user is notified on all events of that application
+                if isOwner then next(null, null)
+                # If the user is not the owner then the user will be
+                # notified of events on only those browsers with which
+                # he/she is associated.
+                else permissionManager.findAppPermRec
                     user       : userCtx.toJson()
                     mountPoint : mountPoint
                     callback   : next
             (appRec, next) ->
-                if appRec then permissionManager.checkPermissions
-                    user         : userCtx.toJson()
-                    mountPoint   : mountPoint
-                    permissions  : {own : true}
-                    callback     : (err, isOwner) -> next(err, isOwner, appRec)
-            (isOwner, appRec, next) ->
-                if isOwner
-                    # If the user is the owner of the application then
-                    # the user is notified on all events of that application
+                if(appRec)
+                    method  = appRec["#{entity}s"].on
+                    context = appRec["#{entity}s"]
+                else
                     method  = app.addEventListener
                     context = app
-                else
-                    # If the user is not the owner then the user will be
-                    # notified of events on only those browsers with which
-                    # he/she is associated.
-                    method  = appRec.browsers.on
-                    context = appRec.browsers
+
                 switch event
                     when "add"
                         method.call context, event, (id) ->
-                            next null, new VirtualBrowser
-                                bserver : app.browsers.find(id)
-                                userCtx : userCtx
+                            options =
                                 cbCtx   : cbCtx
+                                userCtx : userCtx
+                            options[entity] = app["#{entity}s"].find(id)
+                            switch className
+                                when 'Browser'
+                                    next(null, new Browser(options))
+                                when 'AppInstance'
+                                    next(null, new AppInstance(options))
                     else
                         method.call(context, event, (arg) ->
                             next(null, arg))
@@ -460,41 +512,53 @@ class AppConfig
     ###*
         Creates sharable application state
         @instance
-        @method createSharedState
+        @method createAppInstance
         @memberOf AppConfig
-        @param {sharedStateCallback} callback 
+        @param {appInstanceCallback} callback 
     ###
-    createSharedState : (callback) ->
+    createAppInstance : (callback) ->
         {app, cbCtx, userCtx} = _pvts[@_idx]
         {permissionManager}   = app.server
+        AppInstance = require('./app_instance')
 
         Async.waterfall [
             (next) ->
                 permissionManager.checkPermissions
                     user        : userCtx.toJson()
-                    mountPoint  : app.getMountPoint()
-                    permissions : {createSharedState : true}
                     callback    : next
+                    mountPoint  : app.getMountPoint()
+                    permissions : {createAppInstance : true}
             (canCreate, next) ->
                 if not canCreate then next(cloudbrowserError("PERM_DENIED"))
-                else app.sharedStates.create(userCtx.toJson(), next)
-        ], (err, sharedState) ->
+                else app.appInstances.create(userCtx.toJson(), next)
+        ], (err, appInstance) ->
             if err then callback?(err)
-            else callback null, new SharedState
-                sharedState : sharedState
-                userCtx     : userCtx
+            else callback null, new AppInstance
                 cbCtx       : cbCtx
-                app         : app
+                userCtx     : userCtx
+                appInstance : appInstance
                 
     ###*
-        Gets the registered name of the shared state template
+        Gets the registered name of the application instance template
         for the current application
         @instance
-        @method getSharedStateName
+        @method getAppInstanceName
         @memberOf AppConfig
         @returns {string}
     ###
-    getSharedStateName : () ->
-        return _pvts[@_idx].app.getSharedStateName()
+    getAppInstanceName : () ->
+        return _pvts[@_idx].app.getAppInstanceName()
+
+    ###*
+        Adds a user to the application
+        @instance
+        @method addNewUser
+        @memberOf AppConfig
+    ###
+    addNewUser : (user, callback) ->
+        {app} = _pvts[@_idx]
+        user = user.toJson()
+        if not app.findUser(user) then app.addNewUser(user, callback)
+        else callback?(null, user)
 
 module.exports = AppConfig

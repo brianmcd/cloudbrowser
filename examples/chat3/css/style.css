@@ -1,5 +1,9 @@
-.page-header{
+h1, h2, h3, h4, h5, h6 {
     font-family: museo !important;
+}
+
+.fit-in-place {
+    overflow : auto;
 }
 
 .margin-bottom{
@@ -16,11 +20,11 @@
 }
 
 #chat-box{
-    border: 1px solid #bbb;
-    background-color: #fff;
-    height: 350px;
-    overflow: scroll;
-    overflow-x:hidden;
+    border : 1px solid #bbb;
+    height : 350px;
+    overflow : scroll;
+    overflow-x : hidden;
+    background-color : #fff;
 }
 
 #chat-text{
@@ -28,8 +32,8 @@
     maxLength: 10000;
 }
 
-#create{
-    display:inline-block;
+.transition{
+    display : inline-block !important;
     -webkit-transition : all 0.4s;
        -moz-transition : all 0.4s;
 }
