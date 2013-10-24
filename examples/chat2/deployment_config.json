@@ -1,10 +1,8 @@
 {
     "authenticationInterface": true,
     "isPublic": true,
-    "owner": {
-        "email": "godmar@gmail.com",
-        "ns": "google"
-    },
+    "name": "Chat2",
+    "owner": "godmar@gmail.com",
     "mountOnStartup": true,
     "mountPoint": "/chat2",
     "description": "This is some sample text for the application description. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Suspendisse a semper tortor. Integer ut mollis quam. Nullam a bibendum lectus. Sed vitae varius ipsum. In ac sapien vel nisi commodo sagittis. Sed ipsum justo, lacinia nec rutrum et, faucibus vitae odio. Proin id ligula sed quam venenatis venenatis.",

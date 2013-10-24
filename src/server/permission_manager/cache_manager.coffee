@@ -1,53 +1,28 @@
-SystemPermissions = require('./system_permissions')
+User = require('../user')
+# Assumes that class Type creates objects that have a set(permission) method
+# key is the user's emailID
+class PermissionCacheManager
+    constructor : (@Type) ->
+        @_cache = {}
 
-class CacheManager
-    constructor : () ->
-        # Cache entry per email ID is of the form
-        # [{ns, sysPerms}, {ns, sysPerms}, ...]
-        @cache = {}
+    add : (user, permission) ->
+        if not user instanceof User then return null
+        email = user.getEmail()
+        rec = @_cache[email]
+        if not rec
+            rec = new @Type(user)
+            rec.set(permission)
+            @_cache[email] = rec
+        return rec
 
-    # Returns the system permissions object not the internal cache object
-    add : (user, permissions) ->
-        if not user then return null
-
-        rec =
-            ns       : user.ns
-            sysPerms : new SystemPermissions(user)
-
-        rec.sysPerms.set(permissions)
-
-        if not @cache[user.email] then @cache[user.email] = [rec]
-        else @cache[user.email].push(rec)
-
-        return rec.sysPerms
-
-    # Returns the removed system permissions object
     remove : (user) ->
-        if not user then return null
+        if not user instanceof User then return
+        delete @_cache[user.getEmail()]
 
-        recs = @cache[user.email]
-        if not recs then return
-
-        for rec in recs when rec.ns is user.ns
-            idx = recs.indexOf(rec)
-            removed = recs.splice(idx, 1)
-            return(removed[0].sysRec)
-
-    # Returns the system permissions object not the internal cache object
     find : (user) ->
-        if not user then return null
-
-        recs = @cache[user.email]
-        if not recs then return null
-
-        return rec.sysPerms for rec in recs when rec.ns is user.ns
+        return @_cache[user.getEmail()]
 
     get : () ->
-        sysPermCollection = []
-        for email, recs of @cache
-            for rec in recs
-                sysPermCollection.push(rec.sysPerms)
+        return @_cache
 
-        return sysPermCollection
-
-module.exports = CacheManager
+module.exports = PermissionCacheManager

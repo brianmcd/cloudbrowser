@@ -2,6 +2,7 @@ errorTypes =
     IS_OWNER : "The owner can not be added as a collaborator"
     PERM_DENIED   : "Permission Denied"
     PARAM_MISSING : "Missing Required Parameter"
+    PARAM_INVALID : "Invalid parameter"
     COMPONENT_EXISTS : "Can't create 2 components on the same target"
     NO_COMPONENT  : "Invalid component name"
     LIMIT_REACHED : "Browser limit reached"

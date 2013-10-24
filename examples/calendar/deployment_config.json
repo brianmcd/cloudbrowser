@@ -1,9 +1,7 @@
 {
     "isPublic": true,
-    "owner": {
-        "email": "godmar@gmail.com",
-        "ns": "google"
-    },
+    "name" : "calendar",
+    "owner": "godmar@gmail.com",
     "mountOnStartup": true,
     "description": "A YUI Calendar widget demonstrating CloudBrowser Components. When supporting multiple, simultaneous visitors to the same CloudBrowser instance, identical screen sizes can not be assumed. Hence JavaScript code that accesses layout properties that are computed post layout will not work. For applications whose user interface cannot be expressed using CSS style rules, components is a mechanism to embed client-side components in a CloudBrowser application.",
     "browserLimit": 0,

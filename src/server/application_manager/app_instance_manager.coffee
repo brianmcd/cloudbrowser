@@ -17,25 +17,31 @@ class AppInstanceManager extends EventEmitter
     create : (user, callback, id = @generateID(), name = @generateName()) ->
         @appInstances[id] = new AppInstance(@app, @template, user, id, name)
         @weakRefsToAppInstances[id] = Weak(@appInstances[id], cleanupStates(id))
-        @emit('create', @weakRefsToAppInstances[id])
+        @setupProxyEventEmitter(@weakRefsToAppInstances[id])
         @permissionManager.addAppInstancePermRec
             user        : user
             mountPoint  : @app.getMountPoint()
-            permissions : {own : true}
+            permission  : 'own'
             appInstanceID : id
             callback : (err, appInstancePermRec) =>
-                if err then callback?(err)
+                return callback?(err) if err
                 callback?(null, @weakRefsToAppInstances[id])
+                @emit('add', id)
+
+    setupProxyEventEmitter : (appInstance) ->
+        if @app.isAuthConfigured()
+            appInstance.on "share", (user) =>
+                @emit("share", appInstance.getID(), user)
 
     find : (id) ->
         return @weakRefsToAppInstances[id]
 
     remove : (id, user, callback) ->
-        state = @find(id)
-        if not state then return
+        appInstance = @find(id)
+        if not appInstance then return
         Async.waterfall [
             (next) ->
-                state.close(user, next)
+                appInstance.close(user, next)
             (next) =>
                 delete @weakRefsToAppInstances[id]
                 delete @appInstances[id]

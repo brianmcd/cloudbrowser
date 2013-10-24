@@ -3,13 +3,7 @@ Crypto = require('crypto')
 # Removes trailing strings "authenticate", "landing_page" and "password_reset"
 # from mountPoint
 exports.getParentMountPoint = (originalMountPoint) ->
-    delimiters  = ["authenticate", "landing_page", "password_reset"]
-    components  = originalMountPoint.split("/")
-    index       = 1
-    mountPoint  = ""
-    while delimiters.indexOf(components[index]) is -1 and index < components.length
-        mountPoint += "/" + components[index++]
-    return mountPoint
+    return originalMountPoint.replace(/\/(landing_page|password_reset|authenticate)$/, "")
 
 # Hashes the password using pbkdf2
 exports.hashPassword = hashPassword = (config={}, callback) ->

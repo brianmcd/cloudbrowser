@@ -28,7 +28,14 @@
       };
 
       App.add = function(appConfig) {
-        var app;
+        var app, _i, _len, _ref;
+        _ref = $scope.apps;
+        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+          app = _ref[_i];
+          if (app.mountPoint === appConfig.getMountPoint()) {
+            return;
+          }
+        }
         app = {
           url: appConfig.getUrl(),
           api: appConfig,
@@ -45,7 +52,7 @@
             return console.log(err);
           } else {
             return $scope.safeApply(function() {
-              return app.users = users;
+              return app.numUsers = users.length;
             });
           }
         });
@@ -54,7 +61,7 @@
             return console.log(err);
           } else {
             return $scope.safeApply(function() {
-              return app.browsers = browsers;
+              return app.numBrowsers = browsers.length;
             });
           }
         });
@@ -76,25 +83,24 @@
       };
 
       App.setupEventListeners = function(app) {
-        app.api.addEventListener("add", function(vb) {
+        app.api.addEventListener("addBrowser", function(vb) {
           return $scope.safeApply(function() {
-            return app.browsers.push(vb);
+            return app.numBrowsers++;
           });
         });
-        return app.api.addEventListener("remove", function(vbID) {
+        app.api.addEventListener("removeBrowser", function(vbID) {
           return $scope.safeApply(function() {
-            var idx, vb, _i, _len, _ref, _results;
-            _ref = app.browsers;
-            _results = [];
-            for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-              vb = _ref[_i];
-              if (!(vb.id === vbID)) {
-                continue;
-              }
-              idx = app.browsers.indexOf(vb);
-              _results.push(app.browsers.splice(idx, 1));
-            }
-            return _results;
+            return app.numBrowsers--;
+          });
+        });
+        app.api.addEventListener("addUser", function(user) {
+          return $scope.safeApply(function() {
+            return app.numUsers++;
+          });
+        });
+        return app.api.addEventListener("removeUser", function(user) {
+          return $scope.safeApply(function() {
+            return app.numUsers--;
           });
         });
       };
@@ -104,10 +110,12 @@
     })();
     curVB = cloudbrowser.currentBrowser;
     serverConfig = cloudbrowser.serverConfig;
-    serverConfig.addEventListener("add", function(appConfig) {
-      return App.add(appConfig);
+    serverConfig.addEventListener("addApp", function(appConfig) {
+      if (appConfig.isOwner()) {
+        return App.add(appConfig);
+      }
     });
-    serverConfig.addEventListener("remove", function(appConfig) {
+    serverConfig.addEventListener("removeApp", function(appConfig) {
       return App.remove(appConfig);
     });
     fileUploaderDiv = document.getElementById('file-uploader');
@@ -122,22 +130,15 @@
         name: "Upload",
         "class": "btn btn-primary"
       },
-      inputText: {
-        placeholder: "App Name",
-        style: "margin-right: 10px",
-        name: "appName"
-      },
       inputFile: {
         accept: "application/x-gzip",
-        name: "newApp"
+        name: "content"
       }
     });
     $scope.user = curVB.getCreator();
     $scope.selectedApp = null;
     serverConfig.listApps({
-      filters: {
-        perUser: true
-      },
+      filters: ['perUser'],
       callback: function(err, appConfigs) {
         if (err) {
           return console.log(err);
@@ -161,13 +162,9 @@
       return curVB.redirect(url);
     };
     $scope.editDescription = function(app) {
-      return app.api.isOwner($scope.user, function(err, isOwner) {
-        if (isOwner) {
-          return $scope.safeApply(function() {
-            return app.editing = true;
-          });
-        }
-      });
+      if (app.api.isOwner()) {
+        return app.editing = true;
+      }
     };
     $scope.getBoxClass = function(app) {
       if (!app) {
@@ -180,26 +177,21 @@
       }
     };
     toggle = function(app, property, method1, method2) {
+      var err;
       if (app[property]) {
-        return app.api[method1](function(err) {
-          if (err) {
-            return console.log(err);
-          } else {
-            return $scope.safeApply(function() {
-              return app[property] = false;
-            });
-          }
-        });
+        err = app.api[method1]();
+        if (err) {
+          return console.log("" + method1 + " - " + err);
+        } else {
+          return app[property] = false;
+        }
       } else {
-        return app.api[method2](function(err) {
-          if (err) {
-            return console.log(err);
-          } else {
-            return $scope.safeApply(function() {
-              return app[property] = true;
-            });
-          }
-        });
+        err = app.api[method2]();
+        if (err) {
+          return console.log("" + method2 + " - " + err);
+        } else {
+          return app[property] = true;
+        }
       }
     };
     $scope.toggleMountDisable = function(app) {

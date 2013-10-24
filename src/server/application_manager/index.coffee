@@ -4,6 +4,8 @@ Path           = require('path')
 {EventEmitter} = require('events')
 Weak           = require('weak')
 Async          = require('async')
+User           = require('../user')
+{getConfigFromFile} = require('../../shared/utils')
 
 # Defining callback at the highest level
 # see https://github.com/TooTallNate/node-weak#weak-callback-function-best-practices
@@ -22,18 +24,23 @@ class ApplicationManager extends EventEmitter
 
         {@server} = options
 
-        # Mount the home page
-        if @server.config.homePage then @createAppFromDir
-            path : Path.resolve(@cbAppDir, "home_page")
-            type : "admin"
-            mountPoint : "/"
-        , (err) -> if err then console.log(err)
-
-        # Mount the admin interface
-        if @server.config.adminInterface then @createAppFromDir
-            path : Path.resolve(@cbAppDir, "admin_interface")
-            type : "admin"
-        , (err) -> if err then console.log(err)
+        Async.series [
+            (next) =>
+                # Mount the home page
+                if @server.config.homePage then @createAppFromDir
+                    path : Path.resolve(@cbAppDir, "home_page")
+                    type : "admin"
+                    mountPoint : "/"
+                , next
+                else next(null)
+            (next) =>
+                # Mount the admin interface
+                if @server.config.adminInterface then @createAppFromDir
+                    path : Path.resolve(@cbAppDir, "admin_interface")
+                    type : "admin"
+                , next
+                else next(null)
+        ], (err) -> if err then console.log(err)
 
         Async.series [
             (next) =>
@@ -45,24 +52,27 @@ class ApplicationManager extends EventEmitter
                 @_loadFromCmdLine(options.paths) if options.paths?
         ], (err) -> if err then console.log(err)
 
-    _validDeploymentConfig :
-        isPublic                : true
-        owner                   : true
-        mountPoint              : true
-        collectionName          : true
-        mountOnStartup          : true
-        authenticationInterface : true
-        description             : true
-        browserLimit            : true
+    _validDeploymentConfig : [
+        'name'
+        'owner'
+        'isPublic'
+        'mountPoint'
+        'description'
+        'browserLimit'
+        'mountOnStartup'
+        'collectionName'
+        'authenticationInterface'
+    ]
 
-    _validAppConfig :
-        entryPoint            : true
-        instantiationStrategy : true
-        applicationStateFile  : true
+    _validAppConfig : [
+        'entryPoint'
+        'applicationStateFile'
+        'instantiationStrategy'
+    ]
 
     _isValidConfig : (config, validConfig) ->
         for k of config
-            if not validConfig.hasOwnProperty(k)
+            if validConfig.indexOf(k) is -1
                 console.log("Invalid configuration parameter #{k}")
                 return false
         return true
@@ -106,21 +116,6 @@ class ApplicationManager extends EventEmitter
                 , next
         ], callback
 
-
-    # Parsing the json file into opts
-    # TODO : Move this to shared/utils
-    _getConfigFromFile : (path) ->
-        try
-            fileContent = Fs.readFileSync(path, {encoding:"utf8"})
-            content = JSON.parse(fileContent)
-        catch e
-            console.log "Parse error in file #{path}."
-            console.log "The file's content was:"
-            console.log fileContent
-            throw e
-        
-        return content
-
     _getInitialConfiguration : (path, type) ->
         opts = {}
         appConfigPath = "#{path}/app_config\.json"
@@ -132,7 +127,7 @@ class ApplicationManager extends EventEmitter
                 " missing mandatory configuration file #{appConfigPath}")
             return
 
-        opts.appConfig = @_getConfigFromFile(appConfigPath)
+        opts.appConfig = getConfigFromFile(appConfigPath)
 
         if not @_isValidConfig(opts.appConfig, @_validAppConfig)
             console.log("In #{appConfigPath}")
@@ -149,13 +144,13 @@ class ApplicationManager extends EventEmitter
                     return
                 # Parsing the json file into configuration opts
                 opts.deploymentConfig =
-                    @_getConfigFromFile(deploymentConfigPath)
+                    getConfigFromFile(deploymentConfigPath)
 
             # admin apps like admin_interface and home page
             when "admin"
                 if Fs.existsSync(deploymentConfigPath)
                     opts.deploymentConfig =
-                        @_getConfigFromFile(deploymentConfigPath)
+                        getConfigFromFile(deploymentConfigPath)
                 else opts.deploymentConfig = {}
 
                 # The first admin is the owner of 
@@ -242,7 +237,7 @@ class ApplicationManager extends EventEmitter
             # Adding unique index to the collection
             @server.mongoInterface.addIndex(
                 deploymentConfig.collectionName,
-                {email:1, ns:1})
+                {_email:1})
 
         # Pointers to sub applications like landing_page etc.
         opts.subApps = []
@@ -300,15 +295,14 @@ class ApplicationManager extends EventEmitter
         app = @weakRefsToApps[mountPoint] =
             Weak(@applications[mountPoint], cleanupApp(mountPoint))
 
-        @emit("add", app)
+        @emit("addApp", app)
 
         return app
     
     # Creates a new CloudBrowser application object and 
     # adds it to the pool of CloudBrowser applications
     _add : (opts, callback) ->
-        {owner,
-         mountPoint
+        {mountPoint
          mountOnStartup,
          instantiationStrategy,
          authenticationInterface} = opts.deploymentConfig
@@ -323,10 +317,10 @@ class ApplicationManager extends EventEmitter
         # Store weak ref
         app = @weakRefsToApps[mountPoint] =
             Weak(@applications[mountPoint], cleanupApp(mountPoint))
-        @setupEventListeners(app)
+        @setupProxyEventEmitter(app)
         if authenticationInterface then @createSubApplications(opts)
         if mountOnStartup then app.mount()
-        @emit("add", app)
+        @emit("addApp", app)
 
         # Must add record to DB after actually creating the application
         # else the API object is created before the application object
@@ -335,16 +329,16 @@ class ApplicationManager extends EventEmitter
             (next) ->
                 # Add the permission record for this application's owner 
                 permissionManager.addAppPermRec
-                    user        : owner
+                    user        : app.getOwner()
                     mountPoint  : mountPoint
-                    permissions : {own : true}
+                    permission  : 'own'
                     callback    : next
             (next) ->
                 # Add the application path details to the DB for the server
                 # to know the location of applications to be loaded at startup
                 if not opts.dontSaveToDb then mongoInterface.addApp
                     path        : opts.path
-                    owner       : owner
+                    owner       : app.getOwner()
                     mountPoint  : mountPoint
                 , next
                 else next(null)
@@ -352,7 +346,7 @@ class ApplicationManager extends EventEmitter
             if err then callback(err)
             else callback(null, app)
 
-    setupEventListeners : (app) ->
+    setupProxyEventEmitter : (app) ->
         app.on 'madePublic', () =>
             @emit 'madePublic', app
         app.on 'madePrivate', () =>
@@ -481,7 +475,7 @@ class ApplicationManager extends EventEmitter
     remove : (mountPoint) ->
         delete @applications[mountPoint]
         delete @weakRefsToApps[mountPoint]
-        @emit("remove", mountPoint)
+        @emit("removeApp", mountPoint)
 
     find : (mountPoint) ->
         # Hand out weak references to other modules

@@ -3,34 +3,28 @@ Tar   = require('tar')
 Async = require('async')
 Fs    = require('fs')
 Path  = require('path')
+{getConfigFromFile} = require('../shared/utils')
 
 class ApplicationUploader
-    @validateUploadReq : (req, mimeType) ->
+    @validateUploadReq : (req, expectedMimeType) ->
         # Check if name and content of the app have been provided
         message = null
-        if not req.body.appName
-            message = "Missing parameter - name of application"
-        else if not req.files.newApp
-            message = "Missing parameters - file content"
+        if not req.files.content
+            message = "File is empty"
         # and if the file type is correct
-        else if req.files.newApp.type isnt mimeType or
-        not /\.tar\.gz$/.test(req.files.newApp.name)
+        else if req.files.content.type isnt expectedMimeType
             message = "File must be a gzipped tarball"
         return message
 
-    @removeUploadedAppFiles : (path) ->
-        # TODO : Fix this as you can't remove directories like this
-        Fs.rmdir path, (err) ->
-            if err then console.log err
-            else console.log "Removing #{path}"
-
     @processFileUpload : (user, req, res) ->
         Server      = require('./index')
-        server      = Server.getCurrentInstance()
-        appName     = req.body.appName
-        inFilePath  = req.files.newApp.path
-        appDirPath  = "#{server.projectRoot}/applications"
-        userDirPath = "#{appDirPath}/#{user.email}-#{user.ns}"
+        projectRoot = Server.getProjectRoot()
+        appManager  = Server.getAppManager()
+        inFilePath  = req.files.content.path
+        appDirPath  = "#{projectRoot}/applications"
+        # Replacing '@' and '.' with underscore
+        userID = user.getEmail().replace(/(@|\.)/g, '_')
+        userDirPath = "#{appDirPath}/#{userID}"
 
         Async.waterfall [
             # Create the required directories if they don't exist
@@ -47,56 +41,70 @@ class ApplicationUploader
                 else next(null)
             (next) ->
                 ApplicationUploader.extractTarball
+                    userID      : userID
                     inFilePath  : inFilePath
                     appDirPath  : appDirPath
                     userDirPath : userDirPath
-                    appName     : appName
                     callback    : next
 
         ], (err, outFilePath) ->
             if err then res.send(err.message, 400)
             else
-                ApplicationUploader.overwriteAppOwner(user, outFilePath)
+                ApplicationUploader.overwriteConfig(user.getEmail(), outFilePath)
                 # Create the app and return 400 in case of errors
-                server.applications.createAppFromDir
+                appManager.createAppFromDir
                     path : outFilePath
                     type : "uploaded"
                 , (err, app) ->
                     if err then res.send(err.message, 400)
                     else if not app
                         res.send("Could not create application", 400)
-                        #@removeUploadedAppFiles(outFilePath)
                     else res.send(200)
 
-    @overwriteAppOwner : (user, pathToApp) ->
-        Server = require('./index')
-        server = Server.getCurrentInstance()
-        deploymentConfigPath = Path.resolve(pathToApp, "deployment_config\.json")
-        deploymentConfig =
-            server.applications._getConfigFromFile(deploymentConfigPath)
-        deploymentConfig.owner = user
+    @overwriteConfig : (email, pathToApp) ->
+        deploymentConfigPath = Path.resolve(pathToApp,
+            "deployment_config\.json")
+        deploymentConfig = getConfigFromFile(deploymentConfigPath)
+        deploymentConfig.owner = email
+        delete deploymentConfig['collectionName']
         content = JSON.stringify(deploymentConfig, null, 4)
         Fs.writeFileSync(deploymentConfigPath, content)
 
-    @removeBeginningSlash : (name) ->
-        if name.charAt(0) is "/"
-            return name.slice(1, name.length)
-        else return name
+    @constructMountPoint : (pathToApp, userID) ->
+        deploymentConfigPath = Path.resolve(pathToApp,
+            "deployment_config\.json")
+        deploymentConfig = getConfigFromFile(deploymentConfigPath)
+
+        pathToUpload = deploymentConfig.mountPoint
+
+        if not pathToUpload then return null
+
+        # Remove whitespace and beginning slash
+        pathToUpload =
+            pathToUpload.replace(/(\s+)|(^\/)/g, '')
+
+        if pathToUpload is "" then return null
+
+        pathToUpload = "#{userID}/#{pathToUpload}"
+
+        # Write to file
+        deploymentConfig.mountPoint = "/#{pathToUpload}"
+        content = JSON.stringify(deploymentConfig, null, 4)
+        Fs.writeFileSync(deploymentConfigPath, content)
+
+        return pathToUpload
 
     @extractTarball : (options) ->
-        {inFilePath
+        {userID
+        , inFilePath
         , appDirPath
         , userDirPath
-        , appName
         , callback} = options
 
         # Give a temporary location for the tar to be
         # extracted to as, the extracted directory has
-        # one extra level [/tmp/tmpFileName/appName/appName].
+        # one extra level [/tmp/tmpFileName/dirName/dirName].
         outFilePath = "#{inFilePath}_extracted"
-        # Actual location where the app should land up.
-        actualOutPath = "#{userDirPath}/#{ApplicationUploader.removeBeginningSlash(appName)}"
-
         Async.waterfall [
             (next) ->
                 Fs.createReadStream(inFilePath)
@@ -107,25 +115,28 @@ class ApplicationUploader
                 )
                 .on("error", next)
                 .on("end", () -> next(null))
-
             , (next) ->
                 Fs.readdir(outFilePath, next)
-
             , (files, next) ->
-                # Upload only one app at a time?
+                # Upload only one app at a time
                 if files.length isnt 1
                     message = "The tarball must contain only one application"
                     res.send("#{message}", 400)
-                    #@removeUploadedAppFiles(path)
                     next(new Error(message))
                 # For the admin_interface case where the app is at the second
                 # level and has to be renamed to the correct path
                 else
                     tmpPath = Path.resolve(outFilePath, files[0])
-                    Fs.rename tmpPath, actualOutPath, (err) ->
-                        if err
-                            err = new Error("MountPoint #{appName} in use")
-                        next(err, actualOutPath)
+                    pathToUpload = ApplicationUploader.constructMountPoint(tmpPath, userID)
+                    if not pathToUpload or pathToUpload is ''
+                        next(new Error("Invalid mount point"))
+                    # Actual location where the app should land up.
+                    else
+                        # pathToUpload is userID/orig_mountPoint and 
+                        # userDirPath is appDirPath/userID
+                        actualOutPath = Path.resolve(userDirPath, '..', pathToUpload)
+                        Fs.rename tmpPath, actualOutPath, (err) ->
+                            next(err, actualOutPath)
         ], callback
 
 module.exports = ApplicationUploader

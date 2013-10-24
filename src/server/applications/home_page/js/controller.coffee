@@ -12,19 +12,18 @@ CBHomePage.controller "MainCtrl", ($scope) ->
 
     $scope.leftClick = (url) -> currentBrowser.redirect(url)
 
-    $scope.redirectToGithub = (app) ->
-        completeUrl = "https://github.com/brianmcd/cloudbrowser/tree/" +
-                      "deployment/examples#{app.mountPoint}"
-        $scope.leftClick(completeUrl)
-
     $scope.apps = []
 
     # Operates on $scope.apps
     class App
         @add : (appConfig) ->
+            for app in $scope.apps
+                if app.api.getMountPoint() is appConfig.getMountPoint()
+                    return
             app =
                 api         : appConfig
                 url         : appConfig.getUrl()
+                name        : appConfig.getName()
                 mountPoint  : appConfig.getMountPoint()
                 description : appConfig.getDescription()
 
@@ -36,7 +35,7 @@ CBHomePage.controller "MainCtrl", ($scope) ->
                 return $scope.apps.splice(idx, 1)
 
     server.listApps
-        filters  : {public : true}
+        filters  : ['public']
         callback : (err, apps) ->
             if err then $scope.safeApply -> $scope.error = err.message
             else $scope.safeApply -> App.add(app) for app in apps
@@ -45,7 +44,7 @@ CBHomePage.controller "MainCtrl", ($scope) ->
     server.addEventListener 'madePublic', (appConfig) ->
         $scope.safeApply -> App.add(appConfig)
 
-    server.addEventListener 'add', (appConfig) ->
+    server.addEventListener 'addApp', (appConfig) ->
         $scope.safeApply -> App.add(appConfig)
 
     server.addEventListener 'mount', (appConfig) ->
@@ -54,10 +53,8 @@ CBHomePage.controller "MainCtrl", ($scope) ->
     server.addEventListener 'madePrivate', (mountPoint) ->
         $scope.safeApply -> App.remove(mountPoint)
 
-    server.addEventListener 'remove', (mountPoint) ->
+    server.addEventListener 'removeApp', (mountPoint) ->
         $scope.safeApply -> App.remove(mountPoint)
 
     server.addEventListener 'disable', (mountPoint) ->
         $scope.safeApply -> App.remove(mountPoint)
-
-CBHomePage.filter "removeSlash", () -> (input) -> input.substring(1)

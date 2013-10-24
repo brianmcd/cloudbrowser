@@ -5,9 +5,9 @@ PermissionManager = require('./permission_manager')
 class BrowserPermissions extends PermissionManager
     doesNotSupport : "BrowserPermissions does not support"
 
-    constructor : (@id, permissions) ->
-        @set permissions if permissions?
-        @permissions = {}
+    constructor : (@id, permission) ->
+        @set permission if permission?
+        @permission = null
         # Does not have any contained items
 
     getId : () -> return @id
@@ -24,11 +24,8 @@ class BrowserPermissions extends PermissionManager
     removeItem : () ->
         throw new Error("#{@doesNotSupport} removeItem")
 
-    # Does custom checking on the permissions provided
-    set : (permissions) ->
-        # Can not have more than one type of permission at a time
-        if Object.keys(permissions).length isnt 1 then return
-        @verifyAndSetPerm(permissions, ['own', 'readonly', 'readwrite'])
-        return @permissions
+    # Does custom checking on the permission provided
+    set : (permission) ->
+        @verifyAndSetPerm(permission, ['own', 'readwrite', 'readonly'])
 
 module.exports = BrowserPermissions

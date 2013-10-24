@@ -20,7 +20,7 @@
                     <input type="text" class="input-small search-query margin-bottom"
                     placeholder="search" ng-model="search" ng-show="apps.length">
                     <div class="pull-right">
-                        {{user.getEmail()}} &nbsp;|
+                        {{user}} &nbsp;|
                         <a ng-click="logout()">Logout</a>
                     </div>
                     <table ng-show="apps.length" class="table table-bordered" id="data-table">
@@ -30,11 +30,11 @@
                                 MountPoint
                             </th>
                             <th
-                            ng-click="sortBy('users.length')">
+                            ng-click="sortBy('numUsers')">
                                 <i class="icon-group" title="Number of Users"></i>
                             </th>
                             <th
-                            ng-click="sortBy('browsers.length')">
+                            ng-click="sortBy('numBrowsers')">
                                 <i class="icon-file" title="Number of Instances"></i>
                             </th>
                             <th
@@ -55,8 +55,8 @@
                             ng-click="selectApp(app)"
                             ng-class="getAppClass(app)">
                                 <td class="align-left">{{app.mountPoint}}</td>
-                                <td>{{app.users.length}}</td>
-                                <td>{{app.browsers.length}}</td>
+                                <td>{{app.numUsers}}</td>
+                                <td>{{app.numBrowsers}}</td>
                                 <td ng-show='app.isPublic'>Public</td>
                                 <td ng-hide='app.isPublic'>Private</td>
                                 <td ng-show='app.mounted'>Mounted</td>
@@ -99,14 +99,14 @@
                         <tr ng-show="selectedApp.users">
                             <td>
                                 <strong>
-                                    {{selectedApp.users.length}}
+                                    {{selectedApp.numUsers}}
                                 </strong> Users
                             </td>
                         </tr>
                         <tr>
                             <td>
                                 <strong>
-                                    {{selectedApp.browsers.length}}
+                                    {{selectedApp.numBrowsers}}
                                 </strong> Instances</td>
                         </tr>
                         <tr>

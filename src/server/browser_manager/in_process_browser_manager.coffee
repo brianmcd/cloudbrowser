@@ -3,6 +3,7 @@ BrowserManager      = require('./browser_manager')
 BrowserServerSecure = require('../browser_server/browser_server_secure')
 Weak                = require('weak')
 Async               = require('async')
+User                = require('../user')
 cloudbrowserError   = require('../../shared/cloudbrowser_error')
 
 # Defining callback at the highest level
@@ -24,51 +25,58 @@ class InProcessBrowserManager extends BrowserManager
     # (for apps with authentication interface enabled)
     # returns weak reference to the browser
     _createBserver : (browserInfo) ->
-        {id, type, preLoadMethod, creator, permissions} = browserInfo
+        {id, type, preLoadMethod, creator, permission} = browserInfo
         @bservers[id] = new type
             id          : id
             server      : @server
             mountPoint  : @app.getMountPoint()
-            creator     : creator,
-            permissions : permissions
+            creator     : creator
+            permission  : permission
         @weakRefsToBservers[id] = Weak(@bservers[id], cleanupBserver(id))
-        @emit("add", id)
+        @_setupProxyEventEmitter(@weakRefsToBservers[id])
         preLoadMethod?(@weakRefsToBservers[id])
         @bservers[id].load(@app)
+        @emit("add", id)
         return @weakRefsToBservers[id]
+
+    _setupProxyEventEmitter : (bserver) ->
+        if @app.isAuthConfigured()
+            bserver.on "share", (user) =>
+                @emit("share", bserver.id, user)
 
     _closeBserver : (bserver) ->
         bserver.removeAllListeners()
         bserver.close()
         id = bserver.id
-        @emit("removeBrowser", id)
+        @emit("remove", id)
         delete @weakRefsToBservers[bserver.id]
         delete @bservers[bserver.id]
 
     _createSingleAppInstance : (options) ->
         {id, user, preLoadMethod, callback} = options
-        permissions = {readwrite : true}
+        permission = 'readwrite'
         # Attaching a single bserver to app.
         # This will be used for all requests to this application
         if not @app.bserver
-            @app.bserver = @_createBserver
-                type        : BrowserServerSecure
-                id          : id
-                creator     : user
-                permissions : permissions
-                preLoadMethod : preLoadMethod
             @server.permissionManager.addBrowserPermRec
                 user        : user
                 mountPoint  : @app.getMountPoint()
                 browserID   : id
-                permissions : permissions
-                callback    : (err) => callback(err, @find(id))
+                permission  : permission
+                callback    : (err) =>
+                    @app.bserver = @_createBserver
+                        type        : BrowserServerSecure
+                        id          : id
+                        creator     : user
+                        permission  : permission
+                        preLoadMethod : preLoadMethod
+                    callback(err, @find(id))
         else
             @server.permissionManager.addBrowserPermRec
                 user        : user
                 mountPoint  : @app.getMountPoint()
                 browserID   : @app.bserver.id
-                permissions : permissions
+                permission  : permission
                 callback    : (err) => callback(err, @find(@app.bserver.id))
 
     _createSingleUserInstance : (options) ->
@@ -78,23 +86,23 @@ class InProcessBrowserManager extends BrowserManager
             mountPoint : @app.getMountPoint()
             callback   : (err, browserRecs) =>
                 if err then callback(err)
-                # Create new bserver and grant permissions only if
+                # Create new bserver and grant permission only if
                 # one associated with the user doesn't exist
                 else if not browserRecs or Object.keys(browserRecs).length < 1
-                    permissions =
-                        own : true
-                    bserver = @_createBserver
-                        type        : BrowserServerSecure
-                        id          : id
-                        creator     : user
-                        permissions : permissions
-                        preLoadMethod : preLoadMethod
+                    permission = 'own'
                     @server.permissionManager.addBrowserPermRec
                         user        : user
                         mountPoint  : @app.getMountPoint()
                         browserID   : id
-                        permissions : permissions
-                        callback    : (err) => callback(err, @find(id))
+                        permission  : permission
+                        callback    : (err) =>
+                            bserver = @_createBserver
+                                type        : BrowserServerSecure
+                                id          : id
+                                creator     : user
+                                permission  : permission
+                                preLoadMethod : preLoadMethod
+                            callback(err, @find(id))
                 else
                     for browserId, bserver of browserRecs
                         callback(null, @find(browserId))
@@ -112,42 +120,47 @@ class InProcessBrowserManager extends BrowserManager
             callback   : (err, browserRecs) =>
                 if err then callback(err)
                 else if not browserRecs or
+                # This check doesn't work due to the asynchronicity of
+                # addBrowserPermRec and getBrowserPermRecs
                 Object.keys(browserRecs).length < userLimit
-                    permissions =
-                        own : true
-                    bserver = @_createBserver
-                        type        : BrowserServerSecure
-                        id          : id
-                        creator     : user
-                        permissions : permissions
-                        preLoadMethod : preLoadMethod
+                    permission = 'own'
                     @server.permissionManager.addBrowserPermRec
                         user        : user
                         mountPoint  : @app.getMountPoint()
                         browserID   : id
-                        permissions : permissions
-                        callback    : (err) => callback(err, @find(id))
+                        permission  : permission
+                        callback    : (err) =>
+                            bserver = @_createBserver
+                                type        : BrowserServerSecure
+                                id          : id
+                                creator     : user
+                                permission  : permission
+                                preLoadMethod : preLoadMethod
+                            # Returning weak ref
+                            callback(err, @find(id))
                 else callback(cloudbrowserError('LIMIT_REACHED'))
 
     _createSecure : (options) ->
         {user, id, preLoadMethod, callback} = options
-        if not user then callback(cloudbrowserError('PERM_DENIED'), null)
 
-        # Checking the browser limit configured for the application
         Async.waterfall [
             (next) =>
                 @server.permissionManager.checkPermissions
                     user        : user
                     mountPoint  : @app.getMountPoint()
-                    permissions : {createBrowsers : true}
+                    permissions : ['own', 'createBrowsers']
                     callback    : next
             (canCreate, next) =>
                 if not canCreate then next(cloudbrowserError('PERM_DENIED'))
 
-                instantiationStrategy = @app.getInstantiationStrategy()
-                methodName = "_create" +
-                            instantiationStrategy.charAt(0).toUpperCase() +
-                            instantiationStrategy.slice(1)
+                strategy = @app.getInstantiationStrategy()
+
+                instantiationMethods =
+                    singleAppInstance  : "_createSingleAppInstance"
+                    singleUserInstance : "_createSingleUserInstance"
+                    multiInstance      : "_createMultiInstance"
+                
+                methodName = instantiationMethods[strategy]
 
                 if typeof @[methodName] is "function"
                     @[methodName]
@@ -155,9 +168,8 @@ class InProcessBrowserManager extends BrowserManager
                         user : user
                         callback : next
                         preLoadMethod : preLoadMethod
-
                 else next(cloudbrowserError("INVALID_INST_STRATEGY"),
-                    instantiationStrategy)
+                    strategy)
         ], callback
 
     _create : (options) ->
@@ -167,7 +179,7 @@ class InProcessBrowserManager extends BrowserManager
                 @app.bserver = @_createBserver
                     type : BrowserServer
                     id   : id
-            return @find(id)
+            return @find(@app.bserver.id)
         else
             return @_createBserver
                 type : BrowserServer
@@ -188,7 +200,8 @@ class InProcessBrowserManager extends BrowserManager
     
     close : (bserver, user, callback) ->
         if not @app.isAuthConfigured() then @_closeBserver(bserver)
-        else if not user then callback(cloudbrowserError('PERM_DENIED'))
+        else if not user instanceof User
+            callback(cloudbrowserError('PERM_DENIED'))
         # Check if the user has permissions to delete this bserver
         else Async.waterfall [
             (next) =>
@@ -196,7 +209,7 @@ class InProcessBrowserManager extends BrowserManager
                     user        : user
                     mountPoint  : @app.getMountPoint()
                     browserID   : bserver.id
-                    permissions : {own : true}
+                    permissions : ['own']
                     callback    : next
             (canRemove, next) =>
                 if canRemove

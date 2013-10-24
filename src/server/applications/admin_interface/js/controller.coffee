@@ -18,6 +18,9 @@ CBAdmin.controller "AppCtrl", ($scope) ->
                 .replace(/^./, (str) -> str.toUpperCase())
 
         @add : (appConfig) ->
+            for app in $scope.apps
+                if app.mountPoint is appConfig.getMountPoint()
+                    return
             app =
                 url           : appConfig.getUrl()
                 api           : appConfig
@@ -32,11 +35,11 @@ CBAdmin.controller "AppCtrl", ($scope) ->
 
             appConfig.getUsers (err, users) ->
                 if err then console.log(err)
-                else $scope.safeApply -> app.users = users
+                else $scope.safeApply -> app.numUsers = users.length
 
             appConfig.getBrowsers (err, browsers) ->
                 if err then console.log(err)
-                else $scope.safeApply -> app.browsers = browsers
+                else $scope.safeApply -> app.numBrowsers = browsers.length
 
             App.setupEventListeners(app)
 
@@ -49,25 +52,27 @@ CBAdmin.controller "AppCtrl", ($scope) ->
 
         # For browser related events
         @setupEventListeners : (app) ->
-            app.api.addEventListener "add", (vb) ->
-                $scope.safeApply -> app.browsers.push(vb)
+            app.api.addEventListener "addBrowser", (vb) ->
+                $scope.safeApply -> app.numBrowsers++
 
-            app.api.addEventListener "remove" , (vbID) ->
-                $scope.safeApply ->
-                    for vb in app.browsers when vb.id is vbID
-                        idx = app.browsers.indexOf(vb)
-                        app.browsers.splice(idx, 1)
+            app.api.addEventListener "removeBrowser" , (vbID) ->
+                $scope.safeApply -> app.numBrowsers--
 
+            app.api.addEventListener "addUser", (user) ->
+                $scope.safeApply -> app.numUsers++
+
+            app.api.addEventListener "removeUser", (user) ->
+                $scope.safeApply -> app.numUsers--
 
     # API objects
     curVB        = cloudbrowser.currentBrowser
     serverConfig = cloudbrowser.serverConfig
 
     # Application related events
-    serverConfig.addEventListener "add", (appConfig) ->
-        App.add(appConfig)
+    serverConfig.addEventListener "addApp", (appConfig) ->
+        if appConfig.isOwner() then App.add(appConfig)
 
-    serverConfig.addEventListener "remove", (appConfig) ->
+    serverConfig.addEventListener "removeApp", (appConfig) ->
         App.remove(appConfig)
 
     # File uploader Component
@@ -82,13 +87,9 @@ CBAdmin.controller "AppCtrl", ($scope) ->
             inputSubmit :
                 name  : "Upload"
                 class : "btn btn-primary"
-            inputText :
-                placeholder : "App Name"
-                style : "margin-right: 10px"
-                name  : "appName"
             inputFile :
                 accept : "application/x-gzip"
-                name   : "newApp"
+                name   : "content"
 
     # Initialization
     $scope.user = curVB.getCreator()
@@ -96,7 +97,7 @@ CBAdmin.controller "AppCtrl", ($scope) ->
 
     # Loading all the apps
     serverConfig.listApps
-        filters : {perUser : true}
+        filters : ['perUser']
         callback : (err, appConfigs) ->
             if err then console.log err
             else $scope.safeApply ->
@@ -109,8 +110,7 @@ CBAdmin.controller "AppCtrl", ($scope) ->
     $scope.leftClick = (url) -> curVB.redirect(url)
 
     $scope.editDescription = (app) ->
-        app.api.isOwner $scope.user, (err, isOwner) ->
-            if isOwner then $scope.safeApply -> app.editing = true
+        if app.api.isOwner() then app.editing = true
 
     $scope.getBoxClass = (app) ->
         if not app then return
@@ -118,12 +118,14 @@ CBAdmin.controller "AppCtrl", ($scope) ->
         else return "disabled"
 
     toggle = (app, property, method1, method2) ->
-        if app[property] then app.api[method1] (err) ->
-            if err then console.log(err)
-            else $scope.safeApply -> app[property] = false
-        else app.api[method2] (err) ->
-            if err then console.log(err)
-            else $scope.safeApply -> app[property] = true
+        if app[property]
+            err = app.api[method1]()
+            if err then console.log("#{method1} - #{err}")
+            else app[property] = false
+        else
+            err = app.api[method2]()
+            if err then console.log("#{method2} - #{err}")
+            else app[property] = true
 
     $scope.toggleMountDisable = (app) ->
         toggle(app, 'mounted', 'disable', 'mount')

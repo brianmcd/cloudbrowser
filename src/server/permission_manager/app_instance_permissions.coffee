@@ -3,9 +3,9 @@ PermissionManager = require('./permission_manager')
 class AppInstancePermissions extends PermissionManager
     doesNotSupport : "AppInstancePermissions does not support"
 
-    constructor : (@id, permissions) ->
-        @set permissions if permissions?
-        @permissions = {}
+    constructor : (@id, permission) ->
+        @permission = null
+        @set(permission) if permission
         # Does not have any contained items
 
     getId : () -> return @id
@@ -22,11 +22,9 @@ class AppInstancePermissions extends PermissionManager
     removeItem : () ->
         throw new Error("#{@doesNotSupport} removeItem")
 
-    # Does custom checking on the permissions provided
-    set : (permissions) ->
+    # Does custom checking on the permission provided
+    set : (permission) ->
         # Can have only one type of permission at a time
-        if Object.keys(permissions).length isnt 1 then return
-        @verifyAndSetPerm(permissions, ['own', 'readwrite'])
-        return @permissions
+        @verifyAndSetPerm(permission, ['own', 'readwrite'])
             
 module.exports = AppInstancePermissions

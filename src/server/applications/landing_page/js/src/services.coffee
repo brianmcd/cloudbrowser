@@ -34,15 +34,3 @@ helpers.service 'cb-format', () ->
         ###
         date        = day + " " + month + " " + year
         return date
-
-    creator = cloudbrowser.currentBrowser.getCreator().toJson()
-    this.toJson = (arrayOfCloudbrowserUsers) ->
-        users = []
-        for user in arrayOfCloudbrowserUsers
-            userJson = user.toJson()
-            if userJson.email is creator.email and userJson.ns is creator.ns
-                users.push({email : "me"})
-            else
-                users.push(userJson)
-        return users
-    

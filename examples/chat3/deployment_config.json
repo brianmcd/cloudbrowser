@@ -1,10 +1,8 @@
 {
     "authenticationInterface": true,
+    "name" : "Chat3",
     "isPublic": true,
-    "owner": {
-        "email": "godmar@gmail.com",
-        "ns": "google"
-    },
+    "owner": "godmar@gmail.com",
     "description": "A multi user chat application written using AngularJS",
     "browserLimit": 5,
     "mountOnStartup": true,

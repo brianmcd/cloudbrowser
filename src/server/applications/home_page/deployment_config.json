@@ -1,13 +1,10 @@
 {
     "mountOnStartup": true,
-    "owner": {
-        "email": "ashimaathri@gmail.com",
-        "ns": "local"
-    },
     "mountPoint": "/",
     "browserLimit": 0,
-    "description": "",
+    "description": "The home page",
     "isPublic": false,
     "authenticationInterface": false,
-    "collectionName": null
+    "collectionName": null,
+    "owner": "ashimaathri@gmail.com"
 }

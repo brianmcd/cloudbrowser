@@ -1,3 +1,5 @@
+Fs = require('fs')
+
 exports.dfs = dfs = (node, filter, visit) ->
     if filter(node)
         visit(node)
@@ -47,3 +49,15 @@ exports.noCacheRequire = (name, regExp) ->
     for entry in Object.keys(reqCache)
         delete reqCache[entry] if regExp.test(entry)
     return rv
+
+# Parsing the json file into opts
+exports.getConfigFromFile = (path) ->
+    try
+        fileContent = Fs.readFileSync(path, {encoding:"utf8"})
+        content = JSON.parse(fileContent)
+    catch e
+        console.log "Parse error in file #{path}."
+        console.log "The file's content was:"
+        console.log fileContent
+        throw e
+    return content

@@ -1,36 +1,31 @@
-Crypto = require("crypto")
-{hashPassword, getParentMountPoint} = require('./utils')
-{LocalStrategy, GoogleStrategy} = require('./authentication_strategies')
-Async = require('async')
-cloudbrowserError = require('../shared/cloudbrowser_error')
+Crypto                 = require("crypto")
+Async                  = require("async")
+cloudbrowserError      = require("../shared/cloudbrowser_error")
+{LocalStrategy
+, GoogleStrategy}      = require("./authentication_strategies")
+{hashPassword
+, getParentMountPoint} = require("./utils")
 
-class Auth
-
+class Authentication
     # Private Properties inside class closure
     _pvts = []
 
     constructor : (options) ->
-
         # Defining @_idx as a read-only property
         # This is not enumerable, not configurable, not writable
-        Object.defineProperty this, "_idx",
-            value : _pvts.length
-
+        Object.defineProperty(this, "_idx", {value : _pvts.length})
         # Freezing the prototype and the auth object itself to protect
         # from unauthorized changes by people using the API
         Object.freeze(this.__proto__)
         Object.freeze(this)
 
-        {bserver, cbCtx, mountPoint, server} = options
-
-        parentMountPoint = getParentMountPoint(mountPoint)
+        {bserver, cbCtx, server} = options
 
         _pvts.push
             bserver        : bserver
             localStrategy  : new LocalStrategy(bserver, cbCtx)
             googleStrategy : new GoogleStrategy(bserver)
-            parentApp : server.applications.find(parentMountPoint)
-            cbCtx     : cbCtx
+            cbCtx          : cbCtx
 
     ###*
         Sends a password reset link to the user to the email
@@ -41,26 +36,31 @@ class Auth
         @param {booleanCallback} callback
     ###
     sendResetLink : (user, callback) ->
-        {bserver, cbCtx, parentApp} = _pvts[@_idx]
-        {mongoInterface} = bserver.server
+        if typeof user isnt "string"
+            return callback(cloudbrowserError('PARAM_MISSING', '- user'))
+
+        {bserver, cbCtx} = _pvts[@_idx]
         {domain, port}   = bserver.server.config
-        {util} = cbCtx
-        appUrl = "http://#{domain}:#{port}#{parentApp.getMountPoint()}"
+
+        mountPoint = getParentMountPoint(bserver.mountPoint)
+        app    = bserver.server.applications.find(mountPoint)
+        appUrl = "http://#{domain}:#{port}#{mountPoint}"
+        token  = null
 
         Async.waterfall [
             (next) ->
-                parentApp.findUser(user.toJson(), next)
+                app.findUser(user, next)
             (userRec, next) ->
                 if userRec then Crypto.randomBytes(32, next)
                 else next(cloudbrowserError('USER_NOT_REGISTERED'))
             (token, next) ->
                 token = token.toString('hex')
-                parentApp.addResetMarkerToUser
-                    user     : user.toJson()
+                app.addResetMarkerToUser
+                    user     : user
                     token    : token
-                    callback : (err) -> next(err, token)
-            (token, next) ->
-                esc_email = encodeURIComponent(user.getEmail())
+                    callback : next
+            (next) ->
+                esc_email = encodeURIComponent(user)
                 subject   = "Link to reset your CloudBrowser password"
                 message   = "You have requested to change your password."      +
                             " If you want to continue click <a href="          +
@@ -68,15 +68,15 @@ class Auth
                             "&resetuser=#{esc_email}'>reset</a>. If you have"  +
                             " not requested a change in password then take no" +
                             " action."
-                util.sendEmail
-                    to       : user.getEmail()
-                    subject  : subject
+                cbCtx.util.sendEmail
+                    to       : user
                     html     : message
+                    subject  : subject
                     callback : next
         ], callback
 
     ###*
-        Resets the password for a valid user request.     
+        Resets the password.     
         A boolean is passed as an argument to indicate success/failure.
         @instance
         @method resetPassword
@@ -84,26 +84,24 @@ class Auth
         @param {String}   password     The new plaintext password provided by the user.
         @param {booleanCallback} callback     
     ###
-    # TODO : Fix this code. Rename bserver.getSessions to getConnectedClients
     # Add a configuration in app_config that allows only one user to connect to some
     # VB types at a time.
     resetPassword : (password, callback) ->
-        {bserver, parentApp} = _pvts[@_idx]
-        {mongoInterface} = bserver.server
+        {bserver}  = _pvts[@_idx]
+        mountPoint = getParentMountPoint(bserver.mountPoint)
+        app     = bserver.server.applications.find(mountPoint)
+        session = null
 
         Async.waterfall [
             (next) ->
-                bserver.getSessions((sessionIDs) -> next(null, sessionIDs[0]))
-            (sessionID, next) ->
-                mongoInterface.getSession(sessionID, next)
-            (session, next) ->
-                hashPassword({password : password}, (err, result) ->
-                    next(err, result, session))
-            (result, session, next) ->
+                sessions = bserver.getSessions()
+                session = sessions[0]
+                hashPassword({password : password}, next)
+            (result, next) ->
                 # Reset the key and salt for the corresponding user
-                parentApp.resetUserPassword
-                    email : session.resetuser
-                    token : session.resettoken
+                app.resetUserPassword
+                    email : SessionManager.findPropOnSession(session, 'resetuser')
+                    token : SessionManager.findPropOnSession(session, 'resettoken')
                     salt  : result.salt.toString('hex')
                     key   : result.key.toString('hex')
                     callback : next
@@ -116,11 +114,8 @@ class Auth
         @memberOf AppConfig
     ###
     logout : () ->
-        {bserver, parentApp} = _pvts[@_idx]
-        {config}  = bserver.server
-        appUrl = "http://#{config.domain}:#{config.port}#{parentApp.getMountPoint()}"
-
-        bserver.redirect(appUrl + "/logout")
+        {bserver} = _pvts[@_idx]
+        bserver.redirect("#{getParentMountPoint(bserver.mountPoint)}/logout")
 
     ###*
         Returns an instance of local strategy for authentication
@@ -142,4 +137,4 @@ class Auth
     getGoogleStrategy : () ->
         return _pvts[@_idx].googleStrategy
 
-module.exports = Auth
+module.exports = Authentication

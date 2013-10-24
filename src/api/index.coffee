@@ -7,7 +7,8 @@
 Ko             = require('./ko')
 Util           = require('./util')
 ServerConfig   = require('./server_config')
-BrowserAPI        = require('./browser')
+User           = require('../server/user')
+BrowserAPI     = require('./browser')
 Authentication = require('./authentication')
 cloudbrowserError = require('../shared/cloudbrowser_error')
 
@@ -33,14 +34,12 @@ class CloudBrowser
         # These objects are frozen in their respective constructors
         # so we don't have to worry about the fact that freeze is 
         # shallow.
-        # TODO : Must test this fact
-        if bserver.creator?
-            creator = new @app.User(bserver.creator.email, bserver.creator.ns)
-        else
-            # General user with least privileges for applications 
-            # where the user identity can not be established due to
-            # the absence of the authentication interface
-            creator = new @app.User("public", "public")
+        
+        if bserver.creator then creator = bserver.creator
+        # General user with least privileges for applications 
+        # where the user identity can not be established due to
+        # the absence of the authentication interface
+        else creator = new User("public")
 
         @util = new Util(bserver.server.config.emailerConfig)
 
@@ -53,8 +52,6 @@ class CloudBrowser
             @auth = new Authentication
                 bserver : bserver
                 cbCtx   : this
-                mountPoint : bserver.mountPoint
-                server  : bserver.server
 
         @serverConfig = new ServerConfig
             server  : bserver.server
@@ -66,7 +63,6 @@ class CloudBrowser
         @namespace cloudbrowser.app
     ###
     app :
-        User        : require('./user')
         Model       : require('./model')
         PageManager : require('./page_manager')
 
@@ -103,11 +99,6 @@ module.exports = (bserver) ->
     @callback instanceListCallback 
     @param {Error} error
     @param {Array<BrowserAPI>} instances A list of all the instances associated with the current user.
-###
-###*
-    @callback userListCallback
-    @param {Error} error
-    @param {Array<cloudbrowser.app.User>} users
 ###
 ###*
     @callback errorCallback

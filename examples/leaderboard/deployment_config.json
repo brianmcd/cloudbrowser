@@ -1,9 +1,7 @@
 {
     "isPublic": true,
-    "owner": {
-        "email": "ashimaathri@gmail.com",
-        "ns": "local"
-    },
+    "owner": "ashimaathri@gmail.com",
+    "name" : "LeaderBoard",
     "browserLimit": 0,
     "description": "A simple leaderboard app",
     "mountOnStartup": true,

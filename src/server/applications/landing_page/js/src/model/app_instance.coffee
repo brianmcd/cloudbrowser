@@ -9,11 +9,8 @@ class AppInstance
         @collaborators = []
 
     removeCollaborator : (user) ->
-        for c in @collaborators
-            if c.email is user.email and c.ns is user.ns
-                idx = @collaborators.indexOf(c)
-                @collaborators.splice(idx, 1)
-                break
+        idx = @collaborators.indexOf(user)
+        if idx isnt -1 then @collaborators.splice(idx, 1)
 
     roles : [
         {

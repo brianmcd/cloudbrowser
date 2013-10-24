@@ -77,9 +77,11 @@ class ClientEngine
             socket.on 'error', (err) ->
                 console.log("Error:"+err)
             socket.on 'connect', () =>
-                console.log("Socket.IO connected...")
+                console.log("Socket.IO connected")
                 socket.emit('auth', @window.__appID, @window.__envSessionID)
                 @eventMonitor = new EventMonitor(this)
+            socket.on 'disconnect', () ->
+                console.log("Socket.IO disconnected")
         return socket
 
     disconnect : () ->

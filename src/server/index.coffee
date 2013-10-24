@@ -1,19 +1,22 @@
-Path                = require('path')
-{EventEmitter}      = require('events')
 FS                  = require('fs')
-express             = require('express')
 sio                 = require('socket.io')
+express             = require('express')
+Path                = require('path')
+Async               = require('async')
+{EventEmitter}      = require('events')
 ParseCookie         = require('cookie').parse
 ApplicationManager  = require('./application_manager')
 PermissionManager   = require('./permission_manager')
 DebugServer         = require('./debug_server')
 HTTPServer          = require('./http_server')
+SessionManager      = require('./session_manager')
 require('ofe').call()
 
 # Server options:
 #   adminInterface      - bool - Enable the admin interface.
 #   compression         - bool - Enable protocol compression.
 #   compressJS          - bool - Pass socket.io client and client engine through
+#   cookieName          - str  - Name of the cookie
 #                                uglify and gzip.
 #   debug               - bool - Enable debug mode.
 #   debugServer         - bool - Enable the debug server.
@@ -38,9 +41,10 @@ require('ofe').call()
 #   useRouter           - bool - Use a front-end router process with each app server
 #                                in its own process.
 defaults =
-    adminInterface      : false
+    adminInterface      : true
     compression         : true
     compressJS          : false
+    cookieName          : 'cb.id'
     debug               : false
     debugServer         : false
     domain              : "localhost"
@@ -59,40 +63,47 @@ defaults =
     useRouter           : false
 
 class Server extends EventEmitter
+    _server = null
 
-    # Keeps track of the current server instance
-    server = null
+    @getMongoStore : () ->
+        return _server.mongoInterface.mongoStore
 
-    @getCurrentInstance : () ->
-        return server
+    @getPermissionManager : () ->
+        return _server.permissionManager
 
-    constructor : (@config = {}, paths, @projectRoot, @mongoInterface) ->
-        for own k, v of defaults
-            if not @config.hasOwnProperty k
-                @config[k] = v
-                if @config.debug
-                    console.log "Property '#{k}' not provided. Using default value '#{v}'"
-            else
-                if @config.debug
-                    console.log "#{k} : #{@config[k]}"
+    @getHttpServer : () ->
+        return _server.httpServer
 
-            server = this
-        # There may be a synchronization issue
-        # The final server may be usable only if all the components have been initialized
+    @getConfig : () ->
+        return _server.config
 
+    @getAppManager : () ->
+        return _server.applications
+
+    @getProjectRoot : () ->
+        return _server.projectRoot
+
+    constructor : (@config, paths, @projectRoot, @mongoInterface) ->
+        @setDefaults()
         @permissionManager = new PermissionManager(@mongoInterface)
-
         @httpServer = new HTTPServer this, () =>
             @emit('ready')
-
-        @socketIOServer = @createSocketIOServer(@httpServer.server, @config.apps)
-
+            @socketIOServer = @createSocketIOServer()
         @applications = new ApplicationManager
             paths     : paths
             server    : this
             cbAppDir  : @projectRoot
-
         @setupEventTracker() if @config.printEventStats
+        _server = this
+
+    setDefaults : () ->
+        for own k, v of defaults
+            if not @config.hasOwnProperty(k)
+                @config[k] = v
+                if @config.debug
+                    console.log "Property '#{k}' not provided." +
+                    "Using default value '#{v}'"
+            else console.log "#{k} : #{@config[k]}" if @config.debug
 
     setupEventTracker : () ->
         @processedEvents = 0
@@ -103,78 +114,83 @@ class Server extends EventEmitter
         eventTracker()
 
     close : () ->
-        for own key, val of @httpServer.mountedBrowserManagers
-            val.closeAll()
+        # TODO : Close all the applications
         @httpServer.once 'close', () ->
             @emit('close')
         @httpServer.close()
 
-    createSocketIOServer : (http, apps) ->
-        browserManagers = @httpServer.mountedBrowserManagers
-        io = sio.listen(http)
+    createSocketIOServer : () ->
+        io = sio.listen(@httpServer.server)
+
         io.configure () =>
             if @config.compressJS
                 io.set('browser client minification', true)
                 io.set('browser client gzip', true)
             io.set('log level', 1)
-            io.set 'authorization', (handshakeData, callback) =>
-                if handshakeData.headers?.cookie?
-                    handshakeData.cookie = ParseCookie(handshakeData.headers.cookie)
-                    handshakeData.sessionID = handshakeData.cookie['cb.id']
-                    @mongoInterface.getSession handshakeData.sessionID,
-                    (err, session) ->
-                        if err then callback(null, false)
-                        else
-                            handshakeData.session = session
-                            callback(null, true)
-                else callback(null, false)
+            io.set('authorization', @socketIOAuthHandler)
 
         io.sockets.on 'connection', (socket) =>
             @addLatencyToClient(socket) if @config.simulateLatency
-            socket.on 'auth', (app, browserID) =>
-                # NOTE : app, browserID are provided by the client
-                # and cannot be trusted
-                browserID = decodeURIComponent(browserID)
-                if browserManagers[app] then @isAuthorized
+            # Custom event emitted by socket on the client side
+            socket.on 'auth', (mountPoint, browserID) =>
+                @customAuthHandler(mountPoint, browserID, socket)
+
+    # Allows all request to connect to pass without checking for authentication
+    socketIOAuthHandler : (handshakeData, callback) =>
+        if not handshakeData.headers or not handshakeData.headers.cookie
+            return callback(null, false)
+        cookies = ParseCookie(handshakeData.headers.cookie)
+        sessionID = cookies[@config.cookieName]
+        @mongoInterface.getSession sessionID, (err, session) ->
+            if err or not session then return callback(null, false)
+            # Saving the session id on the session.
+            # There is no other way to access it later
+            SessionManager.addObjToSession(session, {_id : sessionID})
+            handshakeData.session = session
+            callback(null, true)
+
+    # Connects the client to the requested browser if the user
+    # on the client side is authorized to use that browser
+    customAuthHandler : (mountPoint, browserID, socket) =>
+        # NOTE : app, browserID are provided by the client
+        # and cannot be trusted
+        browserID = decodeURIComponent(browserID)
+        bserver = @applications.find(mountPoint)?.browsers.find(browserID)
+
+        if not bserver then socket.disconnect()
+
+        else Async.waterfall [
+            (next) =>
+                @isAuthorized
                     session    : socket.handshake.session
-                    mountPoint : if app is "" then "/" else app
+                    mountPoint : mountPoint
                     browserID  : browserID
-                    callback   : (err, isAuthorized) ->
-                        if err or not isAuthorized
-                            socket.disconnect()
-                        else
-                            bserver = browserManagers[app].find(browserID)
-                            bserver?.addSocket(socket)
-                else socket.disconnect()
-        return io
+                    callback   : next
+        ], (err, isAuthorized) ->
+            if err or not isAuthorized then socket.disconnect()
+            else bserver.addSocket(socket)
 
     isAuthorized : (options) ->
         {session, mountPoint, browserID, callback} = options
 
-        if typeof callback isnt "function" then return
+        app = @applications.find(mountPoint)
 
-        parentMountPoint = mountPoint.replace(/\/landing_page$/, "")
+        if not app.isAuthConfigured() then return callback(null, true)
+        
+        user = SessionManager.findAppUserID(session,
+            mountPoint.replace(/\/landing_page$/, ""))
 
-        app = @applications.find(parentMountPoint)
-
-        if not app then callback(null, false)
-
-        else if not app.isAuthConfigured() then callback(null, true)
-
-        else if not session or not session.user then callback(null, false)
-
-        else
-            for user in session.user when user.app is parentMountPoint
-                appUser = user
-            if appUser then @permissionManager.findBrowserPermRec
-                user       : appUser
-                mountPoint : mountPoint
-                browserID  : browserID
-                callback   : (err, browserRec) ->
-                    if err then callback(err)
-                    else if browserRec then callback(null, true)
-                    else callback(null, false)
-            else callback(null, false)
+        Async.waterfall [
+            (next) =>
+                @permissionManager.findBrowserPermRec
+                    user       : user
+                    mountPoint : mountPoint
+                    browserID  : browserID
+                    callback   : next
+        ], (err, browserRec) ->
+            if err then callback(err)
+            else if not browserRec then callback(null, false)
+            else callback(null, true)
     
     addLatencyToClient : (socket) ->
         if typeof @config.simulateLatency == 'number'

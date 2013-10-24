@@ -1,11 +1,9 @@
 {
-    "isPublic": false,
-    "owner": {
-        "email": "ashimaathri@gmail.com",
-        "ns": "local"
-    },
+    "isPublic": true,
+    "name": "Helloworld",
+    "owner": "ashimaathri@gmail.com",
     "browserLimit": 0,
-    "description": "",
+    "description": "A simple program that says hello",
     "mountOnStartup": true,
     "authenticationInterface": false,
     "mountPoint": "/helloworld",

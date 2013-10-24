@@ -11,8 +11,7 @@ class AppInstance extends EventEmitter
         @browsers = []
 
     _findReaderWriter : (user) ->
-        for c in @readerwriters when c.ns is user.ns and c.email is user.email
-            return c
+        return c for c in @readerwriters when c.getEmail() is user.getEmail()
 
     getReaderWriters : () ->
         return @readerwriters
@@ -28,11 +27,10 @@ class AppInstance extends EventEmitter
     getObj : () -> return @obj
 
     isOwner : (user) ->
-        return user.email is @owner.email and user.ns is @owner.ns
+        return user.getEmail() is @owner.getEmail()
 
     isReaderWriter : (user) ->
-        for c in @readerwriters when c.ns is user.ns and c.email is user.email
-            return true
+        return true for c in @readerwriters when c.getEmail() is user.getEmail()
 
     addReaderWriter : (user) ->
         @readerwriters.push(user)

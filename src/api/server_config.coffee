@@ -1,6 +1,7 @@
 {compare} = require('./utils')
 AppConfig = require('./application_config')
 Async     = require('async')
+cloudbrowserError = require('../shared/cloudbrowser_error')
 
 ###*
     @class ServerConfig
@@ -78,18 +79,22 @@ class ServerConfig
         {filters, callback} = options
         appConfigs = []
 
+        if typeof callback isnt "function" then return
+        if not filters instanceof Array
+            callback(cloudbrowserError("PARAM_INVALID", "- filter"))
+
         # Apps that the current user owns
-        if filters.perUser
+        if filters.indexOf('perUser') isnt -1
             Async.waterfall [
                 (next) ->
                     permissionManager.getAppPermRecs
-                        user        : userCtx.toJson()
-                        permissions : {'own' : true}
+                        user        : userCtx
+                        permission  : 'own'
                         callback    : next
                 (appRecs, next) ->
-                    app = server.applications.find(rec.getMountPoint())
                     for rec in appRecs
-                        if filters.public
+                        app = server.applications.find(rec.getMountPoint())
+                        if filters.indexOf('public') isnt -1
                             if not app.isAppPublic() then continue
                         appConfigs.push new AppConfig
                             userCtx : userCtx
@@ -97,9 +102,8 @@ class ServerConfig
                             app     : app
                     next(null, appConfigs)
             ], callback
-                    
         # Get all public apps
-        else if filters.public
+        else if filters.indexOf('public') isnt -1
             apps = server.applications.get()
             for mountPoint, app of apps
                 if app.isAppPublic() and app.isMounted()
@@ -118,45 +122,29 @@ class ServerConfig
         @param {customCallback} callback
     ###
     addEventListener : (event, callback) ->
-        # TODO : Check validity of event
         {userCtx, server, cbCtx} = _pvts[@_idx]
         {permissionManager} = server
 
+        validEvents = [
+            'mount'
+            'disable'
+            'madePublic'
+            'madePrivate'
+            'addApp'
+            'removeApp'
+        ]
+
+        if validEvents.indexOf(event) is -1 then return
+
         switch event
-            # No permission check required
-            when "madePublic", "mount"
+            when "madePublic", "mount", "addApp"
                 server.applications.on event, (app) ->
                     callback new AppConfig
                         userCtx : userCtx
                         cbCtx   : cbCtx
                         app     : app
-            # No permission check required
-            when "madePrivate", "disable"
+            when "madePrivate", "disable", "removeApp"
                 server.applications.on event, (app) ->
                     callback(app.getMountPoint())
-            # Listening on all other events requires the user to be the
-            # owner of the application
-            else
-                Async.waterfall [
-                    (next) ->
-                        permissionManager.findSysPermRec
-                            user     : userCtx.toJson()
-                            callback : next
-                    (userPermRec, next) ->
-                        if userPermRec then userPermRec.on(event, (mountPoint) ->
-                            next(null, mountPoint))
-                        # Do nothing if there's no record associated
-                        # with the user
-                    (mountPoint, next) ->
-                        switch event
-                            when 'add'
-                                next null, new AppConfig
-                                    userCtx : userCtx
-                                    cbCtx   : cbCtx
-                                    app     : server.applications.find(mountPoint)
-                            else next(null, mountPoint)
-                ], (err, result) ->
-                    if err then console.log(err)
-                    else callback(result)
 
 module.exports = ServerConfig

@@ -1,9 +1,7 @@
 {
     "isPublic": true,
-    "owner": {
-        "email": "ashimaathri@gmail.com",
-        "ns": "local"
-    },
+    "name" : "Doodle"
+    "owner": "ashimaathri@gmail.com",
     "browserLimit": 0,
     "description": "A sample doodle app.",
     "mountOnStartup": false,

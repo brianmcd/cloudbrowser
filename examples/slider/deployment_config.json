@@ -1,9 +1,7 @@
 {
     "isPublic": true,
-    "owner": {
-        "email": "ashimaathri@gmail.com",
-        "ns": "local"
-    },
+    "owner": "ashimaathri@gmail.com",
+    "name" : "Slider",
     "browserLimit": 0,
     "description": "",
     "mountOnStartup": false,

@@ -1,4 +1,5 @@
 Async             = require('async')
+User              = require('../server/user')
 cloudbrowserError = require('../shared/cloudbrowser_error')
 
 ###*
@@ -17,7 +18,7 @@ cloudbrowserError = require('../shared/cloudbrowser_error')
     @param {Object}       options 
     @param {Application}  options.app   The application.
     @param {Cloudbrowser} options.cbCtx The cloudbrowser API object.
-    @param {cloudbrowser.app.User} options.userCtx The current user.
+    @param {} options.userCtx The current user.
     @class AppConfig
     @fires AppConfig#Add
     @fires AppConfig#Remove
@@ -51,20 +52,15 @@ class AppConfig
         @method isOwner
         @memberof AppConfig
         @instance
-        @param {cloudbrowser.app.User} user
+        @param {} user
         @param {booleanCallback} callback
     ###
-    isOwner : (callback) ->
-        if typeof callback isnt "function" then return
+    isOwner : () ->
+        {app, userCtx} = _pvts[@_idx]
+        if app.getOwner().getEmail() is userCtx.getEmail()
+            return true
+        else return false
 
-        {app, userCtx}      = _pvts[@_idx]
-        {permissionManager} = app.server
-
-        permissionManager.checkPermissions
-            user        : userCtx.toJson()
-            mountPoint  : app.getMountPoint()
-            permissions : {own : true}
-            callback    : callback
     ###*
         Gets the absolute URL at which the application is hosted/mounted.
         @instance
@@ -89,6 +85,17 @@ class AppConfig
         _pvts[@_idx].app.getDescription()
 
     ###*
+        Gets the name of the application as provided in the
+        deployment_config.json configuration file.    
+        @instance
+        @method getName
+        @memberOf AppConfig
+        @return {String}
+    ###
+    getName: () ->
+        return _pvts[@_idx].app.getName()
+
+    ###*
         Wraps all calls on the application object with a permission check
         @instance
         @private
@@ -98,15 +105,12 @@ class AppConfig
         @param {Function} callback
         @param {...String} args
     ###
-    _call : (method, callback, args...) ->
-        # To ensure the right number of arguments and their relative ordering
-        if typeof callback isnt "function" then return
-        if typeof method isnt "string"
-            callback(cloudbrowserError('PARAM_MISSING', '- method'))
+    _call : (method, args...) ->
 
         validMethods = [
               'mount'
             , 'disable'
+            , 'setName'
             , 'makePublic'
             , 'makePrivate'
             , 'setDescription'
@@ -114,18 +118,14 @@ class AppConfig
             , 'disableAuthentication'
             , 'setBrowserLimit'
         ]
-        if validMethods.indexOf(method) is -1 then return
+        if typeof method isnt "string" or
+        validMethods.indexOf(method) is -1 or
+        not @isOwner()
+            return cloudbrowserError('PERM_DENIED')
 
         {app} = _pvts[@_idx]
-
-        Async.waterfall [
-            (next) => @isOwner(next)
-        ], (err, isOwner) ->
-            if err then callback(err)
-            else if not isOwner then callback(cloudbrowserError("PERM_DENIED"))
-            else
-                app[method].apply(app, args)
-                callback(null)
+        app[method].apply(app, args)
+        return null
 
     ###*
         Sets the description of the application in the deployment_config.json
@@ -136,13 +136,22 @@ class AppConfig
         @param {String} Description
         @param {booleanCallback} callback
     ###
-    setDescription: (description, callback) ->
-        if typeof description isnt "string"
-            callback?(cloudbrowserError('PARAM_MISSING', '- description'))
-        else
-            # (->) means an empty function in coffeescript
-            callback = callback || (->)
-            @_call('setDescription', callback, description)
+    setDescription: (description) ->
+        if typeof description isnt "string" then return
+        else @_call('setDescription', description)
+        
+    ###*
+        Sets the name of the application in the deployment_config.json
+        configuration file.    
+        @instance
+        @method setName
+        @memberOf AppConfig
+        @param {String} name
+        @param {booleanCallback} callback
+    ###
+    setName: (name) ->
+        if typeof name isnt "string" then return
+        else @_call('setName', name)
         
     ###*
         Gets the path relative to the root URL at which the application
@@ -172,9 +181,8 @@ class AppConfig
         @memberOf AppConfig
         @param {errorCallback} callback
     ###
-    makePublic : (callback) ->
-        callback = callback || (->)
-        @_call('makePublic', callback)
+    makePublic : () ->
+        @_call('makePublic')
 
     ###*
         Sets the privacy of the application to private.
@@ -183,9 +191,8 @@ class AppConfig
         @memberOf AppConfig
         @param {errorCallback} callback
     ###
-    makePrivate : (callback) ->
-        callback = callback || (->)
-        @_call('makePrivate', callback)
+    makePrivate : () ->
+        @_call('makePrivate')
 
     ###*
         Checks if the authentication interface has been enabled.
@@ -204,9 +211,8 @@ class AppConfig
         @memberOf AppConfig
         @param {errorCallback} callback
     ###
-    enableAuthentication : (callback) ->
-        callback = callback || (->)
-        @_call('enableAuthentication', callback)
+    enableAuthentication : () ->
+        @_call('enableAuthentication')
 
     ###*
         Disables the authentication interface.
@@ -215,9 +221,8 @@ class AppConfig
         @memberOf AppConfig
         @param {errorCallback} callback
     ###
-    disableAuthentication : (callback) ->
-        callback = callback || (->)
-        @_call('disableAuthentication', callback)
+    disableAuthentication : () ->
+        @_call('disableAuthentication')
         
     ###*
         Gets the instantiation strategy configured in the app_config.json file.
@@ -249,12 +254,10 @@ class AppConfig
         @param {Number} limit 
         @param {errorCallback} callback
     ###
-    setBrowserLimit : (limit, callback) ->
-        if typeof limit isnt "number"
-            callback?(cloudbrowserError('PARAM_MISSING', '- limit'))
+    setBrowserLimit : (limit) ->
+        if typeof limit isnt "number" then return
 
-        callback = callback || (->)
-        @_call('setBrowserLimit', callback, limit)
+        @_call('setBrowserLimit', limit)
         
     ###*
         Mounts the routes for the application
@@ -263,9 +266,8 @@ class AppConfig
         @memberOf AppConfig
         @param {errorCallback} callback
     ###
-    mount : (callback) ->
-        callback = callback || (->)
-        @_call('mount', callback)
+    mount : () ->
+        @_call('mount')
 
     ###*
         Unmounts the routes for the application
@@ -275,8 +277,7 @@ class AppConfig
         @param {errorCallback} callback
     ###
     disable : (callback) ->
-        callback = callback || (->)
-        @_call('disable', callback)
+        @_call('disable')
         
     ###*
         Gets a list of all the registered users of the application. 
@@ -287,26 +288,15 @@ class AppConfig
     ###
     getUsers : (callback) ->
         if typeof callback isnt "function" then return
-
-        {app, cbCtx, userCtx} = _pvts[@_idx]
-        
+        {app, userCtx} = _pvts[@_idx]
         # There will be no users if authentication is disabled
-        if not app.isAuthConfigured() then return
-
-        # TODO : Check if this is still required
-        if userCtx.getNameSpace() is "public" then return
-
-        {User} = cbCtx.app
-
-        Async.waterfall [
-            (next) ->
-                app.getUsers(next)
-            (users, next) ->
+        if not app.isAuthConfigured() then return callback(null, [])
+        if userCtx isnt "public"
+            app.getUsers (err, users) ->
+                return callback(err) if err
                 userList = []
-                for user in users
-                    userList.push(new User(user.email, user.ns))
-                next(null, userList)
-        ], callback
+                userList.push(user.getEmail()) for user in users
+                callback(null, userList)
 
     ###*
         Checks if the routes for the application have been mounted.
@@ -334,12 +324,12 @@ class AppConfig
                 userCtx : userCtx
                 cbCtx   : cbCtx
 
-        if userCtx.getNameSpace() is "public"
+        if userCtx.getEmail() is "public"
             finalCallback(app.browsers.create())
         else
             Async.waterfall [
                 (next) ->
-                    app.browsers.create(userCtx.toJson(), next)
+                    app.browsers.create(userCtx, next)
             ], (err, bserver) ->
                 if err then callback?(err)
                 else finalCallback(bserver)
@@ -364,7 +354,7 @@ class AppConfig
         Async.waterfall [
             (next) ->
                 permissionManager.getBrowserPermRecs
-                    user       : userCtx.toJson()
+                    user       : userCtx
                     mountPoint : mountPoint
                     callback   : next
             (browserRecs, next) ->
@@ -397,7 +387,7 @@ class AppConfig
         Async.waterfall [
             (next) ->
                 permissionManager.getAppInstancePermRecs
-                    user       : userCtx.toJson()
+                    user       : userCtx
                     mountPoint : mountPoint
                     callback   : next
             (appInstanceRecs, next) ->
@@ -422,9 +412,13 @@ class AppConfig
         if typeof callback isnt "function" then return
 
         validEvents = [
+            'addUser'
+            'removeUser'
             'addBrowser'
+            'shareBrowser'
             'removeBrowser'
             'addAppInstance'
+            'shareAppInstance'
             'removeAppInstance'
         ]
         if validEvents.indexOf(event) is -1 then return
@@ -432,82 +426,88 @@ class AppConfig
         {userCtx, cbCtx, app} = _pvts[@_idx]
         {permissionManager}   = app.server
         mountPoint = app.getMountPoint()
-        # Now event will be either 'add' or 'remove'
-        # And entity will be 'browser' or 'appInstance'
-        result = /([a-z]*)([A-Z].*)/g.exec(event)
-        event  = result[1]
-        entity = result[2].charAt(0).toLowerCase() + result[2].slice(1)
-        className = result[2]
 
+        # Events "addUser" and "removeUser" can be listened to
+        # only by the owner
+        switch event
+            when "addUser", "removeUser"
+                if @isOwner() then app.on(event, callback)
+                return
+
+        result = /([a-z]*)([A-Z].*)/g.exec(event)
+        # Now event will be either 'add' or 'remove'
+        # And entityName will be 'browser' or 'appInstance'
+        event  = result[1]
+        entityName = result[2].charAt(0).toLowerCase() + result[2].slice(1)
+        className = result[2]
         # Requiring the module here to prevent the circular reference
         # problem which will result in the required module being empty
         Browser     = require('./browser')
         AppInstance = require('./app_instance')
 
-        Async.waterfall [
-            (next) ->
-                permissionManager.checkPermissions
-                    user         : userCtx.toJson()
-                    mountPoint   : mountPoint
-                    permissions  : {own : true}
-                    callback     : (err, isOwner) -> next(err, isOwner)
-            (isOwner, next) ->
-                # If the user is the owner of the application then
-                # the user is notified on all events of that application
-                if isOwner then next(null, null)
-                # If the user is not the owner then the user will be
-                # notified of events on only those browsers with which
-                # he/she is associated.
-                else permissionManager.findAppPermRec
-                    user       : userCtx.toJson()
-                    mountPoint : mountPoint
-                    callback   : next
-            (appRec, next) ->
-                if(appRec)
-                    method  = appRec["#{entity}s"].on
-                    context = appRec["#{entity}s"]
-                else
-                    method  = app.addEventListener
-                    context = app
-
-                switch event
-                    when "add"
-                        method.call context, event, (id) ->
-                            options =
-                                cbCtx   : cbCtx
-                                userCtx : userCtx
-                            options[entity] = app["#{entity}s"].find(id)
-                            switch className
-                                when 'Browser'
-                                    next(null, new Browser(options))
-                                when 'AppInstance'
-                                    next(null, new AppInstance(options))
-                    else
-                        method.call(context, event, (arg) ->
-                            next(null, arg))
-        ], (err, info) ->
-            if err then console.log(err)
-            else callback(info)
+        switch event
+            when "share"
+                app["#{entityName}s"].on event, (id, user) =>
+                    if not userCtx.getEmail() is user.getEmail() then return
+                    options =
+                        cbCtx   : cbCtx
+                        userCtx : userCtx
+                    entity = app["#{entityName}s"].find(id)
+                    options[entityName] = entity
+                    switch className
+                        when 'Browser'
+                            callback(new Browser(options))
+                        when 'AppInstance'
+                            callback(new AppInstance(options))
+            when "add"
+                app["#{entityName}s"].on event, (id) =>
+                    entity = app["#{entityName}s"].find(id)
+                    if not (@isOwner() or
+                    entity.isOwner?(userCtx) or
+                    entity.isReaderWriter?(userCtx) or
+                    entity.isReader?(userCtx))
+                        return
+                    options =
+                        cbCtx   : cbCtx
+                        userCtx : userCtx
+                    options[entityName] = entity
+                    switch className
+                        when 'Browser'
+                            callback(new Browser(options))
+                        when 'AppInstance'
+                            callback(new AppInstance(options))
+            when "remove"
+                app["#{entityName}s"].on event, (info) ->
+                    callback(info)
 
     ###*
         Checks if a user is already registered/signed up with the application.
         @instance
         @method isUserRegistered
         @memberOf AppConfig
-        @param {User} user
+        @param {} user
         @param {booleanCallback} callback 
     ###
-    isUserRegistered : (user, callback) ->
+    isUserRegistered : (emailID, callback) ->
         if typeof callback isnt "function" then return
-        {app} = _pvts[@_idx]
+        if typeof emailID isnt "string" then callback(null, false)
 
-        Async.waterfall [
-            (next) ->
-                app.findUser(user.toJson(), next)
-            (user, next) ->
-                if user then next(null, true)
-                else next(null, false)
-        ], callback
+        {app} = _pvts[@_idx]
+        user = new User(emailID)
+
+        app.findUser user, (err, usr) ->
+            return callback(err) if err
+            if usr then callback(null, true)
+            else callback(null, false)
+
+    isLocalUser : (emailID, callback) ->
+        if typeof callback isnt "function" then return
+        if typeof emailID isnt "string" then callback(null, false)
+
+        {app} = _pvts[@_idx]
+        user = new User(emailID)
+
+        app.isLocalUser(user, callback)
 
     ###*
         Creates sharable application state
@@ -523,14 +523,17 @@ class AppConfig
 
         Async.waterfall [
             (next) ->
+                # Checking for createBrowsers permissions as
+                # browser_manager is going to be merged with
+                # app_instance_manager in the future
                 permissionManager.checkPermissions
-                    user        : userCtx.toJson()
+                    user        : userCtx
                     callback    : next
                     mountPoint  : app.getMountPoint()
-                    permissions : {createAppInstance : true}
+                    permissions : ['own', 'createBrowsers']
             (canCreate, next) ->
                 if not canCreate then next(cloudbrowserError("PERM_DENIED"))
-                else app.appInstances.create(userCtx.toJson(), next)
+                else app.appInstances.create(userCtx, next)
         ], (err, appInstance) ->
             if err then callback?(err)
             else callback null, new AppInstance
@@ -555,9 +558,11 @@ class AppConfig
         @method addNewUser
         @memberOf AppConfig
     ###
-    addNewUser : (user, callback) ->
+    addNewUser : (emailID, callback) ->
+        if typeof emailID isnt "string"
+            return callback?(cloudbrowserError("PARAM_INVALID", "- user"))
         {app} = _pvts[@_idx]
-        user = user.toJson()
+        user = new User(emailID)
         if not app.findUser(user) then app.addNewUser(user, callback)
         else callback?(null, user)
 

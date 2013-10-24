@@ -95,18 +95,18 @@ app.controller 'AppInstanceCtrl', [
             $scope.shareForm.role = entity.roles[entity.defaultRoleIndex]
             $scope.shareForm.entity = entity
 
-        grantPermissions = (user, form) ->
+        grantPermissions = (form) ->
             {entity, role, collaborator} = form
             Async.series NwGlobal.Array(
                 (next) ->
                     appInstance.processing = true
-                    entity.api[role.grantMethod](user, next)
+                    entity.api[role.grantMethod](collaborator, next)
                     $scope.safeApply -> $scope.closeShareForm()
                 (next) ->
                     mail.send
-                        to   : user.getEmail()
+                        to   : collaborator
                         url  : appConfig.getUrl()
-                        from : $scope.user.email
+                        from : $scope.user
                         callback   : next
                         sharedObj  : entity.name
                         mountPoint : appConfig.getMountPoint()
@@ -120,31 +120,15 @@ app.controller 'AppInstanceCtrl', [
 
         $scope.addCollaborator = () ->
             {collaborator} = $scope.shareForm
-            lParIdx  = collaborator.indexOf("(")
-            rParIdx  = collaborator.indexOf(")")
             EMAIL_RE = /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}$/
             
-            # If the text box entry is a selection from the typeahead
-            if lParIdx isnt -1 and rParIdx isnt -1
-                emailID   = collaborator.substring(0, lParIdx-1)
-                namespace = collaborator.substring(lParIdx + 1, rParIdx)
-                user = new cloudbrowser.app.User(emailID, namespace)
-                appConfig.isUserRegistered user, (err, exists) ->
+            if EMAIL_RE.test(collaborator.toUpperCase())
+                appConfig.isUserRegistered collaborator, (err, exists) ->
                     $scope.safeApply ->
-                        if err then $scope.setError(err)
-                        else if exists
-                            grantPermissions(user, $scope.shareForm)
-                        else $scope.error.message = "Invalid Collaborator"
-                        
-            
-            # If an email address has been entered directly
-            # (not selected from the typeahead)
-            # and the text entered is a valid email.
-            else if lParIdx is -1 and rParIdx is -1 and
-            EMAIL_RE.test(collaborator.toUpperCase())
-                user = new cloudbrowser.app.User(collaborator, "google")
-                appConfig.addNewUser user, () ->
-                    grantPermissions(user, $scope.shareForm)
-
+                        return $scope.setError(err) if err
+                        if exists
+                            grantPermissions($scope.shareForm)
+                        else appConfig.addNewUser collaborator, () ->
+                            $scope.safeApply -> grantPermissions($scope.shareForm)
             else $scope.error.message = "Invalid Collaborator"
 ]

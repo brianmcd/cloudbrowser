@@ -7,7 +7,7 @@ module.exports = {
         // Can be shared between multiple browsers
         // Created on demand
         // applicationInstance provider/factory
-        options.appInstanceTemplate = {
+        options.appInstanceProvider = {
             create : function(){
                 return new ChatManager()
             }

@@ -32,15 +32,12 @@ class MongoInterface
                 @dbClient.collection(collectionName, next)
             (collection, next) ->
                 collection.insert(users, next)
-            (userRecs, next) ->
-                # If an array of users was provided to be added
-                # return the array of records added
-                if users instanceof Array
-                    next(null, userRecs)
-                # Return only one object not the array that contains
-                # the single object
-                else next(null, userRecs[0])
-        ], callback
+        ], (err, userRecs) ->
+            if err then callback(err)
+            # If an array of users was provided to be added
+            # return the array of records added
+            if users instanceof Array then callback(null, userRecs)
+            else callback(null, userRecs[0])
 
     getUsers : (collectionName, callback) ->
         Async.waterfall [
@@ -52,12 +49,12 @@ class MongoInterface
                 cursor.toArray(next)
         ], callback
 
-    addToUser : (searchKey, collectionName, addedInfo, callback) ->
+    updateUser : (searchKey, collectionName, newObj, callback) ->
         Async.waterfall [
             (next) =>
                 @dbClient.collection(collectionName, next)
             (collection, next) ->
-                collection.update(searchKey, {$addToSet:addedInfo}, {w:1}, next)
+                collection.update(searchKey, newObj, {w:1}, next)
         ], callback
 
     removeFromUser : (searchKey, collectionName, removedInfo, callback) ->

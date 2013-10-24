@@ -86,15 +86,12 @@ class BrowserServer extends EventEmitter
         @broadcastEvent('UpdateCookie', maxAge)
     ###
 
-    # Returns cookies of all clients connected to the VB
-    getSessions : (callback) ->
-        # TODO: Must remove setTimeout Hack?
-        setTimeout () =>
-            sessions = []
-            for socket in @sockets
-                sessions.push(socket.handshake.sessionID)
-            callback(sessions)
-        , 2000
+    # Returns sessions of all clients connected to the VB
+    getSessions : () ->
+        sessions = []
+        for socket in @sockets
+            sessions.push(socket.handshake.session)
+        return sessions
 
     # arg can be an Application or URL string.
     load : (arg) ->
@@ -189,6 +186,8 @@ class BrowserServer extends EventEmitter
         socket.on 'disconnect', () =>
             @sockets       = (s for s in @sockets       when s != socket)
             @queuedSockets = (s for s in @queuedSockets when s != socket)
+            if not (@sockets.length or @queuedSockets.length)
+                @emit 'NoClients'
 
         # TODO: don't do this workaround
         oldApps = @server.config.apps

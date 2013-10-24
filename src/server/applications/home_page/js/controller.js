@@ -22,20 +22,23 @@
     $scope.leftClick = function(url) {
       return currentBrowser.redirect(url);
     };
-    $scope.redirectToGithub = function(app) {
-      var completeUrl;
-      completeUrl = "https://github.com/brianmcd/cloudbrowser/tree/" + ("deployment/examples" + app.mountPoint);
-      return $scope.leftClick(completeUrl);
-    };
     $scope.apps = [];
     App = (function() {
       function App() {}
 
       App.add = function(appConfig) {
-        var app;
+        var app, _i, _len, _ref;
+        _ref = $scope.apps;
+        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+          app = _ref[_i];
+          if (app.api.getMountPoint() === appConfig.getMountPoint()) {
+            return;
+          }
+        }
         app = {
           api: appConfig,
           url: appConfig.getUrl(),
+          name: appConfig.getName(),
           mountPoint: appConfig.getMountPoint(),
           description: appConfig.getDescription()
         };
@@ -59,9 +62,7 @@
 
     })();
     server.listApps({
-      filters: {
-        "public": true
-      },
+      filters: ['public'],
       callback: function(err, apps) {
         if (err) {
           return $scope.safeApply(function() {
@@ -85,7 +86,7 @@
         return App.add(appConfig);
       });
     });
-    server.addEventListener('add', function(appConfig) {
+    server.addEventListener('addApp', function(appConfig) {
       return $scope.safeApply(function() {
         return App.add(appConfig);
       });
@@ -100,7 +101,7 @@
         return App.remove(mountPoint);
       });
     });
-    server.addEventListener('remove', function(mountPoint) {
+    server.addEventListener('removeApp', function(mountPoint) {
       return $scope.safeApply(function() {
         return App.remove(mountPoint);
       });
@@ -110,12 +111,6 @@
         return App.remove(mountPoint);
       });
     });
-  });
-
-  CBHomePage.filter("removeSlash", function() {
-    return function(input) {
-      return input.substring(1);
-    };
   });
 
 }).call(this);

@@ -1,77 +1,49 @@
-{EventEmitter} = require('events')
-
-class PermissionManager extends EventEmitter
+class PermissionManager
     # Finds an item from the list of contained items
-    findItem : (key, permissions) ->
+    findItem : (key, permission) ->
         item = @containedItems[key]
-        if not item then return null
-        # Filtering by permissions
-        if permissions
-            valid = true
-            for type, v of permissions
-                if item.permissions[type] isnt true
-                    valid = false
-                    break
-            if valid is true then return item
-            else return null
+        if not item or (permission and item.permission isnt permission)
+            return null
         else return item
 
     # Gets all contained items
-    getItems : (permissions) ->
-        # Filtering based on permissions
-        if permissions
+    getItems : (permission) ->
+        # Filtering based on permission
+        if permission
             items = []
-            valid = true
             for key, item of @containedItems
-                for type, v of permissions
-                    if item.permissions[type] isnt true
-                        valid = false
-                        break
-                if valid is true then items.push(item)
-                else valid = true
+                items.push(item) if item.permission is permission
             return items
-        else
             # Returning all items
-            return @containedItems
+        else return @containedItems
 
     # Adds a new item to the list of contained items
-    addItem : (key, permissions) ->
+    addItem : (key, permission) ->
         if not @findItem(key)
             @containedItems[key] = new @containedItemType(key)
-            @emit('add', key)
-
         item = @containedItems[key]
-
-        if permissions and Object.keys(permissions).length isnt 0
-            item.set(permissions)
-
+        if permission then item.set(permission)
         return item
 
     # Removes an items from the list of contained items
     removeItem : (key) ->
-        if not @findItem(key) then return
-
         delete @containedItems[key]
-        @emit('remove', key)
 
-    # Sets allowed permissions on the object (not on the contained items)
-    verifyAndSetPerm : (permissions, types) ->
-        if not permissions or Object.keys(permissions).length is 0 then return
-        
-        for type in types
-            # Setting only those permissions types that are valid for this
-            # object
-            if permissions.hasOwnProperty(type)
-                if permissions[type] is true
-                    @permissions[type] = true
-                else @permissions[type] = false
+    # Sets allowed permission on the object (not on the contained items)
+    # with the permission type earlier in the types array having a higher
+    # priority than the permission type later in the array
+    verifyAndSetPerm : (permission, types) ->
+        if types.indexOf(permission) isnt -1 and
+        types.indexOf(@permission) is -1 or
+        types.indexOf(permission) < types.indexOf(@permission)
+            @permission = permission
+        return @permission
 
     set : () ->
         throw new Error("PermissionManager subclass must implement set")
 
-    # Returns the current permissions on the object (not on the contained
+    # Returns the current permission on the object (not on the contained
     # items)
-    get : () ->
-        return @permissions
+    get : () -> return @permission
 
 module.exports = PermissionManager

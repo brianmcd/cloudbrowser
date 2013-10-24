@@ -5,15 +5,14 @@ AppPermissions    = require('./application_permissions')
 # Contains all the app permission records for the user too.
 class SystemPermissions extends PermissionManager
     constructor : (@user) ->
-        @permissions = {}
+        @permission = null
         @containedItems = {}
         # Type of items that an SystemPermissions object contains
         @containedItemType = AppPermissions
 
     getUser : () -> return @user
 
-    set : (permissions) ->
-        @verifyAndSetPerm(permissions, ['mountapps'])
-        return @permissions
+    set : (permission) ->
+        @verifyAndSetPerm(permission, ['mountapps'])
 
 module.exports = SystemPermissions

@@ -1,5 +1,6 @@
-Async             = require('async')
-Browser    = require('./browser')
+Async   = require('async')
+Browser = require('./browser')
+User    = require('../server/user')
 cloudbrowserError = require('../shared/cloudbrowser_error')
 
 ###*
@@ -26,7 +27,7 @@ cloudbrowserError = require('../shared/cloudbrowser_error')
     @class AppInstance
     @param {Object}         options 
     @param {Cloudbrowser}   options.cbCtx       The cloudbrowser API object.
-    @param {User}           options.userCtx     The current user.
+    @param {}           options.userCtx     The current user.
     @param {AppInstanceObj} options.appInstance The appInstance.
     @fires AppInstance#share
     @fires AppInstance#rename
@@ -40,8 +41,7 @@ class AppInstance
 
     constructor : (options) ->
         # Defining @_idx as a read-only property
-        Object.defineProperty this, "_idx",
-            value : _pvts.length
+        Object.defineProperty(this, "_idx", {value : _pvts.length})
 
         {appInstance, cbCtx, userCtx} = options
 
@@ -89,7 +89,7 @@ class AppInstance
         {userCtx, cbCtx, appInstance} = _pvts[@_idx]
         Async.waterfall [
             (next) ->
-                appInstance.createBrowser(userCtx.toJson(), next)
+                appInstance.createBrowser(userCtx, next)
             (bserver, next) ->
                 next null, new Browser
                     browser : bserver
@@ -118,19 +118,18 @@ class AppInstance
         {appInstance, userCtx} = _pvts[@_idx]
         {appInstances} = appInstance.app
         {permissionManager} = appInstance.app.server
-        userJson = userCtx.toJson()
         id = appInstance.getID()
 
         Async.waterfall [
             (next) ->
                 permissionManager.checkPermissions
-                    user          : userJson
+                    user          : userCtx
                     mountPoint    : appInstance.app.getMountPoint()
                     appInstanceID : id
-                    permissions   : {own : true}
+                    permissions   : ['own']
                     callback      : next
             (canRemove, next) ->
-                if canRemove then appInstances.remove(id, userJson, next)
+                if canRemove then appInstances.remove(id, userCtx, next)
                 else next(cloudbrowserError('PERM_DENIED'))
         ], callback
 
@@ -140,14 +139,10 @@ class AppInstance
         @memberof AppInstance
         @instance
         @param {userCallback} callback 
-        @return {cloudbrowser.app.User}
     ###
     getOwner : () ->
         {appInstance, cbCtx} = _pvts[@_idx]
-        {User} = cbCtx.app
-
-        user = appInstance.getOwner()
-        return new User(user.email, user.ns)
+        return appInstance.getOwner().getEmail()
 
     ###*
         Registers a listener for an event on the appInstance.
@@ -171,14 +166,10 @@ class AppInstance
             if err then return
             if not isAssoc then return
             else switch(event)
-                when "rename", "removeBrowser", "share"
+                when "rename", "removeBrowser"
                     appInstance.on(event, callback)
-                when "addBrowser"
-                    appInstance.on event, (bserver) ->
-                        callback new Browser
-                            browser : bserver
-                            userCtx : userCtx
-                            cbCtx   : cbCtx
+                when "share"
+                    appInstance.on(event, (user) -> callback(user.getEmail()))
 
     ###*
         Checks if the current user has some permissions associated with the 
@@ -193,7 +184,7 @@ class AppInstance
         {permissionManager} = appInstance.app.server
 
         permissionManager.findAppInstancePermRec
-            user       : userCtx.toJson()
+            user       : userCtx
             mountPoint : appInstance.app.getMountPoint()
             appInstanceID : appInstance.getID()
             callback : (err, appInstancePerms) ->
@@ -212,59 +203,33 @@ class AppInstance
         if typeof callback isnt "function" then return
 
         {appInstance, cbCtx} = _pvts[@_idx]
-        {User} = cbCtx.app
 
         Async.waterfall [
             (next) =>
                 @isAssocWithCurrentUser(next)
         ], (err, isAssoc) ->
-            if err then callback(err)
-            else
-                readerWriters = []
-                for rw in appInstance.getReaderWriters()
-                    readerWriters.push(new User(rw.email, rw.ns))
-                callback(null, readerWriters)
+            if err then return callback(err)
+            users = []
+            users.push(rw.getEmail()) for rw in appInstance.getReaderWriters()
+            callback(null, users)
 
-    ###*
-        Gets the number of users that have the permission only to read and
-        write to the appInstance. 
-        There is a separate method for this as it is faster to get only the
-        number of reader writers than to construct a list of them using
-        getReaderWriters and then get that number.
-        @method getNumReaderWriters
-        @memberof AppInstance
-        @instance
-        @param {numberCallback} callback
-    ###
-    getNumReaderWriters : (callback) ->
-        if typeof callback isnt "function" then return
-
-        {appInstance, cbCtx} = _pvts[@_idx]
-
-        @isAssocWithCurrentUser (err, isAssoc) ->
-            if err then callback(err)
-            else if not isAssoc then callback(cloudbrowserError("PERM_DENIED"))
-            else callback(null, appInstance.getReaderWriters().length)
     ###*
         Checks if the user is a reader-writer of the instance.
         @method isReaderWriter
         @memberof AppInstance
         @instance
-        @param {cloudbrowser.app.User} user
         @param {booleanCallback} callback
     ###
     isReaderWriter : (user, callback) ->
         {appInstance, cbCtx} = _pvts[@_idx]
 
         if typeof callback isnt "function" then return
-        else if not user instanceof cbCtx.app.User
-            callback(cloudbrowserError('PARAM_MISSING', "-user"))
-            return
+        # TODO : Check for user here
 
         @isAssocWithCurrentUser (err, isAssoc) ->
             if err then callback(err)
             else if not isAssoc then callback(cloudbrowserError("PERM_DENIED"))
-            else if appInstance.isReaderWriter(user.toJson())
+            else if appInstance.isReaderWriter(user)
                 callback(null, true)
             else callback(null, false)
 
@@ -273,7 +238,7 @@ class AppInstance
         @method isOwner
         @memberof AppInstance
         @instance
-        @param {cloudbrowser.app.User} user
+        @param {} user
         @param {booleanCallback} callback
     ###
     isOwner : (user, callback) ->
@@ -281,13 +246,12 @@ class AppInstance
         {mountPoint, id} = appInstance
 
         if typeof callback isnt "function" then return
-        else if not user instanceof cbCtx.app.User
-            callback(cloudbrowserError('PARAM_MISSING', "-user"))
+        # TODO : Check for user type here
 
         @isAssocWithCurrentUser (err, isAssoc) ->
             if err then callback(err)
             else if not isAssoc then callback(cloudbrowserError("PERM_DENIED"))
-            else if appInstance.isOwner(user.toJson()) then callback(null, true)
+            else if appInstance.isOwner(new User(user)) then callback(null, true)
             else callback(null ,false)
 
     ###*
@@ -312,7 +276,7 @@ class AppInstance
         {permissionManager} = appInstance.app.server
 
         permissionManager.checkPermissions
-            user        : userCtx.toJson()
+            user        : userCtx
             mountPoint  : appInstance.app.getMountPoint()
             appInstanceID : appInstance.getID()
             permissions : permTypes
@@ -322,28 +286,33 @@ class AppInstance
         @method addReaderWriter
         @memberof AppInstance
         @instance
-        @param {cloudbrowser.app.User} user 
+        @param {} user 
         @param {errorCallback} callback 
     ###
-    addReaderWriter : (user, callback) ->
+    addReaderWriter : (emailID, callback) ->
         {appInstance} = _pvts[@_idx]
         {permissionManager} = appInstance.app.server
 
+        if typeof emailID isnt "string"
+            callback?(cloudbrowserError("PARAM_INVALID", "- user"))
+
+        user = new User(emailID)
+
         Async.waterfall [
             (next) =>
-                @checkPermissions({own:true}, next)
-            (hasPermission, next) =>
+                @checkPermissions(['own'], next)
+            (hasPermission, next) ->
                 if not hasPermission then next(cloudbrowserError("PERM_DENIED"))
-                else if appInstance.isOwner(user.toJson())
+                else if appInstance.isOwner(user)
                     next(cloudbrowserError("IS_OWNER"))
                 else permissionManager.addAppInstancePermRec
-                        user        : user.toJson()
-                        mountPoint  : appInstance.app.getMountPoint()
-                        permissions : {readwrite : true}
-                        callback    : (err) -> next(err)
-                        appInstanceID : appInstance.getID()
+                    user        : user
+                    mountPoint  : appInstance.app.getMountPoint()
+                    permission  : 'readwrite'
+                    callback    : (err) -> next(err)
+                    appInstanceID : appInstance.getID()
         ], (err, next) ->
-            if not err then appInstance.addReaderWriter(user.toJson())
+            if not err then appInstance.addReaderWriter(user)
             callback(err)
             
     ###*
@@ -359,7 +328,7 @@ class AppInstance
             callback?(cloudbrowserError("PARAM_MISSING", "- name"))
             return
         {appInstance} = _pvts[@_idx]
-        @checkPermissions {own:true}, (err, hasPermission) ->
+        @checkPermissions ['own'], (err, hasPermission) ->
             if err then callback?(err)
             else if not hasPermission callback?(cloudbrowserError("PERM_DENIED"))
             else
@@ -369,7 +338,7 @@ class AppInstance
 
     getObj : () ->
         {appInstance, userCtx} = _pvts[@_idx]
-        user = userCtx.toJson()
+        user = userCtx
         if appInstance.isOwner(user) or appInstance.isReaderWriter(user)
             return appInstance.getObj()
 
@@ -378,6 +347,6 @@ class AppInstance
         appConfig = currentBrowser.getAppConfig()
         appURL    = appConfig.getUrl()
 
-        return "#{appURL}/application_state/#{@getID()}"
+        return "#{appURL}/application_instance/#{@getID()}"
 
 module.exports = AppInstance

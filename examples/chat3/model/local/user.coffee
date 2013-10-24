@@ -2,8 +2,7 @@
 
 class User
     constructor : (user) ->
-        @name = user.getEmail()
-        @namespace = user.getNameSpace()
+        @name = user
         @joinedRooms = []
         @otherRooms  = []
         @currentRoom = null

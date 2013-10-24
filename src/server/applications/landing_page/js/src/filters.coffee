@@ -66,9 +66,3 @@ browserFilter = (app) ->
                 when 'all'
                     modifiedList = list
             return modifiedList
-
-filters.filter 'cbRemoveSlash', () ->
-    (input) ->
-        output = ""
-        if input.charAt(0) is "/" then output = input.substring(1)
-        return (output.charAt(0).toUpperCase() + output.slice(1))

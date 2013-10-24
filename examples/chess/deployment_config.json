@@ -1,10 +1,8 @@
 {
     "authenticationInterface": true,
     "isPublic": true,
-    "owner": {
-        "email": "godmar@gmail.com",
-        "ns": "google"
-    },
+    "name": "chess",
+    "owner": "godmar@gmail.com",
     "description": "A one player chess application from http://p4wn.sf.net/ w/o animation",
     "browserLimit": 0,
     "mountOnStartup": true,

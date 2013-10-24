@@ -16,32 +16,31 @@ class AppPermissions extends PermissionManager
         @appInstances.containedItems    = {}
         @appInstances.containedItemType = AppInstancePermissions
 
-        @permissions  = {}
+        @permission = null
 
     getMountPoint : () -> return @mountPoint
 
-    set : (permissions) ->
-        @verifyAndSetPerm(permissions,
-        ['own', 'createBrowsers', 'createAppInstance'])
-        return @permissions
+    set : (permission) ->
+        @verifyAndSetPerm(permission,
+            ['own', 'createBrowsers'])
 
-    findAppInstance : (key, permissions) ->
-        @appInstances.findItem(key, permissions)
+    findAppInstance : (key, permission) ->
+        @appInstances.findItem(key, permission)
 
-    findBrowser : (key, permissions) ->
-        @browsers.findItem(key, permissions)
+    findBrowser : (key, permission) ->
+        @browsers.findItem(key, permission)
 
-    getAppInstances : (permissions) ->
-        @appInstances.getItems(permissions)
+    getAppInstances : (permission) ->
+        @appInstances.getItems(permission)
 
-    getBrowsers : (permissions) ->
-        @browsers.getItems(permissions)
+    getBrowsers : (permission) ->
+        @browsers.getItems(permission)
 
-    addAppInstance : (key, permissions) ->
-        @appInstances.addItem(key, permissions)
+    addAppInstance : (key, permission) ->
+        @appInstances.addItem(key, permission)
 
-    addBrowser : (key, permissions) ->
-        @browsers.addItem(key, permissions)
+    addBrowser : (key, permission) ->
+        @browsers.addItem(key, permission)
 
     removeAppInstance : (key) ->
         @appInstances.removeItem(key)

@@ -2,6 +2,7 @@ Path     = require('path')
 Managers = require('../browser_manager')
 Fs       = require('fs')
 Async    = require('async')
+User     = require('../user')
 {EventEmitter}     = require('events')
 AppInstanceManager = require('./app_instance_manager')
 {hashPassword}     = require('../../api/utils')
@@ -45,7 +46,7 @@ class Application extends EventEmitter
     constructor : (opts, @server) ->
 
         owner =
-            owner : @server.config.defaultOwner
+            owner : new User(@server.config.defaultOwner)
 
         @setDefaults(opts.appConfig, @appConfigDefaults)
         @setDefaults(opts.deploymentConfig, @deploymentConfigDefaults, owner)
@@ -62,7 +63,7 @@ class Application extends EventEmitter
          @localState,
          @callOnStart,
          @deploymentConfig,
-         @appInstanceTemplate,
+         @appInstanceProvider,
          @dontPersistConfigChanges} = opts
 
         @remoteBrowsing = /^http/.test(@appConfig.entryPoint)
@@ -71,11 +72,10 @@ class Application extends EventEmitter
         
         @writeConfigToFile(@deploymentConfig, "deployment_config.json")
 
-        if @appInstanceTemplate
-            @appInstances = new AppInstanceManager(@appInstanceTemplate,
+        if @appInstanceProvider
+            @appInstances = new AppInstanceManager(@appInstanceProvider,
                                                    @server.permissionManager,
                                                    this)
-
     setDefaults : (options, defaults...) ->
         for defaultObj in defaults
             for own k, v of defaultObj
@@ -120,6 +120,16 @@ class Application extends EventEmitter
         @deploymentConfig.browserLimit = limit
         @writeConfigToFile(@deploymentConfig, "deployment_config.json")
 
+    getName : () ->
+        return @deploymentConfig.name
+
+    setName : (name) ->
+        if @deploymentConfig.name is name then return
+
+        return @deploymentConfig.name = name
+
+        @writeConfigToFile(@deploymentConfig, "deployment_config.json")
+
     isAppPublic : () ->
         return @deploymentConfig.isPublic
 
@@ -140,6 +150,9 @@ class Application extends EventEmitter
 
     getDescription : () ->
         return @deploymentConfig.description
+
+    getOwner : () ->
+        return new User(@deploymentConfig.owner)
 
     getMountPoint : () ->
         return @deploymentConfig.mountPoint
@@ -176,7 +189,7 @@ class Application extends EventEmitter
             # Adding unique index
             @server.mongoInterface.addIndex(
                 @deploymentConfig.collectionName,
-                {email:1, ns:1})
+                {_email:1})
 
         # Setting configuration 
         @deploymentConfig.authenticationInterface = true
@@ -253,13 +266,27 @@ class Application extends EventEmitter
         if @isAppPublic() then @emit 'disable'
         
     # Insert user into list of registered users of the application
-    addNewUser : (newUser, callback) ->
+    addNewUser : (userRec, callback) ->
         {mongoInterface} = @server
-        # Add a new user to the applications collection
+        # Add a new user to the application's collection
+        searchKey = {_email : userRec._email}
         Async.waterfall [
             (next) =>
-                mongoInterface.addUser(newUser, @getCollectionName(), next)
+                mongoInterface.findUser(searchKey, @getCollectionName(), next)
+            (usr, next) =>
+                # New user
+                if not usr
+                    @emit("addUser", userRec._email)
+                    mongoInterface.addUser(userRec, @getCollectionName(), next)
+                # User has already logged in once as a google user
+                # but is now signing up as a local user
+                else if userRec.key and not usr.key
+                    mongoInterface.updateUser(searchKey, @getCollectionName(),
+                        userRec, (err, count, info) -> next(err, usr))
+                # Existing user
+                else next(null, usr)
             (user, next) =>
+                user = new User(user._email)
                 @addAppPermRecs(user, (err) -> next(err, user))
         ], callback
 
@@ -269,14 +296,14 @@ class Application extends EventEmitter
         permissionManager.addAppPermRec
             user        : user
             mountPoint  : @getMountPoint()
-            permissions : {createBrowsers : true, createAppInstance : true}
+            permission  : 'createBrowsers'
             callback    : (err) =>
                 if err then console.log(err)
                 # Add a perm rec associated with the application's landing page
                 else permissionManager.addAppPermRec
                     user        : user
                     mountPoint  : "#{@getMountPoint()}/landing_page"
-                    permissions : {createBrowsers:true}
+                    permission  : 'createBrowsers'
                     callback    : callback
 
     activateUser : (token, callback) ->
@@ -286,7 +313,7 @@ class Application extends EventEmitter
             (next) =>
                 mongoInterface.findUser({token:token}, @getCollectionName(), next)
             (user, next) =>
-                if user then @addAppPermRecs(user, next)
+                if user then @addAppPermRecs(new User(user._email), next)
                 else next(cloudbrowserError("INVALID_TOKEN"))
             (appPerms, next) =>
                 mongoInterface.unsetUser {token: token}, @getCollectionName(),
@@ -299,35 +326,44 @@ class Application extends EventEmitter
         @server.mongoInterface.removeUser({token: token}, @getCollectionName())
 
     getUsers : (callback) ->
-        @server.mongoInterface.getUsers(@getCollectionName(), callback)
+        @server.mongoInterface.getUsers @getCollectionName(), (err, users) ->
+            return callback(err) if err
+            userList = []
+            userList.push(new User(user._email)) for user in users
+            callback(null, userList)
 
     findUser : (user, callback) ->
         @server.mongoInterface.findUser(user, @getCollectionName(), callback)
+
+    isLocalUser : (user, callback) ->
+        Async.waterfall [
+            (next) =>
+                @findUser(user, next)
+        ], (err, userRec) ->
+            return callback(err) if err
+            if not userRec or not userRec.key then callback(null, false)
+            else callback(null, true)
 
     resetUserPassword : (options) ->
         {email, token, salt, key, callback} = options
         {mongoInterface} = @server
 
-        @findUser {email: email, ns: 'local'}, (err, userRec) =>
+        user = new User(email)
+
+        @findUser user, (err, userRec) =>
             # If the user rec is marked as the one who requested for a reset
             if userRec and userRec.status is "reset_password" and
             userRec.token is token
                 Async.series [
                     (next) =>
                         # Remove the reset markers
-                        mongoInterface.unsetUser
-                            email : userRec.email
-                            ns    : userRec.ns
-                        , @getCollectionName(),
+                        mongoInterface.unsetUser user, @getCollectionName(),
                             token  : ""
                             status : ""
                         , next
                     (next) =>
                         # Set the hash key and salt for the new password
-                        mongoInterface.setUser
-                            email : userRec.email
-                            ns    : userRec.ns
-                        , @getCollectionName(),
+                        mongoInterface.setUser user, @getCollectionName(),
                             key  : key
                             salt : salt
                         , next
@@ -384,9 +420,6 @@ class Application extends EventEmitter
             @browsers = new InProcessBrowserManager(@server, this)
         return @browsers
     
-    addEventListener : (event, callback) ->
-        @browsers.on(event, callback)
-
     getMountFunc : () ->
         return @mountFunc
 
@@ -402,6 +435,6 @@ class Application extends EventEmitter
         @subApps.length = 0
 
     getAppInstanceName : () ->
-        if @appInstanceTemplate then return @appInstanceTemplate.name
+        if @appInstanceProvider then return @appInstanceProvider.name
 
 module.exports = Application

@@ -24,7 +24,6 @@ class FileUploader extends Component
             legend = @createElement("legend")
             legend.appendChild(document.createTextNode(@opts.legend))
             fieldset.appendChild(legend)
-        fieldset.appendChild(@createElement("input", {type : "text"}))
         fieldset.appendChild(@createElement("input", {type : "file"}))
         fieldset.appendChild(@createElement("input", {type : "submit"}))
         return form

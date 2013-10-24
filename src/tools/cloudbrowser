@@ -10,9 +10,9 @@ Path    = require('path')
 Fstream = require('fstream')
 
 # Defaults
-domain = "localhost"
+hostname = "localhost"
 port   = "3000"
-user = {}
+user   = {}
 # Validate args by checking if the files exist and that they
 # have the required files
 validatePath = (path, callback) ->
@@ -64,46 +64,16 @@ createTarball = (path, callback) ->
 configureUser = (callback) ->
     Async.waterfall [
         (next) ->
-            # Read the namespace of the user
-            Read
-                prompt : "Namespace:\n1) Local User\n2) Google User\n" +
-                         "Please choose 1 or 2 :"
-                default : "1"
-            , next
-
-        (ns, isDefault, next) ->
-            # Checking the validity of the namespace
-            if ns isnt "1" and ns isnt "2"
-                next(new Error("Invalid namespace selected"))
-
-            # Read the username only if the user is a local user
-            switch ns
-                when "1" then Read({prompt : "Email: "}, next)
-                when "2" then next(null, null, null)
-                    
+            Read({prompt : "Email: "}, next)
         (email, isDefault, next) ->
-            # Fall through if not local user
-            if not email then next(null, null, null)
-            else
-                user.username = email
-                # Read the password
-                Read
-                    prompt : "Password: "
-                    # Don't echo the password on screen
-                    silent : true
-                , next
-
-        (password, isDefault, next) ->
-            # Fall through if not local user
-            if not password then next(null)
-            else
-                user.password = password
-                next(null)
-
-    ], callback
+            user.username = email
+            Read({prompt : "Password: ", silent : true}, next)
+    ], (err, password, isDefault) ->
+        return callback(err) if err
+        user.password = password
 
 uploadToServer = (path, appName, callback) ->
-    serverEndPoint = "http://#{domain}:#{port}/local-deploy"
+    serverEndPoint = "http://#{hostname}:#{port}/local-deploy"
 
     # Using basic HTTP authentication to authenticate the user 
     # on the server
@@ -121,7 +91,7 @@ uploadToServer = (path, appName, callback) ->
             else if response.statusCode isnt 200 and
             response.statusCode isnt 204
                 callback(new Error("Could not deploy to"+
-                " #{domain}:#{port} : Status code" +
+                " #{hostname}:#{port} : Status code" +
                 " #{response.statusCode} - #{response.body}"))
             # Success
             else
@@ -145,15 +115,8 @@ deployApp = (app, callback) ->
                 (next) ->
                     createTarball(app.path, next)
                 (targzPath, next) ->
-                    # Upload to the server through a post request
-                    # for local users
-                    if user.username?
-                        if not app.mountPoint then callback(null, null)
-                        else uploadToServer(targzPath, app.mountPoint, next)
-                    # Ask google users to manually upload through
-                    # the admin_interface
-                    else
-                        next(null)
+                    if not app.mountPoint then callback(null, null)
+                    else uploadToServer(targzPath, app.mountPoint, next)
                 ], (err) ->
                     if not err then callback(null, app)
                     else
@@ -168,15 +131,15 @@ opts = require('nomnom')
     .option 'port',
         help : 'Port of cloudbrowser server to upload to'
         metavar : 'NUM'
-    .option 'domain',
-        help : 'Domain of cloudbrowser server to upload to'
+    .option 'hostname',
+        help : 'Hostname of cloudbrowser server to upload to'
         metavar : 'STRING'
     .parse()
 
 apps = []
 
 if opts.port then port = opts.port
-if opts.domain then domain = opts.domain
+if opts.hostname then hostname = opts.hostname
 
 # Parsing the json file into opts
 _getConfigFromFile = (path) ->
@@ -206,24 +169,11 @@ deploy = (callback) ->
     Async.waterfall [
         (next) ->
             Async.map(apps, deployApp, next)
-        (apps, next) ->
-            # If the user is a google user then prompt to upload
-            # the tarball through the admin GUI as google users
-            # can't be authenticated through the cmd line
-            if not user.username
-                console.log "\nPlease upload the tarballs\n"
-                for app in apps
-                    # The app which could not be uploaded is returned by 
-                    # deployApp as null. Print this msg only if the app was
-                    # successfully deployed
-                    if app? then console.log "#{app.path}.tar.gz"
-                console.log "\nto the admin_interface at " +
-                "http://#{domain}:#{port}/admin_interface\n"
-            else
-                for app in apps
-                    if app? then console.log "Deployed #{app.mountPoint}"
-            next(null)
-    ], callback
+    ], (err, apps) ->
+        return callback(err) if err
+        for app in apps
+            if app? then console.log "Deployed #{app.mountPoint}"
+        callback(null)
 
 apps.push({path : path}) for path in opts._ if opts._
 
@@ -231,9 +181,7 @@ Async.series [
     (next) ->
         configureUser(next)
     (next) ->
-        # Need to read the mountpoints only for a local user
-        if not user.username then next(null)
-        else Async.map(apps, readMountPoint, next)
+        Async.map(apps, readMountPoint, next)
     (next) ->
         if opts.deploy then deploy(next)
         else next(null)

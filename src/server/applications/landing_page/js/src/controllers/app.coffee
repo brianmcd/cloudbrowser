@@ -8,7 +8,6 @@ app = angular.module('CBLandingPage.controllers.app',
 
 # Cloudbrowser API objects
 curVB     = cloudbrowser.currentBrowser
-creator   = curVB.getCreator()
 appConfig = curVB.getAppConfig()
 
 app.run ($rootScope) ->
@@ -68,14 +67,14 @@ app.controller 'AppCtrl', [
 
             Async.waterfall NwGlobal.Array(
                 (next) ->
-                    appInstance.owner = appInstance.api.getOwner().toJson()
+                    appInstance.owner = appInstance.api.getOwner()
                     appInstance.api.isAssocWithCurrentUser(next)
                 (isAssoc, next) ->
                     if isAssoc then appInstance.api.getReaderWriters(next)
                     else next(null, null)
                 (collaborators, next) ->
                     if collaborators then $scope.safeApply ->
-                        appInstance.collaborators = format.toJson(collaborators)
+                        appInstance.collaborators = collaborators
                     next(null)
             ), (err) ->
                 if err then $scope.safeApply -> $scope.setError(err)
@@ -87,10 +86,13 @@ app.controller 'AppCtrl', [
                 (next) ->
                     browser.api.getOwners(next)
                 (owners, next) ->
-                    $scope.safeApply -> browser.owners = format.toJson(owners)
+                    $scope.safeApply -> browser.owners = owners
                     browser.api.getReaderWriters(next)
                 (collaborators, next) ->
-                    $scope.safeApply -> browser.collaborators = format.toJson(collaborators)
+                    $scope.safeApply -> browser.collaborators = collaborators
+                    browser.api.getReaders(next)
+                (readers, next) ->
+                    $scope.safeApply -> browser.readers = readers
                     next(null)
             ), callback
 
@@ -98,6 +100,11 @@ app.controller 'AppCtrl', [
             browser = null
             Async.waterfall NwGlobal.Array(
                 (next) ->
+                    browserConfig.isAssocWithCurrentUser(next)
+                (isAssoc, next) ->
+                    # Only show browsers that are associated with the current
+                    # user
+                    if not isAssoc then return
                     # Add the app instance to the view if not already present
                     if not appInstance
                         appInstanceConfig = browserConfig.getAppInstanceConfig()
@@ -126,13 +133,11 @@ app.controller 'AppCtrl', [
         # Properties used in the view
         $scope.description  = appConfig.getDescription()
         $scope.mountPoint   = appConfig.getMountPoint()
+        $scope.name         = appConfig.getName()
         $scope.filterType   = 'all'
         $scope.appInstances = appInstanceMgr.items
         $scope.appInstanceName = appConfig.getAppInstanceName()
-        # TODO remove freeze on user api
-        $scope.user =
-            email : creator.getEmail()
-            ns    : creator.getNameSpace()
+        $scope.user = curVB.getCreator()
 
         # Methods used in the view
         $scope.logout   = () ->
@@ -148,8 +153,10 @@ app.controller 'AppCtrl', [
 
         # Event handlers that keep all browsers of the application in sync
         appConfig.addEventListener('addBrowser', $scope.addBrowser)
+        appConfig.addEventListener('shareBrowser', $scope.addBrowser)
         appConfig.addEventListener('removeBrowser', $scope.removeBrowser)
         appConfig.addEventListener('addAppInstance', $scope.addAppInstance)
+        appConfig.addEventListener('shareAppInstance', $scope.addAppInstance)
         appConfig.addEventListener('removeAppInstance', $scope.removeAppInstance)
 
         # Populate appInstances and browsers at startup

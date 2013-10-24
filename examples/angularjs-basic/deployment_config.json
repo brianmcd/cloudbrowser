@@ -1,9 +1,7 @@
 {
     "isPublic": true,
-    "owner": {
-        "email": "godmar@gmail.com",
-        "ns": "google"
-    },
+    "name": "Angular App",
+    "owner": "godmar@gmail.com",
     "mountOnStartup": true,
     "description": "A basic AngularJS web application.",
     "browserLimit": 0,

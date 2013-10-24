@@ -18,11 +18,10 @@
                     <div class="well" ng-repeat="app in apps">
                         <h4>
                             <a ng-click="leftClick(app.url)">
-                                <u>{{app.mountPoint | removeSlash}}</u>
+                                <u>{{app.name}}</u>
                             </a>
                         </h4> 
                         <div>{{app.description}}</div>
-                        <a ng-click="redirectToGithub(app)">View Source Code</a>
                         <br>
                     </div>
                 </div>

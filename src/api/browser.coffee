@@ -1,5 +1,6 @@
 Components = require('../server/components')
 Async      = require('async')
+User       = require('../server/user')
 cloudbrowserError = require('../shared/cloudbrowser_error')
 
 ###*
@@ -17,7 +18,7 @@ cloudbrowserError = require('../shared/cloudbrowser_error')
     @class Browser
     @param {Object}                options 
     @param {BrowserServer}         options.browser The  browser.
-    @param {cloudbrowser.app.User} options.userCtx The current user.
+    @param {} options.userCtx The current user.
     @param {Cloudbrowser}          options.cbCtx   The cloudbrowser API object.
     @fires Browser#share
     @fires Browser#rename
@@ -157,14 +158,14 @@ class Browser
         {bserver, userCtx} = _pvts[@_idx]
         app = bserver.server.applications.find(bserver.mountPoint)
 
-        if userCtx.getNameSpace() is "public"
+        if userCtx.getEmail() is "public"
             app.browsers.close(bserver)
         else
             appInstance = bserver.getAppInstance()
             if appInstance
-                appInstance.removeBrowser(bserver, userCtx.toJson(), callback)
+                appInstance.removeBrowser(bserver, userCtx, callback)
             else
-                app.browsers.close(bserver, userCtx.toJson(), callback)
+                app.browsers.close(bserver, userCtx, callback)
 
     ###*
         Redirects all clients that are connected to the current
@@ -195,7 +196,8 @@ class Browser
             (sessionID, next) ->
                 mongoInterface.getSession(sessionID, next)
             (session, next) ->
-                next(null, session.resetuser)
+                next(null, SessionManager.findPropOnSession(session,
+                    'resetuser'))
         ], callback
 
     ###*
@@ -203,14 +205,11 @@ class Browser
         @method getCreator
         @memberof Browser
         @instance
-        @return {cloudbrowser.app.User}
+        @return {}
     ###
     getCreator : () ->
-        {bserver, cbCtx} = _pvts[@_idx]
-        {User} = cbCtx.app
-        if bserver.creator
-            {email, ns} = bserver.creator
-            return new User(email, ns)
+        {bserver} = _pvts[@_idx]
+        return bserver.creator?.getEmail()
 
     ###*
         Registers a listener for an event on the  browser instance.
@@ -243,7 +242,7 @@ class Browser
         {mountPoint, id}    = bserver
 
         permissionManager.findBrowserPermRec
-            user       : userCtx.toJson()
+            user       : userCtx
             mountPoint : mountPoint
             browserID  : id
             callback   : (err, browserRec) ->
@@ -261,54 +260,33 @@ class Browser
     getReaderWriters : (callback) ->
         {bserver, cbCtx} = _pvts[@_idx]
         {mountPoint, id} = bserver
-        {User} = cbCtx.app
 
         @isAssocWithCurrentUser (err, isAssoc) ->
             if err then callback(err)
             else if not isAssoc then callback(cloudbrowserError("PERM_DENIED"))
             else
-                rwRecs = bserver.getUsersInList('readwrite')
-                readerWriters = []
-                for rwRec in rwRecs
-                    {email, ns} = rwRec.user
-                    readerWriters.push(new User(email, ns))
-                callback(null, readerWriters)
+                users = []
+                users.push(rw.getEmail()) for rw in bserver.getReaderWriters()
+                callback(null, users)
 
     ###*
-        Gets the number of users that have the permission only to read and
-        write to the instance. 
-        There is a separate method for this as it is faster to get only the
-        number of reader writers than to construct a list of them using
-        getReaderWriters and then get that number.
-        @method getNumReaderWriters
+        Gets all users that have the permission only to read
+        @method getReaders
         @memberof Browser
         @instance
-        @param {numberCallback} callback
+        @param {userListCallback} callback
     ###
-    getNumReaderWriters : (callback) ->
+    getReaders : (callback) ->
         {bserver, cbCtx} = _pvts[@_idx]
         {mountPoint, id} = bserver
 
         @isAssocWithCurrentUser (err, isAssoc) ->
             if err then callback(err)
             else if not isAssoc then callback(cloudbrowserError("PERM_DENIED"))
-            else callback(null, bserver.getUsersInList('readwrite').length)
-
-    ###*
-        Gets the number of users that own the instance.
-        @method getNumOwners
-        @memberof Browser
-        @instance
-        @param {numberCallback} callback
-    ###
-    getNumOwners : (callback) ->
-        {bserver, cbCtx} = _pvts[@_idx]
-        {mountPoint, id} = bserver
-
-        @isAssocWithCurrentUser (err, isAssoc) ->
-            if err then callback(err)
-            else if not isAssoc then callback(cloudbrowserError("PERM_DENIED"))
-            else callback(null, bserver.getUsersInList('own').length)
+            else
+                users = []
+                users.push(rw.getEmail()) for rw in bserver.getReaders()
+                callback(null, users)
 
     ###*
         Gets all users that are the owners of the instance
@@ -323,18 +301,13 @@ class Browser
     getOwners : (callback) ->
         {bserver, cbCtx} = _pvts[@_idx]
         {mountPoint, id} = bserver
-        {User} = cbCtx.app
 
         @isAssocWithCurrentUser (err, isAssoc) ->
             if err then callback(err)
             else if not isAssoc then callback(cloudbrowserError("PERM_DENIED"))
             else
-                # Get the owners of this bserver
-                owners = bserver.getUsersInList('own')
                 users = []
-                for owner in owners
-                    {email, ns} = owner.user
-                    users.push(new User(email, ns))
+                users.push(rw.getEmail()) for rw in bserver.getOwners()
                 callback(null, users)
 
     ###*
@@ -342,54 +315,72 @@ class Browser
         @method isReaderWriter
         @memberof Browser
         @instance
-        @param {cloudbrowser.app.User} user
+        @param {} user
         @param {booleanCallback} callback
     ###
-    isReaderWriter : (user, callback) ->
+    isReaderWriter : (emailID, callback) ->
         {bserver, cbCtx} = _pvts[@_idx]
         {mountPoint, id} = bserver
 
-        if not user instanceof cbCtx.app.User
-            callback(cloudbrowserError('PARAM_MISSING', "-user"))
-        else if typeof callback isnt "function"
-            callback(cloudbrowserError('PARAM_MISSING', "-callback"))
+        if typeof callback isnt "function" then return
+        else if typeof emailID isnt "string"
+            return callback?(cloudbrowserError('PARAM_INVALID', "- user"))
+
+        user = new User(emailID)
 
         @isAssocWithCurrentUser (err, isAssoc) ->
             if err then callback(err)
             else if not isAssoc then callback(cloudbrowserError("PERM_DENIED"))
-            else
-                user = user.toJson()
-                # If the user is a reader-writer and not an owner, return true
-                if bserver.findUserInList(user, 'readwrite')
-                    callback(null, true)
-                else
-                    callback(null, false)
+            else if bserver.isReaderWriter(user) then callback(null, true)
+            else callback(null, false)
+
+    ###*
+        Checks if the user is a reader of the instance.
+        @method isReader
+        @memberof Browser
+        @instance
+        @param {} user
+        @param {booleanCallback} callback
+    ###
+    isReader : (emailID, callback) ->
+        {bserver, cbCtx} = _pvts[@_idx]
+        {mountPoint, id} = bserver
+
+        if typeof callback isnt "function" then return
+        else if typeof emailID isnt "string"
+            return callback?(cloudbrowserError('PARAM_INVALID', "- user"))
+
+        user = new User(emailID)
+
+        @isAssocWithCurrentUser (err, isAssoc) ->
+            if err then callback(err)
+            else if not isAssoc then callback(cloudbrowserError("PERM_DENIED"))
+            else if bserver.isReader(user) then callback(null, true)
+            else callback(null, false)
 
     ###*
         Checks if the user is an owner of the instance
         @method isOwner
         @memberof Browser
         @instance
-        @param {cloudbrowser.app.User} user
+        @param {} user
         @param {booleanCallback} callback
     ###
-    isOwner : (user, callback) ->
+    isOwner : (emailID, callback) ->
         {bserver, cbCtx} = _pvts[@_idx]
         {mountPoint, id} = bserver
 
-        if not user instanceof cbCtx.app.User
-            callback(cloudbrowserError('PARAM_MISSING', "-user"))
-        else if typeof callback isnt "function"
-            callback(cloudbrowserError('PARAM_MISSING', "-callback"))
+        if typeof callback isnt "function" then return
+        else if typeof emailID isnt "string"
+            return callback?(cloudbrowserError('PARAM_INVALID', "- user"))
+
+        user = new User(emailID)
 
         @isAssocWithCurrentUser (err, isAssoc) ->
             if err then callback(err)
             else if not isAssoc then callback(cloudbrowserError("PERM_DENIED"))
-            else
-                if bserver.findUserInList(user.toJson(), 'own')
-                    callback(null, true)
-                else
-                    callback(null ,false)
+            else if bserver.isOwner(user) then callback(null, true)
+            else callback(null, false)
 
     ###*
         Checks if the user has permissions to perform a set of actions
@@ -410,7 +401,7 @@ class Browser
         {mountPoint, id}    = bserver
 
         permissionManager.checkPermissions
-            user        : userCtx.toJson()
+            user        : userCtx
             mountPoint  : mountPoint
             browserID   : id
             permissions : permTypes
@@ -425,40 +416,55 @@ class Browser
         @param {boolean} [options.own]
         @param {boolean} [options.readwrite]
         @param {boolean} [options.readonly]
-        @param {cloudbrowser.app.User} user 
+        @param {} user 
         @param {errorCallback} callback 
     ###
-    addReaderWriter : (user, callback) ->
-        @_grantPermissions({readwrite : true}, user, callback)
+    addReaderWriter : (emailID, callback) ->
+        if typeof emailID isnt "string"
+            return callback?(cloudbrowserError('PARAM_INVALID', "- user"))
+        user = new User(emailID)
+        @_grantPermissions('readwrite', user, callback)
 
-    addOwner : (user, callback) ->
-        @_grantPermissions({own : true}, user, callback)
+    addOwner : (emailID, callback) ->
+        if typeof emailID isnt "string"
+            return callback?(cloudbrowserError('PARAM_INVALID', "- user"))
+        user = new User(emailID)
+        @_grantPermissions('own', user, callback)
 
-    addReader : (user, callback) ->
-        @_grantPermissions({readonly : true}, user, callback)
+    addReader : (emailID, callback) ->
+        if typeof emailID isnt "string"
+            return callback?(cloudbrowserError('PARAM_INVALID', "- user"))
+        user = new User(emailID)
+        @_grantPermissions('readonly', user, callback)
 
-    _grantPermissions : (permissions, user, callback) ->
+    _grantPermissions : (permission, user, callback) ->
         {bserver} = _pvts[@_idx]
         {mountPoint, id}    = bserver
         {permissionManager} = bserver.server
 
         Async.waterfall [
             (next) =>
-                @checkPermissions({own:true}, next)
+                @checkPermissions(['own'], next)
             (hasPermission, next) ->
                 if not hasPermission then next(cloudbrowserError("PERM_DENIED"))
                 # Add the user -> bserver lookup reference
                 else permissionManager.addBrowserPermRec
-                    user        : user.toJson()
+                    user        : user
                     mountPoint  : mountPoint
                     browserID   : id
-                    permissions : permissions
+                    permission  : permission
                     callback    : next
-            (browserRec, next) ->
-                # Add the bserver -> user lookup reference
-                bserver.addUserToLists(user.toJson(), permissions,
-                (err) -> next(err))
-        ], callback
+        ], (err, browserRec) ->
+            # Add the bserver -> user lookup reference
+            if err then return callback(err)
+            switch permission
+                when 'own'
+                    bserver.addOwner(user)
+                when 'readwrite'
+                    bserver.addReaderWriter(user)
+                when 'readonly'
+                    bserver.addReader(user)
+            callback(null)
             
     ###*
         Renames the instance.
@@ -473,7 +479,7 @@ class Browser
             callback?(cloudbrowserError("PARAM_MISSING", "-name"))
             return
         {bserver} = _pvts[@_idx]
-        @checkPermissions {own:true}, (err, hasPermission) ->
+        @checkPermissions ['own'], (err, hasPermission) ->
             if err then callback?(err)
             else if not hasPermission
                 callback?(cloudbrowserError("PERM_DENIED"))
@@ -484,7 +490,6 @@ class Browser
 
     getAppInstanceConfig : () ->
         {bserver, cbCtx, userCtx} = _pvts[@_idx]
-        {mountPoint, server} = bserver
 
         # TODO : Permission check
         AppInstance = require('./app_instance')

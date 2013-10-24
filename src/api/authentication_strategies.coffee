@@ -1,6 +1,9 @@
 Crypto = require('crypto')
-Async = require('async')
+Async  = require('async')
+User   = require('../server/user')
+SessionManager = require('../server/session_manager')
 {getParentMountPoint, hashPassword} = require('./utils')
+cloudbrowserError = require('../shared/cloudbrowser_error')
 
 ###*
     @class LocalStrategy
@@ -15,19 +18,11 @@ class LocalStrategy
         # Defining @_idx as a read-only property
         # so as to prevent access of the instance variables of  
         # one instance from another.
-        Object.defineProperty this, "_idx",
-            value : _pvts.length
-
-        parentMountPoint = getParentMountPoint(bserver.mountPoint)
-        appMgr = bserver.server.applications
-
+        Object.defineProperty(this, "_idx", {value : _pvts.length})
         # Setting private properties
         _pvts.push
-            bserver      : bserver
-            browserMgr   : appMgr.find(bserver.mountPoint).browsers
-            parentApp    : appMgr.find(parentMountPoint)
-            cbCtx        : cbCtx
-
+            bserver : bserver
+            cbCtx   : cbCtx
         Object.freeze(this.__proto__)
         Object.freeze(this)
     ###*
@@ -36,70 +31,68 @@ class LocalStrategy
         @memberof LocalStrategy
         @instance
         @param options 
-        @param {User} options.user
+        @param {} options.user
         @param {String} options.password
         @param {booleanCallback} options.callback 
     ###
     login : (options) ->
-        {user, password, callback} = options
-        {bserver, parentApp, browserMgr, cbCtx} = _pvts[@_idx]
-        {User} = cbCtx.app
-        {mongoInterface, config} = bserver.server
-        parentMountPoint = parentApp.getMountPoint()
-        appUrl = "http://#{config.domain}:#{config.port}#{parentMountPoint}"
+        {emailID, password, callback} = options
+        EMAIL_RE = /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}$/
+
+        if typeof callback isnt "function" then return
+        if typeof password isnt "string"
+            return callback?(cloudbrowserError("PARAM_INVALID", "- password"))
+        if typeof emailID isnt "string" or
+        not EMAIL_RE.test(emailID.toUpperCase())
+            return callback?(cloudbrowserError("PARAM_INVALID", "- emailID"))
+            
+        {bserver} = _pvts[@_idx]
+        {config}  = bserver.server
+        user = new User(emailID)
+
+        mountPoint = getParentMountPoint(bserver.mountPoint)
+        app        = bserver.server.applications.find(mountPoint)
+        appUrl     = "http://#{config.domain}:#{config.port}#{mountPoint}"
+        dbKey      = null
+        session    = null
         redirectto = null
 
-        if typeof password isnt "string"
-            callback(cloudbrowserError("PARAM_MISSING", "password"))
-        if not user instanceof User
-            callback(cloudbrowserError("PARAM_MISSING", "user"))
-            
         Async.waterfall [
             (next) ->
-                parentApp.findUser(user.toJson(), next)
+                app.findUser(user, next)
             (userRec, next) ->
                 if userRec and userRec.status isnt 'unverified'
+                    dbKey = userRec.key
                     hashPassword
                         password : password
                         salt     : new Buffer(userRec.salt, 'hex')
-                    , (err, result) -> next(err, result, userRec.key)
+                    , next
                 # Bypassing the waterfall
-                else callback(null, false)
-            (result, key, next) ->
-                if result.key.toString('hex') is key
-                    # TODO - Allow only one user to connect to this bserver
-                    bserver.getSessions (sessionIDs) ->
-                        next(null, sessionIDs[0])
-                # Bypassing the waterfall
-                else callback(null, false)
-            (sessionID, next) ->
-                mongoInterface.getSession(sessionID, (err, session) ->
-                    next(err, sessionID, session))
-            (sessionID, session, next) ->
-                sessionObj =
-                    app   : parentMountPoint
-                    email : user.getEmail()
-                    ns    : user.getNameSpace()
-                if not session.user then session.user = [sessionObj]
-                else session.user.push(sessionObj)
-                # When an unauthenticated request for a specific browser arrives,
-                # the url for that browser is stored in the session (session.redirectto)
-                # of the requesting user. Then, the user is redirected to the authentication
-                # browser, where the user logs in using this method. Finally the user is
-                # redirected to the originally requested browser stored in the session.
-                redirectto = session.redirectto
-                session.redirectto = null
-                mongoInterface.setSession(sessionID, session, next)
-        ], (err, success) ->
-            if err then callback(err)
-            else
-                # No need to call the callback in the case of success
-                # as we redirect away from the page and kill the browser
-                if redirectto then bserver.redirect(redirectto)
-                else bserver.redirect(appUrl)
-                # Kill the authentication VB once user has been authenticated.
-                # TODO: Remove this setTimeout hack.
-                setTimeout((() -> browserMgr.close(bserver)), 500)
+                else callback(null, null)
+        ], (err, result) ->
+            if err then return callback(err)
+            # TODO - Allow only one user to connect to this bserver
+            sessions = bserver.getSessions()
+            session  = sessions[0]
+            if result?.key.toString('hex') is dbKey
+                # This is the what actually marks the user as logged in
+                SessionManager.addAppUserID(session, mountPoint, user)
+            else callback(null, false)
+            # When an unauthenticated request for a specific browser
+            # arrives, the url for that browser is stored in the
+            # session (session.redirectto) of the requesting user.
+            # Then, the user is redirected to the authentication
+            # browser, where the user logs in using the current
+            # function. Finally the user is redirected to the
+            # originally requested browser stored in the session.
+            redirectto = SessionManager.findPropOnSession(session,
+                'redirectto')
+            SessionManager.setPropOnSession(session, 'redirectto', null)
+            if redirectto then bserver.redirect(redirectto)
+            else bserver.redirect(appUrl)
+            bserver.once 'NoClients', () ->
+                app = bserver.server.applications.find(bserver.mountPoint)
+                app.browsers.close(bserver)
 
     ###*
         Registers a user with the application and sends a confirmation email to the user's registered email ID.
@@ -108,32 +101,34 @@ class LocalStrategy
         @instance
         @method signup
         @param options 
-        @param {User} options.user
+        @param {} options.user
         @param {String} options.password
         @param {booleanCallback} options.callback 
     ###
     signup : (options) ->
-        {bserver, parentApp, cbCtx} = _pvts[@_idx]
-        {util} = cbCtx
-        {User} = cbCtx.app
-        {config, mongoInterface} = bserver.server
-        {user, password, callback} = options
-        parentMountPoint = parentApp.getMountPoint()
-        appUrl = "http://#{config.domain}:#{config.port}#{parentMountPoint}"
-
-        # Checking for required arguments.
+        {emailID, password, callback} = options
+        
         if typeof password isnt "string"
-            callback(cloudbrowserError("PARAM_MISSING", "password"))
-        if not user instanceof User
-            callback(cloudbrowserError("PARAM_MISSING", "user"))
+            return callback(cloudbrowserError("PARAM_INVALID", "- password"))
+        if typeof emailID isnt "string"
+            return callback(cloudbrowserError("PARAM_INVALID", "- emailID"))
+        
+        {bserver, cbCtx} = _pvts[@_idx]
+        {util}     = cbCtx
+        {config}   = bserver.server
+        user       = new User(emailID)
+        mountPoint = getParentMountPoint(bserver.mountPoint)
+        app        = bserver.server.applications.find(mountPoint)
+        appUrl     = "http://#{config.domain}:#{config.port}#{mountPoint}"
+        token      = null
 
         # Generating a random token to ensure the validity of user confirmation.
         Async.waterfall [
             (next) ->
                 Crypto.randomBytes(32, next)
-            (token, next) ->
+            (tkn, next) ->
                 # Sending the confirmation email
-                token = token.toString('hex')
+                token = tkn.toString('hex')
                 subject = "Activate your cloudbrowser account"
                 confirmationMsg = "Please click on the link below to verify " +
                 "your email address.<br><p><a href='#{appUrl}/activate/"      +
@@ -146,25 +141,21 @@ class LocalStrategy
                     to       : user.getEmail()
                     subject  : subject
                     html     : confirmationMsg
-                    callback : (err) -> next(err, token)
-            (token, next) ->
+                    callback : next
+            (next) ->
+                hashPassword({password : password}, next)
+            (result, next) ->
                 # Hashing the user supplied password using pbkdf2
                 # and storing it with the status of 'unverified' to
                 # indicate that the email ID has not been activated
                 # and any login request from this account must not be
-                # allowed to pass unless verified by click on the email
-                # link sent above.
-                hashPassword {password : password}, (err, result) ->
-                    if err then next(err)
-                    else
-                        userRec =
-                            email   : user.getEmail()
-                            key     : result.key.toString('hex')
-                            salt    : result.salt.toString('hex')
-                            status  : 'unverified'
-                            token   : token
-                            ns      : user.getNameSpace()
-                        parentApp.addNewUser(userRec, (err) -> next(err))
+                # allowed to pass unless verified by clicking on the
+                # email link sent above.
+                user.key    = result.key.toString('hex')
+                user.salt   = result.salt.toString('hex')
+                user.token  = token
+                user.status = 'unverified'
+                app.addNewUser(user, (err) -> next(err))
         ], callback
 
 ###*
@@ -175,15 +166,8 @@ class GoogleStrategy
     # Private Properties inside class closure
     _pvts = []
     constructor : (bserver) ->
-        Object.defineProperty this, "_idx",
-            value : _pvts.length
-
-        parentMountPoint = getParentMountPoint(bserver.mountPoint)
-
-        _pvts.push
-            bserver    : bserver
-            parentApp  : bserver.server.applications.find(parentMountPoint)
-
+        Object.defineProperty(this, "_idx", {value : _pvts.length})
+        _pvts.push({bserver : bserver})
         Object.freeze(this.__proto__)
         Object.freeze(this)
     ###*
@@ -192,38 +176,20 @@ class GoogleStrategy
         @memberof GoogleStrategy
         @instance
     ###
-    login : (callback) ->
-        {bserver, parentApp, browserMgr} = _pvts[@_idx]
-        {config, mongoInterface, applications} = bserver.server
-        browserMgr = applications.find(bserver.mountPoint).browsers
-
-        # The mountpoint attached to the user session is used by the google
-        # authentication mountpoint in the http_server to identify the 
-        # application from which the google redirect has originated
-        Async.waterfall [
-            (next) ->
-                bserver.getSessions((sessionIDs) -> next(null, sessionIDs[0]))
-            (sessionID, next) ->
-                mongoInterface.getSession sessionID, (err, session) ->
-                    next(err, sessionID, session)
-            (sessionID, session, next) ->
-                session.mountPoint = parentApp.getMountPoint()
-                mongoInterface.setSession(sessionID, session, next)
-        ], (err) ->
-            if err then callback(err)
-            # Redirecting to google authentication mountpoint.
-            bserver.redirect("http://#{config.domain}:#{config.port}/googleAuth")
-            # Killing the authentication browser.
-            # TODO : Remove this hack
-            setTimeout((() -> browserMgr.close(bserver)), 500)
-
-    ###*
-        Registers a user with the _application
-        @method signup
-        @memberof GoogleStrategy
-        @instance
-    ###
-    signup : GoogleStrategy::login
+    login : () ->
+        {bserver} = _pvts[@_idx]
+        sessions  = bserver.getSessions()
+        session   = sessions[0]
+        # The mountPoint attached to the user session is used by the google
+        # authentication route to identify the application from which the
+        # google redirect has originated
+        mountPoint = getParentMountPoint(bserver.mountPoint)
+        SessionManager.setPropOnSession(session, 'mountPoint', mountPoint)
+        bserver.redirect "/googleAuth"
+        # Kill the browser once client has been authenticated
+        bserver.once 'NoClients', () ->
+            app = bserver.server.applications.find(bserver.mountPoint)
+            app.browsers.close(bserver)
 
 module.exports =
     LocalStrategy  : LocalStrategy

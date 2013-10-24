@@ -112,6 +112,9 @@ class Runner
             .option 'compressJS',
                 full : 'compress-js'
                 help : "Pass socket.io and client engine through uglify and gzip."
+            .option 'cookieName',
+                full : 'cookie-name'
+                help : "Customize the name of the cookie"
             .option 'knockout',
                 flag    : true
                 help    : "Enable server-side knockout.js bindings."
@@ -172,64 +175,22 @@ class Runner
         user = {}
 
         Async.waterfall [
-
             (next) ->
                 Read({prompt : "Email: "}, next)
-
-            , (email, isDefault, next) ->
+            (email, isDefault, next) ->
                 # Checking the validity of the email provided
                 if not /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}$/
-                .test(email.toUpperCase())
-                    next(new Error("Invalid email ID"))
-
+                    .test(email.toUpperCase())
+                        next(new Error("Invalid email ID"))
                 else
-                    # Set the email
                     user.email = email
-                    # Read the namespace of the user
-                    Read
-                        prompt : "Namespace:\n1) Local User\n2) Google User\n" +
-                                 "Please choose 1 or 2 :"
-                        default : 1
-                    , next
-
-            , (ns, isDefault, next) ->
-
-                # Convert string ns to number ns
-                ns = parseInt(ns, 10)
-                # Checking the validity of the namespace
-                if isNaN(ns) or ns isnt 1 and ns isnt 2
-                    next(new Error("Invalid namespace selected"))
-
-                switch ns
-                    # Read the password only if the user is a local user
-                    # and if the user entry doesn't exist in the db
-                    when 1
-                        # Set the namespace
-                        user.ns = "local"
-                        # Find if the user already exists
-                        # in the admin interface collection
-                        mongoInterface.findUser user, 'admin_interface.users',
-                        (err, userRec) ->
-                            if userRec then next(null, null, null)
-                            else Read
-                                prompt : "Password: "
-                                # Don't echo the password on screen
-                                silent : true
-                            , next
-
-                    # No password for the next function in the waterfall
-                    # as it is a google user
-                    when 2
-                        # Set the namespace
-                        user.ns = "google"
-                        # Must be the same as the signature of read
-                        next(null, null, null)
-
-            , (password, isDefault, next) ->
-                # Password is not required if the ns is google or if there is
-                # already an entry for the user in the db
-                if not password then next(null, user)
-                # Hash the password in the local ns case
+                    # Find if the user already exists in the admin interface collection
+                    mongoInterface.findUser(user, 'admin_interface.users', next)
+            (userRec, next) ->
+                if userRec then next(null, null, null)
+                else Read({prompt : "Password: ", silent : true}, next)
+            (password, isDefault, next) ->
+                if not password then next(null, null)
                 else hashPassword {password:password}, (result) ->
                     # Insert into admin_interface collection
                     mongoInterface.addUser

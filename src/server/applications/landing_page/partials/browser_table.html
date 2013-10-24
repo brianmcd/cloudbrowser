@@ -81,15 +81,22 @@
             <td>
                 <!-- Owners -->
                 <div ng-repeat="owner in browser.owners">
-                    {{owner.email}} <span ng-show="owner.ns">({{owner.ns}})</span>
+                    {{owner}} 
                     <small class="muted"> owner </small>
                 </div>
                 <!-- Owners -->
 
                 <!-- Collaborators -->
                 <div ng-repeat="collab in browser.collaborators">
-                    {{collab.email}} <span ng-show="collab.ns">({{collab.ns}})</span>
+                    {{collab}}
                     <small class="muted"> collaborator </small>
+                </div>
+                <!-- Collaborators -->
+
+                <!-- Readers -->
+                <div ng-repeat="reader in browser.readers">
+                    {{reader}}
+                    <small class="muted"> reader </small>
                 </div>
                 <!-- Collaborators -->
             </td>

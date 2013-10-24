@@ -1,83 +1,91 @@
 BrowserServer = require('./index')
 
 class BrowserServerSecure extends BrowserServer
-    @nameCount:0
+    @nameCount : 0
     constructor: (bserverInfo) ->
         super
-        {@creator, permissions} = bserverInfo
-        # Lists of users with corresponding permissions
-        # for this browser
+        {@creator, permission} = bserverInfo
+        # Lists of users with corresponding permission for this browser
         @own        = []
         @readwrite  = []
         @readonly   = []
-        @remove     = []
-        @name       = @mountPoint.substring(1) + "-browser" + @constructor.nameCount++
+        @name       = "browser" + @constructor.nameCount++
+        switch permission
+            when 'own'
+                @addOwner(@creator)
+            when 'readwrite'
+                @addReaderWriter(@creator)
+            when 'readonly'
+                @addReader(@creator)
 
-        @addUserToLists(@creator, permissions)
+    addReaderWriter : (user) ->
+        if @isOwner(user) then return
+        if not @isReaderWriter(user)
+            @removeReader(user)
+            @emit('share', user)
+            @readwrite.push(user)
 
-    addUserToLists : (user, listTypes, callback) ->
-        @server.permissionManager.findSysPermRec
-            user     : user
-            callback : (err, sysRec) =>
-                if err then callback?(err)
-                for listName, hasPerm of listTypes
-                    if hasPerm is true and
-                    @hasOwnProperty(listName) and
-                    not @findUserInList(user, listName)
-                        @[listName].push(sysRec)
-                        @emit('share', sysRec.getUser(), listName)
-                callback?(null, sysRec)
+    addOwner : (user) ->
+        if not @isOwner(user)
+            @removeReaderWriter(user)
+            @removeReader(user)
+            @own.push(user)
+            @emit('share', user)
 
-    removeUserFromLists : (user, listType) ->
-        if @.hasOwnProperty(listType)
-            list = @[listType]
+    addReader : (user) ->
+        if @isReaderWriter(user) or @isOwner(user) then return
+        if not @isReader(user)
+            @readonly.push(user)
+            @emit('share', user)
 
-            for i in [0..list.length]
-                if list[i].email is user.email and
-                list[i].ns is user.ns
-                    break
+    isReaderWriter : (user) ->
+        @_isUserInList(user, 'readwrite')
+    
+    isOwner : (user) ->
+        @_isUserInList(user, 'own')
+    
+    isReader : (user) ->
+        @_isUserInList(user, 'readonly')
 
-            if i < list.length
-                list.splice(i, 1)
-                return null
+    _removeUserFromList : (user, listType) ->
+        list = @[listType]
+        for u in list when u.getEmail() is user.getEmail()
+            idx = list.indexOf(u)
+            list.splice(idx, 1)
+            break
 
-            else return new Error("User " + user.email + "(" + user.ns + ") not found in list")
+    _isUserInList : (user, listType) ->
+        for u in @[listType] when u.getEmail() is user.getEmail()
+            return true
+        return false
 
-        else return new Error("No such list " + listType)
+    removeReaderWriter : (user) ->
+        @_removeUserFromList(user, 'readwrite')
 
-    findUserInList : (user, listType) ->
-        userInList = @[listType].filter (userInList) ->
-            return (userInList.user.ns is user.ns and userInList.user.email is user.email)
-        if userInList[0] then return userInList[0]
-        else return null
+    removeReader : (user) ->
+        @_removeUserFromList(user, 'readonly')
+
+    removeOnwer : (user) ->
+        @_removeUserFromList(user, 'own')
+
+    getReaderWriters : () ->
+        return @readwrite
+
+    getReaders : () ->
+        return @readonly
+
+    getOwners : () ->
+        return @own
    
-    getUsersInList : (listType) ->
-        if @.hasOwnProperty(listType)
-            return @[listType]
-        else return null
-
     getAllUsers : () ->
-        findUser = (user, list) ->
-            userInList = list.filter (item) ->
-                return (item.ns is user.ns and item.email is user.email)
-
-            if userInList[0] then return true else return false
- 
-        userList = []
         listTypes = ['own', 'readwrite', 'readonly']
-
-        for listType in listTypes
-           for userRec in @getUsersInList(listType)
-                if not findUser(userRec.user, userList)
-                    userList.push(userRec.user)
-
-        return userList
+        users = []
+        return users.concat(@[list]) for list in listTypes
 
     close : () ->
         super
         @own = null
         @readwrite = null
         @readonly = null
-        @remove = null
 
 module.exports = BrowserServerSecure

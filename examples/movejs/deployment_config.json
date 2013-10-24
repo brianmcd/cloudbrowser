@@ -1,9 +1,7 @@
 {
     "isPublic": true,
-    "owner": {
-        "email": "ashimaathri@gmail.com",
-        "ns": "local"
-    },
+    "name": "MoveJS"
+    "owner": "ashimaathri@gmail.com",
     "mountOnStartup": true,
     "browserLimit": 0,
     "description": "",

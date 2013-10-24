@@ -18,11 +18,8 @@ app.directive 'cbTypeahead', () ->
             waterfallMethods = NwGlobal.Array()
             # Removing self from list
             waterfallMethods.push (next) ->
-                if scope.user.email is user.getEmail() and
-                scope.user.ns is user.getNameSpace()
-                    callback(null, false)
-                else
-                    next(null, true)
+                if scope.user is user then callback(null, false)
+                else next(null, true)
 
             for method in role.checkMethods
                 do (method) ->
@@ -35,11 +32,9 @@ app.directive 'cbTypeahead', () ->
                         else next(null, true)
 
             Async.waterfall waterfallMethods, (err, include) ->
-                if err
-                    callback(err)
-                else
-                    if include then newList.push(user)
-                    callback(null)
+                return callback(err) if err
+                if include then newList.push(user)
+                callback(null)
         , (err) ->
             callback(err, newList)
 
@@ -52,13 +47,10 @@ app.directive 'cbTypeahead', () ->
                     (users, next) ->
                         pruneList(users, scope, next)
                 ), (err, users) ->
-                    if err
-                        scope.safeApply -> scope.setError(err)
-                    else
-                        data = []
-                        for user in users
-                            data.push("#{user.getEmail()} (#{user.getNameSpace()})")
-                        process(data)
+                    return (scope.safeApply -> scope.setError(err)) if err
+                    data = []
+                    data.push(user) for user in users
+                    process(data)
             updater : (item) ->
                 scope.$apply(attrs.ngModel + " = '#{item}'")
                 return item

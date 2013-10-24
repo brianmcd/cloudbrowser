@@ -1,10 +1,8 @@
 {
     "isPublic": true,
-    "owner": {
-        "email": "ashimaathri@gmail.com",
-        "ns": "local"
-    },
+    "owner": "ashimaathri@gmail.com",
     "browserLimit": 0,
+    "name" : "Small Calendar"
     "description": "",
     "mountOnStartup": true,
     "authenticationInterface": true,
