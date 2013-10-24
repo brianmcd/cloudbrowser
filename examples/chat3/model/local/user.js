@@ -6,8 +6,7 @@
 
   User = (function() {
     function User(user) {
-      this.name = user.getEmail();
-      this.namespace = user.getNameSpace();
+      this.name = user;
       this.joinedRooms = [];
       this.otherRooms = [];
       this.currentRoom = null;
