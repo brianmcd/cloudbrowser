@@ -1,7 +1,7 @@
 {
     "isPublic": true,
     "owner": "ashimaathri@gmail.com",
-    "name" : "Person",
+    "name": "Person",
     "browserLimit": 0,
     "description": "",
     "mountOnStartup": true,

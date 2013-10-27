@@ -1,6 +1,6 @@
 {
     "authenticationInterface": true,
-    "name" : "Another ToDo App",
+    "name": "Another ToDo App",
     "description": "A To Do application written in AngularJS",
     "browserLimit": 0,
     "isPublic": true,

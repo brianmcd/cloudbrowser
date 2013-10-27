@@ -1,7 +1,7 @@
 {
     "isPublic": false,
     "owner": "godmar@gmail.com",
-    "name" : "Frames"
+    "name": "Frames",
     "mountOnStartup": true,
     "browserLimit": 0,
     "description": "This app doesn't work anymore. It loads the first two frames but not the last external one from news.ycombinator.com",

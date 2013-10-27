@@ -1,6 +1,6 @@
 {
     "isPublic": true,
-    "name" : "Doodle"
+    "name": "Doodle",
     "owner": "ashimaathri@gmail.com",
     "browserLimit": 0,
     "description": "A sample doodle app.",

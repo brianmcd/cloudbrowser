@@ -1,6 +1,6 @@
 {
     "authenticationInterface": true,
-    "name" : "Chat3",
+    "name": "Chat3",
     "isPublic": true,
     "owner": "godmar@gmail.com",
     "description": "A multi user chat application written using AngularJS",

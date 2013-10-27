@@ -1,6 +1,6 @@
 {
     "isPublic": true,
-    "name": "MoveJS"
+    "name": "MoveJS",
     "owner": "ashimaathri@gmail.com",
     "mountOnStartup": true,
     "browserLimit": 0,

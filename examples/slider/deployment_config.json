@@ -1,7 +1,7 @@
 {
     "isPublic": true,
     "owner": "ashimaathri@gmail.com",
-    "name" : "Slider",
+    "name": "Slider",
     "browserLimit": 0,
     "description": "",
     "mountOnStartup": false,
