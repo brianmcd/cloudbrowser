@@ -1,4 +1,5 @@
 SessionManager = require('../session_manager')
+{redirect} = require('./route_helpers')
 
 module.exports = (req, res, next) ->
     CBServer = require('../')
@@ -17,5 +18,5 @@ module.exports = (req, res, next) ->
 
     appInstance.createBrowser user, (err, bserver) ->
         if err then res.send(err.message, 400)
-        else routeHelpers.redirect(res,
+        else redirect(res,
             "#{mountPoint}/browsers/#{bserver.id}/index")

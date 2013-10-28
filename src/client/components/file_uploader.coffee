@@ -1,46 +1,60 @@
 Component = require('./component')
-# opts for FileUploader
-# form : 
-#   action : "url to post to"
-# legend : "text"
-# file : 
-#   accept : "type of files to accept"
-#   ... other valid attributes for input type file
-# submit : 
-#   name : "display name of the submit button"
-#   ... other valid attributes for input type submit
+cloudbrowserError = require('../shared/cloudbrowser_error')
 
-class FileUploader extends Component
-    constructor : (@socket, @node, @opts) ->
-        console.log @opts
+class FileUploader
+    defaults :
+        legend      : "Upload a File"
+        buttonText  : "Upload"
+        formClass   : ""
+        buttonClass : ""
+
+    constructor : (@socket, @node, opts) ->
+        for own k, v of @defaults
+            if not opts.hasOwnProperty(k) then opts[k] = v
+
+        {@legend
+         , @buttonText
+         , @buttonClass
+         , @formClass} = opts
+
+        {@postURL} = opts.cloudbrowser
+
         @fileUploader = @createForm()
-        @node.appendChild(@fileUploader)
+        $(@node).append(@fileUploader)
 
     createForm : () ->
-        form = @createElement("form", {method: "POST"})
-        fieldset = @createElement("fieldset")
-        form.appendChild(fieldset)
-        if @opts.legend?
-            legend = @createElement("legend")
-            legend.appendChild(document.createTextNode(@opts.legend))
-            fieldset.appendChild(legend)
-        fieldset.appendChild(@createElement("input", {type : "file"}))
-        fieldset.appendChild(@createElement("input", {type : "submit"}))
+        form = $("<form/>").addClass(@formClass)
+        fieldset = $("<fieldset/>").appendTo(form)
+        $("<legend/>").text(@legend).appendTo(fieldset)
+        $("<input/>", {type : "file"}).appendTo(fieldset)
+        $("<button/>").addClass(@buttonClass).click(@onSubmitHandler)
+            .appendTo(fieldset).text(@buttonText)
+        $("<span/>", {id : "loading"}).text("Uploading...")
+            .appendTo(fieldset).hide()
+        $("<span/>", {id : "error", class : "text-error"})
+            .appendTo(fieldset).hide()
         return form
 
-    createElement : (tagName, clientAttrs) ->
-        element = document.createElement(tagName)
-        # Setting attributes that are fixed by the client side component
-        if clientAttrs? and typeof clientAttrs is "object"
-            element.setAttribute(attr, value) for attr, value of clientAttrs
-        # Constructing the name of the options object corresponding to this tag
-        type = element.getAttribute("type")
-        if type then type = type.charAt(0).toUpperCase() + type.slice(1)
-        serverAttrsName = tagName + if type then "#{type}" else ""
-        serverAttrs = @opts[serverAttrsName]
-        # Setting attributes received from the server side component
-        if serverAttrs? and typeof serverAttrs is "object"
-            element.setAttribute(attr, value) for attr, value of serverAttrs
-        return element
+    onSubmitHandler : (event) =>
+        event.preventDefault()
+        fileInput = $('input:file')[0]
+        if not fileInput then return @setError("File can not be empty")
+        fileUploadForm = new FormData()
+        fileUploadForm.append("content", fileInput.files[0])
+        fileUploadForm.append("nodeID", event.target.__nodeID)
+        $.ajax
+            url         : @postURL
+            data        : fileUploadForm
+            type        : 'POST'
+            processData : false
+            contentType : false
+            beforeSend  : () -> $('#loading').show()
+            complete    : () -> $('#loading').hide()
+            success     : (data) =>
+                if data.err then @setError(data.err)
+
+    setError : (message) ->
+        $('#error').text(message).show()
+        $('#error').delay(800).fadeOut("slow")
 
 module.exports = FileUploader

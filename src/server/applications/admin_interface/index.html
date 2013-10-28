@@ -11,155 +11,184 @@
         <meta charset="UTF-8">
     </head>
     <body>
-        <div class="container-fluid">
-            <div class="row-fluid" ng-controller="AppCtrl">
-                <div class="page-header pagination-centered">
+        <div class="container-fluid" ng-controller="AppCtrl">
+            <div class="row-fluid">
+                <div class="page-header pagination-centered span12">
                     <h3>CloudBrowser Administration Interface</h3>
                 </div>
+            </div>
+            <div class="row-fluid">
                 <div class="span7">
-                    <input type="text" class="input-small search-query margin-bottom"
-                    placeholder="search" ng-model="search" ng-show="apps.length">
-                    <div class="pull-right">
-                        {{user}} &nbsp;|
-                        <a ng-click="logout()">Logout</a>
+                    <div class="row-fluid">
+                        <div class="span12">
+                            <input type="text" placeholder="search"
+                            ng-model="search" ng-show="apps.length"
+                            class="input-small search-query margin-bottom">
+                            <div class="pull-right">
+                                {{user}} &nbsp;|
+                                <a ng-click="logout()">Logout</a>
+                            </div>
+                        </div>
                     </div>
-                    <table ng-show="apps.length" class="table table-bordered" id="data-table">
-                        <thead>
-                            <th class="align-left"
-                            ng-click="sortBy('mountPoint')">
-                                MountPoint
-                            </th>
-                            <th
-                            ng-click="sortBy('numUsers')">
-                                <i class="icon-group" title="Number of Users"></i>
-                            </th>
-                            <th
-                            ng-click="sortBy('numBrowsers')">
-                                <i class="icon-file" title="Number of Instances"></i>
-                            </th>
-                            <th
-                            ng-click="sortBy('isPublic')">
-                                <i class="icon-eye-open" title="Privacy"></i>
-                            </th>
-                            <th
-                            ng-click="sortBy('mounted')">
-                                <i class="icon-off" title="State"></i>
-                            </th>
-                            <th
-                            ng-click="sortBy('isAuthEnabled')">
-                                <i class="icon-lock" title="Authentication"></i>
-                            </th>
-                        </thead>
-                        <tbody>
-                            <tr ng-repeat="app in apps|filter:search|orderBy:predicate:reverse"
-                            ng-click="selectApp(app)"
-                            ng-class="getAppClass(app)">
-                                <td class="align-left">{{app.mountPoint}}</td>
-                                <td>{{app.numUsers}}</td>
-                                <td>{{app.numBrowsers}}</td>
-                                <td ng-show='app.isPublic'>Public</td>
-                                <td ng-hide='app.isPublic'>Private</td>
-                                <td ng-show='app.mounted'>Mounted</td>
-                                <td ng-hide='app.mounted'>Disabled</td>
-                                <td ng-show='app.isAuthEnabled'>On</td>
-                                <td ng-hide='app.isAuthEnabled'>Off</td>
-                            </tr> 
-                        </tbody>
-                    </table>
-                    <!-- Use class instead of id-->
-                    <div id="file-uploader"></div>
+                    <div class="row-fluid">
+                        <div class="span12">
+                            <table ng-show="apps.length" id="data-table"
+                            class="table table-bordered">
+                                <thead>
+                                    <th class="align-left"
+                                    ng-click="sortBy('mountPoint')">
+                                        MountPoint
+                                    </th>
+                                    <th
+                                    ng-click="sortBy('numUsers')">
+                                        <i class="icon-group" title="Number of Users"></i>
+                                    </th>
+                                    <th
+                                    ng-click="sortBy('numBrowsers')">
+                                        <i class="icon-file" title="Number of Instances"></i>
+                                    </th>
+                                    <th
+                                    ng-click="sortBy('isPublic')">
+                                        <i class="icon-eye-open" title="Privacy"></i>
+                                    </th>
+                                    <th
+                                    ng-click="sortBy('mounted')">
+                                        <i class="icon-off" title="State"></i>
+                                    </th>
+                                    <th
+                                    ng-click="sortBy('isAuthEnabled')">
+                                        <i class="icon-lock" title="Authentication"></i>
+                                    </th>
+                                </thead>
+                                <tbody>
+                                    <tr ng-repeat="app in apps|filter:search|orderBy:predicate:reverse"
+                                    ng-click="selectApp(app)"
+                                    ng-class="getAppClass(app)">
+                                        <td class="align-left">{{app.name}}</td>
+                                        <td>{{app.numUsers}}</td>
+                                        <td>{{app.numBrowsers}}</td>
+                                        <td ng-show='app.isPublic'>Public</td>
+                                        <td ng-hide='app.isPublic'>Private</td>
+                                        <td ng-show='app.mounted'>Mounted</td>
+                                        <td ng-hide='app.mounted'>Disabled</td>
+                                        <td ng-show='app.isAuthEnabled'>On</td>
+                                        <td ng-hide='app.isAuthEnabled'>Off</td>
+                                    </tr> 
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="row-fluid">
+                        <div id="file-uploader" class="span12"></div>
+                    </div>
+                    <div class="row-fluid">
+                        <div class="text-error" class="span12">{{error}}</div>
+                    </div>
                 </div>
 
                 <div ng-show="selectedApp"
-                class="span4 pagination-centered box"
+                class="span5 pagination-centered box fitText"
                 ng-class="getBoxClass(selectedApp)">
-
-                    <legend>
-                        {{selectedApp.mountPoint | removeSlash}}
-                    </legend>
-
-                    <a ng-click="leftClick(selectedApp.url)" title="Visit the app">
-                        {{selectedApp.url}}
-                        <i class="icon-external-link"></i>
-                    </a>
-
-                    <p class="well">
-                        <span ng-hide="selectedApp.editing">
-                            {{selectedApp.description}}
-                            <a ng-click="editDescription(selectedApp)">
-                                Edit
-                            </a>
-                        </span>
-                        <textarea ng-show="selectedApp.editing" type="text"
-                        ng-hasfocus="selectedApp.editing" class="span11"
-                        ng-model="selectedApp.description"></textarea>
-                    </p>
-
-                    <table class="table table-striped">
-                        <tr ng-show="selectedApp.users">
-                            <td>
-                                <strong>
-                                    {{selectedApp.numUsers}}
-                                </strong> Users
-                            </td>
-                        </tr>
-                        <tr>
-                            <td>
-                                <strong>
-                                    {{selectedApp.numBrowsers}}
-                                </strong> Instances</td>
-                        </tr>
-                        <tr>
-                            <td>
-                                <strong>
-                                    {{selectedApp.instantiationStrategy}}
-                                </strong> Instantiation Strategy
-                                <span ng-show="selectedApp.browserLimit">
-                                    with a browser limit of 
-                                    <strong>
-                                        {{selectedApp.browserLimit}}
-                                    </strong>
-                                </span>
-                            </td>
-                        </tr>
-                    </table>
-
-                    <div class="span3 offset4 align-left">
-                        <div class="onoffswitch onoffswitch-privacy">
-                            <input type="checkbox" id="onoffswitch1"
-                            class="onoffswitch-checkbox"
-                            ng-model="selectedApp.isPublic">
-                            <label class="onoffswitch-label"
-                            for="onoffswitch1"
-                            ng-click="togglePrivacy(selectedApp)">
-                                <div class="onoffswitch-inner"></div>
-                                <div class="onoffswitch-switch"></div>
-                            </label>
-                        </div>
-                        <div class="onoffswitch onoffswitch-auth">
-                            <input type="checkbox" id="onoffswitch1"
-                            class="onoffswitch-checkbox"
-                            ng-model="selectedApp.isAuthEnabled">
-                            <label class="onoffswitch-label"
-                            for="onoffswitch1"
-                            ng-click="toggleAuthentication(selectedApp)">
-                                <div class="onoffswitch-inner"></div>
-                                <div class="onoffswitch-switch"></div>
-                            </label>
-                        </div>
-                        <div class="onoffswitch onoffswitch-mounted">
-                            <input type="checkbox" id="onoffswitch1"
-                            class="onoffswitch-checkbox"
-                            ng-model="selectedApp.mounted">
-                            <label class="onoffswitch-label"
-                            for="onoffswitch1"
-                            ng-click="toggleMountDisable(selectedApp)">
-                                <div class="onoffswitch-inner"></div>
-                                <div class="onoffswitch-switch"></div>
-                            </label>
+                    <div class="row-fluid">
+                        <div class="span12">
+                            <legend>
+                                {{selectedApp.name}}
+                            </legend>
                         </div>
                     </div>
-
+                    <div class="row-fluid">
+                        <div class="span12">
+                            <a ng-click="leftClick(selectedApp.url)"
+                            title="Visit the app">
+                                {{selectedApp.url}}
+                                <i class="icon-external-link"></i>
+                            </a>
+                        </div>
+                    </div>
+                    <div class="row-fluid">
+                        <div class="span12 well">
+                            <span ng-hide="selectedApp.editing">
+                                {{selectedApp.description}}
+                                <a ng-click="editDescription(selectedApp)">
+                                    Edit
+                                </a>
+                            </span>
+                            <textarea ng-show="selectedApp.editing" type="text"
+                            ng-hasfocus="selectedApp.editing" class="span11"
+                            ng-model="selectedApp.description"></textarea>
+                        </div>
+                    </div>
+                    <div class="row-fluid">
+                        <div class="span12">
+                            <table class="table table-striped">
+                                <tr ng-show="selectedApp.users">
+                                    <td>
+                                        <strong>
+                                            {{selectedApp.numUsers}}
+                                        </strong> Users
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <strong>
+                                            {{selectedApp.numBrowsers}}
+                                        </strong> Instances</td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <strong>
+                                            {{selectedApp.instantiationStrategy}}
+                                        </strong> Instantiation Strategy
+                                        <span ng-show="selectedApp.browserLimit">
+                                            with a browser limit of 
+                                            <strong>
+                                                {{selectedApp.browserLimit}}
+                                            </strong>
+                                        </span>
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="row-fluid">
+                        <div class="span4"></div>
+                        <div class="span3 align-left">
+                            <div class="onoffswitch onoffswitch-privacy">
+                                <input type="checkbox" id="onoffswitch1"
+                                class="onoffswitch-checkbox"
+                                ng-model="selectedApp.isPublic">
+                                <label class="onoffswitch-label"
+                                for="onoffswitch1"
+                                ng-click="togglePrivacy(selectedApp)">
+                                    <div class="onoffswitch-inner"></div>
+                                    <div class="onoffswitch-switch"></div>
+                                </label>
+                            </div>
+                            <div class="onoffswitch onoffswitch-auth">
+                                <input type="checkbox" id="onoffswitch1"
+                                class="onoffswitch-checkbox"
+                                ng-model="selectedApp.isAuthEnabled">
+                                <label class="onoffswitch-label"
+                                for="onoffswitch1"
+                                ng-click="toggleAuthentication(selectedApp)">
+                                    <div class="onoffswitch-inner"></div>
+                                    <div class="onoffswitch-switch"></div>
+                                </label>
+                            </div>
+                            <div class="onoffswitch onoffswitch-mounted">
+                                <input type="checkbox" id="onoffswitch1"
+                                class="onoffswitch-checkbox"
+                                ng-model="selectedApp.mounted">
+                                <label class="onoffswitch-label"
+                                for="onoffswitch1"
+                                ng-click="toggleMountDisable(selectedApp)">
+                                    <div class="onoffswitch-inner"></div>
+                                    <div class="onoffswitch-switch"></div>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="span5"></div>
+                    </div>
                 </div>
             </div>
         </div> 

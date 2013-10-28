@@ -8,6 +8,13 @@ CBAdmin.controller "AppCtrl", ($scope) ->
             if fn then fn()
         else
             this.$apply(fn)
+    
+    # Must create directive instead
+    $scope.setError = (err) ->
+        $scope.error = err
+        setTimeout () ->
+            $scope.safeApply -> $scope.error = null
+        , 5000
 
     $scope.apps = []
 
@@ -24,6 +31,7 @@ CBAdmin.controller "AppCtrl", ($scope) ->
             app =
                 url           : appConfig.getUrl()
                 api           : appConfig
+                name          : appConfig.getName()
                 description   : appConfig.getDescription()
                 mountPoint    : appConfig.getMountPoint()
                 isPublic      : appConfig.isAppPublic()
@@ -76,21 +84,24 @@ CBAdmin.controller "AppCtrl", ($scope) ->
         App.remove(appConfig)
 
     # File uploader Component
-    fileUploaderDiv = document.getElementById('file-uploader')
-    fileUploader    = curVB.createComponent 'fileUploader',
-        fileUploaderDiv,
-            form :
-                action : "#{serverConfig.getUrl()}/gui-deploy"
-                class  : "form-inline well"
-                enctype : "multipart/form-data"
-            legend : "Upload an Application"
-            inputSubmit :
-                name  : "Upload"
-                class : "btn btn-primary"
-            inputFile :
-                accept : "application/x-gzip"
-                name   : "content"
-
+    fileUploader = curVB.createComponent 'fileUploader',
+        document.getElementById('file-uploader'),
+            legend      : "Upload an Application"
+            formClass   : "form-inline well"
+            buttonClass : "btn btn-primary"
+    fileUploader.addEventListener "cloudbrowser.upload", (event) ->
+        {user, file} = event.info
+        # Anybody can post to the upload url.
+        # But only posts by the current user will be accepted.
+        if user isnt $scope.user then return
+        if file.type isnt "application/x-gzip"
+            $scope.safeApply -> $scope.setError("File must be a gzipped tarball")
+            return
+        serverConfig.uploadAndCreateApp file.path, (err, appConfig) ->
+            $scope.safeApply ->
+                if err then $scope.setError(err)
+                else App.add(appConfig)
+        
     # Initialization
     $scope.user = curVB.getCreator()
     $scope.selectedApp = null

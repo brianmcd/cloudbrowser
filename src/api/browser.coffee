@@ -102,7 +102,7 @@ class Browser
     ###
     createComponent : (name, target, options) ->
         {bserver} = _pvts[@_idx]
-        {browser} = bserver
+        {browser, mountPoint} = bserver
 
         # bserver may have been gc'ed
         if not browser then return
@@ -116,12 +116,15 @@ class Browser
         Ctor = Components[name]
         if !Ctor then return(cloudbrowserError("NO_COMPONENT", "-#{name}"))
 
-        rpcMethod = (method, args) =>
+        rpcMethod = (method, args) ->
             browser.emit 'ComponentMethod',
                 target : target
                 method : method
                 args   : args
                 
+        # Mountpoint needed for authentication in case of
+        # the file uploader component
+        options.cloudbrowser = {mountPoint : mountPoint}
         # Create the component
         comp = browser.components[targetID] =
             new Ctor(options, rpcMethod, target)

@@ -1,4 +1,4 @@
-routeHelpers   = require('../route_helpers')
+{redirect}     = require('../route_helpers')
 SessionManager = require('../../session_manager')
 User           = require('../../user')
 
@@ -6,7 +6,7 @@ module.exports = (req, res, next) ->
     CBServer   = require('../../')
     appManager = CBServer.getAppManager()
 
-    if not req.user then routeHelpers.redirect(res, mountPoint)
+    if not req.user then redirect(res, mountPoint)
 
     mountPoint = SessionManager.findPropOnSession(req.session, 'mountPoint')
     if not mountPoint then return res.send(403)
@@ -20,4 +20,4 @@ module.exports = (req, res, next) ->
         redirectto = SessionManager.findAndSetPropOnSession(req.session,
             'redirectto', null)
         if not redirectto then redirectto = mountPoint
-        routeHelpers.redirect(res, redirectto)
+        redirect(res, redirectto)

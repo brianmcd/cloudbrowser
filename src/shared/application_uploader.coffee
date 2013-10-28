@@ -3,27 +3,17 @@ Tar   = require('tar')
 Async = require('async')
 Fs    = require('fs')
 Path  = require('path')
-{getConfigFromFile} = require('../shared/utils')
+{getConfigFromFile} = require('./utils')
 
 class ApplicationUploader
-    @validateUploadReq : (req, expectedMimeType) ->
-        # Check if name and content of the app have been provided
-        message = null
-        if not req.files.content
-            message = "File is empty"
-        # and if the file type is correct
-        else if req.files.content.type isnt expectedMimeType
-            message = "File must be a gzipped tarball"
-        return message
-
-    @processFileUpload : (user, req, res) ->
-        Server      = require('./index')
+    @process : (email, pathToFile, callback) ->
+        Server      = require('../server/index')
         projectRoot = Server.getProjectRoot()
         appManager  = Server.getAppManager()
-        inFilePath  = req.files.content.path
+        inFilePath  = pathToFile
         appDirPath  = "#{projectRoot}/applications"
         # Replacing '@' and '.' with underscore
-        userID = user.getEmail().replace(/(@|\.)/g, '_')
+        userID = email.replace(/(@|\.)/g, '_')
         userDirPath = "#{appDirPath}/#{userID}"
 
         Async.waterfall [
@@ -46,20 +36,13 @@ class ApplicationUploader
                     appDirPath  : appDirPath
                     userDirPath : userDirPath
                     callback    : next
-
-        ], (err, outFilePath) ->
-            if err then res.send(err.message, 400)
-            else
-                ApplicationUploader.overwriteConfig(user.getEmail(), outFilePath)
-                # Create the app and return 400 in case of errors
+            (outFilePath, next) ->
+                ApplicationUploader.overwriteConfig(email, outFilePath)
                 appManager.createAppFromDir
                     path : outFilePath
                     type : "uploaded"
-                , (err, app) ->
-                    if err then res.send(err.message, 400)
-                    else if not app
-                        res.send("Could not create application", 400)
-                    else res.send(200)
+                , next
+        ], callback
 
     @overwriteConfig : (email, pathToApp) ->
         deploymentConfigPath = Path.resolve(pathToApp,
@@ -120,9 +103,8 @@ class ApplicationUploader
             , (files, next) ->
                 # Upload only one app at a time
                 if files.length isnt 1
-                    message = "The tarball must contain only one application"
-                    res.send("#{message}", 400)
-                    next(new Error(message))
+                    error = new Error("The tarball must contain only one application")
+                    next(error)
                 # For the admin_interface case where the app is at the second
                 # level and has to be renamed to the correct path
                 else

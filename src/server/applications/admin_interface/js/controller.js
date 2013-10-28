@@ -5,7 +5,7 @@
   CBAdmin = angular.module("CBAdmin", []);
 
   CBAdmin.controller("AppCtrl", function($scope) {
-    var App, curVB, fileUploader, fileUploaderDiv, serverConfig, toggle;
+    var App, curVB, fileUploader, serverConfig, toggle;
     $scope.safeApply = function(fn) {
       var phase;
       phase = this.$root.$$phase;
@@ -16,6 +16,14 @@
       } else {
         return this.$apply(fn);
       }
+    };
+    $scope.setError = function(err) {
+      $scope.error = err;
+      return setTimeout(function() {
+        return $scope.safeApply(function() {
+          return $scope.error = null;
+        });
+      }, 5000);
     };
     $scope.apps = [];
     App = (function() {
@@ -39,6 +47,7 @@
         app = {
           url: appConfig.getUrl(),
           api: appConfig,
+          name: appConfig.getName(),
           description: appConfig.getDescription(),
           mountPoint: appConfig.getMountPoint(),
           isPublic: appConfig.isAppPublic(),
@@ -118,22 +127,32 @@
     serverConfig.addEventListener("removeApp", function(appConfig) {
       return App.remove(appConfig);
     });
-    fileUploaderDiv = document.getElementById('file-uploader');
-    fileUploader = curVB.createComponent('fileUploader', fileUploaderDiv, {
-      form: {
-        action: "" + (serverConfig.getUrl()) + "/gui-deploy",
-        "class": "form-inline well",
-        enctype: "multipart/form-data"
-      },
+    fileUploader = curVB.createComponent('fileUploader', document.getElementById('file-uploader'), {
       legend: "Upload an Application",
-      inputSubmit: {
-        name: "Upload",
-        "class": "btn btn-primary"
-      },
-      inputFile: {
-        accept: "application/x-gzip",
-        name: "content"
+      formClass: "form-inline well",
+      buttonClass: "btn btn-primary"
+    });
+    fileUploader.addEventListener("cloudbrowser.upload", function(event) {
+      var file, user, _ref;
+      _ref = event.info, user = _ref.user, file = _ref.file;
+      if (user !== $scope.user) {
+        return;
       }
+      if (file.type !== "application/x-gzip") {
+        $scope.safeApply(function() {
+          return $scope.setError("File must be a gzipped tarball");
+        });
+        return;
+      }
+      return serverConfig.uploadAndCreateApp(file.path, function(err, appConfig) {
+        return $scope.safeApply(function() {
+          if (err) {
+            return $scope.setError(err);
+          } else {
+            return App.add(appConfig);
+          }
+        });
+      });
     });
     $scope.user = curVB.getCreator();
     $scope.selectedApp = null;

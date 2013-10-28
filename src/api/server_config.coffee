@@ -1,7 +1,8 @@
 {compare} = require('./utils')
 AppConfig = require('./application_config')
 Async     = require('async')
-cloudbrowserError = require('../shared/cloudbrowser_error')
+cloudbrowserError   = require('../shared/cloudbrowser_error')
+ApplicationUploader = require('../shared/application_uploader')
 
 ###*
     @class ServerConfig
@@ -146,5 +147,15 @@ class ServerConfig
             when "madePrivate", "disable", "removeApp"
                 server.applications.on event, (app) ->
                     callback(app.getMountPoint())
+
+    uploadAndCreateApp : (pathToFile, callback) ->
+        {userCtx, cbCtx} = _pvts[@_idx]
+        email = userCtx.getEmail()
+        ApplicationUploader.process email, pathToFile, (err, app) ->
+            return callback(err) if err
+            callback new AppConfig
+                userCtx : userCtx
+                cbCtx   : cbCtx
+                app     : app
 
 module.exports = ServerConfig

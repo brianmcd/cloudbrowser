@@ -9,7 +9,7 @@ routes         = require('./routes')
 middleware     = require('./middleware')
 GoogleStrategy = require('./authentication_strategies/google_strategy')
 Fs             = require('fs')
-ApplicationUploader = require('./application_uploader')
+#ApplicationUploader = require('./application_uploader')
 
 {authorize
 , isAuthenticated
@@ -19,8 +19,8 @@ ApplicationUploader = require('./application_uploader')
 , logout
 , browser
 , guiDeploy
+, fileUpload
 , clientEngine
-, routeHelpers
 , serveResource
 , serveAppInstance
 , authStrategies} = routes
@@ -71,6 +71,14 @@ class HTTPServer extends EventEmitter
 
     getClientEngineModified : () -> return @clientEngineModified
 
+    # Route corresponding to the file upload component
+    setupFileUploadRoute : (url, mountPoint, uploaderComponent) ->
+        checkAuth = (req, res, next) ->
+            isAuthenticated(req, res, next, mountPoint)
+        uploadHandler = (req, res, next) ->
+            fileUpload(req, res, next, mountPoint, uploaderComponent)
+        @server.post(url, checkAuth, uploadHandler)
+
     close : (callback) ->
         @server.close(callback)
         @emit('close')
@@ -91,7 +99,7 @@ class HTTPServer extends EventEmitter
         @server.get('/checkauth', Passport.authenticate('google'),
             authStrategies.google)
 
-    setupLandingPage: (app) ->
+    setupLandingPage : (app) ->
         mountPoint = app.getMountPoint()
         checkAuth = (req, res, next) ->
             isAuthenticated(req, res, next, mountPoint)
@@ -102,7 +110,7 @@ class HTTPServer extends EventEmitter
         @server.get(@constructResourceRoute(mountPoint), checkAuth,
             serveResource)
 
-    setupAuthenticationInterface: (app) ->
+    setupAuthenticationInterface : (app) ->
         mountPoint = app.getMountPoint()
         checkNotAuth = (req, res, next) ->
             isNotAuthenticated(req, res, next, mountPoint)
@@ -196,6 +204,7 @@ class HTTPServer extends EventEmitter
         # Using HTTP basic auth
         # Must be used in combination with SSL
         # Endpoint for local users using the command line client script
+        ###
         @server.post "/local-deploy"
         , express.basicAuth((emailID, password, callback) =>
             app  = @cbServer.applications.find('/admin_interface')
@@ -209,15 +218,10 @@ class HTTPServer extends EventEmitter
          , (req, res) =>
             errorMsg = ApplicationUploader.validateUploadReq(req,
                 "application/octet-stream")
-            if (errorMsg) then res.send("#{errorMsg}", 400)
+            if (error) then res.json({err : error})
             # We can now access the user using req.remoteUser
             # But in new versions of express this will be req.user
             else ApplicationUploader.processFileUpload(req.remoteUser, req, res)
-
-        # Posts to this url must be from users who have logged in to the
-        # admin interface
-        checkAuth = (req, res, next) ->
-            isAuthenticated(req, res, next, "/admin_interface")
-        @server.post("/gui-deploy", checkAuth, guiDeploy)
+        ###
 
 module.exports = HTTPServer

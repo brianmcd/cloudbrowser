@@ -1,5 +1,5 @@
 SessionManager = require('../session_manager')
-routeHelpers   = require('../routes/route_helpers')
+{redirect}     = require('../routes/route_helpers')
 
 # Middleware that protects access to browsers
 exports.isAuthenticated = (req, res, next, mountPoint) ->
@@ -11,7 +11,7 @@ exports.isAuthenticated = (req, res, next, mountPoint) ->
             # authentication
             SessionManager.setPropOnSession req.session, 'redirectto',
                 "#{req.url}"
-        routeHelpers.redirect(res, "#{mountPoint}/authenticate")
+        redirect(res, "#{mountPoint}/authenticate")
 
 # Middleware to reroute authenticated users when they request for
 # the authentication_interface
@@ -21,7 +21,7 @@ exports.isNotAuthenticated = (req, res, next, mountPoint) ->
 
     # If user is already logged in then redirect to application
     if not SessionManager.findAppUserID(req, mountPoint) then next()
-    else routeHelpers.redirect(res, "#{mountPoint}")
+    else redirect(res, "#{mountPoint}")
 
 # Middleware that authorizes access to browsers
 exports.authorize = (req, res, next, mountPoint) ->

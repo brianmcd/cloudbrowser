@@ -119,4 +119,6 @@ th{
     right: 0px; 
 }
 
-
+.fitText {
+    overflow : auto;
+}

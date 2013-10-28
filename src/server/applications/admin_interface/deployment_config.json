@@ -1,5 +1,6 @@
 {
     "authenticationInterface": true,
+    "name": "Administration Interface",
     "mountOnStartup": true,
     "mountPoint": "/admin_interface",
     "collectionName": "admin_interface.users",
