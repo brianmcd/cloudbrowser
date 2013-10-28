@@ -4,6 +4,7 @@ Util    = require('util')
 Path    = require('path')
 Read    = require('read')
 Async   = require('async')
+User    = require('./user')
 MongoInterface = require('./mongo_interface')
 {hashPassword} = require('../api/utils')
 
@@ -172,7 +173,7 @@ class Runner
             console.log 'Server started in local mode'
 
     configureUser = (callback) ->
-        user = {}
+        user = null
 
         Async.waterfall [
             (next) ->
@@ -183,23 +184,21 @@ class Runner
                     .test(email.toUpperCase())
                         next(new Error("Invalid email ID"))
                 else
-                    user.email = email
+                    user = new User(email)
                     # Find if the user already exists in the admin interface collection
                     mongoInterface.findUser(user, 'admin_interface.users', next)
             (userRec, next) ->
-                if userRec then next(null, null, null)
+                # Bypassing the waterfall
+                if userRec then callback(null, user)
                 else Read({prompt : "Password: ", silent : true}, next)
             (password, isDefault, next) ->
-                if not password then next(null, null)
-                else hashPassword {password:password}, (result) ->
-                    # Insert into admin_interface collection
-                    mongoInterface.addUser
-                        email : user.email
-                        ns    : user.ns
-                        key   : result.key.toString('hex')
-                        salt  : result.salt.toString('hex')
-                    , 'admin_interface.users'
-                    , (err, userRec) -> next(null, user)
+                hashPassword({password:password}, next)
+            (result, next) ->
+                # Insert into admin_interface collection
+                user.key  = result.key.toString('hex')
+                user.salt = result.salt.toString('hex')
+                mongoInterface.addUser user, 'admin_interface.users',
+                    (err, userRec) -> next(null, user)
         ], callback
 
     @run : () ->
@@ -223,7 +222,7 @@ class Runner
                                 (next) ->
                                     configureUser(next)
                                 (adminUser, next) ->
-                                    serverConfig.admins.push(adminUser)
+                                    serverConfig.admins.push(adminUser.getEmail())
                                     writeConfigToFile()
                                     next(null)
                             ], callback
@@ -235,7 +234,7 @@ class Runner
                                 (next) ->
                                     configureUser(next)
                                 (defaultUser, next) ->
-                                    serverConfig.defaultUser = defaultUser
+                                    serverConfig.defaultUser = defaultUser.getEmail()
                                     writeConfigToFile()
                                     next(null)
                             ], callback
