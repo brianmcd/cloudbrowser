@@ -21,9 +21,8 @@ app.controller "ChatCtrl", ($scope) ->
  
     # Initialize
     {currentBrowser} = cloudbrowser
-    $scope.user = currentBrowser.getLocalState('user')
     chatManager = currentBrowser.getAppInstanceConfig().getObj()
-    $scope.user.addToOtherRooms(room) for room in chatManager.getRooms()
+    $scope.user = chatManager.addUser(currentBrowser.getCreator(), newMessageHandler)
 
     # Methods on scope
     $scope.toggleForm = (type) ->
@@ -41,12 +40,12 @@ app.controller "ChatCtrl", ($scope) ->
     $scope.createRoom = () ->
         [err, room] = chatManager.createRoom($scope.roomName)
         if err then $scope.error = err.message
-        else chatManager.addUserToRoom($scope.user, room, newMessageHandler)
+        else chatManager.addUserToRoom($scope.user, room)
         $scope.roomName = null
         $scope.closeForm('Create')
 
     $scope.joinRoom = () ->
-        chatManager.addUserToRoom($scope.user, $scope.selectedRoom, newMessageHandler)
+        chatManager.addUserToRoom($scope.user, $scope.selectedRoom)
         $scope.selectedRoom = null
         $scope.closeForm('Join')
 

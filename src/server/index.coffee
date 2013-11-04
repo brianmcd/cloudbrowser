@@ -68,6 +68,9 @@ class Server extends EventEmitter
     @getMongoStore : () ->
         return _server.mongoInterface.mongoStore
 
+    @getMongoInterface : () ->
+        return _server.mongoInterface
+
     @getPermissionManager : () ->
         return _server.permissionManager
 
@@ -152,6 +155,17 @@ class Server extends EventEmitter
     # Connects the client to the requested browser if the user
     # on the client side is authorized to use that browser
     customAuthHandler : (mountPoint, browserID, socket) =>
+        {address, headers} = socket.handshake
+        cookies = ParseCookie(headers.cookie)
+        sessionID = cookies[@config.cookieName]
+
+        @mongoInterface.getSession sessionID, (err, session) ->
+            if err or not session then return socket.disconnect()
+            # Saving the ip and port on the session.
+            SessionManager.addObjToSession session,
+                ip   : address.address
+                port : address.port
+
         # NOTE : app, browserID are provided by the client
         # and cannot be trusted
         browserID = decodeURIComponent(browserID)

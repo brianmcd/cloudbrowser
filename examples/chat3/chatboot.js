@@ -1,6 +1,5 @@
 /* This is code which will be run when application is started */
-var ChatManager = require('./model/shared/chatmanager'),
-    User        = require('./model/local/user');
+var ChatManager = require('./model/chatmanager')
 
 module.exports = {
     initialize : function (options) {
@@ -12,10 +11,15 @@ module.exports = {
                 return new ChatManager()
             }
             // Name can also be a function
-            , name : 'Chat Manager'
-            , save : function(chatManager){}
-            , load : function(){}
+            , name  : 'Chat Manager'
+            , store : function(chatManager){
+                return chatManager.getSerializableInfo()
+            }
+            , load  : function(chatManagerInfo){
+                return new ChatManager(chatManagerInfo.rooms, chatManagerInfo.users)
+            }
         }
+        /*
         // Local to the browser
         // Created automatically by cloudbrowser
         options.localState = {
@@ -26,6 +30,7 @@ module.exports = {
             }
             , name : 'user'
         }
+        */
         // Shared between all browsers of the application
         // Created automatically by cloudbrowser
         options.callOnStart = function () {

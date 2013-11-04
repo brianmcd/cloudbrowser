@@ -1,13 +1,22 @@
 Async = require('async')
 {EventEmitter} = require('events')
+User           = require('../user')
 cloudbrowserError = require('../../shared/cloudbrowser_error')
 
 class AppInstance extends EventEmitter
-    constructor : (@app, template, owner, @id, @name) ->
-        @obj = template.create()
-        @owner = owner
+    constructor : (options) ->
+        {@app
+        , @obj
+        , owner
+        , @id
+        , @name
+        , readerwriters
+        , @dateCreated} = options
+        if not @dateCreated then @dateCreated = new Date()
+        @owner = if owner instanceof User then owner else new User(owner._email)
         @readerwriters = []
-        @dateCreated = new Date()
+        if readerwriters then for readerwriter in readerwriters
+            @addReaderWriter(new User(readerwriter._email))
         @browsers = []
 
     _findReaderWriter : (user) ->
@@ -35,9 +44,6 @@ class AppInstance extends EventEmitter
     addReaderWriter : (user) ->
         @readerwriters.push(user)
         @emit('share', user)
-
-    save : (user) ->
-        if @isOwner(user) or @isReaderWriter(user) then @template.save()
 
     createBrowser : (user, callback) ->
         if @isOwner(user) or @isReaderWriter(user)
@@ -77,5 +83,23 @@ class AppInstance extends EventEmitter
     close : (user, callback) ->
         @removeAllListeners()
         @removeAllBrowsers(user, callback)
+
+    store : (getStorableObj, callback) ->
+        dbRec = {}
+        excluded = ['app', '_events', 'browsers']
+        for own k, v of this
+            if typeof v isnt "function" and excluded.indexOf(k) is -1
+                dbRec[k] = v
+        dbRec.obj = getStorableObj(@obj)
+
+        return callback?(cloudbrowserError("INVALID_STORE")) if not dbRec.obj
+
+        appInstanceRec = {}
+        appInstanceRec["appInstances." + @id] = dbRec
+
+        CBServer = require('../')
+        mongoInterface = CBServer.getMongoInterface()
+        searchKey = {mountPoint : @app.getMountPoint()}
+        mongoInterface.setApp(searchKey, appInstanceRec, callback)
 
 module.exports = AppInstance

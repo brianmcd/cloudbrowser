@@ -5,7 +5,7 @@
   app = angular.module("Chat3", []);
 
   app.controller("ChatCtrl", function($scope) {
-    var chatManager, currentBrowser, newMessageHandler, room, _i, _len, _ref;
+    var chatManager, currentBrowser, newMessageHandler;
     $scope.safeApply = function(fn) {
       var phase;
       phase = this.$root.$$phase;
@@ -26,13 +26,8 @@
       return $scope.$apply();
     };
     currentBrowser = cloudbrowser.currentBrowser;
-    $scope.user = currentBrowser.getLocalState('user');
     chatManager = currentBrowser.getAppInstanceConfig().getObj();
-    _ref = chatManager.getRooms();
-    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-      room = _ref[_i];
-      $scope.user.addToOtherRooms(room);
-    }
+    $scope.user = chatManager.addUser(currentBrowser.getCreator(), newMessageHandler);
     $scope.toggleForm = function(type) {
       var formName;
       formName = "show" + type + "Form";
@@ -49,18 +44,18 @@
       return $scope[formName] = false;
     };
     $scope.createRoom = function() {
-      var err, _ref1;
-      _ref1 = chatManager.createRoom($scope.roomName), err = _ref1[0], room = _ref1[1];
+      var err, room, _ref;
+      _ref = chatManager.createRoom($scope.roomName), err = _ref[0], room = _ref[1];
       if (err) {
         $scope.error = err.message;
       } else {
-        chatManager.addUserToRoom($scope.user, room, newMessageHandler);
+        chatManager.addUserToRoom($scope.user, room);
       }
       $scope.roomName = null;
       return $scope.closeForm('Create');
     };
     $scope.joinRoom = function() {
-      chatManager.addUserToRoom($scope.user, $scope.selectedRoom, newMessageHandler);
+      chatManager.addUserToRoom($scope.user, $scope.selectedRoom);
       $scope.selectedRoom = null;
       return $scope.closeForm('Join');
     };

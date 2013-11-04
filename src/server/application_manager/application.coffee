@@ -76,6 +76,18 @@ class Application extends EventEmitter
             @appInstances = new AppInstanceManager(@appInstanceProvider,
                                                    @server.permissionManager,
                                                    this)
+
+        @loadAppInstancesFromDb()
+
+    loadAppInstancesFromDb : () ->
+        searchKey = {mountPoint : @getMountPoint()}
+        {mongoInterface} = @server
+        mongoInterface.findApp searchKey, (err, appRec) =>
+            return console.log(err) if err
+            return if not appRec or not appRec.appInstances
+            for id, appInstanceRec of appRec.appInstances
+                @appInstances.loadFromDbRec(appInstanceRec)
+
     setDefaults : (options, defaults...) ->
         for defaultObj in defaults
             for own k, v of defaultObj

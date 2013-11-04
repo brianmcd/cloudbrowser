@@ -1,5 +1,6 @@
 Weak           = require('weak')
 Hat            = require('hat')
+User           = require('../user')
 Async          = require('async')
 AppInstance    = require('./app_instance')
 {EventEmitter} = require('events')
@@ -9,15 +10,23 @@ cleanupStates = (id) ->
         console.log "[Application Instance Manager] - Garbage collected appliation instance #{id}"
 
 class AppInstanceManager extends EventEmitter
-    constructor : (@template, @permissionManager, @app) ->
+    constructor : (@appInstanceProvider, @permissionManager, @app) ->
         @counter = 0
         @appInstances  = {}
         @weakRefsToAppInstances = {}
 
     create : (user, callback, id = @generateID(), name = @generateName()) ->
-        @appInstances[id] = new AppInstance(@app, @template, user, id, name)
-        @weakRefsToAppInstances[id] = Weak(@appInstances[id], cleanupStates(id))
-        @setupProxyEventEmitter(@weakRefsToAppInstances[id])
+        @appInstances[id] =
+            new AppInstance
+                id    : id
+                app   : @app
+                obj   : @appInstanceProvider.create()
+                name  : name
+                owner : user
+        appInstance =
+            @weakRefsToAppInstances[id] = Weak(@appInstances[id], cleanupStates(id))
+        @setupProxyEventEmitter(appInstance)
+        @setupAutomaticStore(appInstance)
         @permissionManager.addAppInstancePermRec
             user        : user
             mountPoint  : @app.getMountPoint()
@@ -25,8 +34,33 @@ class AppInstanceManager extends EventEmitter
             appInstanceID : id
             callback : (err, appInstancePermRec) =>
                 return callback?(err) if err
-                callback?(null, @weakRefsToAppInstances[id])
+                callback?(null, appInstance)
                 @emit('add', id)
+
+    loadFromDbRec : (appInstanceRec) ->
+        {obj, owner, id, name, readerwriters, dateCreated} = appInstanceRec
+        if @find(id) then return
+        obj = @appInstanceProvider.load(obj)
+        owner = new User(owner._email)
+        @appInstances[id] = new AppInstance
+            id            : id
+            app           : @app
+            obj           : obj
+            name          : name
+            owner         : owner
+            dateCreated   : dateCreated
+            readerwriters : readerwriters
+        appInstance = @weakRefsToAppInstances[id] =
+            Weak(@appInstances[id], cleanupStates(id))
+        @setupProxyEventEmitter(appInstance)
+        @setupAutomaticStore(appInstance)
+
+    # Stores to the database every 5 seconds
+    setupAutomaticStore : (appInstance) ->
+        setInterval () =>
+            appInstance.store (obj) =>
+                @appInstanceProvider.store(obj)
+        , 5000
 
     setupProxyEventEmitter : (appInstance) ->
         if @app.isAuthConfigured()

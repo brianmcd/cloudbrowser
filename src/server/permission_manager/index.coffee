@@ -47,8 +47,11 @@ class UserPermissionManager extends CacheManager
                 else
                     # Add to cache
                     sysPermRec = @add(user, dbRecord.permission)
-                    for mountPoint, value of dbRecord.apps
-                        sysPermRec.addItem(mountPoint, value.permission)
+                    for mountPoint, app of dbRecord.apps
+                        appPerm = sysPermRec.addItem(mountPoint, app.permission)
+                        if app.appInstances
+                            for id, appInstance of app.appInstances
+                                appPerm.addAppInstance(id, appInstance.permission)
                     filterOnPermission(sysPermRec)
         ], callback
 

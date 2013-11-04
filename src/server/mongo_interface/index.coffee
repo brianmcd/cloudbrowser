@@ -115,6 +115,14 @@ class MongoInterface
                 collection.insert(app, next)
         ], callback
 
+    setApp : (searchKey, updatedInfo, callback) ->
+        Async.waterfall [
+            (next) =>
+                @dbClient.collection(@appCollection, next)
+            (collection, next) ->
+                collection.update(searchKey, {$set:updatedInfo}, {w:1, upsert:true}, next)
+        ], callback
+
     removeApp : (searchKey, callback) ->
         Async.waterfall [
             (next) =>

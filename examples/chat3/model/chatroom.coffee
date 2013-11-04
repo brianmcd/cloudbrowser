@@ -1,14 +1,15 @@
 {EventEmitter} = require('events')
 
 class ChatRoom extends EventEmitter
-    constructor : (@name) ->
-        @users = []
-        @messages = []
+    constructor : (@name, @messages = [], @users = []) ->
 
     postMessage : (user, message) ->
         formattedMessage = "[#{user.getName()}]: #{message}"
         @messages.push(formattedMessage)
         @emit('newMessage', message)
+
+    getName : () ->
+        return @name
 
     add : (user) ->
         @users.push(user)
@@ -25,6 +26,12 @@ class ChatRoom extends EventEmitter
 
     close : () ->
         @removeAllListeners()
+
+    getSerializableInfo : () ->
+        return {
+            name     : @getName()
+            messages : @getMessages()
+        }
 
 module.exports = ChatRoom
 

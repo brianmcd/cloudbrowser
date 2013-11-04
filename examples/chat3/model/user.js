@@ -5,8 +5,9 @@
   EventEmitter = require('events').EventEmitter;
 
   User = (function() {
-    function User(user) {
-      this.name = user;
+    function User(name, eventHandler) {
+      this.name = name;
+      this.eventHandler = eventHandler;
       this.joinedRooms = [];
       this.otherRooms = [];
       this.currentRoom = null;
@@ -24,11 +25,11 @@
       return this.currentRoom = null;
     };
 
-    User.prototype.join = function(room, newMessageHandler) {
+    User.prototype.join = function(room) {
       if (this.joinedRooms.indexOf(room) === -1) {
         this.removeFromOtherRooms(room);
         this.joinedRooms.push(room);
-        room.on('newMessage', newMessageHandler);
+        room.on('newMessage', this.eventHandler);
       }
       return this.activateRoom(room);
     };
@@ -61,6 +62,32 @@
       if (this.otherRooms.indexOf(room) === -1) {
         return this.otherRooms.push(room);
       }
+    };
+
+    User.prototype.getSerializableInfo = function() {
+      var joinedRooms, otherRooms, room, _i, _j, _len, _len1, _ref, _ref1, _ref2;
+      joinedRooms = [];
+      _ref = this.joinedRooms;
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        room = _ref[_i];
+        joinedRooms.push(room.getName());
+      }
+      otherRooms = [];
+      _ref1 = this.otherRooms;
+      for (_j = 0, _len1 = _ref1.length; _j < _len1; _j++) {
+        room = _ref1[_j];
+        otherRooms.push(room.getName());
+      }
+      return {
+        name: this.getName(),
+        currentRoom: (_ref2 = this.currentRoom) != null ? _ref2.getName() : void 0,
+        joinedRooms: joinedRooms,
+        otherRooms: otherRooms
+      };
+    };
+
+    User.prototype.setEventHandler = function(eventHandler) {
+      return this.eventHandler = eventHandler;
     };
 
     return User;

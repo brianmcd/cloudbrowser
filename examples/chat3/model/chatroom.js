@@ -9,10 +9,10 @@
   ChatRoom = (function(_super) {
     __extends(ChatRoom, _super);
 
-    function ChatRoom(name) {
+    function ChatRoom(name, messages, users) {
       this.name = name;
-      this.users = [];
-      this.messages = [];
+      this.messages = messages != null ? messages : [];
+      this.users = users != null ? users : [];
     }
 
     ChatRoom.prototype.postMessage = function(user, message) {
@@ -20,6 +20,10 @@
       formattedMessage = "[" + (user.getName()) + "]: " + message;
       this.messages.push(formattedMessage);
       return this.emit('newMessage', message);
+    };
+
+    ChatRoom.prototype.getName = function() {
+      return this.name;
     };
 
     ChatRoom.prototype.add = function(user) {
@@ -40,6 +44,17 @@
 
     ChatRoom.prototype.getUsers = function() {
       return this.users;
+    };
+
+    ChatRoom.prototype.close = function() {
+      return this.removeAllListeners();
+    };
+
+    ChatRoom.prototype.getSerializableInfo = function() {
+      return {
+        name: this.getName(),
+        messages: this.getMessages()
+      };
     };
 
     return ChatRoom;

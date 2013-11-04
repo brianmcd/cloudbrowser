@@ -81,12 +81,6 @@ class BrowserServer extends EventEmitter
     redirect : (URL) ->
         @broadcastEvent('Redirect', URL)
        
-    ###
-    updateCookie : (maxAge) ->
-        @broadcastEvent('UpdateCookie', maxAge)
-    ###
-
-    # Returns sessions of all clients connected to the VB
     getSessions : () ->
         sessions = []
         for socket in @sockets
