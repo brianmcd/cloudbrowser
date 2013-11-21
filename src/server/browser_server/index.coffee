@@ -66,11 +66,32 @@ class BrowserServer extends EventEmitter
                     handler.apply(weakRefToThis, arguments)
         @initLogs() if !@server.config.noLogs
 
+    getID : () -> return @id
+
+    getDateCreated : () -> return @dateCreated
+
+    getName : () -> return @name
+
+    setName : (name) -> @name = name
+
+    getBrowser : () -> return @browser
+
+    getMountPoint : () -> return @mountPoint
+
     setAppInstance : (appInstance) ->
         @appInstance = appInstance
 
     getAppInstance : () ->
         return @appInstance
+
+    getConnectedClients : () ->
+        clients = []
+        for socket in @sockets
+            {address, user} = socket.handshake
+            clients.push
+                address : "#{address.address}:#{address.port}"
+                email : user
+        return clients
 
     setLocalState : (property, value) ->
         @localState[property] = value
@@ -81,11 +102,19 @@ class BrowserServer extends EventEmitter
     redirect : (URL) ->
         @broadcastEvent('Redirect', URL)
        
-    getSessions : () ->
-        sessions = []
-        for socket in @sockets
-            sessions.push(socket.handshake.session)
-        return sessions
+    getSessions : (callback) ->
+        CBServer = require('../')
+        mongoInterface = CBServer.getMongoInterface()
+        getFromDB = (socket, callback) ->
+            sessionID = socket.handshake.sessionID
+            mongoInterface.getSession(sessionID, callback)
+        Async.map(@sockets, getFromDB, callback)
+
+    getFirstSession : (callback) ->
+        CBServer = require('../')
+        mongoInterface = CBServer.getMongoInterface()
+        sessionID = @sockets[0].handshake.sessionID
+        mongoInterface.getSession(sessionID, callback)
 
     # arg can be an Application or URL string.
     load : (arg) ->
@@ -165,8 +194,13 @@ class BrowserServer extends EventEmitter
                 socket.emit.apply(socket, args)
 
     addSocket : (socket) ->
+        {address, user} = socket.handshake
+        address = "#{address.address}:#{address.port}"
+        userInfo =
+            address : address
+            email : user
+        @emit('connect', userInfo)
         if @server.config.monitorTraffic
-            # TODO: will this work with multi process?
             socket = new DebugClient(socket, @id)
         for own type, func of RPCMethods
             do (type, func) =>
@@ -180,6 +214,7 @@ class BrowserServer extends EventEmitter
         socket.on 'disconnect', () =>
             @sockets       = (s for s in @sockets       when s != socket)
             @queuedSockets = (s for s in @queuedSockets when s != socket)
+            @emit('disconnect', address)
             if not (@sockets.length or @queuedSockets.length)
                 @emit 'NoClients'
 
@@ -496,5 +531,5 @@ RPCMethods =
         event.info = params.event
         node.dispatchEvent(event)
         @broadcastEvent('resumeRendering')
-
+            
 module.exports = BrowserServer

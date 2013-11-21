@@ -1,102 +1,96 @@
-<html ng-app="CBAdmin">
+<html ng-app="CBAdminInterface">
     <head>
         <title>CloudBrowser - Administration Interface</title>
         <link rel="stylesheet" href="css/bootstrap.css">
         <link rel="stylesheet" href="css/bootstrap-responsive.css">
         <link rel="stylesheet" href="css/font-awesome.css">
         <link rel="stylesheet" href="css/style.css">
-        <script type="text/javascript" src="js/angular.js"></script>
-        <script type="text/javascript" src="js/controller.js"></script>
-        <script type="text/javascript" src="js/jquery.js"></script>
+        <script src="js/angular.js"></script>
+        <script src="js/jquery.js"></script>
+        <script src="js/lib/admin_interface.js"></script>
+        <script src="js/lib/model/api_list_manager.js"></script>
+        <script src="js/lib/model/pojo_list_manager.js"></script>
+        <script src="js/lib/model/primitive_list_manager.js"></script>
+        <script src="js/lib/model/user.js"></script>
+        <script src="js/lib/model/browser.js"></script>
+        <script src="js/lib/model/app_instance.js"></script>
+        <script src="js/lib/model/app.js"></script>
+        <script src="js/lib/model/app_manager.js"></script>
+        <script src="js/lib/models.js"></script>
+        <script src="js/lib/services.js"></script>
+        <script src="js/lib/directives.js"></script>
+        <script src="js/lib/controller.js"></script>
         <meta charset="UTF-8">
     </head>
     <body>
+        <!-- Container -->
         <div class="container-fluid" ng-controller="AppCtrl">
+            <!-- Row -->
             <div class="row-fluid">
                 <div class="page-header pagination-centered span12">
                     <h3>CloudBrowser Administration Interface</h3>
                 </div>
             </div>
-            <div class="row-fluid">
-                <div class="span7">
-                    <div class="row-fluid">
-                        <div class="span12">
-                            <input type="text" placeholder="search"
-                            ng-model="search" ng-show="apps.length"
-                            class="input-small search-query margin-bottom">
-                            <div class="pull-right">
-                                {{user}} &nbsp;|
-                                <a ng-click="logout()">Logout</a>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="row-fluid">
-                        <div class="span12">
-                            <table ng-show="apps.length" id="data-table"
-                            class="table table-bordered">
-                                <thead>
-                                    <th class="align-left"
-                                    ng-click="sortBy('mountPoint')">
-                                        MountPoint
-                                    </th>
-                                    <th
-                                    ng-click="sortBy('numUsers')">
-                                        <i class="icon-group" title="Number of Users"></i>
-                                    </th>
-                                    <th
-                                    ng-click="sortBy('numBrowsers')">
-                                        <i class="icon-file" title="Number of Instances"></i>
-                                    </th>
-                                    <th
-                                    ng-click="sortBy('isPublic')">
-                                        <i class="icon-eye-open" title="Privacy"></i>
-                                    </th>
-                                    <th
-                                    ng-click="sortBy('mounted')">
-                                        <i class="icon-off" title="State"></i>
-                                    </th>
-                                    <th
-                                    ng-click="sortBy('isAuthEnabled')">
-                                        <i class="icon-lock" title="Authentication"></i>
-                                    </th>
-                                </thead>
-                                <tbody>
-                                    <tr ng-repeat="app in apps|filter:search|orderBy:predicate:reverse"
-                                    ng-click="selectApp(app)"
-                                    ng-class="getAppClass(app)">
-                                        <td class="align-left">{{app.name}}</td>
-                                        <td>{{app.numUsers}}</td>
-                                        <td>{{app.numBrowsers}}</td>
-                                        <td ng-show='app.isPublic'>Public</td>
-                                        <td ng-hide='app.isPublic'>Private</td>
-                                        <td ng-show='app.mounted'>Mounted</td>
-                                        <td ng-hide='app.mounted'>Disabled</td>
-                                        <td ng-show='app.isAuthEnabled'>On</td>
-                                        <td ng-hide='app.isAuthEnabled'>Off</td>
-                                    </tr> 
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                    <div class="row-fluid">
-                        <div id="file-uploader" class="span12"></div>
-                    </div>
-                    <div class="row-fluid">
-                        <div class="text-error" class="span12">{{error}}</div>
-                    </div>
-                </div>
+            <!-- Row -->
 
-                <div ng-show="selectedApp"
-                class="span5 pagination-centered box fitText"
-                ng-class="getBoxClass(selectedApp)">
+            <!-- Row -->
+            <div class="row-fluid">
+                <!-- Left Half -->
+                <div class="span5">
+                    <!-- Row -->
                     <div class="row-fluid">
-                        <div class="span12">
-                            <legend>
-                                {{selectedApp.name}}
-                            </legend>
+                        <!-- Search and Logout -->
+                        <div class="span12"
+                            ng-include="templates.searchAndLogout">
                         </div>
+                        <!-- Search and Logout -->
                     </div>
+                    <!-- Row -->
+
+                    <!-- Row -->
                     <div class="row-fluid">
+                        <!-- App Table -->
+                        <div class="span12" ng-include="templates.appTable">
+                        </div>
+                        <!-- App Table -->
+                    </div>
+                    <!-- Row -->
+
+                    <!-- Row -->
+                    <div class="row-fluid">
+                        <!-- File Uploader -->
+                        <div id="file-uploader" class="span12"></div>
+                        <!-- File Uploader -->
+                    </div>
+                    <!-- Row -->
+
+                    <!-- Row -->
+                    <div class="row-fluid">
+                        <!-- Error -->
+                        <div class="text-error" class="span12">{{error}}</div>
+                        <!-- Error -->
+                    </div>
+                    <!-- Row -->
+                </div>
+                <!-- Left Half -->
+
+                <!-- Right Half-->
+                <div ng-show="selectedApp"
+                    ng-class="{true:'mounted',false:'disabled'}[selectedApp.mounted]"
+                    class="span7 pagination-centered box fitText">
+                    <!-- Row -->
+                    <div class="row-fluid">
+                        <!-- App Name -->
+                        <div class="span12">
+                            <legend>{{selectedApp.name}}</legend>
+                        </div>
+                        <!-- App Name -->
+                    </div>
+                    <!-- Row -->
+
+                    <!-- Row -->
+                    <div class="row-fluid">
+                        <!-- App URL -->
                         <div class="span12">
                             <a ng-click="leftClick(selectedApp.url)"
                             title="Visit the app">
@@ -104,93 +98,96 @@
                                 <i class="icon-external-link"></i>
                             </a>
                         </div>
+                        <!-- App URL -->
                     </div>
+                    <!-- Row -->
+
+                    <!-- Row -->
                     <div class="row-fluid">
-                        <div class="span12 well">
-                            <span ng-hide="selectedApp.editing">
-                                {{selectedApp.description}}
-                                <a ng-click="editDescription(selectedApp)">
-                                    Edit
-                                </a>
-                            </span>
-                            <textarea ng-show="selectedApp.editing" type="text"
-                            ng-hasfocus="selectedApp.editing" class="span11"
-                            ng-model="selectedApp.description"></textarea>
+                        <!-- App Description -->
+                        <div class="span12 well"
+                            ng-include="templates.appDescription">
                         </div>
+                        <!-- App Description -->
                     </div>
+                    <!-- Row -->
+
+                    <!-- Row -->
                     <div class="row-fluid">
-                        <div class="span12">
-                            <table class="table table-striped">
-                                <tr ng-show="selectedApp.users">
-                                    <td>
-                                        <strong>
-                                            {{selectedApp.numUsers}}
-                                        </strong> Users
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td>
-                                        <strong>
-                                            {{selectedApp.numBrowsers}}
-                                        </strong> Instances</td>
-                                </tr>
-                                <tr>
-                                    <td>
-                                        <strong>
-                                            {{selectedApp.instantiationStrategy}}
-                                        </strong> Instantiation Strategy
-                                        <span ng-show="selectedApp.browserLimit">
-                                            with a browser limit of 
-                                            <strong>
-                                                {{selectedApp.browserLimit}}
-                                            </strong>
-                                        </span>
-                                    </td>
-                                </tr>
-                            </table>
+                        <!-- Selected App Table -->
+                        <div class="span12"
+                            ng-include="templates.selectedAppTable">
                         </div>
+                        <!-- Selected App Table -->
                     </div>
+                    <!-- Row -->
+
+                    <!-- Row -->
                     <div class="row-fluid">
-                        <div class="span4"></div>
-                        <div class="span3 align-left">
-                            <div class="onoffswitch onoffswitch-privacy">
-                                <input type="checkbox" id="onoffswitch1"
-                                class="onoffswitch-checkbox"
-                                ng-model="selectedApp.isPublic">
-                                <label class="onoffswitch-label"
-                                for="onoffswitch1"
-                                ng-click="togglePrivacy(selectedApp)">
-                                    <div class="onoffswitch-inner"></div>
-                                    <div class="onoffswitch-switch"></div>
-                                </label>
-                            </div>
-                            <div class="onoffswitch onoffswitch-auth">
-                                <input type="checkbox" id="onoffswitch1"
-                                class="onoffswitch-checkbox"
-                                ng-model="selectedApp.isAuthEnabled">
-                                <label class="onoffswitch-label"
-                                for="onoffswitch1"
-                                ng-click="toggleAuthentication(selectedApp)">
-                                    <div class="onoffswitch-inner"></div>
-                                    <div class="onoffswitch-switch"></div>
-                                </label>
-                            </div>
-                            <div class="onoffswitch onoffswitch-mounted">
-                                <input type="checkbox" id="onoffswitch1"
-                                class="onoffswitch-checkbox"
-                                ng-model="selectedApp.mounted">
-                                <label class="onoffswitch-label"
-                                for="onoffswitch1"
-                                ng-click="toggleMountDisable(selectedApp)">
-                                    <div class="onoffswitch-inner"></div>
-                                    <div class="onoffswitch-switch"></div>
-                                </label>
-                            </div>
-                        </div>
+                        <!-- Dummy div for bootstrap -->
                         <div class="span5"></div>
+                        <!-- Dummy div for bootstrap -->
+
+                        <!-- Checkbox Switches -->
+                        <div class="span3 align-left">
+                            <div ng-repeat="switchName in switches"
+                                class="onoffswitch"
+                                ng-class="'onoffswitch-' + switchName"
+                                ng-include="templates.switch">
+                            </div>
+                        </div>
+                        <!-- Checkbox Switches -->
+
+                        <!-- Dummy div for bootstrap -->
+                        <div class="span4"></div>
+                        <!-- Dummy div for bootstrap -->
                     </div>
+                    <!-- Row -->
+
+                </div>
+                <!-- Right Half -->
+            </div>
+            <!-- Row -->
+
+            <!-- Row -->
+            <div class="row-fluid">
+                <div class="span12 box"
+                    ng-show="selectedApp.userMgr.items.length || selectedApp.browserMgr.items.length || selectedApp.appInstanceMgr.items.length"
+                    ng-class="{true:'mounted',false:'disabled'}[selectedApp.mounted]">
+                    <legend>Application Info - {{selectedApp.name}}</legend>
+                    <!-- Row -->
+                    <div class="row-fluid align-left"
+                        ng-show="selectedApp.userMgr.items.length">
+                        <!-- Users of the selected app -->
+                        <div class="span12 fitText" ng-include="templates.appUsers">
+                        </div>
+                        <!-- Users of the selected app -->
+                    </div>
+                    <!-- Row -->
+
+                    <!-- Row -->
+                    <div class="row-fluid align-left"
+                        ng-show="selectedApp.browserMgr.items.length">
+                        <!-- Browsers of the selected app -->
+                        <div class="span12 fitText" ng-include="templates.appBrowsers">
+                        </div>
+                        <!-- Browsers of the selected app -->
+                    </div>
+                    <!-- Row -->
+
+                    <!-- Row -->
+                    <div class="row-fluid align-left"
+                        ng-show="selectedApp.appInstanceMgr.items.length">
+                        <!-- App instances of the selected app -->
+                        <div class="span12 fitText" ng-include="templates.appInstances">
+                        </div>
+                        <!-- App instances of the selected app -->
+                    </div>
+                    <!-- Row -->
                 </div>
             </div>
+            <!-- Row -->
         </div> 
+        <!-- Container -->
     </body>
 </html>

@@ -29,6 +29,8 @@ class AppInstance extends EventEmitter
 
     getName : () -> return @name
 
+    setName : (name) -> @name = name
+
     getDateCreated : () -> return @dateCreated
 
     getOwner : () -> return @owner
@@ -42,6 +44,7 @@ class AppInstance extends EventEmitter
         return true for c in @readerwriters when c.getEmail() is user.getEmail()
 
     addReaderWriter : (user) ->
+        if @isOwner(user) or @isReaderWriter(user) then return
         @readerwriters.push(user)
         @emit('share', user)
 
@@ -80,9 +83,18 @@ class AppInstance extends EventEmitter
             , callback
         else callback(cloudbrowserError('PERM_DENIED'))
 
+    setAutoStoreID : (intervalID) ->
+        @autoStoreID = intervalID
+
+    descheduleAutoStore : () ->
+        clearInterval(@autoStoreID)
+
     close : (user, callback) ->
-        @removeAllListeners()
-        @removeAllBrowsers(user, callback)
+        if @isOwner(user)
+            @removeAllListeners()
+            @removeAllBrowsers(user, callback)
+            @descheduleAutoStore()
+        else callback(cloudbrowserError('PERM_DENIED'))
 
     store : (getStorableObj, callback) ->
         dbRec = {}
@@ -101,5 +113,10 @@ class AppInstance extends EventEmitter
         mongoInterface = CBServer.getMongoInterface()
         searchKey = {mountPoint : @app.getMountPoint()}
         mongoInterface.setApp(searchKey, appInstanceRec, callback)
+
+    getAllUsers : () ->
+        users = []
+        users.push(@owner)
+        return users.concat(@readerwriters)
 
 module.exports = AppInstance

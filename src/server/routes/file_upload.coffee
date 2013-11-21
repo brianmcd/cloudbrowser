@@ -4,7 +4,7 @@ module.exports = (req, res, next, mountPoint, uploader) ->
     if not req.files.content
         return res.json({err: "File can not be empty"})
     else
-        res.send(200)
+        res.json()
     user = SessionManager.findAppUserID(req.session, mountPoint)
     # Trigger event on the component directly
     uploader.triggerEvent 'cloudbrowser.upload',

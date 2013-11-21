@@ -61,24 +61,21 @@
       return App;
 
     })();
-    server.listApps({
-      filters: ['public'],
-      callback: function(err, apps) {
-        if (err) {
-          return $scope.safeApply(function() {
-            return $scope.error = err.message;
-          });
-        } else {
-          return $scope.safeApply(function() {
-            var app, _i, _len, _results;
-            _results = [];
-            for (_i = 0, _len = apps.length; _i < _len; _i++) {
-              app = apps[_i];
-              _results.push(App.add(app));
-            }
-            return _results;
-          });
-        }
+    server.listApps(['public'], function(err, apps) {
+      if (err) {
+        return $scope.safeApply(function() {
+          return $scope.error = err.message;
+        });
+      } else {
+        return $scope.safeApply(function() {
+          var app, _i, _len, _results;
+          _results = [];
+          for (_i = 0, _len = apps.length; _i < _len; _i++) {
+            app = apps[_i];
+            _results.push(App.add(app));
+          }
+          return _results;
+        });
       }
     });
     server.addEventListener('madePublic', function(appConfig) {

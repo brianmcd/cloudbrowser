@@ -149,40 +149,42 @@ class Server extends EventEmitter
             # Saving the session id on the session.
             # There is no other way to access it later
             SessionManager.addObjToSession(session, {_id : sessionID})
+            # Note : Do not use the session cached on the handshake object
+            # elsewhere as it will be stale. So, using it only in the immediately
+            # following customAuthHandler
             handshakeData.session = session
+            handshakeData.sessionID = sessionID
             callback(null, true)
 
     # Connects the client to the requested browser if the user
     # on the client side is authorized to use that browser
     customAuthHandler : (mountPoint, browserID, socket) =>
-        {address, headers} = socket.handshake
+        {headers, session} = socket.handshake
         cookies = ParseCookie(headers.cookie)
         sessionID = cookies[@config.cookieName]
-
-        @mongoInterface.getSession sessionID, (err, session) ->
-            if err or not session then return socket.disconnect()
-            # Saving the ip and port on the session.
-            SessionManager.addObjToSession session,
-                ip   : address.address
-                port : address.port
 
         # NOTE : app, browserID are provided by the client
         # and cannot be trusted
         browserID = decodeURIComponent(browserID)
         bserver = @applications.find(mountPoint)?.browsers.find(browserID)
 
-        if not bserver then socket.disconnect()
+        if not bserver or not session then return socket.disconnect()
 
-        else Async.waterfall [
+        Async.waterfall [
             (next) =>
                 @isAuthorized
-                    session    : socket.handshake.session
+                    session    : session
                     mountPoint : mountPoint
                     browserID  : browserID
                     callback   : next
-        ], (err, isAuthorized) ->
-            if err or not isAuthorized then socket.disconnect()
-            else bserver.addSocket(socket)
+            (isAuthorized, next) =>
+                if not isAuthorized then next(true) # Simulating an error
+                else @mongoInterface.getSession(sessionID, next)
+        ], (err, session) ->
+            if err then return socket.disconnect()
+            user = SessionManager.findAppUserID(session, mountPoint)
+            if user then socket.handshake.user = user.getEmail()
+            bserver.addSocket(socket)
 
     isAuthorized : (options) ->
         {session, mountPoint, browserID, callback} = options

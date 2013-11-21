@@ -74,19 +74,19 @@ th{
     content: "Disabled";
 }
 
-.onoffswitch-auth .onoffswitch-inner:before {
+.onoffswitch-isAuthEnabled .onoffswitch-inner:before {
     content: "Auth On";
 }
 
-.onoffswitch-auth .onoffswitch-inner:after {
+.onoffswitch-isAuthEnabled .onoffswitch-inner:after {
     content: "Auth Off";
 }
 
-.onoffswitch-privacy .onoffswitch-inner:before {
+.onoffswitch-isPublic .onoffswitch-inner:before {
     content: "Public";
 }
 
-.onoffswitch-privacy .onoffswitch-inner:after {
+.onoffswitch-isPublic .onoffswitch-inner:after {
     content: "Private";
 }
 
@@ -111,11 +111,11 @@ th{
     position: absolute; top: 0; bottom: 0; right: 69px;
 }
 
-.onoffswitch-checkbox:checked + .onoffswitch-label .onoffswitch-inner {
+.onoffswitch-checkbox:checked ~ .onoffswitch-label .onoffswitch-inner {
     margin-left: 0;
 }
 
-.onoffswitch-checkbox:checked + .onoffswitch-label .onoffswitch-switch {
+.onoffswitch-checkbox:checked ~ .onoffswitch-label .onoffswitch-switch {
     right: 0px; 
 }
 

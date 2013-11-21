@@ -7434,7 +7434,6 @@ function $RootScopeProvider(){
                      this.$$childHead = this.$$childTail = null;
       this['this'] = this.$root =  this;
       this.$$asyncQueue = [];
-      this.$$asyncQueue.landing_page = "landing_page"
       this.$$listeners = {};
     }
 

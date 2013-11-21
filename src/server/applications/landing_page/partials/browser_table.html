@@ -38,7 +38,7 @@
     <!-- Browser Table Body -->
     <tbody>
         <!-- Browser -->
-        <tr ng-repeat="browser in browsers | orderBy:predicate:reverse"
+        <tr ng-repeat="browser in browsers | permissionFilter:{type:filter.browsers, user:user} | orderBy:predicate:reverse"
         ng-controller="BrowserCtrl">
             <!-- Name -->
             <td>
@@ -87,9 +87,9 @@
                 <!-- Owners -->
 
                 <!-- Collaborators -->
-                <div ng-repeat="collab in browser.collaborators">
+                <div ng-repeat="collab in browser.readerwriters">
                     {{collab}}
-                    <small class="muted"> collaborator </small>
+                    <small class="muted"> readerwriter </small>
                 </div>
                 <!-- Collaborators -->
 

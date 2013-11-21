@@ -57,19 +57,21 @@ app.controller 'AppInstanceCtrl', [
             return appInstance.showOptions
 
         $scope.hasCollaborators = () ->
-            if not appInstance.collaborators then return false
-            return appInstance.collaborators.length
+            if not appInstance.readerwriters then return false
+            return appInstance.readerwriters.length
 
         $scope.create = () ->
             appInstance.processing = true
             appInstance.api.createBrowser (err, browserConfig) ->
-                if err then $scope.safeApply ->
-                    $scope.setError(err)
-                    appInstance.processing = false
-                else $scope.addBrowser(browserConfig, appInstance)
+                $scope.safeApply ->
+                    if err
+                        $scope.setError(err)
+                        appInstance.processing = false
+                    else
+                        $scope.addBrowser(browserConfig, appInstance)
 
         $scope.areCollaboratorsVisible = () ->
-            return appInstance.showOptions and appInstance.collaborators.length
+            return appInstance.showOptions and appInstance.readerwriters.length
 
         $scope.toggleOptions = () ->
             appInstance.showOptions = not appInstance.showOptions
@@ -78,7 +80,7 @@ app.controller 'AppInstanceCtrl', [
             $scope.safeApply -> appInstance.name = name
 
         appInstance.api.addEventListener 'share', (user) ->
-            $scope.safeApply -> appInstance.collaborators.push(user)
+            $scope.safeApply -> appInstance.readerwriters.push(user)
 
         $scope.isShareFormOpen = () -> return $scope.shareFormOpen
 

@@ -18,25 +18,26 @@ class BrowserServerSecure extends BrowserServer
             when 'readonly'
                 @addReader(@creator)
 
+    getCreator : () ->
+        return @creator
+
     addReaderWriter : (user) ->
-        if @isOwner(user) then return
-        if not @isReaderWriter(user)
-            @removeReader(user)
-            @emit('share', user)
-            @readwrite.push(user)
+        if @isOwner(user) or @isReaderWriter(user) then return
+        @removeReader(user)
+        @readwrite.push(user)
+        @emit('share', {user:user, role:'readwrite'})
 
     addOwner : (user) ->
-        if not @isOwner(user)
-            @removeReaderWriter(user)
-            @removeReader(user)
-            @own.push(user)
-            @emit('share', user)
+        if @isOwner(user) then return
+        @removeReaderWriter(user)
+        @removeReader(user)
+        @own.push(user)
+        @emit('share', {user:user, role:'own'})
 
     addReader : (user) ->
-        if @isReaderWriter(user) or @isOwner(user) then return
-        if not @isReader(user)
-            @readonly.push(user)
-            @emit('share', user)
+        if @isReader(user) or @isReaderWriter(user) or @isOwner(user) then return
+        @readonly.push(user)
+        @emit('share', {user:user, role:'readonly'})
 
     isReaderWriter : (user) ->
         @_isUserInList(user, 'readwrite')
@@ -84,8 +85,8 @@ class BrowserServerSecure extends BrowserServer
 
     close : () ->
         super
-        @own = null
-        @readwrite = null
-        @readonly = null
+        @own = []
+        @readwrite = []
+        @readonly = []
 
 module.exports = BrowserServerSecure

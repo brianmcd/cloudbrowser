@@ -29,10 +29,11 @@ class Util
         @static
         @method sendEmail
         @memberOf Util
-        @param {string} to
-        @param {string} subject
-        @param {string} html
-        @param {emptyCallback} callback
+        @param {Object} options
+        @param {String} options.to
+        @param {String} options.subject
+        @param {String} options.html
+        @param {errorCallback} callback
     ###
     sendEmail : (options) ->
         {callback} = options

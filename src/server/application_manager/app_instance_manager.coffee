@@ -53,14 +53,15 @@ class AppInstanceManager extends EventEmitter
         appInstance = @weakRefsToAppInstances[id] =
             Weak(@appInstances[id], cleanupStates(id))
         @setupProxyEventEmitter(appInstance)
-        @setupAutomaticStore(appInstance)
+        @autoStoreID = @setupAutomaticStore(appInstance)
 
     # Stores to the database every 5 seconds
     setupAutomaticStore : (appInstance) ->
-        setInterval () =>
+        intervalID = setInterval () =>
             appInstance.store (obj) =>
                 @appInstanceProvider.store(obj)
         , 5000
+        appInstance.setAutoStoreID(intervalID)
 
     setupProxyEventEmitter : (appInstance) ->
         if @app.isAuthConfigured()
@@ -77,14 +78,17 @@ class AppInstanceManager extends EventEmitter
             (next) ->
                 appInstance.close(user, next)
             (next) =>
+                @emit('remove', id)
                 delete @weakRefsToAppInstances[id]
                 delete @appInstances[id]
-                @emit 'remove', id
-                @permissionManager.rmAppInstancePermRec
-                    user          : user
-                    mountPoint    : @app.getMountPoint()
-                    appInstanceID : id
-                    callback      : next
+                Async.each appInstance.getAllUsers()
+                , (user, callback) =>
+                    @permissionManager.rmAppInstancePermRec
+                        user          : user
+                        mountPoint    : @app.getMountPoint()
+                        appInstanceID : id
+                        callback      : callback
+                , next
         ], callback
 
     generateName : () ->

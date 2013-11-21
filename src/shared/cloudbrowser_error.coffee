@@ -9,8 +9,9 @@ errorTypes =
     INVALID_INST_STRATEGY : "Instantiation strategy not valid"
     MOUNTPOINT_IN_USE : "MountPoint in use"
     INVALID_TOKEN : "The link has expired"
-    USER_NOT_REGISTERED : "This email ID is not registered with us"
+    USER_NOT_REGISTERED : "This email ID is not registered"
     PROPERTY_EXISTS : "Can not overwrite property"
+    API_INVALID     : "Method not valid in this context"
     INVALID_STORE   : "The store method of the appInstanceProvider must return an
                        object"
     NO_EMAIL_CONFIG : "Please provide an email ID and the corresponding" +

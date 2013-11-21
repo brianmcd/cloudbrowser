@@ -1,8 +1,3 @@
-Path     = require('path')
-Async    = require('async')
-NwGlobal = require('nwglobal')
-
-
 app = angular.module('CBLandingPage.controllers.app',
     ['CBLandingPage.services', 'CBLandingPage.models'])
 
@@ -29,7 +24,7 @@ app.controller 'AppCtrl', [
     'cb-appInstanceManager'
     'cb-format'
     ($scope, appInstanceMgr, format) ->
-        # Templates used in the view
+        # Path to templates used in the view
         $scope.templates =
             header           : "header.html"
             initial          : "initial.html"
@@ -56,114 +51,72 @@ app.controller 'AppCtrl', [
             else for k, v of path
                 path[k] = "#{__dirname}/partials/#{v}"
 
-        # The following CRUD methods are attached to the scope to ensure
-        # prototypal inheritance and thus enable their use by child scopes
-        $scope.addAppInstance = (appInstanceConfig) ->
-            appInstance = appInstanceMgr.find(appInstanceConfig.getID())
-            if appInstance then return appInstance
-
-            appInstance = appInstanceMgr.add(appInstanceConfig)
-            $scope.$apply()
-
-            Async.waterfall NwGlobal.Array(
-                (next) ->
-                    appInstance.owner = appInstance.api.getOwner()
-                    appInstance.api.isAssocWithCurrentUser(next)
-                (isAssoc, next) ->
-                    if isAssoc then appInstance.api.getReaderWriters(next)
-                    else next(null, null)
-                (collaborators, next) ->
-                    if collaborators then $scope.safeApply ->
-                        appInstance.collaborators = collaborators
-                    next(null)
-            ), (err) ->
-                if err then $scope.safeApply -> $scope.setError(err)
-
-            return appInstance
-
-        $scope.updateBrowserCollaborators = (browser, callback) ->
-            Async.waterfall NwGlobal.Array(
-                (next) ->
-                    browser.api.getOwners(next)
-                (owners, next) ->
-                    $scope.safeApply -> browser.owners = owners
-                    browser.api.getReaderWriters(next)
-                (collaborators, next) ->
-                    $scope.safeApply -> browser.collaborators = collaborators
-                    browser.api.getReaders(next)
-                (readers, next) ->
-                    $scope.safeApply -> browser.readers = readers
-                    next(null)
-            ), callback
-
         $scope.addBrowser = (browserConfig, appInstance) ->
-            browser = null
-            Async.waterfall NwGlobal.Array(
-                (next) ->
-                    browserConfig.isAssocWithCurrentUser(next)
-                (isAssoc, next) ->
-                    # Only show browsers that are associated with the current
-                    # user
-                    if not isAssoc then return
-                    # Add the app instance to the view if not already present
-                    if not appInstance
-                        appInstanceConfig = browserConfig.getAppInstanceConfig()
-                        appInstance = $scope.addAppInstance(appInstanceConfig)
-                    $scope.safeApply () ->
-                        # Then add the browser to the app instance
-                        browser = appInstance.browserMgr.add(browserConfig)
-                        appInstance.showOptions = true
-                    # Set the collaborators
-                    $scope.updateBrowserCollaborators(browser, next)
-            ), (err) ->
-                $scope.safeApply ->
-                    if err then $scope.setError(err)
-                    appInstance.processing = false
+            # Don't add the browsers if you're just the owner of the app
+            if not browserConfig.isOwner() and
+               not browserConfig.isReader() and
+               not browserConfig.isReaderWriter() then return
+            # Add the app instance to the view if not already present
+            if not appInstance
+                appInstanceConfig = browserConfig.getAppInstanceConfig()
+                appInstance = appInstanceMgr.add(appInstanceConfig)
+            # Then add the browser to the app instance
+            browser = appInstance.browserMgr.add(browserConfig)
+            appInstance.showOptions = true
+            appInstance.processing = false
 
         $scope.removeBrowser = (browserID) ->
             for appInstance in appInstanceMgr.items
-                # This will remove it from only that appInstance that has the
-                # browser with ID = browserID. Other appInstances will ignore
-                # the request
-                $scope.safeApply -> appInstance.browserMgr.remove(browserID)
+                appInstance.browserMgr.remove(browserID)
 
         $scope.removeAppInstance = (appInstanceID) ->
-            $scope.safeApply -> appInstanceMgr.remove(appInstanceID)
+            appInstanceMgr.remove(appInstanceID)
 
         # Properties used in the view
         $scope.description  = appConfig.getDescription()
         $scope.mountPoint   = appConfig.getMountPoint()
         $scope.name         = appConfig.getName()
-        $scope.filterType   = 'all'
         $scope.appInstances = appInstanceMgr.items
-        $scope.appInstanceName = appConfig.getAppInstanceName()
         $scope.user = curVB.getCreator()
+        $scope.appInstanceName = appConfig.getAppInstanceName()
+        $scope.filter =
+            browsers     : 'all'
+            appInstances : 'all'
 
         # Methods used in the view
         $scope.logout   = () ->
             cloudbrowser.auth.logout()
 
         $scope.create = () ->
-            Async.waterfall NwGlobal.Array(
-                (next) ->
-                    appConfig.createAppInstance(next)
-            ), (err, appInstanceConfig) ->
-                if err then $scope.safeApply () -> $scope.setError(err)
-                else $scope.addAppInstance(appInstanceConfig)
+            appConfig.createAppInstance (err, appInstanceConfig) ->
+                $scope.safeApply () ->
+                    if err then $scope.setError(err)
+                    else appInstanceMgr.add(appInstanceConfig)
 
         # Event handlers that keep all browsers of the application in sync
-        appConfig.addEventListener('addBrowser', $scope.addBrowser)
-        appConfig.addEventListener('shareBrowser', $scope.addBrowser)
-        appConfig.addEventListener('removeBrowser', $scope.removeBrowser)
-        appConfig.addEventListener('addAppInstance', $scope.addAppInstance)
-        appConfig.addEventListener('shareAppInstance', $scope.addAppInstance)
-        appConfig.addEventListener('removeAppInstance', $scope.removeAppInstance)
+        appConfig.addEventListener 'addBrowser', (browserConfig) ->
+            $scope.safeApply ->
+                $scope.addBrowser(browserConfig)
+        appConfig.addEventListener 'shareBrowser', (browserConfig) ->
+            $scope.safeApply -> $scope.addBrowser(browserConfig)
+        appConfig.addEventListener 'removeBrowser', (browserID) ->
+            $scope.safeApply -> $scope.removeBrowser(browserID)
+        appConfig.addEventListener 'addAppInstance', (appInstanceConfig) ->
+            $scope.safeApply -> appInstanceMgr.add(appInstanceConfig)
+        appConfig.addEventListener 'shareAppInstance', (appInstanceConfig) ->
+            $scope.safeApply -> appInstanceMgr.add(appInstanceConfig)
+        appConfig.addEventListener 'removeAppInstance', (appInstanceID) ->
+            $scope.safeApply -> $scope.removeAppInstance(appInstanceID)
 
         # Populate appInstances and browsers at startup
         appConfig.getBrowsers (err, browserConfigs) ->
-            if err then $scope.safeApply -> $scope.setError(err)
-            $scope.addBrowser(browserConfig) for browserConfig in browserConfigs
+            $scope.safeApply ->
+                if err then $scope.setError(err)
+                for browserConfig in browserConfigs
+                    $scope.addBrowser(browserConfig)
 
         appConfig.getAppInstances (err, appInstanceConfigs) ->
-            $scope.addAppInstance(appInstanceConfig) for appInstanceConfig in appInstanceConfigs
+            $scope.safeApply ->
+                for appInstanceConfig in appInstanceConfigs
+                    appInstanceMgr.add(appInstanceConfig)
 ]

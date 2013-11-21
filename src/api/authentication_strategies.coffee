@@ -28,12 +28,12 @@ class LocalStrategy
     ###*
         Logs a user into the application.    
         @method login
-        @memberof LocalStrategy
-        @instance
         @param options 
-        @param {} options.user
+        @param {String} options.emailID
         @param {String} options.password
         @param {booleanCallback} options.callback 
+        @instance
+        @memberof LocalStrategy
     ###
     login : (options) ->
         {emailID, password, callback} = options
@@ -47,15 +47,17 @@ class LocalStrategy
             return callback?(cloudbrowserError("PARAM_INVALID", "- emailID"))
             
         {bserver} = _pvts[@_idx]
-        {config}  = bserver.server
+        CBServer = require('../server')
+        {domain, port} = CBServer.getConfig()
         user = new User(emailID)
 
         mountPoint = getParentMountPoint(bserver.mountPoint)
-        app        = bserver.server.applications.find(mountPoint)
-        appUrl     = "http://#{config.domain}:#{config.port}#{mountPoint}"
+        appManager = CBServer.getAppManager()
+        app        = appManager.find(mountPoint)
+        appUrl     = "http://#{domain}:#{port}#{mountPoint}"
         dbKey      = null
-        session    = null
         redirectto = null
+        result     = null
 
         Async.waterfall [
             (next) ->
@@ -69,11 +71,11 @@ class LocalStrategy
                     , next
                 # Bypassing the waterfall
                 else callback(null, null)
-        ], (err, result) ->
+            (res, next) ->
+                result = res
+                bserver.getFirstSession(next)
+        ], (err, session) ->
             if err then return callback(err)
-            # TODO - Allow only one user to connect to this bserver
-            sessions = bserver.getSessions()
-            session  = sessions[0]
             if result?.key.toString('hex') is dbKey
                 # This is the what actually marks the user as logged in
                 SessionManager.addAppUserID(session, mountPoint, user)
@@ -91,19 +93,20 @@ class LocalStrategy
             if redirectto then bserver.redirect(redirectto)
             else bserver.redirect(appUrl)
             bserver.once 'NoClients', () ->
-                app = bserver.server.applications.find(bserver.mountPoint)
+                appManager = CBServer.getAppManager()
+                app = appManager.find(bserver.mountPoint)
                 app.browsers.close(bserver)
 
     ###*
         Registers a user with the application and sends a confirmation email to the user's registered email ID.
         The email ID is not activated until it has been confirmed by the user.    
-        @memberof LocalStrategy
-        @instance
         @method signup
         @param options 
-        @param {} options.user
+        @param {String} options.emailID
         @param {String} options.password
         @param {booleanCallback} options.callback 
+        @instance
+        @memberof LocalStrategy
     ###
     signup : (options) ->
         {emailID, password, callback} = options
@@ -115,11 +118,13 @@ class LocalStrategy
         
         {bserver, cbCtx} = _pvts[@_idx]
         {util}     = cbCtx
-        {config}   = bserver.server
+        CBServer = require('../server')
+        {domain, port} = CBServer.getConfig()
         user       = new User(emailID)
         mountPoint = getParentMountPoint(bserver.mountPoint)
-        app        = bserver.server.applications.find(mountPoint)
-        appUrl     = "http://#{config.domain}:#{config.port}#{mountPoint}"
+        appManager = CBServer.getAppManager()
+        app        = appManager.find(mountPoint)
+        appUrl     = "http://#{domain}:#{port}#{mountPoint}"
         token      = null
 
         # Generating a random token to ensure the validity of user confirmation.
@@ -173,23 +178,25 @@ class GoogleStrategy
     ###*
         Log in through a google ID
         @method login
-        @memberof GoogleStrategy
         @instance
+        @memberof GoogleStrategy
     ###
     login : () ->
         {bserver} = _pvts[@_idx]
-        sessions  = bserver.getSessions()
-        session   = sessions[0]
-        # The mountPoint attached to the user session is used by the google
-        # authentication route to identify the application from which the
-        # google redirect has originated
-        mountPoint = getParentMountPoint(bserver.mountPoint)
-        SessionManager.setPropOnSession(session, 'mountPoint', mountPoint)
-        bserver.redirect "/googleAuth"
-        # Kill the browser once client has been authenticated
-        bserver.once 'NoClients', () ->
-            app = bserver.server.applications.find(bserver.mountPoint)
-            app.browsers.close(bserver)
+
+        bserver.getFirstSession (err, session) ->
+            # The mountPoint attached to the user session is used by the google
+            # authentication route to identify the application from which the
+            # google redirect has originated
+            mountPoint = getParentMountPoint(bserver.mountPoint)
+            SessionManager.setPropOnSession(session, 'mountPoint', mountPoint)
+            bserver.redirect "/googleAuth"
+            # Kill the browser once client has been authenticated
+            bserver.once 'NoClients', () ->
+                CBServer = require('../server')
+                appManager = CBServer.getAppManager()
+                app = appManager.find(bserver.mountPoint)
+                app.browsers.close(bserver)
 
 module.exports =
     LocalStrategy  : LocalStrategy

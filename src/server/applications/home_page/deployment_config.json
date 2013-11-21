@@ -4,7 +4,7 @@
     "mountPoint": "/",
     "browserLimit": 0,
     "description": "The home page that lists all the mounted, public applications currently running on the cloudbrowser server.",
-    "isPublic": false,
+    "isPublic": true,
     "authenticationInterface": false,
     "collectionName": null,
     "owner": "ashimaathri@gmail.com"

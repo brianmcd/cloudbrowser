@@ -3,7 +3,7 @@
 <html lang="en">
 <head>
 	<meta charset="utf-8">
-	<title>CloudBrowser Class: SharedState</title>
+	<title>CloudBrowser Class: AppInstance</title>
 
 	<!--[if lt IE 9]>
 	<script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
@@ -51,7 +51,11 @@
 						</li>
 						
 						<li>
-							<a href="cloudbrowser.app.User.html">User</a>
+							<a href="AppInstance.html">AppInstance</a>
+						</li>
+						
+						<li>
+							<a href="Browser.html">Browser</a>
 						</li>
 						
 						<li>
@@ -67,15 +71,7 @@
 						</li>
 						
 						<li>
-							<a href="SharedState.html">SharedState</a>
-						</li>
-						
-						<li>
 							<a href="Util.html">Util</a>
-						</li>
-						
-						<li>
-							<a href="VirtualBrowser.html">VirtualBrowser</a>
 						</li>
 						
 
@@ -89,35 +85,43 @@
 					<ul class="dropdown-menu ">
 						
 						<li>
-							<a href="AppConfig.html#event:Add">Add</a>
+							<a href="AppConfig.html#event:addAppInstance">addAppInstance</a>
 						</li>
 						
 						<li>
-							<a href="AppConfig.html#event:Remove">Remove</a>
+							<a href="AppConfig.html#event:addBrowser">addBrowser</a>
 						</li>
 						
 						<li>
-							<a href="SharedState.html#event:addBrowser">addBrowser</a>
+							<a href="AppConfig.html#event:addUser">addUser</a>
 						</li>
 						
 						<li>
-							<a href="SharedState.html#event:removeBrowser">removeBrowser</a>
+							<a href="AppConfig.html#event:removeAppInstance">removeAppInstance</a>
 						</li>
 						
 						<li>
-							<a href="SharedState.html#event:rename">rename</a>
+							<a href="AppConfig.html#event:removeBrowser">removeBrowser</a>
 						</li>
 						
 						<li>
-							<a href="SharedState.html#event:share">share</a>
+							<a href="AppConfig.html#event:removeUser">removeUser</a>
 						</li>
 						
 						<li>
-							<a href="VirtualBrowser.html#event:rename">rename</a>
+							<a href="AppInstance.html#event:rename">rename</a>
 						</li>
 						
 						<li>
-							<a href="VirtualBrowser.html#event:share">share</a>
+							<a href="AppInstance.html#event:share">share</a>
+						</li>
+						
+						<li>
+							<a href="Browser.html#event:rename">rename</a>
+						</li>
+						
+						<li>
+							<a href="Browser.html#event:share">share</a>
 						</li>
 						
 
@@ -137,12 +141,12 @@
 					
 
 
-	<h1 class="page-title">Class: SharedState</h1>
+	<h1 class="page-title">Class: AppInstance</h1>
 <section>
 
 <header>
     <h2>
-    SharedState
+    AppInstance
     </h2>
     
 </header>
@@ -154,7 +158,7 @@
     
         
 <dt>
-    <h4 class="name" id="SharedState"><span class="type-signature"></span>new SharedState<span class="signature">(options)</span><span class="type-signature"></span></h4>
+    <h4 class="name" id="AppInstance"><span class="type-signature"></span>new AppInstance<span class="signature">(options)</span><span class="type-signature"></span></h4>
     
     
 </dt>
@@ -162,7 +166,7 @@
     
     
     <div class="description">
-        <p>API for shared state (internal class).</p>
+        <p>API for application instance (internal class).</p>
     </div>
     
 
@@ -212,24 +216,11 @@
 
             
 
-            <td class="description last"></td>
-        </tr>
+            <td class="description last">
+                <h6>Properties</h6>
+                
 
-	
-	</tbody>
-</table>
-
-    
-    
-    
-<dl class="details">
-    
-
-        <h5 class="subsection-title">Properties:</h5>
-
-        <dl>
-
-<table class="props table table-striped">
+<table class="params table table-striped">
     <thead>
 	<tr>
 		
@@ -238,8 +229,6 @@
 
 		<th>Type</th>
 
-		
-		<th>Argument</th>
 		
 
 		
@@ -253,85 +242,86 @@
 
         <tr>
             
-                <td class="name"><code>BrowserServer</code></td>
+                <td class="name"><code>userCtx</code></td>
             
 
             <td class="type">
             
+                
+<span class="param-type">User</span>
+
+
+            
             </td>
 
             
-                <td class="attributes">
-                
-                    &lt;optional><br>
-                
-
-                
-                </td>
-            
 
             
 
-            <td class="description last"><p>sharedState The sharedState.</p></td>
+            <td class="description last"><p>The current user.</p></td>
         </tr>
 
 	
 
         <tr>
             
-                <td class="name"><code>User</code></td>
+                <td class="name"><code>appInstance</code></td>
             
 
             <td class="type">
             
+                
+<span class="param-type"><a href="AppInstance.html">AppInstance</a></span>
+
+
+            
             </td>
 
             
-                <td class="attributes">
-                
-                    &lt;optional><br>
-                
-
-                
-                </td>
-            
 
             
 
-            <td class="description last"><p>userCtx     The current user.</p></td>
+            <td class="description last"><p>The application instance.</p></td>
         </tr>
 
 	
 
         <tr>
             
-                <td class="name"><code>Cloudbrowser</code></td>
+                <td class="name"><code>cbCtx</code></td>
             
 
             <td class="type">
             
+                
+<span class="param-type">Cloudbrowser</span>
+
+
+            
             </td>
 
             
-                <td class="attributes">
-                
-                    &lt;optional><br>
-                
-
-                
-                </td>
-            
 
             
 
-            <td class="description last"><p>cbCtx       The cloudbrowser API object.</p></td>
+            <td class="description last"><p>The cloudbrowser API object.</p></td>
         </tr>
 
 	
 	</tbody>
 </table>
-</dl>
 
+            </td>
+        </tr>
+
+	
+	</tbody>
+</table>
+
+    
+    
+    
+<dl class="details">
     
 
     
@@ -353,7 +343,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="shared_state.js.html">shared_state.js</a>, <a href="shared_state.js.html#sunlight-1-line-23">line 23</a>
+        <a href="app_instance.js.html">app_instance.js</a>, <a href="app_instance.js.html#sunlight-1-line-19">line 19</a>
     </li></ul></dd>
     
 
@@ -368,13 +358,9 @@
     
     <h5>Fires:</h5>
     <ul>
-        <li><a href="SharedState.html#event:share">SharedState#event:share</a></li>
+        <li><a href="AppInstance.html#event:share">AppInstance#event:share</a></li>
     
-        <li><a href="SharedState.html#event:rename">SharedState#event:rename</a></li>
-    
-        <li><a href="SharedState.html#event:addBrowser">SharedState#event:addBrowser</a></li>
-    
-        <li><a href="SharedState.html#event:removeBrowser">SharedState#event:removeBrowser</a></li>
+        <li><a href="AppInstance.html#event:rename">AppInstance#event:rename</a></li>
     </ul>
     
 
@@ -418,7 +404,7 @@
     
     
     <div class="description">
-        <p>Registers a listener for an event on the sharedState instance.</p>
+        <p>Registers a listener for an event on the appInstance.</p>
     </div>
     
 
@@ -481,6 +467,147 @@
             <td class="type">
             
                 
+<span class="param-type"><a href="global.html#appInstanceEventCallback">appInstanceEventCallback</a></span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"></td>
+        </tr>
+
+	
+	</tbody>
+</table>
+
+    
+    
+    
+<dl class="details">
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="app_instance.js.html">app_instance.js</a>, <a href="app_instance.js.html#sunlight-1-line-159">line 159</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+    
+    
+
+    
+
+    
+    
+    
+    
+    
+    
+    
+</dd>
+
+        
+            
+<dt>
+    <h4 class="name" id="addReaderWriter"><span class="type-signature"></span>addReaderWriter<span class="signature">(emailID, callback)</span><span class="type-signature"></span></h4>
+    
+    
+</dt>
+<dd>
+    
+    
+    <div class="description">
+        <p>Grants the user readwrite permissions on the application instance.</p>
+    </div>
+    
+
+    
+    
+    
+    
+    
+        <h5>Parameters:</h5>
+        
+
+<table class="params table table-striped">
+    <thead>
+	<tr>
+		
+		<th>Name</th>
+		
+
+		<th>Type</th>
+
+		
+
+		
+
+		<th class="last">Description</th>
+	</tr>
+	</thead>
+
+	<tbody>
+	
+
+        <tr>
+            
+                <td class="name"><code>emailID</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"></td>
+        </tr>
+
+	
+
+        <tr>
+            
+                <td class="name"><code>callback</code></td>
+            
+
+            <td class="type">
+            
+                
 <span class="param-type"><a href="global.html#errorCallback">errorCallback</a></span>
 
 
@@ -523,259 +650,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="shared_state.js.html">shared_state.js</a>, <a href="shared_state.js.html#sunlight-1-line-183">line 183</a>
-    </li></ul></dd>
-    
-
-    
-
-    
-
-    
-</dl>
-
-    
-    
-
-    
-
-    
-    
-    
-    
-    
-    
-    
-</dd>
-
-        
-            
-<dt>
-    <h4 class="name" id="checkPermissions"><span class="type-signature"></span>checkPermissions<span class="signature">(permTypes, callback)</span><span class="type-signature"></span></h4>
-    
-    
-</dt>
-<dd>
-    
-    
-    <div class="description">
-        <p>Checks if the user has permissions to perform a set of actions
-        on the shared state.</p>
-    </div>
-    
-
-    
-    
-    
-    
-    
-        <h5>Parameters:</h5>
-        
-
-<table class="params table table-striped">
-    <thead>
-	<tr>
-		
-		<th>Name</th>
-		
-
-		<th>Type</th>
-
-		
-
-		
-
-		<th class="last">Description</th>
-	</tr>
-	</thead>
-
-	<tbody>
-	
-
-        <tr>
-            
-                <td class="name"><code>permTypes</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">Object</span>
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last"><p>The values of these properties must be set to
-        true to check for the corresponding permission.</p></td>
-        </tr>
-
-	
-
-        <tr>
-            
-                <td class="name"><code>callback</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type"><a href="global.html#booleanCallback">booleanCallback</a></span>
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last"></td>
-        </tr>
-
-	
-	</tbody>
-</table>
-
-    
-    
-    
-<dl class="details">
-    
-
-        <h5 class="subsection-title">Properties:</h5>
-
-        <dl>
-
-<table class="props table table-striped">
-    <thead>
-	<tr>
-		
-		<th>Name</th>
-		
-
-		<th>Type</th>
-
-		
-		<th>Argument</th>
-		
-
-		
-
-		<th class="last">Description</th>
-	</tr>
-	</thead>
-
-	<tbody>
-	
-
-        <tr>
-            
-                <td class="name"><code>boolean</code></td>
-            
-
-            <td class="type">
-            
-            </td>
-
-            
-                <td class="attributes">
-                
-                    &lt;optional><br>
-                
-
-                
-                </td>
-            
-
-            
-
-            <td class="description last"><p>own</p></td>
-        </tr>
-
-	
-
-        <tr>
-            
-                <td class="name"><code>boolean</code></td>
-            
-
-            <td class="type">
-            
-            </td>
-
-            
-                <td class="attributes">
-                
-                    &lt;optional><br>
-                
-
-                
-                </td>
-            
-
-            
-
-            <td class="description last"><p>remove</p></td>
-        </tr>
-
-	
-
-        <tr>
-            
-                <td class="name"><code>boolean</code></td>
-            
-
-            <td class="type">
-            
-            </td>
-
-            
-                <td class="attributes">
-                
-                    &lt;optional><br>
-                
-
-                
-                </td>
-            
-
-            
-
-            <td class="description last"><p>readwrite</p></td>
-        </tr>
-
-	
-	</tbody>
-</table>
-</dl>
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-    <dt class="tag-source">Source:</dt>
-    <dd class="tag-source"><ul class="dummy"><li>
-        <a href="shared_state.js.html">shared_state.js</a>, <a href="shared_state.js.html#sunlight-1-line-371">line 371</a>
+        <a href="app_instance.js.html">app_instance.js</a>, <a href="app_instance.js.html#sunlight-1-line-285">line 285</a>
     </li></ul></dd>
     
 
@@ -811,7 +686,7 @@
     
     
     <div class="description">
-        <p>Closes the sharedState.</p>
+        <p>Closes the appInstance.</p>
     </div>
     
 
@@ -893,7 +768,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="shared_state.js.html">shared_state.js</a>, <a href="shared_state.js.html#sunlight-1-line-130">line 130</a>
+        <a href="app_instance.js.html">app_instance.js</a>, <a href="app_instance.js.html#sunlight-1-line-126">line 126</a>
     </li></ul></dd>
     
 
@@ -921,7 +796,7 @@
         
             
 <dt>
-    <h4 class="name" id="createVirtualBrowser"><span class="type-signature"></span>createVirtualBrowser<span class="signature">(callback)</span><span class="type-signature"></span></h4>
+    <h4 class="name" id="createBrowser"><span class="type-signature"></span>createBrowser<span class="signature">(callback)</span><span class="type-signature"></span></h4>
     
     
 </dt>
@@ -929,7 +804,7 @@
     
     
     <div class="description">
-        <p>Creates a browser associated with this shared state.</p>
+        <p>Creates a browser associated with the current application instance.</p>
     </div>
     
 
@@ -969,7 +844,7 @@
             <td class="type">
             
                 
-<span class="param-type"><a href="global.html#errorCallback">errorCallback</a></span>
+<span class="param-type"><a href="global.html#browserCallback">browserCallback</a></span>
 
 
             
@@ -1011,7 +886,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="shared_state.js.html">shared_state.js</a>, <a href="shared_state.js.html#sunlight-1-line-102">line 102</a>
+        <a href="app_instance.js.html">app_instance.js</a>, <a href="app_instance.js.html#sunlight-1-line-88">line 88</a>
     </li></ul></dd>
     
 
@@ -1047,7 +922,7 @@
     
     
     <div class="description">
-        <p>Gets the date of creation of the shared state.</p>
+        <p>Gets the date of creation of the application instance.</p>
     </div>
     
 
@@ -1080,7 +955,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="shared_state.js.html">shared_state.js</a>, <a href="shared_state.js.html#sunlight-1-line-117">line 117</a>
+        <a href="app_instance.js.html">app_instance.js</a>, <a href="app_instance.js.html#sunlight-1-line-113">line 113</a>
     </li></ul></dd>
     
 
@@ -1135,7 +1010,7 @@
     
     
     <div class="description">
-        <p>Gets the ID of the shared application state.</p>
+        <p>Gets the ID of the application state.</p>
     </div>
     
 
@@ -1168,7 +1043,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="shared_state.js.html">shared_state.js</a>, <a href="shared_state.js.html#sunlight-1-line-72">line 72</a>
+        <a href="app_instance.js.html">app_instance.js</a>, <a href="app_instance.js.html#sunlight-1-line-58">line 58</a>
     </li></ul></dd>
     
 
@@ -1223,7 +1098,7 @@
     
     
     <div class="description">
-        <p>Gets the ID of the shared application state.</p>
+        <p>Gets the name of the application state.</p>
     </div>
     
 
@@ -1256,7 +1131,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="shared_state.js.html">shared_state.js</a>, <a href="shared_state.js.html#sunlight-1-line-85">line 85</a>
+        <a href="app_instance.js.html">app_instance.js</a>, <a href="app_instance.js.html#sunlight-1-line-71">line 71</a>
     </li></ul></dd>
     
 
@@ -1303,7 +1178,7 @@
         
             
 <dt>
-    <h4 class="name" id="getNumReaderWriters"><span class="type-signature"></span>getNumReaderWriters<span class="signature">(callback)</span><span class="type-signature"></span></h4>
+    <h4 class="name" id="getObj"><span class="type-signature"></span>getObj<span class="signature">()</span><span class="type-signature"> &rarr; {Object}</span></h4>
     
     
 </dt>
@@ -1311,11 +1186,8 @@
     
     
     <div class="description">
-        <p>Gets the number of users that have the permission only to read and
-        write to the sharedState. 
-        There is a separate method for this as it is faster to get only the
-        number of reader writers than to construct a list of them using
-        getReaderWriters and then get that number.</p>
+        <p>Get the application instance JavaScript object that can be used
+        by the application and that is serialized and stored in the database</p>
     </div>
     
 
@@ -1323,55 +1195,6 @@
     
     
     
-    
-        <h5>Parameters:</h5>
-        
-
-<table class="params table table-striped">
-    <thead>
-	<tr>
-		
-		<th>Name</th>
-		
-
-		<th>Type</th>
-
-		
-
-		
-
-		<th class="last">Description</th>
-	</tr>
-	</thead>
-
-	<tbody>
-	
-
-        <tr>
-            
-                <td class="name"><code>callback</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type"><a href="global.html#numberCallback">numberCallback</a></span>
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last"></td>
-        </tr>
-
-	
-	</tbody>
-</table>
-
     
     
     
@@ -1397,7 +1220,100 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="shared_state.js.html">shared_state.js</a>, <a href="shared_state.js.html#sunlight-1-line-281">line 281</a>
+        <a href="app_instance.js.html">app_instance.js</a>, <a href="app_instance.js.html#sunlight-1-line-350">line 350</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+    
+    
+
+    
+
+    
+    
+    
+    
+    
+    <h5>Returns:</h5>
+    
+            
+<div class="param-desc">
+    <p>Custom object, the details of which are known only
+        to the application code itself</p>
+</div>
+
+
+
+<dl>
+	<dt>
+		Type
+	</dt>
+	<dd>
+		
+<span class="param-type">Object</span>
+
+
+	</dd>
+</dl>
+
+
+        
+    
+    
+</dd>
+
+        
+            
+<dt>
+    <h4 class="name" id="getOwner"><span class="type-signature"></span>getOwner<span class="signature">()</span><span class="type-signature"></span></h4>
+    
+    
+</dt>
+<dd>
+    
+    
+    <div class="description">
+        <p>Gets the owner of the application instance.</p>
+    </div>
+    
+
+    
+    
+    
+    
+    
+    
+    
+<dl class="details">
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="app_instance.js.html">app_instance.js</a>, <a href="app_instance.js.html#sunlight-1-line-145">line 145</a>
     </li></ul></dd>
     
 
@@ -1425,7 +1341,7 @@
         
             
 <dt>
-    <h4 class="name" id="getOwner"><span class="type-signature"></span>getOwner<span class="signature">()</span><span class="type-signature"> &rarr; {<a href="cloudbrowser.app.User.html">cloudbrowser.app.User</a>}</span></h4>
+    <h4 class="name" id="getReaderWriters"><span class="type-signature"></span>getReaderWriters<span class="signature">()</span><span class="type-signature"> &rarr; {Bool}</span></h4>
     
     
 </dt>
@@ -1433,7 +1349,8 @@
     
     
     <div class="description">
-        <p>Gets the owner of the shared state.</p>
+        <p>Gets all users that have the permission to read and
+        write to the application instance.</p>
     </div>
     
 
@@ -1466,7 +1383,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="shared_state.js.html">shared_state.js</a>, <a href="shared_state.js.html#sunlight-1-line-167">line 167</a>
+        <a href="app_instance.js.html">app_instance.js</a>, <a href="app_instance.js.html#sunlight-1-line-211">line 211</a>
     </li></ul></dd>
     
 
@@ -1498,7 +1415,7 @@
 	</dt>
 	<dd>
 		
-<span class="param-type"><a href="cloudbrowser.app.User.html">cloudbrowser.app.User</a></span>
+<span class="param-type">Bool</span>
 
 
 	</dd>
@@ -1513,7 +1430,7 @@
         
             
 <dt>
-    <h4 class="name" id="getReaderWriters"><span class="type-signature"></span>getReaderWriters<span class="signature">(callback)</span><span class="type-signature"></span></h4>
+    <h4 class="name" id="getURL"><span class="type-signature"></span>getURL<span class="signature">()</span><span class="type-signature"> &rarr; {String}</span></h4>
     
     
 </dt>
@@ -1521,8 +1438,7 @@
     
     
     <div class="description">
-        <p>Gets all users that have the permission to read and
-        write to the shared state.</p>
+        <p>Gets the url of the application instance.</p>
     </div>
     
 
@@ -1530,55 +1446,6 @@
     
     
     
-    
-        <h5>Parameters:</h5>
-        
-
-<table class="params table table-striped">
-    <thead>
-	<tr>
-		
-		<th>Name</th>
-		
-
-		<th>Type</th>
-
-		
-
-		
-
-		<th class="last">Description</th>
-	</tr>
-	</thead>
-
-	<tbody>
-	
-
-        <tr>
-            
-                <td class="name"><code>callback</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type"><a href="global.html#userListCallback">userListCallback</a></span>
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last"></td>
-        </tr>
-
-	
-	</tbody>
-</table>
-
     
     
     
@@ -1604,7 +1471,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="shared_state.js.html">shared_state.js</a>, <a href="shared_state.js.html#sunlight-1-line-251">line 251</a>
+        <a href="app_instance.js.html">app_instance.js</a>, <a href="app_instance.js.html#sunlight-1-line-367">line 367</a>
     </li></ul></dd>
     
 
@@ -1625,6 +1492,25 @@
     
     
     
+    <h5>Returns:</h5>
+    
+            
+
+
+<dl>
+	<dt>
+		Type
+	</dt>
+	<dd>
+		
+<span class="param-type">String</span>
+
+
+	</dd>
+</dl>
+
+
+        
     
     
 </dd>
@@ -1632,281 +1518,7 @@
         
             
 <dt>
-    <h4 class="name" id="grantPermissions"><span class="type-signature"></span>grantPermissions<span class="signature">(permTypes, user, callback)</span><span class="type-signature"></span></h4>
-    
-    
-</dt>
-<dd>
-    
-    
-    <div class="description">
-        <p>Grants the user a set of permissions on the shared state.</p>
-    </div>
-    
-
-    
-    
-    
-    
-    
-        <h5>Parameters:</h5>
-        
-
-<table class="params table table-striped">
-    <thead>
-	<tr>
-		
-		<th>Name</th>
-		
-
-		<th>Type</th>
-
-		
-
-		
-
-		<th class="last">Description</th>
-	</tr>
-	</thead>
-
-	<tbody>
-	
-
-        <tr>
-            
-                <td class="name"><code>permTypes</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">Object</span>
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last"><p>The values of these properties must be set to
-        true to check for the corresponding permission.</p></td>
-        </tr>
-
-	
-
-        <tr>
-            
-                <td class="name"><code>user</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type"><a href="cloudbrowser.app.User.html">cloudbrowser.app.User</a></span>
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last"></td>
-        </tr>
-
-	
-
-        <tr>
-            
-                <td class="name"><code>callback</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type"><a href="global.html#errorCallback">errorCallback</a></span>
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last"></td>
-        </tr>
-
-	
-	</tbody>
-</table>
-
-    
-    
-    
-<dl class="details">
-    
-
-        <h5 class="subsection-title">Properties:</h5>
-
-        <dl>
-
-<table class="props table table-striped">
-    <thead>
-	<tr>
-		
-		<th>Name</th>
-		
-
-		<th>Type</th>
-
-		
-		<th>Argument</th>
-		
-
-		
-
-		<th class="last">Description</th>
-	</tr>
-	</thead>
-
-	<tbody>
-	
-
-        <tr>
-            
-                <td class="name"><code>boolean</code></td>
-            
-
-            <td class="type">
-            
-            </td>
-
-            
-                <td class="attributes">
-                
-                    &lt;optional><br>
-                
-
-                
-                </td>
-            
-
-            
-
-            <td class="description last"><p>own</p></td>
-        </tr>
-
-	
-
-        <tr>
-            
-                <td class="name"><code>boolean</code></td>
-            
-
-            <td class="type">
-            
-            </td>
-
-            
-                <td class="attributes">
-                
-                    &lt;optional><br>
-                
-
-                
-                </td>
-            
-
-            
-
-            <td class="description last"><p>remove</p></td>
-        </tr>
-
-	
-
-        <tr>
-            
-                <td class="name"><code>boolean</code></td>
-            
-
-            <td class="type">
-            
-            </td>
-
-            
-                <td class="attributes">
-                
-                    &lt;optional><br>
-                
-
-                
-                </td>
-            
-
-            
-
-            <td class="description last"><p>readwrite</p></td>
-        </tr>
-
-	
-	</tbody>
-</table>
-</dl>
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-    <dt class="tag-source">Source:</dt>
-    <dd class="tag-source"><ul class="dummy"><li>
-        <a href="shared_state.js.html">shared_state.js</a>, <a href="shared_state.js.html#sunlight-1-line-399">line 399</a>
-    </li></ul></dd>
-    
-
-    
-
-    
-
-    
-</dl>
-
-    
-    
-
-    
-
-    
-    
-    
-    
-    
-    
-    
-</dd>
-
-        
-            
-<dt>
-    <h4 class="name" id="isAssocWithCurrentUser"><span class="type-signature"></span>isAssocWithCurrentUser<span class="signature">(callback)</span><span class="type-signature"></span></h4>
+    <h4 class="name" id="isAssocWithCurrentUser"><span class="type-signature"></span>isAssocWithCurrentUser<span class="signature">()</span><span class="type-signature"> &rarr; {Bool}</span></h4>
     
     
 </dt>
@@ -1915,7 +1527,7 @@
     
     <div class="description">
         <p>Checks if the current user has some permissions associated with the 
-        current sharedState (readwrite, own, remove)</p>
+        current appInstance (readwrite, own)</p>
     </div>
     
 
@@ -1923,55 +1535,6 @@
     
     
     
-    
-        <h5>Parameters:</h5>
-        
-
-<table class="params table table-striped">
-    <thead>
-	<tr>
-		
-		<th>Name</th>
-		
-
-		<th>Type</th>
-
-		
-
-		
-
-		<th class="last">Description</th>
-	</tr>
-	</thead>
-
-	<tbody>
-	
-
-        <tr>
-            
-                <td class="name"><code>callback</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type"><a href="global.html#errorCallback">errorCallback</a></span>
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last"></td>
-        </tr>
-
-	
-	</tbody>
-</table>
-
     
     
     
@@ -1997,7 +1560,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="shared_state.js.html">shared_state.js</a>, <a href="shared_state.js.html#sunlight-1-line-221">line 221</a>
+        <a href="app_instance.js.html">app_instance.js</a>, <a href="app_instance.js.html#sunlight-1-line-191">line 191</a>
     </li></ul></dd>
     
 
@@ -2018,6 +1581,25 @@
     
     
     
+    <h5>Returns:</h5>
+    
+            
+
+
+<dl>
+	<dt>
+		Type
+	</dt>
+	<dd>
+		
+<span class="param-type">Bool</span>
+
+
+	</dd>
+</dl>
+
+
+        
     
     
 </dd>
@@ -2025,7 +1607,7 @@
         
             
 <dt>
-    <h4 class="name" id="isOwner"><span class="type-signature"></span>isOwner<span class="signature">(user, callback)</span><span class="type-signature"></span></h4>
+    <h4 class="name" id="isOwner"><span class="type-signature"></span>isOwner<span class="signature">(user)</span><span class="type-signature"> &rarr; {Bool}</span></h4>
     
     
 </dt>
@@ -2033,7 +1615,7 @@
     
     
     <div class="description">
-        <p>Checks if the user is the owner of the shared state</p>
+        <p>Checks if the user is the owner of the application instance</p>
     </div>
     
 
@@ -2073,30 +1655,7 @@
             <td class="type">
             
                 
-<span class="param-type"><a href="cloudbrowser.app.User.html">cloudbrowser.app.User</a></span>
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last"></td>
-        </tr>
-
-	
-
-        <tr>
-            
-                <td class="name"><code>callback</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type"><a href="global.html#booleanCallback">booleanCallback</a></span>
+<span class="param-type">String</span>
 
 
             
@@ -2138,7 +1697,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="shared_state.js.html">shared_state.js</a>, <a href="shared_state.js.html#sunlight-1-line-339">line 339</a>
+        <a href="app_instance.js.html">app_instance.js</a>, <a href="app_instance.js.html#sunlight-1-line-260">line 260</a>
     </li></ul></dd>
     
 
@@ -2159,6 +1718,25 @@
     
     
     
+    <h5>Returns:</h5>
+    
+            
+
+
+<dl>
+	<dt>
+		Type
+	</dt>
+	<dd>
+		
+<span class="param-type">Bool</span>
+
+
+	</dd>
+</dl>
+
+
+        
     
     
 </dd>
@@ -2166,7 +1744,7 @@
         
             
 <dt>
-    <h4 class="name" id="isReaderWriter"><span class="type-signature"></span>isReaderWriter<span class="signature">(user, callback)</span><span class="type-signature"></span></h4>
+    <h4 class="name" id="isReaderWriter"><span class="type-signature"></span>isReaderWriter<span class="signature">(emailID)</span><span class="type-signature"> &rarr; {Bool}</span></h4>
     
     
 </dt>
@@ -2208,36 +1786,13 @@
 
         <tr>
             
-                <td class="name"><code>user</code></td>
+                <td class="name"><code>emailID</code></td>
             
 
             <td class="type">
             
                 
-<span class="param-type"><a href="cloudbrowser.app.User.html">cloudbrowser.app.User</a></span>
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last"></td>
-        </tr>
-
-	
-
-        <tr>
-            
-                <td class="name"><code>callback</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type"><a href="global.html#booleanCallback">booleanCallback</a></span>
+<span class="param-type">String</span>
 
 
             
@@ -2279,7 +1834,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="shared_state.js.html">shared_state.js</a>, <a href="shared_state.js.html#sunlight-1-line-308">line 308</a>
+        <a href="app_instance.js.html">app_instance.js</a>, <a href="app_instance.js.html#sunlight-1-line-235">line 235</a>
     </li></ul></dd>
     
 
@@ -2300,6 +1855,25 @@
     
     
     
+    <h5>Returns:</h5>
+    
+            
+
+
+<dl>
+	<dt>
+		Type
+	</dt>
+	<dd>
+		
+<span class="param-type">Bool</span>
+
+
+	</dd>
+</dl>
+
+
+        
     
     
 </dd>
@@ -2315,7 +1889,7 @@
     
     
     <div class="description">
-        <p>Renames the shared state.</p>
+        <p>Renames the application instance.</p>
     </div>
     
 
@@ -2397,7 +1971,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="shared_state.js.html">shared_state.js</a>, <a href="shared_state.js.html#sunlight-1-line-447">line 447</a>
+        <a href="app_instance.js.html">app_instance.js</a>, <a href="app_instance.js.html#sunlight-1-line-330">line 330</a>
     </li></ul></dd>
     
 
@@ -2412,7 +1986,7 @@
     
     <h5>Fires:</h5>
     <ul>
-        <li><a href="SharedState.html#event:rename">SharedState#event:rename</a></li>
+        <li><a href="AppInstance.html#event:rename">AppInstance#event:rename</a></li>
     </ul>
     
 
@@ -2438,164 +2012,6 @@
         <dl>
             
 <dt>
-    <h4 class="name" id="event:addBrowser">addBrowser</h4>
-    
-    
-</dt>
-<dd>
-    
-    
-    <div class="description">
-        <p>SharedState Rename event</p>
-    </div>
-    
-
-    
-        <h5>Type:</h5>
-        <ul>
-            <li>
-                
-<span class="param-type">String</span>
-
-
-            </li>
-        </ul>
-    
-    
-    
-    
-    
-    
-    
-<dl class="details">
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-    <dt class="tag-source">Source:</dt>
-    <dd class="tag-source"><ul class="dummy"><li>
-        <a href="shared_state.js.html">shared_state.js</a>, <a href="shared_state.js.html#sunlight-1-line-17">line 17</a>
-    </li></ul></dd>
-    
-
-    
-
-    
-
-    
-</dl>
-
-    
-    
-
-    
-
-    
-    
-    
-    
-    
-    
-    
-</dd>
-
-        
-            
-<dt>
-    <h4 class="name" id="event:removeBrowser">removeBrowser</h4>
-    
-    
-</dt>
-<dd>
-    
-    
-    <div class="description">
-        <p>SharedState Rename event</p>
-    </div>
-    
-
-    
-        <h5>Type:</h5>
-        <ul>
-            <li>
-                
-<span class="param-type">String</span>
-
-
-            </li>
-        </ul>
-    
-    
-    
-    
-    
-    
-    
-<dl class="details">
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-    <dt class="tag-source">Source:</dt>
-    <dd class="tag-source"><ul class="dummy"><li>
-        <a href="shared_state.js.html">shared_state.js</a>, <a href="shared_state.js.html#sunlight-1-line-20">line 20</a>
-    </li></ul></dd>
-    
-
-    
-
-    
-
-    
-</dl>
-
-    
-    
-
-    
-
-    
-    
-    
-    
-    
-    
-    
-</dd>
-
-        
-            
-<dt>
     <h4 class="name" id="event:rename">rename</h4>
     
     
@@ -2604,7 +2020,7 @@
     
     
     <div class="description">
-        <p>SharedState Rename event</p>
+        <p>The current application instance has been renamed</p>
     </div>
     
 
@@ -2647,7 +2063,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="shared_state.js.html">shared_state.js</a>, <a href="shared_state.js.html#sunlight-1-line-14">line 14</a>
+        <a href="app_instance.js.html">app_instance.js</a>, <a href="app_instance.js.html#sunlight-1-line-16">line 16</a>
     </li></ul></dd>
     
 
@@ -2683,7 +2099,7 @@
     
     
     <div class="description">
-        <p>SharedState Share event</p>
+        <p>The application instance has been shared with another user</p>
     </div>
     
 
@@ -2716,7 +2132,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="shared_state.js.html">shared_state.js</a>, <a href="shared_state.js.html#sunlight-1-line-11">line 11</a>
+        <a href="app_instance.js.html">app_instance.js</a>, <a href="app_instance.js.html#sunlight-1-line-13">line 13</a>
     </li></ul></dd>
     
 
@@ -2763,7 +2179,7 @@
 					
 		<span class="jsdoc-message">
 		Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.2.0-dev</a>
-		on Wed Sep 18 2013 13:57:09 GMT-0400 (EDT) using the <a href="https://github.com/terryweiss/docstrap">DocStrap template</a>.
+		on Thu Nov 21 2013 13:41:50 GMT-0500 (EST) using the <a href="https://github.com/terryweiss/docstrap">DocStrap template</a>.
 		</span>
 				</footer>
 			</div>

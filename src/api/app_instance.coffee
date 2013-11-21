@@ -3,6 +3,9 @@ Browser = require('./browser')
 User    = require('../server/user')
 cloudbrowserError = require('../shared/cloudbrowser_error')
 
+# Permission checks are included wherever possible and a note is made if
+# missing. Details like name, id, url etc. are available to everybody.
+
 ###*
     The application instance has been shared with another user
     @event AppInstance#share
@@ -13,26 +16,14 @@ cloudbrowserError = require('../shared/cloudbrowser_error')
     @type {String}
 ###
 ###*
-    A new browser attached to the current application instance has been added
-    @event AppInstance#addBrowser
-    @type {String}
-###
-###*
-    A new browser attached to the current application instance has been removed
-    @event AppInstance#removeBrowser
-    @type {String}
-###
-###*
     API for application instance (internal class).
     @class AppInstance
     @param {Object}         options 
+    @param {User}           options.userCtx     The current user.
+    @param {AppInstance}    options.appInstance The application instance.
     @param {Cloudbrowser}   options.cbCtx       The cloudbrowser API object.
-    @param {}           options.userCtx     The current user.
-    @param {AppInstanceObj} options.appInstance The appInstance.
     @fires AppInstance#share
     @fires AppInstance#rename
-    @fires AppInstance#addBrowser
-    @fires AppInstance#removeBrowser
 ###
 class AppInstance
 
@@ -74,12 +65,13 @@ class AppInstance
     ###
     getName : () ->
         {appInstance} = _pvts[@_idx]
+        # This name is actually a number
         name = appInstance.getName()
         prefix = appInstance.app.getAppInstanceName()
         return "#{prefix} #{name + 1}"
 
     ###*
-        Creates a browser associated with this application instance.
+        Creates a browser associated with the current application instance.
         @method createBrowser
         @param {browserCallback} callback
         @instance
@@ -87,14 +79,17 @@ class AppInstance
     ###
     createBrowser : (callback) ->
         {userCtx, cbCtx, appInstance} = _pvts[@_idx]
+        # Permission checking is done inside call to createBrowser
+        # in the application instance and in the browser manager
         Async.waterfall [
             (next) ->
                 appInstance.createBrowser(userCtx, next)
             (bserver, next) ->
-                next null, new Browser
+                next(null, new Browser({
                     browser : bserver
                     userCtx : userCtx
                     cbCtx   : cbCtx
+                }))
         ], callback
 
     ###*
@@ -110,238 +105,196 @@ class AppInstance
     ###*
         Closes the appInstance.
         @method close
-        @memberof AppInstance
-        @instance
         @param {errorCallback} callback
+        @instance
+        @memberof AppInstance
     ###
     close : (callback) ->
         {appInstance, userCtx} = _pvts[@_idx]
         {appInstances} = appInstance.app
-        {permissionManager} = appInstance.app.server
+        CBServer = require('../server')
+        permissionManager = CBServer.getPermissionManager()
         id = appInstance.getID()
 
-        Async.waterfall [
-            (next) ->
-                permissionManager.checkPermissions
-                    user          : userCtx
-                    mountPoint    : appInstance.app.getMountPoint()
-                    appInstanceID : id
-                    permissions   : ['own']
-                    callback      : next
-            (canRemove, next) ->
-                if canRemove then appInstances.remove(id, userCtx, next)
-                else next(cloudbrowserError('PERM_DENIED'))
-        ], callback
+        # Permission checking is done in the close() method
+        # of the app instance itself
+        appInstances.remove(id, userCtx, callback)
 
     ###*
         Gets the owner of the application instance.
         @method getOwner
-        @memberof AppInstance
         @instance
-        @param {userCallback} callback 
+        @memberof AppInstance
     ###
     getOwner : () ->
         {appInstance, cbCtx} = _pvts[@_idx]
+        # No permission check done as users may need to know
+        # the owner of an app instance when they are associated
+        # with a browser of the app instance but not with the 
+        # app instance itself
         return appInstance.getOwner().getEmail()
 
     ###*
         Registers a listener for an event on the appInstance.
         @method addEventListener
-        @memberof AppInstance
-        @instance
         @param {String} event
         @param {appInstanceEventCallback} callback 
+        @instance
+        @memberof AppInstance
     ###
     addEventListener : (event, callback) ->
-        if typeof callback isnt "function" or
-        typeof event isnt "string"
+        if typeof callback isnt "function" then return
+
+        validEvents = ["rename", "share"]
+        if typeof event isnt "string" or validEvents.indexOf(event) is -1
             return
 
-        {appInstance, userCtx, cbCtx} = _pvts[@_idx]
+        {appInstance, userCtx} = _pvts[@_idx]
 
-        Async.waterfall [
-            (next) =>
-                @isAssocWithCurrentUser(next)
-        ], (err, isAssoc) ->
-            if err then return
-            if not isAssoc then return
-            else switch(event)
-                when "rename", "removeBrowser"
-                    appInstance.on(event, callback)
-                when "share"
-                    appInstance.on(event, (user) -> callback(user.getEmail()))
+        # Only users associated with the app instance can listen
+        # on its events
+        if @isAssocWithCurrentUser() then switch(event)
+            when "rename"
+                appInstance.on(event, callback)
+            when "share"
+                appInstance.on(event, (user) -> callback(user.getEmail()))
 
     ###*
         Checks if the current user has some permissions associated with the 
         current appInstance (readwrite, own)
         @method isAssocWithCurrentUser
-        @memberof AppInstance
+        @return {Bool}
         @instance
-        @param {booleanCallback} callback 
+        @memberof AppInstance
     ###
-    isAssocWithCurrentUser : (callback) ->
-        {appInstance, userCtx, cbCtx} = _pvts[@_idx]
-        {permissionManager} = appInstance.app.server
+    isAssocWithCurrentUser : () ->
+        {appInstance, userCtx} = _pvts[@_idx]
 
-        permissionManager.findAppInstancePermRec
-            user       : userCtx
-            mountPoint : appInstance.app.getMountPoint()
-            appInstanceID : appInstance.getID()
-            callback : (err, appInstancePerms) ->
-                if err then callback(err)
-                else if not appInstancePerms then callback(null, false)
-                else callback(null, true)
+        if appInstance.isOwner(userCtx) or appInstance.isReaderWriter(userCtx)
+            return true
+        else
+            return false
+
     ###*
         Gets all users that have the permission to read and
         write to the application instance.
         @method getReaderWriters
-        @memberof AppInstance
+        @return {Bool}
         @instance
-        @param {userListCallback} callback
+        @memberof AppInstance
     ###
-    getReaderWriters : (callback) ->
-        if typeof callback isnt "function" then return
+    getReaderWriters : () ->
+        {appInstance} = _pvts[@_idx]
 
-        {appInstance, cbCtx} = _pvts[@_idx]
-
-        Async.waterfall [
-            (next) =>
-                @isAssocWithCurrentUser(next)
-        ], (err, isAssoc) ->
-            if err then return callback(err)
+        if @isAssocWithCurrentUser()
             users = []
             users.push(rw.getEmail()) for rw in appInstance.getReaderWriters()
-            callback(null, users)
+            return users
 
     ###*
         Checks if the user is a reader-writer of the instance.
         @method isReaderWriter
-        @memberof AppInstance
+        @param {String} emailID
+        @return {Bool} 
         @instance
-        @param {booleanCallback} callback
+        @memberof AppInstance
     ###
-    isReaderWriter : (user, callback) ->
-        {appInstance, cbCtx} = _pvts[@_idx]
+    isReaderWriter : (emailID) ->
+        {appInstance} = _pvts[@_idx]
 
-        if typeof callback isnt "function" then return
-        # TODO : Check for user here
+        if typeof emailID isnt "string" then return
 
-        @isAssocWithCurrentUser (err, isAssoc) ->
-            if err then callback(err)
-            else if not isAssoc then callback(cloudbrowserError("PERM_DENIED"))
-            else if appInstance.isReaderWriter(user)
-                callback(null, true)
-            else callback(null, false)
+        if @isAssocWithCurrentUser()
+            if appInstance.isReaderWriter(new User(emailID)) then return true
+            else return false
 
     ###*
         Checks if the user is the owner of the application instance
         @method isOwner
-        @memberof AppInstance
+        @param {String} user
+        @return {Bool} 
         @instance
-        @param {} user
-        @param {booleanCallback} callback
-    ###
-    isOwner : (user, callback) ->
-        {appInstance, cbCtx} = _pvts[@_idx]
-        {mountPoint, id} = appInstance
-
-        if typeof callback isnt "function" then return
-        # TODO : Check for user type here
-
-        @isAssocWithCurrentUser (err, isAssoc) ->
-            if err then callback(err)
-            else if not isAssoc then callback(cloudbrowserError("PERM_DENIED"))
-            else if appInstance.isOwner(new User(user)) then callback(null, true)
-            else callback(null ,false)
-
-    ###*
-        Checks if the user has permissions to perform a set of actions
-        on the application instance.
-        @method checkPermissions
         @memberof AppInstance
-        @instance
-        @param {Object} permTypes The values of these properties must be set to
-        true to check for the corresponding permission.
-        @param {boolean} [options.own]
-        @param {boolean} [options.readwrite]
-        @param {booleanCallback} callback
     ###
-    checkPermissions : (permTypes, callback) ->
-        if typeof callback isnt "function" then return
-        else if Object.keys(permTypes).length is 0
-            callback(cloudbrowserError("PARAM_MISSING", " - permTypes"))
-            return
+    isOwner : (user) ->
+        {appInstance} = _pvts[@_idx]
 
-        {appInstance, userCtx, cbCtx} = _pvts[@_idx]
-        {permissionManager} = appInstance.app.server
+        if typeof user isnt "string" then return
 
-        permissionManager.checkPermissions
-            user        : userCtx
-            mountPoint  : appInstance.app.getMountPoint()
-            appInstanceID : appInstance.getID()
-            permissions : permTypes
-            callback    : callback
+        if @isAssocWithCurrentUser()
+            if appInstance.isOwner(new User(user)) then return true
+            else return false
+
     ###*
         Grants the user readwrite permissions on the application instance.
         @method addReaderWriter
-        @memberof AppInstance
-        @instance
-        @param {} user 
+        @param {String} emailID 
         @param {errorCallback} callback 
+        @instance
+        @memberof AppInstance
     ###
     addReaderWriter : (emailID, callback) ->
-        {appInstance} = _pvts[@_idx]
-        {permissionManager} = appInstance.app.server
+        {appInstance, userCtx} = _pvts[@_idx]
+        CBServer = require('../server')
+        permissionManager = CBServer.getPermissionManager()
 
         if typeof emailID isnt "string"
-            callback?(cloudbrowserError("PARAM_INVALID", "- user"))
+            return callback?(cloudbrowserError("PARAM_INVALID", "- emailID"))
 
         user = new User(emailID)
 
         Async.waterfall [
-            (next) =>
-                @checkPermissions(['own'], next)
-            (hasPermission, next) ->
-                if not hasPermission then next(cloudbrowserError("PERM_DENIED"))
+            (next) ->
+                if not appInstance.isOwner(userCtx)
+                    next(cloudbrowserError("PERM_DENIED"))
                 else if appInstance.isOwner(user)
                     next(cloudbrowserError("IS_OWNER"))
                 else permissionManager.addAppInstancePermRec
-                    user        : user
-                    mountPoint  : appInstance.app.getMountPoint()
-                    permission  : 'readwrite'
-                    callback    : (err) -> next(err)
+                    user          : user
+                    mountPoint    : appInstance.app.getMountPoint()
+                    permission    : 'readwrite'
+                    callback      : (err) -> next(err)
                     appInstanceID : appInstance.getID()
         ], (err, next) ->
-            if not err then appInstance.addReaderWriter(user)
+            appInstance.addReaderWriter(user) if not err
             callback(err)
             
     ###*
         Renames the application instance.
         @method rename
-        @memberof AppInstance
-        @instance
         @param {String} newName
         @fires AppInstance#rename
+        @instance
+        @memberof AppInstance
     ###
-    rename : (newName, callback) ->
-        if typeof newName isnt "string"
-            callback?(cloudbrowserError("PARAM_MISSING", "- name"))
+    rename : (newName) ->
+        {appInstance, userCtx} = _pvts[@_idx]
+        if typeof newName isnt "string" or not appInstance.isOwner(userCtx)
             return
-        {appInstance} = _pvts[@_idx]
-        @checkPermissions ['own'], (err, hasPermission) ->
-            if err then callback?(err)
-            else if not hasPermission callback?(cloudbrowserError("PERM_DENIED"))
-            else
-                appInstance.name = newName
-                appInstance.emit('rename', newName)
-                callback?(null)
+        appInstance.setName(newName)
+        appInstance.emit('rename', newName)
 
+    ###*
+        Get the application instance JavaScript object that can be used
+        by the application and that is serialized and stored in the database
+        @method getObj
+        @return {Object} Custom object, the details of which are known only
+        to the application code itself
+        @instance
+        @memberof AppInstance
+    ###
     getObj : () ->
         {appInstance, userCtx} = _pvts[@_idx]
-        user = userCtx
-        if appInstance.isOwner(user) or appInstance.isReaderWriter(user)
-            return appInstance.getObj()
+        # if appInstance.isOwner(userCtx) or appInstance.isReaderWriter(userCtx)
+        return appInstance.getObj()
 
+    ###*
+        Gets the url of the application instance.
+        @method getURL
+        @return {String}
+        @instance
+        @memberOf AppInstance
+    ###
     getURL : () ->
         {currentBrowser} = _pvts[@_idx].cbCtx
         appConfig = currentBrowser.getAppConfig()

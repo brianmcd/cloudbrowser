@@ -3,21 +3,20 @@ class AppInstance
         @api  = appInstanceConfig
         @id   = appInstanceConfig.getID()
         @name = appInstanceConfig.getName()
+        @owner = appInstanceConfig.getOwner()
         @dateCreated = @format.date(appInstanceConfig.getDateCreated())
         @browserMgr = new CRUDManager(@format, Browser)
-        @owner = null
-        @collaborators = []
+        @updateUsers()
 
-    removeCollaborator : (user) ->
-        idx = @collaborators.indexOf(user)
-        if idx isnt -1 then @collaborators.splice(idx, 1)
+    updateUsers : () ->
+        @readerwriters = @api.getReaderWriters()
 
     roles : [
         {
             name : 'can edit'
-            , perm : 'readwrite'
-            , checkMethods : ['isReaderWriter', 'isOwner']
-            , grantMethod : 'addReaderWriter'
+            perm : 'readwrite'
+            checkMethods : ['isReaderWriter', 'isOwner']
+            grantMethod : 'addReaderWriter'
         }
     ]
 

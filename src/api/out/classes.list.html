@@ -51,7 +51,11 @@
 						</li>
 						
 						<li>
-							<a href="cloudbrowser.app.User.html">User</a>
+							<a href="AppInstance.html">AppInstance</a>
+						</li>
+						
+						<li>
+							<a href="Browser.html">Browser</a>
 						</li>
 						
 						<li>
@@ -67,15 +71,7 @@
 						</li>
 						
 						<li>
-							<a href="SharedState.html">SharedState</a>
-						</li>
-						
-						<li>
 							<a href="Util.html">Util</a>
-						</li>
-						
-						<li>
-							<a href="VirtualBrowser.html">VirtualBrowser</a>
 						</li>
 						
 
@@ -89,35 +85,43 @@
 					<ul class="dropdown-menu ">
 						
 						<li>
-							<a href="AppConfig.html#event:Add">Add</a>
+							<a href="AppConfig.html#event:addAppInstance">addAppInstance</a>
 						</li>
 						
 						<li>
-							<a href="AppConfig.html#event:Remove">Remove</a>
+							<a href="AppConfig.html#event:addBrowser">addBrowser</a>
 						</li>
 						
 						<li>
-							<a href="SharedState.html#event:addBrowser">addBrowser</a>
+							<a href="AppConfig.html#event:addUser">addUser</a>
 						</li>
 						
 						<li>
-							<a href="SharedState.html#event:removeBrowser">removeBrowser</a>
+							<a href="AppConfig.html#event:removeAppInstance">removeAppInstance</a>
 						</li>
 						
 						<li>
-							<a href="SharedState.html#event:rename">rename</a>
+							<a href="AppConfig.html#event:removeBrowser">removeBrowser</a>
 						</li>
 						
 						<li>
-							<a href="SharedState.html#event:share">share</a>
+							<a href="AppConfig.html#event:removeUser">removeUser</a>
 						</li>
 						
 						<li>
-							<a href="VirtualBrowser.html#event:rename">rename</a>
+							<a href="AppInstance.html#event:rename">rename</a>
 						</li>
 						
 						<li>
-							<a href="VirtualBrowser.html#event:share">share</a>
+							<a href="AppInstance.html#event:share">share</a>
+						</li>
+						
+						<li>
+							<a href="Browser.html#event:rename">rename</a>
+						</li>
+						
+						<li>
+							<a href="Browser.html#event:share">share</a>
 						</li>
 						
 
@@ -201,7 +205,10 @@
             <dt><a href="AppConfig.html">AppConfig</a></dt>
             <dd></dd>
         
-            <dt><a href="cloudbrowser.app.User.html">User</a></dt>
+            <dt><a href="AppInstance.html">AppInstance</a></dt>
+            <dd></dd>
+        
+            <dt><a href="Browser.html">Browser</a></dt>
             <dd></dd>
         
             <dt><a href="GoogleStrategy.html">GoogleStrategy</a></dt>
@@ -213,13 +220,7 @@
             <dt><a href="ServerConfig.html">ServerConfig</a></dt>
             <dd></dd>
         
-            <dt><a href="SharedState.html">SharedState</a></dt>
-            <dd></dd>
-        
             <dt><a href="Util.html">Util</a></dt>
-            <dd></dd>
-        
-            <dt><a href="VirtualBrowser.html">VirtualBrowser</a></dt>
             <dd></dd>
         </dl>
     
@@ -248,7 +249,7 @@
         <dl>
             
 <dt>
-    <h4 class="name" id="event:Add">Add</h4>
+    <h4 class="name" id="event:addAppInstance">addAppInstance</h4>
     
     
 </dt>
@@ -256,7 +257,7 @@
     
     
     <div class="description">
-        <p>A new browser of the current application has been added</p>
+        <p>A new application instance of the current application has been added</p>
     </div>
     
 
@@ -265,7 +266,7 @@
         <ul>
             <li>
                 
-<span class="param-type"><a href="VirtualBrowser.html">VirtualBrowser</a></span>
+<span class="param-type"><a href="AppInstance.html">AppInstance</a></span>
 
 
             </li>
@@ -299,7 +300,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="application_config.js.html">application_config.js</a>, <a href="application_config.js.html#sunlight-1-line-12">line 12</a>
+        <a href="application_config.js.html">application_config.js</a>, <a href="application_config.js.html#sunlight-1-line-17">line 17</a>
     </li></ul></dd>
     
 
@@ -327,7 +328,7 @@
         
             
 <dt>
-    <h4 class="name" id="event:Remove">Remove</h4>
+    <h4 class="name" id="event:addBrowser">addBrowser</h4>
     
     
 </dt>
@@ -335,7 +336,165 @@
     
     
     <div class="description">
-        <p>A new browser of the current application has been removed</p>
+        <p>A new browser of the current application has been added</p>
+    </div>
+    
+
+    
+        <h5>Type:</h5>
+        <ul>
+            <li>
+                
+<span class="param-type"><a href="Browser.html">Browser</a></span>
+
+
+            </li>
+        </ul>
+    
+    
+    
+    
+    
+    
+    
+<dl class="details">
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="application_config.js.html">application_config.js</a>, <a href="application_config.js.html#sunlight-1-line-14">line 14</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+    
+    
+
+    
+
+    
+    
+    
+    
+    
+    
+    
+</dd>
+
+        
+            
+<dt>
+    <h4 class="name" id="event:addUser">addUser</h4>
+    
+    
+</dt>
+<dd>
+    
+    
+    <div class="description">
+        <p>A new user of the current application has been added</p>
+    </div>
+    
+
+    
+        <h5>Type:</h5>
+        <ul>
+            <li>
+                
+<span class="param-type">String</span>
+
+
+            </li>
+        </ul>
+    
+    
+    
+    
+    
+    
+    
+<dl class="details">
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="application_config.js.html">application_config.js</a>, <a href="application_config.js.html#sunlight-1-line-20">line 20</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+    
+    
+
+    
+
+    
+    
+    
+    
+    
+    
+    
+</dd>
+
+        
+            
+<dt>
+    <h4 class="name" id="event:removeAppInstance">removeAppInstance</h4>
+    
+    
+</dt>
+<dd>
+    
+    
+    <div class="description">
+        <p>An application instance of the current application has been removed</p>
     </div>
     
 
@@ -378,86 +537,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="application_config.js.html">application_config.js</a>, <a href="application_config.js.html#sunlight-1-line-15">line 15</a>
-    </li></ul></dd>
-    
-
-    
-
-    
-
-    
-</dl>
-
-    
-    
-
-    
-
-    
-    
-    
-    
-    
-    
-    
-</dd>
-
-        
-            
-<dt>
-    <h4 class="name" id="event:addBrowser">addBrowser</h4>
-    
-    
-</dt>
-<dd>
-    
-    
-    <div class="description">
-        <p>SharedState Rename event</p>
-    </div>
-    
-
-    
-        <h5>Type:</h5>
-        <ul>
-            <li>
-                
-<span class="param-type">String</span>
-
-
-            </li>
-        </ul>
-    
-    
-    
-    
-    
-    
-    
-<dl class="details">
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-    <dt class="tag-source">Source:</dt>
-    <dd class="tag-source"><ul class="dummy"><li>
-        <a href="shared_state.js.html">shared_state.js</a>, <a href="shared_state.js.html#sunlight-1-line-17">line 17</a>
+        <a href="application_config.js.html">application_config.js</a>, <a href="application_config.js.html#sunlight-1-line-26">line 26</a>
     </li></ul></dd>
     
 
@@ -493,7 +573,86 @@
     
     
     <div class="description">
-        <p>SharedState Rename event</p>
+        <p>A browser of the current application has been removed</p>
+    </div>
+    
+
+    
+        <h5>Type:</h5>
+        <ul>
+            <li>
+                
+<span class="param-type">Number</span>
+
+
+            </li>
+        </ul>
+    
+    
+    
+    
+    
+    
+    
+<dl class="details">
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="application_config.js.html">application_config.js</a>, <a href="application_config.js.html#sunlight-1-line-23">line 23</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+    
+    
+
+    
+
+    
+    
+    
+    
+    
+    
+    
+</dd>
+
+        
+            
+<dt>
+    <h4 class="name" id="event:removeUser">removeUser</h4>
+    
+    
+</dt>
+<dd>
+    
+    
+    <div class="description">
+        <p>A user of the current application has been removed</p>
     </div>
     
 
@@ -536,7 +695,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="shared_state.js.html">shared_state.js</a>, <a href="shared_state.js.html#sunlight-1-line-20">line 20</a>
+        <a href="application_config.js.html">application_config.js</a>, <a href="application_config.js.html#sunlight-1-line-29">line 29</a>
     </li></ul></dd>
     
 
@@ -572,7 +731,7 @@
     
     
     <div class="description">
-        <p>SharedState Rename event</p>
+        <p>The current application instance has been renamed</p>
     </div>
     
 
@@ -615,7 +774,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="shared_state.js.html">shared_state.js</a>, <a href="shared_state.js.html#sunlight-1-line-14">line 14</a>
+        <a href="app_instance.js.html">app_instance.js</a>, <a href="app_instance.js.html#sunlight-1-line-16">line 16</a>
     </li></ul></dd>
     
 
@@ -651,7 +810,7 @@
     
     
     <div class="description">
-        <p>SharedState Share event</p>
+        <p>The application instance has been shared with another user</p>
     </div>
     
 
@@ -684,7 +843,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="shared_state.js.html">shared_state.js</a>, <a href="shared_state.js.html#sunlight-1-line-11">line 11</a>
+        <a href="app_instance.js.html">app_instance.js</a>, <a href="app_instance.js.html#sunlight-1-line-13">line 13</a>
     </li></ul></dd>
     
 
@@ -720,7 +879,7 @@
     
     
     <div class="description">
-        <p>Browser Renamed event</p>
+        <p>Event to indicate that the current browser has been renamed</p>
     </div>
     
 
@@ -763,7 +922,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="virtual_browser.js.html">virtual_browser.js</a>, <a href="virtual_browser.js.html#sunlight-1-line-14">line 14</a>
+        <a href="browser.js.html">browser.js</a>, <a href="browser.js.html#sunlight-1-line-18">line 18</a>
     </li></ul></dd>
     
 
@@ -799,7 +958,8 @@
     
     
     <div class="description">
-        <p>Browser Shared event</p>
+        <p>Event to indicate that the current browser has been shared with 
+      another user</p>
     </div>
     
 
@@ -832,7 +992,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="virtual_browser.js.html">virtual_browser.js</a>, <a href="virtual_browser.js.html#sunlight-1-line-11">line 11</a>
+        <a href="browser.js.html">browser.js</a>, <a href="browser.js.html#sunlight-1-line-15">line 15</a>
     </li></ul></dd>
     
 
@@ -879,7 +1039,7 @@
 					
 		<span class="jsdoc-message">
 		Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.2.0-dev</a>
-		on Wed Sep 18 2013 13:57:08 GMT-0400 (EDT) using the <a href="https://github.com/terryweiss/docstrap">DocStrap template</a>.
+		on Thu Nov 21 2013 13:41:49 GMT-0500 (EST) using the <a href="https://github.com/terryweiss/docstrap">DocStrap template</a>.
 		</span>
 				</footer>
 			</div>

@@ -1,6 +1,10 @@
 Async             = require('async')
 User              = require('../server/user')
 cloudbrowserError = require('../shared/cloudbrowser_error')
+{areArgsValid}    = require('./utils')
+
+# Permission checks are included wherever possible and a note is made if
+# missing. Details like name, id, url etc. are available to everybody.
 
 ###*
     A new browser of the current application has been added
@@ -8,20 +12,44 @@ cloudbrowserError = require('../shared/cloudbrowser_error')
     @type {Browser}
 ###
 ###*
-    A new browser of the current application has been removed
+    A new application instance of the current application has been added
+    @event AppConfig#addAppInstance
+    @type {AppInstance}
+###
+###*
+    A new user of the current application has been added
+    @event AppConfig#addUser
+    @type {String}
+###
+###*
+    A browser of the current application has been removed
     @event AppConfig#removeBrowser
     @type {Number}
+###
+###*
+    An application instance of the current application has been removed
+    @event AppConfig#removeAppInstance
+    @type {Number}
+###
+###*
+    A user of the current application has been removed
+    @event AppConfig#removeUser
+    @type {String}
 ###
 ###*
     API for applications (constructed internally).
     Provides access to application configuration details.
     @param {Object}       options 
-    @param {Application}  options.app   The application.
-    @param {Cloudbrowser} options.cbCtx The cloudbrowser API object.
-    @param {} options.userCtx The current user.
+    @param {User}         options.userCtx The current user.
+    @param {Application}  options.app     The application.
+    @param {Cloudbrowser} options.cbCtx   The cloudbrowser API object.
     @class AppConfig
-    @fires AppConfig#Add
-    @fires AppConfig#Remove
+    @fires AppConfig#addBrowser
+    @fires AppConfig#removeBrowser
+    @fires AppConfig#addAppInstance
+    @fires AppConfig#removeAppInstance
+    @fires AppConfig#addUser
+    @fires AppConfig#removeUser
 ###
 class AppConfig
 
@@ -50,36 +78,35 @@ class AppConfig
     ###*
         Checks if the current user is the owner of the application
         @method isOwner
-        @memberof AppConfig
+        @return {Bool}
         @instance
-        @param {} user
-        @param {booleanCallback} callback
+        @memberof AppConfig
     ###
     isOwner : () ->
         {app, userCtx} = _pvts[@_idx]
-        if app.getOwner().getEmail() is userCtx.getEmail()
-            return true
+        if app.getOwner().getEmail() is userCtx.getEmail() then return true
         else return false
 
     ###*
         Gets the absolute URL at which the application is hosted/mounted.
-        @instance
         @method getUrl
-        @memberOf AppConfig
         @returns {String}
+        @instance
+        @memberOf AppConfig
     ###
     getUrl : () ->
         {app} = _pvts[@_idx]
-        {domain, port} = app.server.config
+        CBServer = require('../server')
+        {domain, port} = CBServer.getConfig()
         return "http://#{domain}:#{port}#{app.getMountPoint()}"
 
     ###*
         Gets the description of the application as provided in the
         deployment_config.json configuration file.    
-        @instance
         @method getDescription
-        @memberOf AppConfig
         @return {String}
+        @instance
+        @memberOf AppConfig
     ###
     getDescription: () ->
         _pvts[@_idx].app.getDescription()
@@ -87,23 +114,22 @@ class AppConfig
     ###*
         Gets the name of the application as provided in the
         deployment_config.json configuration file.    
-        @instance
         @method getName
-        @memberOf AppConfig
         @return {String}
+        @instance
+        @memberOf AppConfig
     ###
     getName: () ->
         return _pvts[@_idx].app.getName()
 
     ###*
         Wraps all calls on the application object with a permission check
-        @instance
         @private
         @method _call
-        @memberOf AppConfig
         @param {String} method
-        @param {Function} callback
         @param {...String} args
+        @instance
+        @memberOf AppConfig
     ###
     _call : (method, args...) ->
 
@@ -130,11 +156,10 @@ class AppConfig
     ###*
         Sets the description of the application in the deployment_config.json
         configuration file.    
-        @instance
         @method setDescription
-        @memberOf AppConfig
         @param {String} Description
-        @param {booleanCallback} callback
+        @instance
+        @memberOf AppConfig
     ###
     setDescription: (description) ->
         if typeof description isnt "string" then return
@@ -143,11 +168,10 @@ class AppConfig
     ###*
         Sets the name of the application in the deployment_config.json
         configuration file.    
-        @instance
         @method setName
-        @memberOf AppConfig
         @param {String} name
-        @param {booleanCallback} callback
+        @instance
+        @memberOf AppConfig
     ###
     setName: (name) ->
         if typeof name isnt "string" then return
@@ -156,103 +180,96 @@ class AppConfig
     ###*
         Gets the path relative to the root URL at which the application
         was mounted.
-        @instance
         @method getMountPoint
-        @memberOf AppConfig
         @return {String}
+        @instance
+        @memberOf AppConfig
     ###
     getMountPoint : () ->
         return _pvts[@_idx].app.getMountPoint()
 
     ###*
         Checks if the application is configured as publicly visible.
-        @instance
         @method isAppPublic
-        @memberOf AppConfig
         @return {Bool}
+        @instance
+        @memberOf AppConfig
     ###
     isAppPublic : () ->
         return _pvts[@_idx].app.isAppPublic()
 
     ###*
         Sets the privacy of the application to public.
-        @instance
         @method makePublic
+        @instance
         @memberOf AppConfig
-        @param {errorCallback} callback
     ###
     makePublic : () ->
         @_call('makePublic')
 
     ###*
         Sets the privacy of the application to private.
-        @instance
         @method makePrivate
+        @instance
         @memberOf AppConfig
-        @param {errorCallback} callback
     ###
     makePrivate : () ->
         @_call('makePrivate')
 
     ###*
         Checks if the authentication interface has been enabled.
-        @instance
         @method isAuthConfigured
-        @memberOf AppConfig
         @return {Bool}
+        @instance
+        @memberOf AppConfig
     ###
     isAuthConfigured : () ->
         return _pvts[@_idx].app.isAuthConfigured()
 
     ###*
         Enables the authentication interface.
-        @instance
         @method enableAuthentication
+        @instance
         @memberOf AppConfig
-        @param {errorCallback} callback
     ###
     enableAuthentication : () ->
         @_call('enableAuthentication')
 
     ###*
         Disables the authentication interface.
-        @instance
         @method disableAuthentication
+        @instance
         @memberOf AppConfig
-        @param {errorCallback} callback
     ###
     disableAuthentication : () ->
         @_call('disableAuthentication')
         
     ###*
         Gets the instantiation strategy configured in the app_config.json file.
-        @instance
         @method getInstantiationStrategy
-        @memberOf AppConfig
         return {String} 
+        @instance
+        @memberOf AppConfig
     ###
     getInstantiationStrategy : () ->
         return _pvts[@_idx].app.getInstantiationStrategy()
 
     ###*
-        Gets the browser limit configured in the
-        deployment_config.json file.
-        @instance
+        Gets the browser limit configured in the deployment_config.json file.
         @method getBrowserLimit
-        @memberOf AppConfig
         return {Number} 
+        @instance
+        @memberOf AppConfig
     ###
     getBrowserLimit : () ->
         return _pvts[@_idx].app.getBrowserLimit()
 
     ###*
-        Sets the browser limit in the
-        deployment_config.json file.
-        @instance
+        Sets the browser limit in the deployment_config.json file.
         @method setBrowserLimit
-        @memberOf AppConfig
         @param {Number} limit 
-        @param {errorCallback} callback
+        @instance
+        @memberOf AppConfig
     ###
     setBrowserLimit : (limit) ->
         if typeof limit isnt "number" then return
@@ -261,61 +278,58 @@ class AppConfig
         
     ###*
         Mounts the routes for the application
-        @instance
         @method mount
+        @instance
         @memberOf AppConfig
-        @param {errorCallback} callback
     ###
     mount : () ->
         @_call('mount')
 
     ###*
         Unmounts the routes for the application
-        @instance
         @method disable
+        @instance
         @memberOf AppConfig
-        @param {errorCallback} callback
     ###
     disable : (callback) ->
         @_call('disable')
         
     ###*
         Gets a list of all the registered users of the application. 
-        @instance
         @method getUsers
-        @memberOf AppConfig
         @param {userListCallback} callback
+        @instance
+        @memberOf AppConfig
     ###
     getUsers : (callback) ->
         if typeof callback isnt "function" then return
         {app, userCtx} = _pvts[@_idx]
+        userList = []
         # There will be no users if authentication is disabled
-        if not app.isAuthConfigured() then return callback(null, [])
-        if userCtx isnt "public"
-            app.getUsers (err, users) ->
-                return callback(err) if err
-                userList = []
-                userList.push(user.getEmail()) for user in users
-                callback(null, userList)
+        if not app.isAuthConfigured() then return callback(null, userList)
+        app.getUsers (err, users) ->
+            return callback(err) if err
+            userList.push(user.getEmail()) for user in users
+            callback(null, userList)
 
     ###*
         Checks if the routes for the application have been mounted.
-        @instance
         @method isMounted
-        @memberOf AppConfig
         @param {Bool} isMounted
+        @instance
+        @memberOf AppConfig
     ###
     isMounted : () ->
         return _pvts[@_idx].app.isMounted()
     ###*
         Creates a new browser instance of this application.    
-        @instance
         @method createBrowser
-        @memberOf AppConfig
         @param {browserCallback} callback
+        @instance
+        @memberOf AppConfig
     ###
     createBrowser : (callback) ->
-        {userCtx, app, cbCtx} = _pvts[@_idx]
+        {userCtx, cbCtx} = _pvts[@_idx]
         Browser = require('./browser')
 
         finalCallback = (bserver) ->
@@ -326,87 +340,113 @@ class AppConfig
 
         if userCtx.getEmail() is "public"
             finalCallback(app.browsers.create())
-        else
-            Async.waterfall [
-                (next) ->
-                    app.browsers.create(userCtx, next)
-            ], (err, bserver) ->
-                if err then callback?(err)
-                else finalCallback(bserver)
+        else app.browsers.create userCtx, (err, bserver) ->
+            return callback?(err) if err
+            else finalCallback(bserver)
 
     ###*
         Gets all the browsers of the application associated with the given user.
-        @instance
         @method getBrowsers
-        @memberOf AppConfig
         @param {instanceListCallback} callback
+        @instance
+        @memberOf AppConfig
     ###
-    getBrowsers : (callback) ->
-        if typeof callback isnt "function" then return
+    getBrowsers : () ->
+        switch arguments.length
+            # Only callback
+            when 1
+                callback = arguments[0]
+                if not areArgsValid [
+                    {item : callback, type : "function"}
+                ] then return
+                {userCtx} = _pvts[@_idx]
+            # User and callback
+            when 2
+                callback = arguments[1]
+                if not areArgsValid [
+                    {item : callback, type : "function"}
+                    {item : arguments[0], type : "string", action : callback}
+                ] then return
+                if not @isOwner()
+                    return callback(cloudbrowserError("PERM_DENIED"))
+                userCtx = new User(arguments[0])
+            else return
 
-        {userCtx, app, cbCtx} = _pvts[@_idx]
-        {permissionManager} = app.server
+        {app, cbCtx} = _pvts[@_idx]
+        CBServer = require('../server')
+        permissionManager = CBServer.getPermissionManager()
         mountPoint = app.getMountPoint()
-        # Requiring here to avoid circular reference problem that
-        # results in an empty module.
         Browser = require('./browser')
 
-        Async.waterfall [
-            (next) ->
-                permissionManager.getBrowserPermRecs
-                    user       : userCtx
-                    mountPoint : mountPoint
-                    callback   : next
-            (browserRecs, next) ->
+        permissionManager.getBrowserPermRecs
+            user       : userCtx
+            mountPoint : mountPoint
+            callback   : (err, browserRecs) ->
+                return callback(err) if err
                 browsers = []
                 for id, browserRec of browserRecs
                     browsers.push new Browser
                         browser : app.browsers.find(id)
                         userCtx : userCtx
                         cbCtx   : cbCtx
-                next(null, browsers)
-        ], callback
+                callback(null, browsers)
+
+    ###*
+        Gets all the browsers of the application.
+        @method getAllBrowsers
+        @return {Array<Browser>}
+        @instance
+        @memberOf AppConfig
+    ###
+    getAllBrowsers : () ->
+        if not @isOwner() then return
+
+        {app, userCtx, cbCtx} = _pvts[@_idx]
+        browsers     = []
+        Browser      = require('./browser')
+
+        for id, browser of app.browsers.get()
+            browsers.push new Browser
+                browser : browser
+                userCtx : userCtx
+                cbCtx   : cbCtx
+        return browsers
 
     ###*
         Gets all the instances of the application associated with the given user.
-        @instance
         @method getAppInstances
-        @memberOf AppConfig
         @param {instanceListCallback} callback
+        @instance
+        @memberOf AppConfig
     ###
     getAppInstances : (callback) ->
         if typeof callback isnt "function" then return
 
         {userCtx, app, cbCtx} = _pvts[@_idx]
-        {permissionManager} = app.server
+        CBServer = require('../server')
+        permissionManager = CBServer.getPermissionManager()
         mountPoint = app.getMountPoint()
-        # Requiring here to avoid circular reference problem that
-        # results in an empty module.
         AppInstance = require('./app_instance')
 
-        Async.waterfall [
-            (next) ->
-                permissionManager.getAppInstancePermRecs
-                    user       : userCtx
-                    mountPoint : mountPoint
-                    callback   : next
-            (appInstanceRecs, next) ->
+        permissionManager.getAppInstancePermRecs
+            user       : userCtx
+            mountPoint : mountPoint
+            callback   : (err, appInstanceRecs) ->
                 appInstances = []
                 for id, appInstanceRec of appInstanceRecs
                     appInstances.push new AppInstance
                         appInstance : app.appInstances.find(id)
                         userCtx : userCtx
                         cbCtx   : cbCtx
-                next(null, appInstances)
-        ], callback
+                callback(null, appInstances)
 
     ###*
         Registers a listener for an event on an application.
-        @instance
         @method addEventListener
-        @memberOf AppConfig
         @param {String} event 
         @param {applicationConfigEventCallback} callback
+        @instance
+        @memberOf AppConfig
     ###
     addEventListener : (event, callback) ->
         if typeof callback isnt "function" then return
@@ -424,7 +464,8 @@ class AppConfig
         if validEvents.indexOf(event) is -1 then return
 
         {userCtx, cbCtx, app} = _pvts[@_idx]
-        {permissionManager}   = app.server
+        CBServer = require('../server')
+        permissionManager = CBServer.getPermissionManager()
         mountPoint = app.getMountPoint()
 
         # Events "addUser" and "removeUser" can be listened to
@@ -439,15 +480,17 @@ class AppConfig
         # And entityName will be 'browser' or 'appInstance'
         event  = result[1]
         entityName = result[2].charAt(0).toLowerCase() + result[2].slice(1)
-        className = result[2]
-        # Requiring the module here to prevent the circular reference
-        # problem which will result in the required module being empty
+        className  = result[2]
         Browser     = require('./browser')
         AppInstance = require('./app_instance')
 
         switch event
             when "share"
-                app["#{entityName}s"].on event, (id, user) =>
+                app["#{entityName}s"].on event, (id, userInfo) ->
+                    if userInfo instanceof User
+                        user = userInfo
+                    else
+                        user = userInfo.user
                     if not userCtx.getEmail() is user.getEmail() then return
                     options =
                         cbCtx   : cbCtx
@@ -460,7 +503,7 @@ class AppConfig
                         when 'AppInstance'
                             callback(new AppInstance(options))
             when "add"
-                app["#{entityName}s"].on event, (id) =>
+                app["#{entityName}s"]?.on event, (id) =>
                     entity = app["#{entityName}s"].find(id)
                     if not (@isOwner() or
                     entity.isOwner?(userCtx) or
@@ -477,48 +520,61 @@ class AppConfig
                         when 'AppInstance'
                             callback(new AppInstance(options))
             when "remove"
-                app["#{entityName}s"].on event, (info) ->
-                    callback(info)
+                app["#{entityName}s"]?.on event, (id) =>
+                    entity = app["#{entityName}s"].find(id)
+                    if not (@isOwner() or
+                    entity.isOwner?(userCtx) or
+                    entity.isReaderWriter?(userCtx) or
+                    entity.isReader?(userCtx))
+                        return
+                    callback(id)
 
     ###*
         Checks if a user is already registered/signed up with the application.
-        @instance
         @method isUserRegistered
-        @memberOf AppConfig
-        @param {} user
+        @param {String} emailID
         @param {booleanCallback} callback 
+        @instance
+        @memberOf AppConfig
     ###
     isUserRegistered : (emailID, callback) ->
         if typeof callback isnt "function" then return
         if typeof emailID isnt "string" then callback(null, false)
 
         {app} = _pvts[@_idx]
-        user = new User(emailID)
 
-        app.findUser user, (err, usr) ->
+        app.findUser new User(emailID), (err, user) ->
             return callback(err) if err
-            if usr then callback(null, true)
+            if user then callback(null, true)
             else callback(null, false)
 
+    ###*
+        Checks if a user is locally registered with the application, i.e has a local password.
+        @method isLocalUser
+        @param {String} emailID
+        @param {booleanCallback} callback 
+        @instance
+        @memberOf AppConfig
+    ###
     isLocalUser : (emailID, callback) ->
         if typeof callback isnt "function" then return
         if typeof emailID isnt "string" then callback(null, false)
 
         {app} = _pvts[@_idx]
-        user = new User(emailID)
 
-        app.isLocalUser(user, callback)
+        app.isLocalUser(new User(emailID), callback)
 
     ###*
-        Creates sharable application state
-        @instance
+        Creates sharable application instance
         @method createAppInstance
-        @memberOf AppConfig
         @param {appInstanceCallback} callback 
+        @instance
+        @memberOf AppConfig
     ###
     createAppInstance : (callback) ->
         {app, cbCtx, userCtx} = _pvts[@_idx]
-        {permissionManager}   = app.server
+        CBServer = require('../server')
+        permissionManager = CBServer.getPermissionManager()
         AppInstance = require('./app_instance')
 
         Async.waterfall [
@@ -544,18 +600,20 @@ class AppConfig
     ###*
         Gets the registered name of the application instance template
         for the current application
-        @instance
         @method getAppInstanceName
+        @returns {String}
+        @instance
         @memberOf AppConfig
-        @returns {string}
     ###
     getAppInstanceName : () ->
         return _pvts[@_idx].app.getAppInstanceName()
 
     ###*
         Adds a user to the application
-        @instance
         @method addNewUser
+        @param {String} emailID
+        @param {errorCallback} callback
+        @instance
         @memberOf AppConfig
     ###
     addNewUser : (emailID, callback) ->
@@ -563,7 +621,8 @@ class AppConfig
             return callback?(cloudbrowserError("PARAM_INVALID", "- user"))
         {app} = _pvts[@_idx]
         user = new User(emailID)
-        if not app.findUser(user) then app.addNewUser(user, callback)
+        if not app.findUser(user)
+            app.addNewUser user, (err) -> callback?(null, user)
         else callback?(null, user)
 
 module.exports = AppConfig

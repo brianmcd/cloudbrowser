@@ -34,11 +34,9 @@ CBHomePage.controller "MainCtrl", ($scope) ->
                 idx = $scope.apps.indexOf(app)
                 return $scope.apps.splice(idx, 1)
 
-    server.listApps
-        filters  : ['public']
-        callback : (err, apps) ->
-            if err then $scope.safeApply -> $scope.error = err.message
-            else $scope.safeApply -> App.add(app) for app in apps
+    server.listApps ['public'], (err, apps) ->
+        if err then $scope.safeApply -> $scope.error = err.message
+        else $scope.safeApply -> App.add(app) for app in apps
 
     # Setting up event listeners
     server.addEventListener 'madePublic', (appConfig) ->

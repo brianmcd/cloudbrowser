@@ -1,4 +1,5 @@
 Crypto = require('crypto')
+cloudbrowserError = require('../shared/cloudbrowser_error')
 
 # Removes trailing strings "authenticate", "landing_page" and "password_reset"
 # from mountPoint
@@ -37,9 +38,12 @@ exports.hashPassword = hashPassword = (config={}, callback) ->
                 config.key = key
                 callback(null, config)
 
-exports.compare = (app1, app2) ->
-    if(app1.getMountPoint() < app2.getMountPoint())
-        return -1
-    else if app1.getMountPoint() > app2.getMountPoint()
-        return 1
-    else return 0
+exports.areArgsValid = (argList) ->
+    for arg in argList
+        if typeof(arg.item) isnt arg.type
+            if arg.type is "function" or not arg.action
+                return false
+            else
+                arg.action(cloudbrowserError("PARAM_INVALID"), "- #{arg.name}")
+                return false
+    return true

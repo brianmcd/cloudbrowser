@@ -54,7 +54,6 @@ class CloudBrowser
                 cbCtx   : this
 
         @serverConfig = new ServerConfig
-            server  : bserver.server
             userCtx : creator
             cbCtx   : this
 
@@ -98,7 +97,17 @@ module.exports = (bserver) ->
 ###*
     @callback instanceListCallback 
     @param {Error} error
-    @param {Array<BrowserAPI>} instances A list of all the instances associated with the current user.
+    @param {Array<Browser>} browser A list of the browser config api objects.
+###
+###*
+    @callback appListCallback 
+    @param {Error} error
+    @param {Array<AppConfig>} apps A list of app config api objects.
+###
+###*
+    @callback UserListCallback 
+    @param {Error} error
+    @param {Array<String>} users A list of users.
 ###
 ###*
     @callback errorCallback
@@ -107,6 +116,10 @@ module.exports = (bserver) ->
 ###*
     @callback applicationConfigEventCallback
     @param {BrowserAPI | Number} eventArg
+###
+###*
+    @callback serverConfigEventCallback
+    @param {AppConfig | String} eventArg
 ###
 ###*
     @callback booleanCallback
@@ -127,6 +140,16 @@ module.exports = (bserver) ->
     @callback appInstanceCallback
     @param {Error} error
     @param {AppInstance} appInstance
+###
+###*
+    @callback appConfigCallback
+    @param {Error} error
+    @param {AppConfig} appInstance
+###
+###*
+    @callback userCallback
+    @param {Error} error
+    @param {User}  user
 ###
 ###*
     @callback appInstanceEventCallback

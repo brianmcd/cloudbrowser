@@ -1,26 +1,30 @@
-{compare} = require('./utils')
 AppConfig = require('./application_config')
 Async     = require('async')
 cloudbrowserError   = require('../shared/cloudbrowser_error')
 ApplicationUploader = require('../shared/application_uploader')
 
+# Permission checks are included wherever possible and a note is made if
+# missing. Details like name, id, url etc. are available to everybody.
+
 ###*
+    API for server config instance (internal class).
     @class ServerConfig
+    @param {Object}         options 
+    @param {User}           options.userCtx The current user.
+    @param {Cloudbrowser}   options.cbCtx   The cloudbrowser API object.
 ###
 class ServerConfig
     # Private Properties inside class closure
     _pvts = []
 
     constructor : (options) ->
-        {userCtx, server, cbCtx} = options
+        {userCtx, cbCtx} = options
 
         # Defining @_idx as a read-only property
         Object.defineProperty this, "_idx",
             value : _pvts.length
 
         _pvts.push
-            # Duplicate pointers to server
-            server  : server
             userCtx : userCtx
             cbCtx   : cbCtx
 
@@ -30,101 +34,100 @@ class ServerConfig
     ###*
         Returns the server domain.
         @method getDomain
-        @memberOf ServerConfig
-        @instance
         @return {String}
+        @instance
+        @memberOf ServerConfig
     ###
     getDomain : () ->
-        {server} = _pvts[@_idx]
-        return server.config.domain
+        CBServer = require('../server')
+        return CBServer.getConfig().domain
 
     ###*
         Returns the server port
         @method getPort
-        @memberOf ServerConfig
-        @instance
         @return {Number}
+        @instance
+        @memberOf ServerConfig
     ###
     getPort : () ->
-        {server} = _pvts[@_idx]
-        return server.config.port
+        CBServer = require('../server')
+        return CBServer.getConfig().port
 
     ###*
         Returns the URL at which the CloudBrowser server is hosted.    
-        @instance
         @method getUrl
-        @memberOf ServerConfig
         @return {String} 
+        @instance
+        @memberOf ServerConfig
     ###
     getUrl : () ->
-        return "http://#{@getDomain()}:#{@getPort()}"
+        CBServer = require('../server')
+        {domain, port} = CBServer.getConfig()
+        return "http://#{domain}:#{port}"
 
     ###*
         Returns the list of apps mounted on CloudBrowser
         Can be filtered by user or privacy
-        @instance
         @method listApps
-        @memberOf ServerConfig
         @param {Object} options
         @param {appListCallback} options.callback
-        @param {Object} options.filters
-        @property [Bool] perUser
-        @property [Bool] public 
+        @param {Array<String>} options.filters
         @return {Array<appObject>} 
+        @instance
+        @memberOf ServerConfig
     ###
-    listApps : (options) ->
-        if not options or typeof options.callback isnt "function" then return
-
-        {userCtx, server, cbCtx} = _pvts[@_idx]
-        {permissionManager} = server
-        {filters, callback} = options
-        appConfigs = []
-
+    listApps : (filters, callback)->
         if typeof callback isnt "function" then return
         if not filters instanceof Array
             callback(cloudbrowserError("PARAM_INVALID", "- filter"))
 
+        {userCtx, cbCtx} = _pvts[@_idx]
+        CBServer = require('../server')
+        permissionManager = CBServer.getPermissionManager()
+        appManager = CBServer.getAppManager()
+        appConfigs = []
+
         # Apps that the current user owns
         if filters.indexOf('perUser') isnt -1
-            Async.waterfall [
-                (next) ->
-                    permissionManager.getAppPermRecs
-                        user        : userCtx
-                        permission  : 'own'
-                        callback    : next
-                (appRecs, next) ->
+            permissionManager.getAppPermRecs
+                user        : userCtx
+                permission  : 'own'
+                callback    : (err, appRecs) ->
+                    return callback(err) if err
                     for rec in appRecs
-                        app = server.applications.find(rec.getMountPoint())
+                        app = appManager.find(rec.getMountPoint())
                         if filters.indexOf('public') isnt -1
                             if not app.isAppPublic() then continue
                         appConfigs.push new AppConfig
                             userCtx : userCtx
                             cbCtx   : cbCtx
                             app     : app
-                    next(null, appConfigs)
-            ], callback
+                    callback(null, appConfigs)
         # Get all public apps
         else if filters.indexOf('public') isnt -1
-            apps = server.applications.get()
+            apps = appManager.get()
             for mountPoint, app of apps
                 if app.isAppPublic() and app.isMounted()
                     appConfigs.push new AppConfig
                         userCtx : userCtx
                         cbCtx   : cbCtx
                         app     : app
+            # Callback for uniformity
             callback(null, appConfigs)
 
     ###*
         Registers a listener for an event on the server
-        @instance
         @method addEventListener
-        @memberOf ServerConfig
         @param {String} event
-        @param {customCallback} callback
+        @param {serverConfigEventCallback} callback
+        @instance
+        @memberOf ServerConfig
     ###
     addEventListener : (event, callback) ->
-        {userCtx, server, cbCtx} = _pvts[@_idx]
-        {permissionManager} = server
+        {userCtx, cbCtx}  = _pvts[@_idx]
+        CBServer = require('../server')
+        permissionManager = CBServer.getPermissionManager()
+        appManager = CBServer.getAppManager()
 
         validEvents = [
             'mount'
@@ -135,27 +138,41 @@ class ServerConfig
             'removeApp'
         ]
 
+        if typeof callback isnt "function" then return
         if validEvents.indexOf(event) is -1 then return
 
         switch event
             when "madePublic", "mount", "addApp"
-                server.applications.on event, (app) ->
+                appManager.on event, (app) ->
                     callback new AppConfig
                         userCtx : userCtx
                         cbCtx   : cbCtx
                         app     : app
             when "madePrivate", "disable", "removeApp"
-                server.applications.on event, (app) ->
+                appManager.on event, (app) ->
                     callback(app.getMountPoint())
 
+    ###*
+        Takes the gzipped tarball and loads it into the server
+        as a cloudbrowser application
+        @method addEventListener
+        @param {String} pathToFile
+        @param {appConfigCallback} callback
+        @instance
+        @memberOf ServerConfig
+    ###
     uploadAndCreateApp : (pathToFile, callback) ->
+        if typeof pathToFile isnt "string"
+            return callback?(cloudbrowserError("PARAM_INVALID", "- pathToFile"))
+
         {userCtx, cbCtx} = _pvts[@_idx]
         email = userCtx.getEmail()
+
         ApplicationUploader.process email, pathToFile, (err, app) ->
             return callback(err) if err
             callback new AppConfig
-                userCtx : userCtx
-                cbCtx   : cbCtx
                 app     : app
+                cbCtx   : cbCtx
+                userCtx : userCtx
 
 module.exports = ServerConfig

@@ -41,8 +41,8 @@ class InProcessBrowserManager extends BrowserManager
 
     _setupProxyEventEmitter : (bserver) ->
         if @app.isAuthConfigured()
-            bserver.on "share", (user) =>
-                @emit("share", bserver.id, user)
+            bserver.on "share", (userInfo) =>
+                @emit("share", bserver.id, userInfo)
 
     _closeBserver : (bserver) ->
         bserver.removeAllListeners()
@@ -230,5 +230,8 @@ class InProcessBrowserManager extends BrowserManager
 
     find : (id) ->
         return @weakRefsToBservers[id]
+
+    get : () ->
+        return @weakRefsToBservers
 
 module.exports = InProcessBrowserManager

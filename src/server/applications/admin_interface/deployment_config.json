@@ -5,7 +5,7 @@
     "mountPoint": "/admin_interface",
     "collectionName": "admin_interface.users",
     "browserLimit": 0,
-    "description": "The admin interface",
-    "isPublic": false,
+    "description": "The administration interface.",
+    "isPublic": true,
     "owner": "ashimaathri@gmail.com"
 }

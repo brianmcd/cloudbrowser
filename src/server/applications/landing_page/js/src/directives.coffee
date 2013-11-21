@@ -7,14 +7,23 @@ appConfig = curVB.getAppConfig()
 
 app.directive 'cbTypeahead', () ->
 
-    pruneList = (users, scope, callback) ->
-        method  = null
+    pruneList = (users, scope) ->
         newList = []
-        {shareForm} = scope
-        {role, entity, collaborator} = shareForm
+        {role, entity} = scope.shareForm
 
-        Async.each users
-        , (user, callback) ->
+        # Synchronous version of pruning
+        shouldAdd = true
+        for user in users
+            if user is scope.user then continue
+            for method in role.checkMethods
+                if entity.api[method](user)
+                    shouldAdd = false
+                    break
+            if shouldAdd then newList.push(user)
+        return newList
+        ###
+        # Asynchronous version of pruning
+        Async.each users, (user, callback) ->
             waterfallMethods = NwGlobal.Array()
             # Removing self from list
             waterfallMethods.push (next) ->
@@ -37,20 +46,14 @@ app.directive 'cbTypeahead', () ->
                 callback(null)
         , (err) ->
             callback(err, newList)
+        ###
 
     return (scope, element, attrs) ->
         $(element).typeahead
             source : (query, process) ->
-                Async.waterfall NwGlobal.Array(
-                    (next) ->
-                        appConfig.getUsers(next)
-                    (users, next) ->
-                        pruneList(users, scope, next)
-                ), (err, users) ->
-                    return (scope.safeApply -> scope.setError(err)) if err
-                    data = []
-                    data.push(user) for user in users
-                    process(data)
+                appConfig.getUsers (err, users) ->
+                    if err then scope.safeApply -> scope.setError(err)
+                    else process(pruneList(users, scope))
             updater : (item) ->
                 scope.$apply(attrs.ngModel + " = '#{item}'")
                 return item

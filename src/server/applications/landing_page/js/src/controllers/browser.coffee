@@ -22,7 +22,6 @@ app.controller 'BrowserCtrl', [
 
         $scope.error = {}
         $scope.success = {}
-
         $scope.redirect = () -> browser.redirect()
 
         # Local functions
@@ -47,21 +46,14 @@ app.controller 'BrowserCtrl', [
         $scope.isEditing = () -> return browser.editing
 
         $scope.rename = () ->
-            Async.waterfall NwGlobal.Array(
-                (next) ->
-                    browser.api.isOwner(creator, next)
-            ), (err, isOwner) ->
-                $scope.safeApply ->
-                    if err then $scope.$parent.setError(err)
-                    if isOwner then browser.editing = true
-                    else $scope.$parent.setError(new Error("Permission Denied"))
+            if browser.api.isOwner(creator) then browser.editing = true
+            else $scope.$parent.setError(new Error("Permission Denied"))
 
         $scope.getURL = () -> return browser.api.getURL()
 
         # Event Handlers
         browser.api.addEventListener 'share', () ->
-            $scope.updateBrowserCollaborators browser, (err) ->
-                if err then $scope.safeApply -> $scope.$parent.setError(err)
+            $scope.safeApply -> browser.updateUsers()
 
         browser.api.addEventListener 'rename', (name) =>
             $scope.safeApply -> browser.name = name

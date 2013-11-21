@@ -3,8 +3,8 @@
     Else, the spans in the fluid layout do not align properly on screen resize
 -->
 <!-- Application Instances -->
-<div ng-repeat="appInstance in appInstances" class="row-fluid"
-ng-controller="AppInstanceCtrl">
+<div ng-repeat="appInstance in appInstances | permissionFilter:{type:filter.appInstances, user:user}"
+    class="row-fluid" ng-controller="AppInstanceCtrl">
 
     <!-- Application Instance-->
     <div class="span12 well well-white">
@@ -81,7 +81,7 @@ ng-controller="AppInstanceCtrl">
         <div class="row-fluid" ng-show="areCollaboratorsVisible()">
             <h4>Collaborators</h4>
         </div>
-        <div ng-repeat="c in appInstance.collaborators"
+        <div ng-repeat="c in appInstance.readerwriters"
         class="row-fluid" ng-show="areCollaboratorsVisible()">
             <div class="span6 alert alert-info">
                 <button type="button" class="close">&times;</button>

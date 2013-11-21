@@ -51,7 +51,7 @@ class FileUploader
             beforeSend  : () -> $('#loading').show()
             complete    : () -> $('#loading').hide()
             success     : (data) =>
-                if data.err then @setError(data.err)
+                if data?.err then @setError(data.err)
 
     setError : (message) ->
         $('#error').text(message).show()

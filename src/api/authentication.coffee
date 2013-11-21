@@ -14,12 +14,8 @@ class Authentication
         # Defining @_idx as a read-only property
         # This is not enumerable, not configurable, not writable
         Object.defineProperty(this, "_idx", {value : _pvts.length})
-        # Freezing the prototype and the auth object itself to protect
-        # from unauthorized changes by people using the API
-        Object.freeze(this.__proto__)
-        Object.freeze(this)
 
-        {bserver, cbCtx, server} = options
+        {bserver, cbCtx} = options
 
         _pvts.push
             bserver        : bserver
@@ -27,23 +23,31 @@ class Authentication
             googleStrategy : new GoogleStrategy(bserver)
             cbCtx          : cbCtx
 
+        # Freezing the prototype and the auth object itself to protect
+        # from unauthorized changes by people using the API
+        Object.freeze(this.__proto__)
+        Object.freeze(this)
+
     ###*
         Sends a password reset link to the user to the email
         registered with the application.
-        @instance
         @method sendResetLink
-        @memberOf cloudbrowser.auth
+        @param {String} user
         @param {booleanCallback} callback
+        @instance
+        @memberOf Authentication
     ###
     sendResetLink : (user, callback) ->
         if typeof user isnt "string"
-            return callback(cloudbrowserError('PARAM_MISSING', '- user'))
+            return callback?(cloudbrowserError('PARAM_MISSING', '- user'))
 
         {bserver, cbCtx} = _pvts[@_idx]
-        {domain, port}   = bserver.server.config
+        CBServer         = require("../server")
+        {domain, port}   = CBServer.getConfig()
 
         mountPoint = getParentMountPoint(bserver.mountPoint)
-        app    = bserver.server.applications.find(mountPoint)
+        appManager = CBServer.getAppManager()
+        app    = appManager.find(mountPoint)
         appUrl = "http://#{domain}:#{port}#{mountPoint}"
         token  = null
 
@@ -75,27 +79,30 @@ class Authentication
                     callback : next
         ], callback
 
+    # TODO : Add a configuration in app_config that allows only one user to connect to some
+    # VB types at a time.
     ###*
         Resets the password.     
         A boolean is passed as an argument to indicate success/failure.
-        @instance
         @method resetPassword
-        @memberOf AppConfig
-        @param {String}   password     The new plaintext password provided by the user.
+        @param {String}          password The new plaintext password provided by the user.
         @param {booleanCallback} callback     
+        @instance
+        @memberOf Authentication
     ###
-    # Add a configuration in app_config that allows only one user to connect to some
-    # VB types at a time.
     resetPassword : (password, callback) ->
         {bserver}  = _pvts[@_idx]
         mountPoint = getParentMountPoint(bserver.mountPoint)
-        app     = bserver.server.applications.find(mountPoint)
+        CBServer   = require("../server")
+        appManager = CBServer.getAppManager()
+        app     = appManager.find(mountPoint)
         session = null
 
         Async.waterfall [
             (next) ->
-                sessions = bserver.getSessions()
-                session = sessions[0]
+                bserver.getFirstSession(next)
+            (sess, next) ->
+                session = sess
                 hashPassword({password : password}, next)
             (result, next) ->
                 # Reset the key and salt for the corresponding user
@@ -109,9 +116,9 @@ class Authentication
 
     ###*
         Logs out all connected clients from the current application.
-        @instance
         @method logout
-        @memberOf AppConfig
+        @instance
+        @memberOf Authentication
     ###
     logout : () ->
         {bserver} = _pvts[@_idx]
@@ -119,20 +126,20 @@ class Authentication
 
     ###*
         Returns an instance of local strategy for authentication
-        @instance
         @method getLocalStrategy
-        @memberOf AppConfig
         @return {LocalStrategy} 
+        @instance
+        @memberOf Authentication
     ###
     getLocalStrategy : () ->
         return _pvts[@_idx].localStrategy
 
     ###*
         Returns an instance of google strategy for authentication
-        @instance
         @method getGoogleStrategy
-        @memberOf AppConfig
         @return {GoogleStrategy} 
+        @instance
+        @memberOf Authentication
     ###
     getGoogleStrategy : () ->
         return _pvts[@_idx].googleStrategy
