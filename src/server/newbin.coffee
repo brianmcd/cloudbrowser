@@ -7,6 +7,7 @@ Async   = require('async')
 User    = require('./user')
 MongoInterface = require('./mongo_interface')
 {hashPassword} = require('../api/utils')
+{getConfigFromFile} = require('../shared/utils')
 
 class Runner
 
@@ -38,29 +39,13 @@ class Runner
         'emailerConfig'
     ]
 
-    serverConfig     = {}
-    serverConfig.admins = []
-    serverConfigPath = null
-    projectRoot      = null
     Opts             = null
     dbName           = 'cloudbrowser'
+    projectRoot      = null
+    serverConfig     = {admins : []}
     mongoInterface   = null
-
-    # TODO : Refactor this function into some common file as it is used by
-    # application_manager too
-    
-    # Parsing the json file into opts
-    getConfigFromFile = (path) ->
-        try
-            fileContent = Fs.readFileSync(path, {encoding:"utf8"})
-            content = JSON.parse(fileContent)
-        catch e
-            console.log "Parse error in file #{path}."
-            console.log "The file's content was:"
-            console.log fileContent
-            throw e
-        
-        return content
+    adminCollection  = 'admin_interface.users'
+    serverConfigPath = null
 
     exclude = (key, value) ->
         if excludedProperties.indexOf(key) isnt -1 then return undefined
@@ -87,7 +72,6 @@ class Runner
             for own k, v of config
                 if validConfigProperties.indexOf(k) isnt -1
                     serverConfig[k] = v
-
         # emailer_config.json
         if Fs.existsSync(emailerConfigPath)
             serverConfig.emailerConfig = getConfigFromFile(emailerConfigPath)
@@ -158,23 +142,21 @@ class Runner
             if validConfigProperties.indexOf(k) isnt -1
                 serverConfig[k] = v
 
-    startServer = () ->
+    startServer = (callback) ->
         if serverConfig.deployment
-            console.log "Server started in deployment mode"
+            console.log("Server started in deployment mode")
+            # TODO : Implement deployment mode.
         else
             paths = []
-            
             # List of all the unmatched positional args (the path names)
-            paths.push path for path in Opts._
-            
-            server = new Server(serverConfig, paths, projectRoot, mongoInterface)
-
-        server.once 'ready', ->
-            console.log 'Server started in local mode'
+            paths.push(path) for path in Opts._
+            server = new Server(serverConfig, paths, projectRoot,
+                                mongoInterface)
+        server.once 'ready', () ->
+            callback(server)
 
     configureUser = (callback) ->
         user = null
-
         Async.waterfall [
             (next) ->
                 Read({prompt : "Email: "}, next)
@@ -186,7 +168,7 @@ class Runner
                 else
                     user = new User(email)
                     # Find if the user already exists in the admin interface collection
-                    mongoInterface.findUser(user, 'admin_interface.users', next)
+                    mongoInterface.findUser(user, adminCollection, next)
             (userRec, next) ->
                 # Bypassing the waterfall
                 if userRec then callback(null, user)
@@ -197,58 +179,45 @@ class Runner
                 # Insert into admin_interface collection
                 user.key  = result.key.toString('hex')
                 user.salt = result.salt.toString('hex')
-                mongoInterface.addUser user, 'admin_interface.users',
-                    (err, userRec) -> next(null, user)
+                mongoInterface.addUser(user, adminCollection, next)
+        ], (err, userRec) ->
+            return callback(err) if err
+            callback(null, user)
+
+    configureAllUsers = (callback) ->
+        Async.series [
+            (next) ->
+                return next(null) if serverConfig.admins.length
+                console.log("Please configure at least one admin")
+                configureUser (err, adminUser) ->
+                    return next(err) if err
+                    serverConfig.admins.push(adminUser.getEmail())
+                    writeConfigToFile()
+                    next(null)
+            , (next) ->
+                return next(null) if serverConfig.defaultUser
+                console.log("Please configure the default user")
+                configureUser (err, defaultUser) ->
+                    return next(err) if err
+                    serverConfig.defaultUser = defaultUser.getEmail()
+                    writeConfigToFile()
+                    next(null)
         ], callback
 
-    @run : () ->
+    @run : (callback) ->
         Async.series [
             (next) ->
                 mongoInterface = new MongoInterface(dbName, next)
-            , (next) ->
-                # Configuration
+            (next) ->
                 setProjectRoot()
-
                 setInitialConfig()
-
                 parseCmdLineOptions()
-
-                Async.series [
-                    (callback) ->
-                        if serverConfig.admins.length then callback(null)
-                        else
-                            console.log "Please configure at least one admin"
-                            Async.waterfall [
-                                (next) ->
-                                    configureUser(next)
-                                (adminUser, next) ->
-                                    serverConfig.admins.push(adminUser.getEmail())
-                                    writeConfigToFile()
-                                    next(null)
-                            ], callback
-                    , (callback) ->
-                        if serverConfig.defaultUser then callback(null)
-                        else
-                            console.log "Please configure the default user"
-                            Async.waterfall [
-                                (next) ->
-                                    configureUser(next)
-                                (defaultUser, next) ->
-                                    serverConfig.defaultUser = defaultUser.getEmail()
-                                    writeConfigToFile()
-                                    next(null)
-                            ], callback
-
-                ], (err, results) ->
-                    if err
-                        console.log(err)
-                        console.log "Could not start the server"
-                        process.exit(1)
-                    # Start the server only after the admin user and default user have
-                    # been configured
-                    startServer()
-                    next(null)
+                configureAllUsers(next)
         ], (err, results) ->
-            throw err if err
+            if err
+                console.log("Could not start the server #{err}")
+                process.exit(1)
+            else startServer(callback)
 
-Runner.run()
+Runner.run (server) ->
+    console.log('Server started in local mode')
