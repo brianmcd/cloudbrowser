@@ -32,6 +32,13 @@ class HTTPServer extends EventEmitter
     constructor : (@cbServer, callback) ->
         {@config} = @cbServer
         @server = express.createServer()
+
+        oldget = @server.get
+        @server.get = () =>
+            args = arguments
+            console.log "setting route to #{args[0]}"
+            oldget.apply @server, args
+
         @clientEngineModified = new Date().toString()
         @clientEngineJS = null
 

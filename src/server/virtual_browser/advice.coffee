@@ -193,7 +193,7 @@ exports.addAdvice = (dom) ->
     createFrameAttrHandler = (namespace) ->
         return (elem, args, rv) ->
             # If this isn't attached to the document, the DOMNodeInsertedIntoDocument
-            # listener we register in BrowserServer#DOMNodeInserted will emit
+            # listener we register in VirtualBrowser#DOMNodeInserted will emit
             # ResetFrame.  If this is attached, then the HTMLFrameElement
             # setAttribute will have already deleted the old document and made a new
             # one, so we can emit ResetFrame here.

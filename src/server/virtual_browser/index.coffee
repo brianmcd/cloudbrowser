@@ -3,7 +3,7 @@ Path                 = require('path')
 FS                   = require('fs')
 Weak                 = require('weak')
 {EventEmitter}       = require('events')
-Browser              = require('../browser')
+Browser              = require('./browser')
 ResourceProxy        = require('./resource_proxy')
 DebugClient          = require('./debug_client')
 TestClient           = require('./test_client')
@@ -22,14 +22,14 @@ TaggedNodeCollection = require('../../shared/tagged_node_collection')
 # Dummy callback, does nothing
 cleanupBserver = (id) ->
     return () ->
-        console.log "[Browser Server] - Garbage collected bserver #{id}"
+        console.log "[Virtual Browser] - Garbage collected virtual browser #{id}"
 
 # Serves 1 Browser to n clients.
-class BrowserServer extends EventEmitter
+class VirtualBrowser extends EventEmitter
 
-    constructor : (bserverInfo) ->
+    constructor : (vbInfo) ->
 
-        {@server, @id, @mountPoint} = bserverInfo
+        {@server, @id, @mountPoint} = vbInfo
         weakRefToThis = Weak(this, cleanupBserver(@id))
 
         @browser = new Browser(@id, weakRefToThis, @server.config)
@@ -243,7 +243,7 @@ class BrowserServer extends EventEmitter
         gc() if @server.config.traceMem
         @emit('ClientAdded')
 
-# The BrowserServer constructor iterates over the properties in this object and
+# The VirtualBrowser constructor iterates over the properties in this object and
 # adds an event handler to the Browser for each one.  The function name must
 # match the Browser event name.  'this' is set to the Browser via apply.
 DOMEventHandlers =
@@ -532,4 +532,4 @@ RPCMethods =
         node.dispatchEvent(event)
         @broadcastEvent('resumeRendering')
             
-module.exports = BrowserServer
+module.exports = VirtualBrowser

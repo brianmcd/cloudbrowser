@@ -1,9 +1,10 @@
-BrowserServer       = require('../browser_server')
-BrowserManager      = require('./browser_manager')
-BrowserServerSecure = require('../browser_server/browser_server_secure')
+VirtualBrowser      = require('../virtual_browser')
+SecureVirtualBrowser= require('../virtual_browser/secure_virtual_browser')
 Weak                = require('weak')
 Async               = require('async')
 User                = require('../user')
+Hat                 = require('hat')
+{EventEmitter}      = require('events')
 cloudbrowserError   = require('../../shared/cloudbrowser_error')
 
 # Defining callback at the highest level
@@ -11,61 +12,63 @@ cloudbrowserError   = require('../../shared/cloudbrowser_error')
 # Dummy callback, does nothing
 cleanupBserver = (id) ->
     return () ->
-        console.log "[Browser Manager] - Garbage collected bserver #{id}"
+        console.log "[Browser Manager] - Garbage collected vbrowser #{id}"
 
-class InProcessBrowserManager extends BrowserManager
+class InProcessBrowserManager extends EventEmitter
     constructor : (@server, @app) ->
-        # List of strong references to bservers
-        @bservers = {}
-        # List of weak references to bservers
-        @weakRefsToBservers = {}
+        # List of strong references to virtual browsers
+        @vbrowsers = {}
+        # List of weak references to vbrowsers
+        @weakVbrowsers = {}
 
     # Creates a browser server of type browserType
-    # browserType can be BrowserServer(for normal apps) and BrowserServerSecure
+    # browserType can be VirtualBrowser(for normal apps) and SecureVirtualBrowser
     # (for apps with authentication interface enabled)
+    #
     # returns weak reference to the browser
-    _createBserver : (browserInfo) ->
+    #
+    _createVirtualBrowser : (browserInfo) ->
         {id, type, preLoadMethod, creator, permission} = browserInfo
-        @bservers[id] = new type
+        @vbrowsers[id] = new type
             id          : id
             server      : @server
             mountPoint  : @app.getMountPoint()
             creator     : creator
             permission  : permission
-        @weakRefsToBservers[id] = Weak(@bservers[id], cleanupBserver(id))
-        @_setupProxyEventEmitter(@weakRefsToBservers[id])
-        preLoadMethod?(@weakRefsToBservers[id])
-        @bservers[id].load(@app)
+        @weakVbrowsers[id] = Weak(@vbrowsers[id], cleanupBserver(id))
+        @_setupProxyEventEmitter(@weakVbrowsers[id])
+        preLoadMethod?(@weakVbrowsers[id])
+        @vbrowsers[id].load(@app)
         @emit("add", id)
-        return @weakRefsToBservers[id]
+        return @weakVbrowsers[id]
 
-    _setupProxyEventEmitter : (bserver) ->
+    _setupProxyEventEmitter : (vbrowser) ->
         if @app.isAuthConfigured()
-            bserver.on "share", (userInfo) =>
-                @emit("share", bserver.id, userInfo)
+            vbrowser.on "share", (userInfo) =>
+                @emit("share", vbrowser.id, userInfo)
 
-    _closeBserver : (bserver) ->
-        bserver.removeAllListeners()
-        bserver.close()
-        id = bserver.id
+    _closeVirtualBrowser : (vbrowser) ->
+        vbrowser.removeAllListeners()
+        vbrowser.close()
+        id = vbrowser.id
         @emit("remove", id)
-        delete @weakRefsToBservers[bserver.id]
-        delete @bservers[bserver.id]
+        delete @weakVbrowsers[vbrowser.id]
+        delete @vbrowsers[vbrowser.id]
 
     _createSingleAppInstance : (options) ->
         {id, user, preLoadMethod, callback} = options
         permission = 'readwrite'
-        # Attaching a single bserver to app.
+        # Attaching a single vbrowser to app.
         # This will be used for all requests to this application
-        if not @app.bserver
+        if not @app.vbrowser
             @server.permissionManager.addBrowserPermRec
                 user        : user
                 mountPoint  : @app.getMountPoint()
                 browserID   : id
                 permission  : permission
                 callback    : (err) =>
-                    @app.bserver = @_createBserver
-                        type        : BrowserServerSecure
+                    @app.vbrowser = @_createVirtualBrowser
+                        type        : SecureVirtualBrowser
                         id          : id
                         creator     : user
                         permission  : permission
@@ -75,9 +78,9 @@ class InProcessBrowserManager extends BrowserManager
             @server.permissionManager.addBrowserPermRec
                 user        : user
                 mountPoint  : @app.getMountPoint()
-                browserID   : @app.bserver.id
+                browserID   : @app.vbrowser.id
                 permission  : permission
-                callback    : (err) => callback(err, @find(@app.bserver.id))
+                callback    : (err) => callback(err, @find(@app.vbrowser.id))
 
     _createSingleUserInstance : (options) ->
         {id, user, preLoadMethod, callback} = options
@@ -86,7 +89,7 @@ class InProcessBrowserManager extends BrowserManager
             mountPoint : @app.getMountPoint()
             callback   : (err, browserRecs) =>
                 if err then callback(err)
-                # Create new bserver and grant permission only if
+                # Create new vbrowser and grant permission only if
                 # one associated with the user doesn't exist
                 else if not browserRecs or Object.keys(browserRecs).length < 1
                     permission = 'own'
@@ -96,15 +99,15 @@ class InProcessBrowserManager extends BrowserManager
                         browserID   : id
                         permission  : permission
                         callback    : (err) =>
-                            bserver = @_createBserver
-                                type        : BrowserServerSecure
+                            vbrowser = @_createVirtualBrowser
+                                type        : SecureVirtualBrowser
                                 id          : id
                                 creator     : user
                                 permission  : permission
                                 preLoadMethod : preLoadMethod
                             callback(err, @find(id))
                 else
-                    for browserId, bserver of browserRecs
+                    for browserId, vbrowser of browserRecs
                         callback(null, @find(browserId))
                         # As there is supposed to be only one instance
                         # in this list
@@ -130,8 +133,8 @@ class InProcessBrowserManager extends BrowserManager
                         browserID   : id
                         permission  : permission
                         callback    : (err) =>
-                            bserver = @_createBserver
-                                type        : BrowserServerSecure
+                            vbrowser = @_createVirtualBrowser
+                                type        : SecureVirtualBrowser
                                 id          : id
                                 creator     : user
                                 permission  : permission
@@ -175,14 +178,14 @@ class InProcessBrowserManager extends BrowserManager
     _create : (options) ->
         {id, preLoadMethod} = options
         if @app.getInstantiationStrategy() is "singleAppInstance"
-            if not @app.bserver
-                @app.bserver = @_createBserver
-                    type : BrowserServer
+            if not @app.vbrowser
+                @app.vbrowser = @_createVirtualBrowser
+                    type : VirtualBrowser
                     id   : id
-            return @find(@app.bserver.id)
+            return @find(@app.vbrowser.id)
         else
-            return @_createBserver
-                type : BrowserServer
+            return @_createVirtualBrowser
+                type : VirtualBrowser
                 id   : id
                 preLoadMethod : preLoadMethod
 
@@ -195,43 +198,49 @@ class InProcessBrowserManager extends BrowserManager
     ###
     TODO : Figure out who can perform this action
     closeAll : () ->
-        @_closeBserver(bserver) for bserver in @bservers
+        @_closeVirtualBrowser(vb) for vb in @vbrowsers
     ###
     
-    close : (bserver, user, callback) ->
-        if not @app.isAuthConfigured() then @_closeBserver(bserver)
+    close : (vbrowser, user, callback) ->
+        if not @app.isAuthConfigured() then @_closeVirtualBrowser(vbrowser)
         else if not user instanceof User
             callback(cloudbrowserError('PERM_DENIED'))
-        # Check if the user has permissions to delete this bserver
+        # Check if the user has permissions to delete this vbrowser
         else Async.waterfall [
             (next) =>
                 @server.permissionManager.checkPermissions
                     user        : user
                     mountPoint  : @app.getMountPoint()
-                    browserID   : bserver.id
+                    browserID   : vbrowser.id
                     permissions : ['own']
                     callback    : next
             (canRemove, next) =>
                 if canRemove
                     # Remove the browser permission records for each user
                     # associated with that browser
-                    Async.each bserver.getAllUsers()
+                    Async.each vbrowser.getAllUsers()
                     , (user, callback) =>
                         @server.permissionManager.rmBrowserPermRec
                             user       : user
                             mountPoint : @app.getMountPoint()
-                            browserID  : bserver.id
+                            browserID  : vbrowser.id
                             callback   : callback
                     , (err) =>
-                        if not err then @_closeBserver(bserver)
+                        if not err then @_closeVirtualBrowser(vbrowser)
                         next(err)
                 else next(cloudbrowserError('PERM_DENIED'))
         ], callback
 
     find : (id) ->
-        return @weakRefsToBservers[id]
+        return @weakVbrowsers[id]
 
     get : () ->
-        return @weakRefsToBservers
+        return @weakVbrowsers
+
+    generateUUID : () ->
+        id = Hat()
+        while @find(id)
+            id = Hat()
+        return id
 
 module.exports = InProcessBrowserManager

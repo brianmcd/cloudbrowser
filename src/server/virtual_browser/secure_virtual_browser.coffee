@@ -1,6 +1,6 @@
-BrowserServer = require('./index')
+VirtualBrowser = require('./index')
 
-class BrowserServerSecure extends BrowserServer
+class SecureVirtualBrowser extends VirtualBrowser
     @nameCount : 0
     constructor: (bserverInfo) ->
         super
@@ -89,4 +89,4 @@ class BrowserServerSecure extends BrowserServer
         @readwrite = []
         @readonly = []
 
-module.exports = BrowserServerSecure
+module.exports = SecureVirtualBrowser

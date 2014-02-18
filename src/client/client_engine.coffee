@@ -25,6 +25,12 @@ class ClientEngine
         
         @customCssAttrHldrs = {}
 
+        #
+        # define a custom CSS attribute that, when set, uses jQuery to achieve
+        # a particular layout. In this test case, placing one element
+        # relative to another using $.css statements for direct placement,
+        # based on how the browser happened to have laid out those objects.
+        # 
         @addCustomCssAttrHldr '-cloudbrowser-relative-position', (target, position) ->
             prevSibling = $(target).prev()
             pos = $.extend {}, prevSibling.position(), {height: prevSibling[0].offsetHeight}
