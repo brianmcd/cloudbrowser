@@ -58,6 +58,7 @@ class Runner
         Fs.writeFileSync(serverConfigPath, content)
 
     setProjectRoot = () ->
+        console.log process.argv
         projectRoot = process.argv[1]
         projectRoot = projectRoot.split("/")
         projectRoot.pop() for i in [0..1]

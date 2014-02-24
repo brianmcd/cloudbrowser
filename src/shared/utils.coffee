@@ -50,14 +50,37 @@ exports.noCacheRequire = (name, regExp) ->
         delete reqCache[entry] if regExp.test(entry)
     return rv
 
+
+logConfigFileError = (path, content) ->
+    console.log "Parse error in file #{path}."
+    console.log "The file's content was:"
+    console.log fileContent
+
 # Parsing the json file into opts
 exports.getConfigFromFile = (path) ->
     try
         fileContent = Fs.readFileSync(path, {encoding:"utf8"})
         content = JSON.parse(fileContent)
     catch e
-        console.log "Parse error in file #{path}."
-        console.log "The file's content was:"
-        console.log fileContent
+        logConfigFileError path, fileContent
         throw e
     return content
+
+# json file to object, the callback is defined in async.waterfall style
+exports.readJsonFromFileAsync = (path,callback) ->
+    readJsonError = (err, fileContent) ->
+        logConfigFileError path, fileContent
+        callback err
+
+    readJsonDataHandler = (err, data) ->
+        if err
+            readJsonError err
+        else
+            try
+                obj = JSON.parse(data)
+                callback null, obj
+            catch e
+                readJsonError e, data
+
+    Fs.readFile path, {encoding : "utf8"}, readJsonDataHandler
+            

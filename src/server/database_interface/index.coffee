@@ -5,8 +5,9 @@ MongoStore = require('connect-mongo')(Express)
 
 # TODO : Use Mongoose
 
-class MongoInterface
-    constructor : (dbName, callback) ->
+class DatabaseInterface
+    #dbConfig is of type config.DatabaseConfig
+    constructor : (dbConfig, callback) ->
         # Ensures unique database for every user of the system
         # but will use the same database for multiple instances
         # of cloudbrowser run by the same user
@@ -149,4 +150,4 @@ class MongoInterface
                 collection.ensureIndex(index, {unique:true}, next)
         ], callback
 
-module.exports = MongoInterface
+module.exports = DatabaseInterface
