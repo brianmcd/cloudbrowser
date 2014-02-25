@@ -8,16 +8,23 @@ MongoStore = require('connect-mongo')(Express)
 class DatabaseInterface
     #dbConfig is of type config.DatabaseConfig
     constructor : (dbConfig, callback) ->
+        @appCollection = 'applications'
+        @adminCollection  = 'admin_interface.users'
         # Ensures unique database for every user of the system
         # but will use the same database for multiple instances
         # of cloudbrowser run by the same user
-        dbName = "UID#{process.getuid()}-#{dbName}"
+        dbName = "UID#{process.getuid()}-#{dbConfig.dbName}"
         @dbClient = new Mongo.Db(dbName,
             new Mongo.Server("127.0.0.1", 27017, options:{auto_reconnect:true}))
         @dbClient.open (err, pClient) ->
             callback?(err)
         @mongoStore = new MongoStore({db:"#{dbName}_sessions"})
-        @appCollection = "applications"
+        
+    findAdminUser : (searchKey,callback) ->
+        @findUser(searchKey,@adminCollection,callback)
+
+    addAdminUser : (users,callback) ->
+        @addUser(users,@adminCollection,callback)
 
     findUser : (searchKey, collectionName, callback) ->
         Async.waterfall [
