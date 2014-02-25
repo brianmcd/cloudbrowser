@@ -55,7 +55,7 @@
     "lodash" : "2.4.1"
   },
   "devDependencies": {
-    "nodeunit": "0.6.4",
+    "nodeunit": "0.8.6",
     "mocha": "1.12.0",
     "sinon": "1.7.3",
     "chai" : "1.7.2",

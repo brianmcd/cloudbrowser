@@ -1,40 +1,48 @@
 fs  = require 'fs'
 path = require 'path'
+read    = require 'read'
 
 lodash = require  'lodash'
 async   = require 'async'
 
-
+User    = require('./user')
 utils = require '../shared/utils'
 
-#read write config from config file and command line
+{hashPassword} = require('../api/utils')
+
+###
+read write config from config file and command line
+config class for the whole application. Config depends on datase system to get 
+user configurations. Need to setDataBase before invoke loadUserConfig to load
+user configurations.
+###
 class Config
     projectRoot : '.'
     cmdOptions : null
     serverConfigPath : null
     emailerConfigPath : null
     databaseConfig : null
-    admins : []
-    defaultUser : null
     serverConfig : null
     emailerConfig : null
     database : null
-
+    #for the sake of ease of unit testing
     constructor: (callback) ->
-        mainScript = process.argv[1]
-        @projectRoot = path.resolve(mainScript, '..')
-        @storageConfig=new StorageConfig
         #parse the command line options
         @cmdOptions = parseOptionsFromCmd()
-        @serverConfigPath = "#{config.projectRoot}/server_config.json"
-        @emailerConfigPath = "#{config.projectRoot}/emailer_config.json"
+
+        @projectRoot = path.resolve(__dirname, '../..')
+        @databaseConfig=new DatabaseConfig
+        @serverConfigPath = "#{@projectRoot}/server_config.json"
+        @emailerConfigPath = "#{@projectRoot}/emailer_config.json"
+
         #read serverConfig and emailerConfig from file
         async.parallel({
-            serverConfig : 
-                lodash.partial(newServerConfig, [config.serverConfigPath, config.cmdOptions])
-            emailerConfig : 
-                lodash.partial(newEmailerConfig, config.emailerConfig)
+            serverConfig :
+                lodash.partial(newServerConfig, @serverConfigPath, @cmdOptions)
+            emailerConfig :
+                lodash.partial(newEmailerConfig, @emailerConfigPath)
             }, (err,result) =>
+                console.log result
                 if err?
                     console.error 'Error reading config file.'
                     console.error err
@@ -44,7 +52,8 @@ class Config
                     @emailerConfig= result.emailerConfig
                     callback null, this
         )
-    
+
+
     setDatabase : (db) ->
         @database = db
     flushServerConfig : (callback) ->
@@ -53,28 +62,92 @@ class Config
         fs.writeFile(@serverConfigPath, content, (err)->
             callback(err)
         )
+
     loadUserConfig : (callback) ->
-        if db?
-        
+        if @database?
+            needWritebackConfig = false
+            async.series({
+                adminUser : (next) =>
+                    if @serverConfig.admins.length
+                        #return one of the admin emails
+                        next null, null
+                    else
+                        needWritebackConfig = true
+                        readUserFromStdin(@database, 'Please configure at least one admin', next)
+                ,
+                defaultUser : (next) =>
+                    if @serverConfig.defaultUser?
+                        next null, null
+                    else
+                        needWritebackConfig = true
+                        readUserFromStdin(@database, 'Please configure the default user', next)
+
+                }, (err, data) =>
+                    if err?
+                        callback err, null
+                    else
+                        @serverConfig.admins.push(data.adminUser.getEmail()) if data.adminUser?
+                        @serverConfig.defaultUser=data.defaultUser.getEmail() if data.defaultUser?
+                        if needWritebackConfig
+                            @flushServerConfig callback
+                        else
+                            callback null, null
+                )
         else
             callback(new Error('Should initialize database before loadUserConfig'))
-        
 
+
+
+isEmail = (str) ->
+    return /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}$/.test(str.toUpperCase())
+
+readUserFromStdin = (database, prompt, callback) ->
+    user = null
+    async.waterfall [
+        (next) ->
+            read({prompt : "#{prompt}\nEmail: "}, next)
+        (email, isDefault, next) ->
+            # Checking the validity of the email provided
+            if not isEmail(email)
+                next(new Error("Invalid email ID"))
+            else
+                user = new User(email)
+                # Find if the user already exists in the admin interface collection
+                database.findAdminUser(user, next)
+        (userRec, next) ->
+            # Bypassing the waterfall
+            if userRec then callback(null, user)
+            else read({prompt : "Password: ", silent : true}, next)
+        (password, isDefault, next) ->
+            hashPassword({password:password}, next)
+        (result, next) ->
+            # Insert into admin_interface collection
+            user.key  = result.key.toString('hex')
+            user.salt = result.salt.toString('hex')
+            database.addAdminUser(user, next)
+    ], (err, userRec) ->
+        return callback(err) if err
+        callback(null, user)
 
 
 
 class ServerConfig
-    adminInterface : null
-    compression : true
-    compressJS : true
-    debug : false
-    debugServer : false
-    domain : null
-    homePage : null
-    admins : []
+    constructor: () ->
+        @adminInterface = null
+        @compression = true
+        @compressJS = true
+        @debug = false
+        @debugServer = false
+        @domain = null
+        @homePage = null
+        @admins = []
+        @defaultUser = null
+
+
 
 class DatabaseConfig
-    dbName : 'cloudbrowser'
+    constructor: () ->
+        @dbName = 'cloudbrowser'
 
 
 
@@ -140,9 +213,7 @@ parseOptionsFromCmd = () ->
        full    : 'simulate-latency'
        help    : "Simulate latency for clients in ms (if not given assign uniform randomly in 20-120 ms range."
   #parse the command line arguments
-  require 'nomnom'
-  .options options
-  .parse()
+  require('nomnom').script(process.argv[1]).options(options).parse()
 
 
 
@@ -153,15 +224,20 @@ newEmailerConfig = (fileName,callback) ->
       utils.readJsonFromFileAsync fileName, (err, result) ->
         callback err,result
     else
-      console.warn "#{fileName} does not exist!"
+      console.log("Emailer config: #{fileName} does not exist!")
       callback null, {}
-    
+
 
 newServerConfig = (fileName,cmdOptions,callback) ->
   #merge new ServerConfig with config file and command line options
-  mergeConfig = (source) ->
-    serverConfig = new ServerConfig
-    lodash.merge serverConfig, [source , cmdOptions]
+  mergeConfig = (fromFile,callback) ->
+    serverConfig = new ServerConfig()
+    lodash.merge serverConfig, fromFile
+    #merge only properties defined in class
+    for own k, v of cmdOptions
+        if serverConfig[k] isnt undefined
+            serverConfig[k] = v
+    callback null, serverConfig
 
   fs.exists fileName, (exists) ->
     if exists
@@ -178,19 +254,4 @@ newServerConfig = (fileName,cmdOptions,callback) ->
 
 
 
-
-configAdminUser = (config, callback) ->
-    if config.serverConfig.admins.length
-        # ...
-        callback null
-    else
-        console.log('Please configure at least one admin')
-
-
-
-exports.testSomething = (test) ->
-    test.ok(true,"this pass")
-    test.done()
-
-
-
+exports.Config = Config
