@@ -16,9 +16,22 @@ class DatabaseInterface
         dbName = "UID#{process.getuid()}-#{dbConfig.dbName}"
         @dbClient = new Mongo.Db(dbName,
             new Mongo.Server("127.0.0.1", 27017, options:{auto_reconnect:true}))
-        @dbClient.open (err, pClient) ->
-            callback?(err)
-        @mongoStore = new MongoStore({db:"#{dbName}_sessions"})
+        Async.series([
+                        (next) =>
+                            @dbClient.open (err, pClient) ->
+                                next(err)
+                        ,
+                        (next) =>
+                            @mongoStore = new MongoStore(
+                                {db:"#{dbName}_sessions"}, 
+                                (collection) ->
+                                    next(null)
+                                )
+
+                    ], 
+                    (err, results) =>
+                        callback(err, this)
+        )
         
     findAdminUser : (searchKey,callback) ->
         @findUser(searchKey,@adminCollection,callback)

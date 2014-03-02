@@ -1,7 +1,6 @@
 Crypto = require('crypto')
 Async  = require('async')
 User   = require('../server/user')
-SessionManager = require('../server/session_manager')
 {getParentMountPoint, hashPassword} = require('./utils')
 cloudbrowserError = require('../shared/cloudbrowser_error')
 
@@ -47,12 +46,13 @@ class LocalStrategy
             return callback?(cloudbrowserError("PARAM_INVALID", "- emailID"))
             
         {bserver} = _pvts[@_idx]
-        CBServer = require('../server')
-        {domain, port} = CBServer.getConfig()
+        
+        {domain, port} = bserver.server.config
         user = new User(emailID)
 
         mountPoint = getParentMountPoint(bserver.mountPoint)
-        appManager = CBServer.getAppManager()
+        appManager = bserver.server.applicationManager
+        sessionManager = bserver.server.sessionManager
         app        = appManager.find(mountPoint)
         appUrl     = "http://#{domain}:#{port}#{mountPoint}"
         dbKey      = null
@@ -78,7 +78,7 @@ class LocalStrategy
             if err then return callback(err)
             if result?.key.toString('hex') is dbKey
                 # This is the what actually marks the user as logged in
-                SessionManager.addAppUserID(session, mountPoint, user)
+                sessionManager.addAppUserID(session, mountPoint, user)
             else callback(null, false)
             # When an unauthenticated request for a specific browser
             # arrives, the url for that browser is stored in the
@@ -87,13 +87,12 @@ class LocalStrategy
             # browser, where the user logs in using the current
             # function. Finally the user is redirected to the
             # originally requested browser stored in the session.
-            redirectto = SessionManager.findPropOnSession(session,
+            redirectto = sessionManager.findPropOnSession(session,
                 'redirectto')
-            SessionManager.setPropOnSession(session, 'redirectto', null)
+            sessionManager.setPropOnSession(session, 'redirectto', null)
             if redirectto then bserver.redirect(redirectto)
             else bserver.redirect(appUrl)
             bserver.once 'NoClients', () ->
-                appManager = CBServer.getAppManager()
                 app = appManager.find(bserver.mountPoint)
                 app.browsers.close(bserver)
 
@@ -118,11 +117,11 @@ class LocalStrategy
         
         {bserver, cbCtx} = _pvts[@_idx]
         {util}     = cbCtx
-        CBServer = require('../server')
-        {domain, port} = CBServer.getConfig()
+        
+        {domain, port} = bserver.server.config
         user       = new User(emailID)
         mountPoint = getParentMountPoint(bserver.mountPoint)
-        appManager = CBServer.getAppManager()
+        appManager = bserver.server.applicationManager
         app        = appManager.find(mountPoint)
         appUrl     = "http://#{domain}:#{port}#{mountPoint}"
         token      = null
@@ -189,12 +188,12 @@ class GoogleStrategy
             # authentication route to identify the application from which the
             # google redirect has originated
             mountPoint = getParentMountPoint(bserver.mountPoint)
-            SessionManager.setPropOnSession(session, 'mountPoint', mountPoint)
+            sessionManager = bserver.server.sessionManager
+            sessionManager.setPropOnSession(session, 'mountPoint', mountPoint)
             bserver.redirect "/googleAuth"
             # Kill the browser once client has been authenticated
             bserver.once 'NoClients', () ->
-                CBServer = require('../server')
-                appManager = CBServer.getAppManager()
+                appManager = bserver.server.applicationManager
                 app = appManager.find(bserver.mountPoint)
                 app.browsers.close(bserver)
 

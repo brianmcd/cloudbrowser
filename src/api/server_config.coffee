@@ -18,13 +18,14 @@ class ServerConfig
     _pvts = []
 
     constructor : (options) ->
-        {userCtx, cbCtx} = options
+        {cbServer, userCtx, cbCtx} = options
 
         # Defining @_idx as a read-only property
         Object.defineProperty this, "_idx",
             value : _pvts.length
 
         _pvts.push
+            cbServer : cbServer
             userCtx : userCtx
             cbCtx   : cbCtx
 
@@ -39,8 +40,8 @@ class ServerConfig
         @memberOf ServerConfig
     ###
     getDomain : () ->
-        CBServer = require('../server')
-        return CBServer.getConfig().domain
+        {cbServer} = _pvts[@_idx]
+        return cbServer.config.domain
 
     ###*
         Returns the server port
@@ -50,8 +51,8 @@ class ServerConfig
         @memberOf ServerConfig
     ###
     getPort : () ->
-        CBServer = require('../server')
-        return CBServer.getConfig().port
+        {cbServer} = _pvts[@_idx]
+        return cbServer.config.port
 
     ###*
         Returns the URL at which the CloudBrowser server is hosted.    
@@ -61,8 +62,8 @@ class ServerConfig
         @memberOf ServerConfig
     ###
     getUrl : () ->
-        CBServer = require('../server')
-        {domain, port} = CBServer.getConfig()
+        {cbServer} = _pvts[@_idx]
+        {domain, port} = cbServer.config
         return "http://#{domain}:#{port}"
 
     ###*
@@ -81,10 +82,10 @@ class ServerConfig
         if not filters instanceof Array
             callback(cloudbrowserError("PARAM_INVALID", "- filter"))
 
-        {userCtx, cbCtx} = _pvts[@_idx]
-        CBServer = require('../server')
-        permissionManager = CBServer.getPermissionManager()
-        appManager = CBServer.getAppManager()
+        {cbServer, userCtx, cbCtx} = _pvts[@_idx]
+        
+        permissionManager = cbServer.permissionManager
+        appManager = cbServer.applicationManager
         appConfigs = []
 
         # Apps that the current user owns
@@ -99,6 +100,7 @@ class ServerConfig
                         if filters.indexOf('public') isnt -1
                             if not app.isAppPublic() then continue
                         appConfigs.push new AppConfig
+                            cbServer : cbServer
                             userCtx : userCtx
                             cbCtx   : cbCtx
                             app     : app
@@ -109,6 +111,7 @@ class ServerConfig
             for mountPoint, app of apps
                 if app.isAppPublic() and app.isMounted()
                     appConfigs.push new AppConfig
+                        cbServer : cbServer
                         userCtx : userCtx
                         cbCtx   : cbCtx
                         app     : app
@@ -124,10 +127,10 @@ class ServerConfig
         @memberOf ServerConfig
     ###
     addEventListener : (event, callback) ->
-        {userCtx, cbCtx}  = _pvts[@_idx]
-        CBServer = require('../server')
-        permissionManager = CBServer.getPermissionManager()
-        appManager = CBServer.getAppManager()
+        {cbServer, userCtx, cbCtx}  = _pvts[@_idx]
+        
+        permissionManager = cbServer.permissionManager
+        appManager = cbServer.applicationManager
 
         validEvents = [
             'mount'
@@ -145,6 +148,7 @@ class ServerConfig
             when "madePublic", "mount", "addApp"
                 appManager.on event, (app) ->
                     callback new AppConfig
+                        cbServer : cbServer
                         userCtx : userCtx
                         cbCtx   : cbCtx
                         app     : app
@@ -165,12 +169,13 @@ class ServerConfig
         if typeof pathToFile isnt "string"
             return callback?(cloudbrowserError("PARAM_INVALID", "- pathToFile"))
 
-        {userCtx, cbCtx} = _pvts[@_idx]
+        {cbServer, userCtx, cbCtx} = _pvts[@_idx]
         email = userCtx.getEmail()
 
         ApplicationUploader.process email, pathToFile, (err, app) ->
             return callback(err) if err
             callback new AppConfig
+                cbServer : cbServer
                 app     : app
                 cbCtx   : cbCtx
                 userCtx : userCtx

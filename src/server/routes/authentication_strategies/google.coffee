@@ -1,23 +1,24 @@
 {redirect}     = require('../route_helpers')
-SessionManager = require('../../session_manager')
 User           = require('../../user')
 
-module.exports = (req, res, next) ->
-    CBServer   = require('../../')
-    appManager = CBServer.getAppManager()
+class GoogleAuthStrategy
+    constructor: (@applicationManager, @sessionManager) ->
+        # ...
+    handler : (req, res, next) ->
+        if not req.user then redirect(res, mountPoint)
 
-    if not req.user then redirect(res, mountPoint)
+        mountPoint = @sessionManager.findPropOnSession(req.session, 'mountPoint')
+        if not mountPoint then return res.send(403)
 
-    mountPoint = SessionManager.findPropOnSession(req.session, 'mountPoint')
-    if not mountPoint then return res.send(403)
+        app = @applicationManager.find(mountPoint)
+        if not app then return res.send(403)
 
-    app = appManager.find(mountPoint)
-    if not app then return res.send(403)
-
-    app.addNewUser new User(req.user.email), (err, user) ->
-        mountPoint = SessionManager.findPropOnSession(req.session, 'mountPoint')
-        SessionManager.addAppUserID(req.session, mountPoint, user)
-        redirectto = SessionManager.findAndSetPropOnSession(req.session,
-            'redirectto', null)
-        if not redirectto then redirectto = mountPoint
-        redirect(res, redirectto)
+        app.addNewUser new User(req.user.email), (err, user) =>
+            mountPoint = @sessionManager.findPropOnSession(req.session, 'mountPoint')
+            @sessionManager.addAppUserID(req.session, mountPoint, user)
+            redirectto = @sessionManager.findAndSetPropOnSession(req.session,
+                'redirectto', null)
+            if not redirectto then redirectto = mountPoint
+            redirect(res, redirectto)
+    
+module.exports = GoogleAuthStrategy

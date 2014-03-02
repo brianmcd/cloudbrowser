@@ -11,7 +11,8 @@ class AppInstance extends EventEmitter
         , @id
         , @name
         , readerwriters
-        , @dateCreated} = options
+        , @dateCreated,
+        @server } = options
         if not @dateCreated then @dateCreated = new Date()
         @owner = if owner instanceof User then owner else new User(owner._email)
         @readerwriters = []
@@ -109,8 +110,8 @@ class AppInstance extends EventEmitter
         appInstanceRec = {}
         appInstanceRec["appInstances." + @id] = dbRec
 
-        CBServer = require('../')
-        mongoInterface = CBServer.getMongoInterface()
+        
+        mongoInterface = @server.mongoInterface
         searchKey = {mountPoint : @app.getMountPoint()}
         mongoInterface.setApp(searchKey, appInstanceRec, callback)
 

@@ -103,22 +103,20 @@ class VirtualBrowser extends EventEmitter
         @broadcastEvent('Redirect', URL)
        
     getSessions : (callback) ->
-        CBServer = require('../')
-        mongoInterface = CBServer.getMongoInterface()
+        mongoInterface = @server.mongoInterface
         getFromDB = (socket, callback) ->
             sessionID = socket.handshake.sessionID
             mongoInterface.getSession(sessionID, callback)
         Async.map(@sockets, getFromDB, callback)
 
     getFirstSession : (callback) ->
-        CBServer = require('../')
-        mongoInterface = CBServer.getMongoInterface()
+        mongoInterface = @server.mongoInterface
         sessionID = @sockets[0].handshake.sessionID
         mongoInterface.getSession(sessionID, callback)
 
     # arg can be an Application or URL string.
     load : (arg) ->
-        if not arg then arg = @server.applications.find(@mountPoint)
+        if not arg then arg = @server.applicationManager.find(@mountPoint)
         @browser.load(arg)
         weakRefToThis = Weak(this, cleanupBserver(@id))
         EmbedAPI(weakRefToThis)
@@ -467,7 +465,7 @@ RPCMethods =
             @broadcastEvent('resumeRendering', id)
             if @server.config.traceMem
                 gc()
-            @server.processedEvents++
+            @server.eventTracker.inc()
             #console.log("Finished processing event: #{serverEv.type}")
 
     # Takes a clientEv (an event generated on the client and sent over DNode)

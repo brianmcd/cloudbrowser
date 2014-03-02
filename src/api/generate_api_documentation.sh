@@ -20,7 +20,7 @@ then
     echo "
 Generating the Documentation using JSDOC.
 You can change the theme by modifying the file docstrap-master/template/jsdoc.conf.json"
-    ../../node_modules/jsdoc/jsdoc *.js -t ./docstrap-master/template -c ./docstrap-master/template/jsdoc.conf.json
+    ../../node_modules/jsdoc/jsdoc.js *.js -t ./docstrap-master/template -c ./docstrap-master/template/jsdoc.conf.json
 
     echo "
 Cleaning up the JavaScript files."

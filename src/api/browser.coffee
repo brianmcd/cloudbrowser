@@ -70,8 +70,7 @@ class Browser
         {bserver}  = _pvts[@_idx]
         id         = bserver.getID()
         mountPoint = bserver.getMountPoint()
-        CBServer = require('../server')
-        {domain, port} = CBServer.getConfig()
+        {domain, port} = bserver.server.config
         return "http://#{domain}:#{port}#{mountPoint}/browsers/#{id}/index"
 
     ###*
@@ -146,10 +145,10 @@ class Browser
         {bserver, cbCtx, userCtx} = _pvts[@_idx]
         mountPoint = bserver.getMountPoint()
         AppConfig  = require("./application_config")
-        CBServer   = require('../server')
-        app = CBServer.getAppManager().find(mountPoint)
+        app = bserver.server.applicationManager.find(mountPoint)
 
         return new AppConfig({
+            cbServer : bserver.server
             cbCtx   : cbCtx
             userCtx : userCtx
             app     : app
@@ -536,6 +535,7 @@ class Browser
                 cbCtx       : cbCtx
                 userCtx     : userCtx
                 appInstance : appInstance
+                cbServer    : bserver.server
 
     ###*
         Gets the local state with the current browser

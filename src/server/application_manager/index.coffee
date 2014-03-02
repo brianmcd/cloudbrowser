@@ -15,19 +15,34 @@ cleanupApp = (mountPoint) ->
         console.log("Garbage collected application #{mountPoint}")
 
 class ApplicationManager extends EventEmitter
-    constructor : (options) ->
+    constructor : (dependencies, callback) ->
+        console.log(dependencies.config?)
+        {@config, @database, @permissionManager, @httpServer} = dependencies
+        # the services saw by applications
+        @server = {
+            config : @config.serverConfig
+            #keep this naming for compatibility
+            mongoInterface : @database
+            permissionManager : @permissionManager
+            httpServer : @httpServer
+            eventTracker : dependencies.eventTracker
+            sessionManager : dependencies.sessionManager
+            applicationManager : this
+        }
+
         @applications = {}
         @weakRefsToApps = {}
 
         # Path where cloudbrowser specific applications reside
-        @cbAppDir = Path.resolve(options.cbAppDir, "src/server/applications")
+        @cbAppDir = Path.resolve(@config.projectRoot, "src/server/applications")
+        callback null,this
 
-        {@server} = options
-
+    #load applications after the routes on http_server is ready
+    loadApplications : ()->
         Async.series [
             (next) =>
                 # Mount the home page
-                if @server.config.homePage then @createAppFromDir
+                if @config.serverConfig.homePage then @createAppFromDir
                     path : Path.resolve(@cbAppDir, "home_page")
                     type : "admin"
                     mountPoint : "/"
@@ -35,7 +50,7 @@ class ApplicationManager extends EventEmitter
                 else next(null)
             (next) =>
                 # Mount the admin interface
-                if @server.config.adminInterface then @createAppFromDir
+                if @config.serverConfig.adminInterface then @createAppFromDir
                     path : Path.resolve(@cbAppDir, "admin_interface")
                     type : "admin"
                 , next
@@ -49,8 +64,9 @@ class ApplicationManager extends EventEmitter
                 @_loadFromDb(next)
             (next) =>
                 # Load applications at the paths provided as command line args
-                @_loadFromCmdLine(options.paths) if options.paths?
+                @_loadFromCmdLine(@config.paths) if @config.paths?
         ], (err) -> if err then console.log(err)
+
 
     _validDeploymentConfig : [
         'name'
@@ -78,11 +94,10 @@ class ApplicationManager extends EventEmitter
         return true
 
     _loadFromDb : (callback) ->
-        {mongoInterface, permissionManager} = @server
-
+        
         Async.waterfall [
-            (next) ->
-                mongoInterface.getApps(next)
+            (next) =>
+                @database.getApps(next)
             (apps, next) =>
                 if apps then Async.each apps
                 , (app, callback) =>
@@ -94,13 +109,13 @@ class ApplicationManager extends EventEmitter
                     not Fs.existsSync("#{app.path}/deployment_config\.json")
                         console.log("Removing app at #{app.path}")
                         Async.waterfall [
-                            (next) ->
-                                permissionManager.rmAppPermRec
+                            (next) =>
+                                @permissionManager.rmAppPermRec
                                     user       : app.owner
                                     mountPoint : app.mountPoint
                                     callback   : next
-                            (removedApp, next) ->
-                                mongoInterface.removeApp({path:app.path}, next)
+                            (removedApp, next) =>
+                                @database.removeApp({path:app.path}, next)
                         ], (err) ->
                             if err then console.log(err)
                             # Not propogating the error to the final callback
@@ -154,7 +169,7 @@ class ApplicationManager extends EventEmitter
                 else opts.deploymentConfig = {}
 
                 # The first admin is the owner of 
-                opts.deploymentConfig.owner = @server.config.admins[0]
+                opts.deploymentConfig.owner = @config.serverConfig.admins[0]
                 # Don't save the path to this application in the database
                 opts.dontSaveToDb = true
 
@@ -235,7 +250,7 @@ class ApplicationManager extends EventEmitter
                 deploymentConfig.collectionName =
                     ApplicationManager.constructCollectionName(mountPoint)
             # Adding unique index to the collection
-            @server.mongoInterface.addIndex(
+            @database.addIndex(
                 deploymentConfig.collectionName,
                 {_email:1})
 
@@ -307,7 +322,6 @@ class ApplicationManager extends EventEmitter
          instantiationStrategy,
          authenticationInterface} = opts.deploymentConfig
 
-        {mongoInterface, permissionManager} = @server
 
         if @find(mountPoint)
             callback(cloudbrowserError('MOUNTPOINT_IN_USE'), "-#{mountPoint}")
@@ -326,17 +340,17 @@ class ApplicationManager extends EventEmitter
         # else the API object is created before the application object
         # and queries on the application object fail
         Async.series [
-            (next) ->
+            (next) =>
                 # Add the permission record for this application's owner 
-                permissionManager.addAppPermRec
+                @permissionManager.addAppPermRec
                     user        : app.getOwner()
                     mountPoint  : mountPoint
                     permission  : 'own'
                     callback    : next
-            (next) ->
+            (next) =>
                 # Add the application path details to the DB for the server
                 # to know the location of applications to be loaded at startup
-                if not opts.dontSaveToDb then mongoInterface.addApp
+                if not opts.dontSaveToDb then @database.addApp
                     path        : opts.path
                     owner       : app.getOwner()
                     mountPoint  : mountPoint
@@ -386,7 +400,7 @@ class ApplicationManager extends EventEmitter
 
     # Walks a path recursively and finds all CloudBrowser applications
     _walk : (path) =>
-        {mongoInterface} = @server
+        
         Fs.readdir path, (err, list) =>
             # Don't allow external mounting of these apps
             # landing_page, password_reset etc.
@@ -402,7 +416,7 @@ class ApplicationManager extends EventEmitter
                         if /app_config\.json$/.test(filename)
                             Async.waterfall [
                                 (next) =>
-                                    mongoInterface.findApp({path:path}, next)
+                                    @database.findApp({path:path}, next)
                                 (app, next) =>
                                     if app then next(null)
                                     else @createAppFromDir
@@ -459,7 +473,7 @@ class ApplicationManager extends EventEmitter
         opts.appConfig = {entryPoint : path}
         opts.deploymentConfig =
             mountPoint : @_constructMountPoint(pathWithoutExt)
-            owner : @server.config.defaultUser
+            owner : @config.serverConfig.defaultUser
         @_add(opts, callback)
 
     # Creates a CloudBrowser application given the absolute path to the app

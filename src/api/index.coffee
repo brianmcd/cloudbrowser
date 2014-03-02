@@ -54,6 +54,7 @@ class CloudBrowser
                 cbCtx   : this
 
         @serverConfig = new ServerConfig
+            cbServer : bserver.server
             userCtx : creator
             cbCtx   : this
 
@@ -71,7 +72,7 @@ module.exports = (bserver) ->
     {server} = bserver
     {cloudbrowser} = window
 
-    app = bserver.server.applications.find(bserver.mountPoint)
+    app = bserver.server.applicationManager.find(bserver.mountPoint)
     if app.localState?
         if typeof app.localState.create is "function"
             property = if typeof app.localState.name is "string"
@@ -88,7 +89,7 @@ module.exports = (bserver) ->
     # If an app needs server-side knockout, we have to monkey patch
     # some ko functions.
     if server.config.knockout
-        Browser = require('../server/browser')
+        Browser = require('../server/virtual_browser/browser')
         window.run(Browser.jQScript, "jquery-1.6.2.js")
         window.run(Browser.koScript, "knockout-latest.debug.js")
         window.run(Browser.koPatch, "ko-patch.js")

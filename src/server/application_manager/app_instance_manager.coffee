@@ -10,9 +10,10 @@ cleanupStates = (id) ->
         console.log "[Application Instance Manager] - Garbage collected appliation instance #{id}"
 
 class AppInstanceManager extends EventEmitter
-    constructor : (@appInstanceProvider, @permissionManager, @app) ->
+    constructor : (@appInstanceProvider, @server, @app) ->
         @counter = 0
         @appInstances  = {}
+        {@permissionManager} = @server
         @weakRefsToAppInstances = {}
 
     create : (user, callback, id = @generateID(), name = @generateName()) ->
@@ -23,6 +24,7 @@ class AppInstanceManager extends EventEmitter
                 obj   : @appInstanceProvider.create()
                 name  : name
                 owner : user
+                server : @server
         appInstance =
             @weakRefsToAppInstances[id] = Weak(@appInstances[id], cleanupStates(id))
         @setupProxyEventEmitter(appInstance)
@@ -50,6 +52,7 @@ class AppInstanceManager extends EventEmitter
             owner         : owner
             dateCreated   : dateCreated
             readerwriters : readerwriters
+            server        : @server
         appInstance = @weakRefsToAppInstances[id] =
             Weak(@appInstances[id], cleanupStates(id))
         @setupProxyEventEmitter(appInstance)

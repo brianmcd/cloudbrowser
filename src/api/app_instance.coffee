@@ -34,9 +34,10 @@ class AppInstance
         # Defining @_idx as a read-only property
         Object.defineProperty(this, "_idx", {value : _pvts.length})
 
-        {appInstance, cbCtx, userCtx} = options
+        {cbServer, appInstance, cbCtx, userCtx} = options
 
         _pvts.push
+            cbServer : cbServer
             cbCtx       : cbCtx
             userCtx     : userCtx
             appInstance : appInstance
@@ -110,10 +111,10 @@ class AppInstance
         @memberof AppInstance
     ###
     close : (callback) ->
-        {appInstance, userCtx} = _pvts[@_idx]
+        {cbServer, appInstance, userCtx} = _pvts[@_idx]
         {appInstances} = appInstance.app
-        CBServer = require('../server')
-        permissionManager = CBServer.getPermissionManager()
+        
+        permissionManager = cbServer.permissionManager
         id = appInstance.getID()
 
         # Permission checking is done in the close() method
@@ -234,9 +235,9 @@ class AppInstance
         @memberof AppInstance
     ###
     addReaderWriter : (emailID, callback) ->
-        {appInstance, userCtx} = _pvts[@_idx]
-        CBServer = require('../server')
-        permissionManager = CBServer.getPermissionManager()
+        {cbServer, appInstance, userCtx} = _pvts[@_idx]
+        
+        permissionManager = cbServer.permissionManager
 
         if typeof emailID isnt "string"
             return callback?(cloudbrowserError("PARAM_INVALID", "- emailID"))

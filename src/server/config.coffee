@@ -18,6 +18,7 @@ user configurations.
 ###
 class Config
     projectRoot : '.'
+    paths : null
     cmdOptions : null
     serverConfigPath : null
     emailerConfigPath : null
@@ -29,6 +30,10 @@ class Config
     constructor: (callback) ->
         #parse the command line options
         @cmdOptions = parseOptionsFromCmd()
+
+        # List of all the unmatched positional args (the path names)
+        @paths = (path for path in @cmdOptions._)
+        #paths.push(path) for path in @cmdOptions._
 
         @projectRoot = path.resolve(__dirname, '../..')
         @databaseConfig=new DatabaseConfig
@@ -42,7 +47,6 @@ class Config
             emailerConfig :
                 lodash.partial(newEmailerConfig, @emailerConfigPath)
             }, (err,result) =>
-                console.log result
                 if err?
                     console.error 'Error reading config file.'
                     console.error err
@@ -130,25 +134,66 @@ readUserFromStdin = (database, prompt, callback) ->
         callback(null, user)
 
 
-
+# Server options:
+#   adminInterface      - bool - Enable the admin interface.
+#   compression         - bool - Enable protocol compression.
+#   compressJS          - bool - Pass socket.io client and client engine through
+#   cookieName          - str  - Name of the cookie
+#                                uglify and gzip.
+#   debug               - bool - Enable debug mode.
+#   debugServer         - bool - Enable the debug server.
+#   domain              - str  - Domain name of server.
+#                                Default localhost; must be a publicly resolvable
+#                                name if you wish to use Google authentication
+#   homePage            - bool - Enable mounting of the home page application at "/".
+#   knockout            - bool - Enable server-side knockout.js bindings.
+#   monitorTraffic      - bool - Monitor/log traffic to/from socket.io clients.
+#   multiProcess        - bool - Run each browser in its own process.
+#   emailerConfig       - obj  - {emailID:string, password:string} - The email ID
+#                                and password required to send mails through
+#                                the Emailer module.
+#   noLogs              - bool - Disable all logging to files.
+#   port                - int  - Port to use for the server.
+#   resourceProxy       - bool - Enable the resource proxy.
+#   simulateLatency     - bool | number - Simulate latency for clients in ms.
+#   strict              - bool - Enable strict mode - uncaught exceptions exit the
+#                                program.
+#   traceMem            - bool - Trace memory usage.
+#   traceProtocol       - bool - Log protocol messages to #{browserid}-rpc.log.
+#   useRouter           - bool - Use a front-end router process with each app server
+#                                in its own process.
+#   class for serverConfig, set the default value on the object own properties to make them 
+#   visible in console.log
 class ServerConfig
     constructor: () ->
-        @adminInterface = null
+        @adminInterface = true
         @compression = true
         @compressJS = true
         @debug = false
+        @cookieName = 'cb.id'
         @debugServer = false
-        @domain = null
-        @homePage = null
+        @domain = 'localhost'
+        @homePage = true
+        @knockout = false
+        @monitorTraffic = false
+        @noLogs = true
+        @port = 3000
+        @resourceProxy = true
+        @simulateLatency = false
+        @strict = false
+        @traceMem = false
+        @traceProtocol = false
+        @useRouter = false
         @admins = []
         @defaultUser = null
+
+      
 
 
 
 class DatabaseConfig
     constructor: () ->
         @dbName = 'cloudbrowser'
-
 
 
 #get options from cmd
@@ -235,7 +280,7 @@ newServerConfig = (fileName,cmdOptions,callback) ->
     lodash.merge serverConfig, fromFile
     #merge only properties defined in class
     for own k, v of cmdOptions
-        if serverConfig[k] isnt undefined
+        if serverConfig.hasOwnProperty(k)
             serverConfig[k] = v
     callback null, serverConfig
 
