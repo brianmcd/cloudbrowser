@@ -14,6 +14,7 @@ class DatabaseInterface
         # but will use the same database for multiple instances
         # of cloudbrowser run by the same user
         dbName = "UID#{process.getuid()}-#{dbConfig.dbName}"
+        # TODO should be configurable
         @dbClient = new Mongo.Db(dbName,
             new Mongo.Server("127.0.0.1", 27017, options:{auto_reconnect:true}))
         Async.series([
@@ -110,6 +111,7 @@ class DatabaseInterface
                 collection.remove(searchKey, next)
         ], callback
 
+    # TODO should be part of session manager
     getSession : (sessionID, callback) ->
         @mongoStore.get(sessionID, callback)
 

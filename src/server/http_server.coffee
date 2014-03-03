@@ -33,6 +33,7 @@ class HTTPServer extends EventEmitter
             # Note : Cookie parser must come before session middleware
             # TODO : Change these secrets
             @server.use(express.cookieParser('secret'))
+            # TODO : move this logic to session manager
             @server.use express.session
                 store  : @database.mongoStore
                 secret : 'change me please'

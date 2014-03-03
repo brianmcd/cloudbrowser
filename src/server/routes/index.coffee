@@ -7,7 +7,7 @@ requireClassAndNew = (path, arg1, arg2, arg3) ->
 
 class HttpRoutes
     constructor: (@config, @applicationManager, @sessionManager) ->
-        
+        # TODO : a little bit clunky, should export factory methods instead of Class
         userRoute = requireClassAndNew('./user', @applicationManager)
         @user = {
             activate : lodash.bind(userRoute.activate,userRoute),

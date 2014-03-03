@@ -34,7 +34,8 @@ class SocketIOServer
     socketIOAuthHandler : (handshakeData, callback) ->
         if not handshakeData.headers or not handshakeData.headers.cookie
             return callback(null, false)
-        cookies = ParseCookie(handshakeData.headers.cookie)
+        cookies = ParseCookie(handshakeData.headers.cookie)    
+
         sessionID = cookies[@config.cookieName]
         @mongoInterface.getSession sessionID, (err, session) =>
             if err or not session then console.log "#{err} #{session}"
@@ -55,7 +56,7 @@ class SocketIOServer
         {headers, session} = socket.handshake
         cookies = ParseCookie(headers.cookie)
         sessionID = cookies[@config.cookieName]
-
+   
         # NOTE : app, browserID are provided by the client
         # and cannot be trusted
         browserID = decodeURIComponent(browserID)
