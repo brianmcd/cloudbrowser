@@ -74,7 +74,10 @@ class SocketIOServer
                 if not isAuthorized then next(true) # Simulating an error
                 else @mongoInterface.getSession(sessionID, next)
         ], (err, session) =>
-            if err then return socket.disconnect()
+            if err?
+                console.log "error in connection #{err}, #{err.stack}"
+                return socket.disconnect()
+            
             user = @sessionManager.findAppUserID(session, mountPoint)
             if user then socket.handshake.user = user.getEmail()
             bserver.addSocket(socket)

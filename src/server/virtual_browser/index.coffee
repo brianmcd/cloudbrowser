@@ -208,7 +208,12 @@ class VirtualBrowser extends EventEmitter
                     args = Array.prototype.slice.call(arguments)
                     args.push(socket)
                     # Weak ref not required here
-                    func.apply(this, args)
+                    try
+                        func.apply(this, args)
+                    catch e
+                        console.log e
+                    
+                    
         socket.on 'disconnect', () =>
             @sockets       = (s for s in @sockets       when s != socket)
             @queuedSockets = (s for s in @queuedSockets when s != socket)

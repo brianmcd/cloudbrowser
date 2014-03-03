@@ -125,13 +125,13 @@ class Browser
         # Mountpoint needed for authentication in case of
         # the file uploader component
         options.cloudbrowser = {mountPoint : bserver.getMountPoint()}
+        options.cbServer = bserver.server
         # Create the component
         comp = browser.components[targetID] =
             new Ctor(options, rpcMethod, target)
         clientComponent = [name, targetID, comp.getRemoteOptions()]
         browser.clientComponents.push(clientComponent)
         browser.emit('CreateComponent', clientComponent)
-
         return target
 
     ###*
@@ -163,8 +163,8 @@ class Browser
     ###
     close : (callback) ->
         {bserver, userCtx} = _pvts[@_idx]
-        CBServer   = require('../server')
-        appManager = CBServer.getAppManager()
+        
+        appManager = bserver.server.applicationManager
         app = appManager.find(bserver.getMountPoint())
 
         if userCtx.getEmail() is "public"
@@ -196,8 +196,8 @@ class Browser
     ###
     getResetEmail : (callback) ->
         {bserver} = _pvts[@_idx]
-        CBServer   = require('../server')
-        mongoInterface = CBServer.getMongoInterface()
+        
+        mongoInterface = bserver.server.mongoInterface
 
         bserver.getFirstSession (err, session) ->
             return callback(err) if err
@@ -476,8 +476,8 @@ class Browser
     grantPermissions : (permission, user, callback) ->
         {bserver, userCtx} = _pvts[@_idx]
         {mountPoint, id}    = bserver
-        CBServer = require('../server')
-        permissionManager = CBServer.getPermissionManager()
+        
+        permissionManager = bserver.server.permissionManager
 
         Async.waterfall [
             (next) ->
