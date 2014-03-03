@@ -1,0 +1,9 @@
+{
+    "enableProxy" : true,
+    "workers" : [
+        {
+            "host":"localhost",
+            "httpPort" : 3000
+        }
+    ]
+}
