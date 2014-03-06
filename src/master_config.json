@@ -2,6 +2,7 @@
     "enableProxy" : true,
     "workers" : [
         {
+            "id" : "worker1",
             "host":"localhost",
             "httpPort" : 3000
         }

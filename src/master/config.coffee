@@ -42,6 +42,7 @@ class ProxyConfig
 
 class Worker
     constructor: () ->
+        @id = '0'
         @host = 'localhost'
         @httpPort = 3000
         @adminPort = 4000
