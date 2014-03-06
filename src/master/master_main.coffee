@@ -32,6 +32,8 @@ class Runner
                                 if results.config.enableProxy
                                     console.log 'Proxy enabled.'
                                     require('./http_proxy')(results, callback)
+                                else
+                                    callback null,null
                                 
             ]
             },(err, results) ->

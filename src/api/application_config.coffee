@@ -487,7 +487,7 @@ class AppConfig
 
         switch event
             when "share"
-                app["#{entityName}s"].on event, (id, userInfo) ->
+                app["#{entityName}s"]?.on event, (id, userInfo) ->
                     if userInfo instanceof User
                         user = userInfo
                     else
@@ -592,6 +592,8 @@ class AppConfig
             (canCreate, next) ->
                 if not canCreate then next(cloudbrowserError("PERM_DENIED"))
                 else app.appInstances.create(userCtx, next)
+                # TODO : appInstances is not set if appInstanceProvider is not provides.
+                # leading a crash
         ], (err, appInstance) ->
             if err then callback?(err)
             else callback null, new AppInstance
