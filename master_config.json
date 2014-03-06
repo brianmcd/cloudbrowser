@@ -4,7 +4,7 @@
         {
             "id" : "worker1",
             "host":"localhost",
-            "httpPort" : 3000
+            "httpPort" : 4000
         }
     ]
 }

@@ -1,4 +1,4 @@
-url = require('url')
+urlModule = require('url')
 
 
 # answers query from proxy, receive reports
@@ -6,6 +6,8 @@ url = require('url')
 class WokerManager
     constructor : (dependencies, callback) ->
         @workers = dependencies.config.workers
+        console.log "WokerManager start with"
+        console.log @workers
         @appMaster = dependencies.appMaster
         #using in-memory object to hold all the records
         @pathToWorkers = {}
@@ -17,9 +19,9 @@ class WokerManager
         @workers[0]
 
     getWorkerByUrl : (url) ->
-        urlObj = url.parse url
+        urlObj = urlModule.parse url
         {path} = urlObj
-        getWorkerByPath path
+        @getWorkerByPath path
 
     getWorkerByPath : (path) ->
         @pathToWorkers[path]
@@ -44,7 +46,7 @@ class WokerManager
     ###
     getWorker: (request) ->
         {url} = request
-        urlObj = url.parse url
+        urlObj = urlModule.parse url
         {path} = urlObj
         # for multiInstance cases, the virtual browsers are reside on the same machine
         worker = @getWorkerByPath(path)
@@ -52,6 +54,8 @@ class WokerManager
 
         # the static file requests should be handled by proxy
         if @isStaticFileRequest(path) or @isSocketIoRequest(path)
+            # node does not distinguish header and query string.
+            # referer from websocket is actually in query string
             referer = request.headers.referer
             if referer?
                 worker = @getWorkerByUrl(referer)
@@ -60,8 +64,10 @@ class WokerManager
                 else
                     # if it is a socket io request, we could send a command to socket to make the client
                     # redirect to landing page
-                    console.log "should have worker mapped for #{referer}, request is #{url}"
-                    throw new Error("should have worker mapped for #{referer}, request is #{url}")
+                    # TODO : keep here only for testing
+                    return {worker:@workers[0]}
+                    #console.log "should have worker mapped for #{referer}, request is #{url}"
+                    #throw new Error("should have worker mapped for #{referer}, request is #{url}")
             else
                 console.log "no referer in request #{url}, must be an error."
                 throw new Error("should have referer in request #{url}")
@@ -80,7 +86,9 @@ class WokerManager
                 return {worker : @getMostFreeWorker() }
 
 
-        
+module.exports = (dependencies, callback) ->
+    new WokerManager(dependencies,callback)
+
         
 
     

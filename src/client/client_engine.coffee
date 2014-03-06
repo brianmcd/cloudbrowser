@@ -67,7 +67,6 @@ class ClientEngine
                 xhr = new XMLHttpRequest()
                 xhr.setRequestHeader("cookie", "cb.id=testCookie;path=/")
                 return xhr
-
             socket = io.connect('http://localhost:4000')
             
             # socket.io-client for node doesn't seem to emit 'connect'
@@ -79,7 +78,12 @@ class ClientEngine
             socket.on 'TestDone', () =>
                 @window.testClient.emit('TestDone')
         else
-            socket = @window.io.connect()
+            encodedUrl = encodeURIComponent(@window.location.href)
+            # to let the master know how to route this request
+            console.log "referer #{encodedUrl}"
+            socket = @window.io.connect('http://localhost:4000',
+                { query: "referer=#{encodedUrl}" }
+                )
             socket.on 'error', (err) ->
                 console.log("Error:"+err)
             socket.on 'connect', () =>
