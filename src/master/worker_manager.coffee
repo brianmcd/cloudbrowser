@@ -71,6 +71,7 @@ class WokerManager
             requestAppInfo = @appMaster.getRequestAppInfo(path)
             
             if requestAppInfo.instanceAssigned
+                console.log "cannot find instance for request #{path}"
                 # redirect it to a default page/ landing page. This could be a obsolete url
                 # create a new app instance on some worker
                 return {worker : @getMostFreeWorker() , redirect : requestAppInfo.defaultPage}
