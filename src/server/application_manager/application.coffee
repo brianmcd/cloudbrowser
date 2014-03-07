@@ -7,7 +7,7 @@ User     = require('../user')
 AppInstanceManager = require('./app_instance_manager')
 {hashPassword}     = require('../../api/utils')
 cloudbrowserError  = require('../../shared/cloudbrowser_error')
-{MultiProcessBrowserManager, InProcessBrowserManager} = Managers
+{InProcessBrowserManager} = Managers
 
 ###
 _validDeploymentConfig :
@@ -44,7 +44,6 @@ class Application extends EventEmitter
         mountFunc : "setupMountPoint"
 
     constructor : (opts, @server) ->
-
         owner =
             owner : new User(@server.config.defaultOwner)
 
@@ -74,7 +73,7 @@ class Application extends EventEmitter
 
         if @appInstanceProvider
             @appInstances = new AppInstanceManager(@appInstanceProvider,
-                                                   @server.permissionManager,
+                                                   @server,
                                                    this)
 
         @loadAppInstancesFromDb()
@@ -170,7 +169,7 @@ class Application extends EventEmitter
         return @deploymentConfig.mountPoint
 
     setMountPoint : (mountPoint) ->
-        if @server.applications.find(mountPoint)
+        if @server.applicationManager.find(mountPoint)
             return new Error("MountPoint in use")
 
         if @getMountPoint() is mountPoint then return
@@ -213,7 +212,7 @@ class Application extends EventEmitter
 
         # Creating sub apps if they don't already exist
         if not @getSubApps().length
-            @server.applications.createSubApplications(this)
+            @server.applicationManager.createSubApplications(this)
 
         # If the app was already mounted
         if @isMounted()
@@ -426,10 +425,7 @@ class Application extends EventEmitter
 
     createBrowserManager : () ->
         if @browsers? then return
-        if @appConfig.browserStrategy is "multiprocess"
-            @browsers = new MultiProcessBrowserManager(@server, this)
-        else
-            @browsers = new InProcessBrowserManager(@server, this)
+        @browsers = new InProcessBrowserManager(@server, this)
         return @browsers
     
     getMountFunc : () ->
@@ -443,7 +439,7 @@ class Application extends EventEmitter
 
     removeSubApps : () ->
         for subApp in @getSubApps()
-            @server.applications.remove(subApp.getMountPoint())
+            @server.applicationManager.remove(subApp.getMountPoint())
         @subApps.length = 0
 
     getAppInstanceName : () ->

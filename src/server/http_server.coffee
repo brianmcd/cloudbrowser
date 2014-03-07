@@ -3,34 +3,21 @@ express        = require('express')
 ZLib           = require('zlib')
 Path           = require('path')
 Uglify         = require('uglify-js')
-Browserify     = require('browserify')
 Passport       = require('passport')
-routes         = require('./routes')
 middleware     = require('./middleware')
 GoogleStrategy = require('./authentication_strategies/google_strategy')
 Fs             = require('fs')
-#ApplicationUploader = require('./application_uploader')
 
-{authorize
-, isAuthenticated
-, isNotAuthenticated} = middleware.authentication
-
-{user
-, logout
-, browser
-, guiDeploy
-, fileUpload
-, clientEngine
-, serveResource
-, serveAppInstance
-, authStrategies} = routes
 
 # Dependency for digest based authentication
 #Auth = require('http-auth')
 
 class HTTPServer extends EventEmitter
-    constructor : (@cbServer, callback) ->
-        {@config} = @cbServer
+    constructor : (dependencies, callback) ->
+        @config = dependencies.config.serverConfig
+        {@sessionManager, @database, @permissionManager} = dependencies
+        @authentication = new middleware.authentication(@permissionManager, @sessionManager)
+
         @server = express.createServer()
 
         oldget = @server.get
@@ -39,9 +26,6 @@ class HTTPServer extends EventEmitter
             console.log "setting route to #{args[0]}"
             oldget.apply @server, args
 
-        @clientEngineModified = new Date().toString()
-        @clientEngineJS = null
-
         @server.configure () =>
             if !process.env.TESTS_RUNNING
                 @server.use(express.logger())
@@ -49,8 +33,9 @@ class HTTPServer extends EventEmitter
             # Note : Cookie parser must come before session middleware
             # TODO : Change these secrets
             @server.use(express.cookieParser('secret'))
+            # TODO : move this logic to session manager
             @server.use express.session
-                store  : @cbServer.mongoInterface.mongoStore
+                store  : @database.mongoStore
                 secret : 'change me please'
                 key    : @config.cookieName
             @server.set('views', Path.join(__dirname, '..', '..', 'views'))
@@ -60,28 +45,25 @@ class HTTPServer extends EventEmitter
             @server.on 'error', (e) ->
                 console.log "CloudBrowser: #{e.message}"
                 process.exit(1)
+        
+        initializeCallback = (err) =>
+            callback err, this
 
+        @server.listen(@config.port, initializeCallback)
+
+    setAppManager : (@appManger) ->
+        HttpRoutes = require('./routes')
+        @routes = new HttpRoutes(@config, @appManger, @sessionManager)
         GoogleStrategy.configure(@config)
         # Must set up routes only after session middleware has been initialized
         @setupGoogleAuthRoutes()
         @setupDeploymentEndPoints()
-        @server.get('/clientEngine.js', clientEngine)
-            
-        if @config.compressJS then @gzipJS @bundleJS(), (js) =>
-            @clientEngineJS = js
-            @server.listen(@config.port, callback)
-        else
-            @clientEngineJS = @bundleJS()
-            @server.listen(@config.port, callback)
-
-    getClientEngineJS : () -> return @clientEngineJS
-
-    getClientEngineModified : () -> return @clientEngineModified
+        @server.get('/clientEngine.js', @routes.clientEngine)
 
     # Route corresponding to the file upload component
     setupFileUploadRoute : (url, mountPoint, uploaderComponent) ->
-        checkAuth = (req, res, next) ->
-            isAuthenticated(req, res, next, mountPoint)
+        checkAuth = (req, res, next) =>
+            @authentication.isAuthenticated(req, res, next, mountPoint)
         uploadHandler = (req, res, next) ->
             fileUpload(req, res, next, mountPoint, uploaderComponent)
         @server.post(url, checkAuth, uploadHandler)
@@ -104,52 +86,52 @@ class HTTPServer extends EventEmitter
         @server.get('/googleAuth', Passport.authenticate('google'))
         # This is the URL google redirects the client to after authentication
         @server.get('/checkauth', Passport.authenticate('google'),
-            authStrategies.google)
+            @routes.authStrategies.google)
 
     setupLandingPage : (app) ->
         mountPoint = app.getMountPoint()
-        checkAuth = (req, res, next) ->
-            isAuthenticated(req, res, next, mountPoint)
+        checkAuth = (req, res, next) =>
+            @authentication.isAuthenticated(req, res, next, mountPoint)
 
-        @server.get(mountPoint, checkAuth, browser.create)
+        @server.get(mountPoint, checkAuth, @routes.browser.create)
         @server.get(@constructBrowserRoute(mountPoint), checkAuth,
-            browser.serve)
+            @routes.browser.serve)
         @server.get(@constructResourceRoute(mountPoint), checkAuth,
-            serveResource)
+            @routes.serveResource)
 
     setupAuthenticationInterface : (app) ->
         mountPoint = app.getMountPoint()
-        checkNotAuth = (req, res, next) ->
-            isNotAuthenticated(req, res, next, mountPoint)
+        checkNotAuth = (req, res, next) =>
+            @authentication.isNotAuthenticated(req, res, next, mountPoint)
 
-        @server.get(mountPoint, checkNotAuth, browser.create)
+        @server.get(mountPoint, checkNotAuth, @routes.browser.create)
         @server.get(@constructBrowserRoute(mountPoint), checkNotAuth,
-            browser.serve)
+            @routes.browser.serve)
         @server.get(@constructResourceRoute(mountPoint), checkNotAuth,
-            serveResource)
+            @routes.serveResource)
 
     setupAuthRoutes : (app, mountPoint) ->
         mountPoint = app.getMountPoint()
-        checkAuth = (req, res, next) ->
-            isAuthenticated(req, res, next, mountPoint)
-        isAuthorized = (req, res, next) ->
-            authorize(req, res, next, mountPoint)
+        checkAuth = (req, res, next) =>
+            @authentication.isAuthenticated(req, res, next, mountPoint)
+        isAuthorized = (req, res, next) =>
+            @authentication.authorize(req, res, next, mountPoint)
 
-        @server.get(mountPoint, checkAuth, browser.create)
+        @server.get(mountPoint, checkAuth, @routes.browser.create)
         @server.get(@constructBrowserRoute(mountPoint), checkAuth,
-            isAuthorized, browser.serve)
+            isAuthorized, @routes.browser.serve)
         @server.get(@constructResourceRoute(mountPoint), checkAuth,
-            serveResource)
-        @server.get("#{mountPoint}/logout", logout)
-        @server.get("#{mountPoint}/activate/:token", user.activate)
-        @server.get("#{mountPoint}/deactivate/:token", user.deactivate)
+            @routes.serveResource)
+        @server.get("#{mountPoint}/logout", @routes.logout)
+        @server.get("#{mountPoint}/activate/:token", @routes.user.activate)
+        @server.get("#{mountPoint}/deactivate/:token", @routes.user.deactivate)
         @server.get("#{mountPoint}/application_instance/:appInstanceID",
-            serveAppInstance)
+            @routes.serveAppInstance)
 
     setupRoutes : (app, mountPoint) ->
-        @server.get(mountPoint, browser.create)
-        @server.get(@constructBrowserRoute(mountPoint), browser.serve)
-        @server.get(@constructResourceRoute(mountPoint), serveResource)
+        @server.get(mountPoint, @routes.browser.create)
+        @server.get(@constructBrowserRoute(mountPoint), @routes.browser.serve)
+        @server.get(@constructResourceRoute(mountPoint), @routes.serveResource)
 
     # TODO: It would be nice to extract this, since it's useful just to
     # provide endpoints for serving browsers without providing routes for
@@ -176,20 +158,6 @@ class HTTPServer extends EventEmitter
     removeRoute : (path) ->
         @server.routes.routes.get =
             r for r in @server.routes.routes.get when r.path isnt path
-
-    bundleJS : () ->
-        b = Browserify
-            require : [Path.resolve(__dirname, '..', 'client', 'client_engine')]
-            ignore : ['socket.io-client', 'weak', 'xmlhttprequest']
-            filter : (src) =>
-                if @config.compressJS then return Uglify(src)
-                else return src
-        return b.bundle()
-
-    gzipJS : (js, callback) ->
-        ZLib.gzip js, (err, data) ->
-            throw err if err
-            callback(data)
 
     setupDeploymentEndPoints : () ->
         # Note : Can't use digest access authentication as we don't have the plaintext

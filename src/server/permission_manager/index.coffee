@@ -1,16 +1,16 @@
 Async = require('async')
 CacheManager           = require('./cache_manager')
-AppPermissions         = require('./application_permissions')
 SystemPermissions      = require('./system_permissions')
-BrowserPermissions     = require('./browser_permissions')
-AppInstancePermissions = require('./app_instance_permissions')
 
 class UserPermissionManager extends CacheManager
     collectionName = "Permissions"
 
-    constructor : (@mongoInterface) ->
+    constructor : (@mongoInterface, callback) ->
         super(SystemPermissions)
-        @dbOperation('addIndex', null, {_email:1})
+        @dbOperation('addIndex', null, {_email:1}, 
+            (err) =>
+                callback(err,this)
+            )
 
     dbOperation : (op, user, info, callback) ->
         if not typeof @mongoInterface[op] is "function" then return

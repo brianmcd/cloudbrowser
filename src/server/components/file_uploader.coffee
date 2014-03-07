@@ -1,19 +1,21 @@
 Hat       = require('hat')
 Component = require('./component')
+lodash = require('lodash')
 
 class FileUpload extends Component
     constructor : (@options, @rpcMethod, @container) ->
         
 class FileUploaderManager
     constructor : (options, rpcMethod, container) ->
+        #this is odd
         return FileUploaderManager.create(options, rpcMethod, container)
 
     @fileUploaders : {}
 
     @create : (options, rpcMethod, container, id = FileUploaderManager.generateUUID()) ->
-        CBServer       = require('../')
-        {domain, port} = CBServer.getConfig()
-        httpServer     = CBServer.getHttpServer()
+        {cbServer} = options
+        {domain, port} = cbServer.config
+        httpServer     = cbServer.httpServer
         relativeURL    = "/fileUpload/#{id}"
         {mountPoint}   = options.cloudbrowser
 
@@ -21,9 +23,11 @@ class FileUploaderManager
         # side (actual) component.
         options.cloudbrowser =
             postURL : "http://#{domain}:#{port}#{relativeURL}"
-
+        # TODO: omit the cbServer when create FileUpload, because components will 
+        # be serialized when socket emit PageLoaded event, cbServer is a circular
+        # struct and FileUpload constructor do not use cbServer anyway.
         uploader = FileUploaderManager.fileUploaders[id] =
-            new FileUpload(options, rpcMethod, container)
+            new FileUpload(lodash.omit(options,'cbServer'), rpcMethod, container)
 
         httpServer.setupFileUploadRoute(relativeURL, mountPoint, uploader)
 

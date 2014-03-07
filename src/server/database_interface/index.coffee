@@ -5,18 +5,40 @@ MongoStore = require('connect-mongo')(Express)
 
 # TODO : Use Mongoose
 
-class MongoInterface
-    constructor : (dbName, callback) ->
+class DatabaseInterface
+    #dbConfig is of type config.DatabaseConfig
+    constructor : (dbConfig, callback) ->
+        @appCollection = 'applications'
+        @adminCollection  = 'admin_interface.users'
         # Ensures unique database for every user of the system
         # but will use the same database for multiple instances
         # of cloudbrowser run by the same user
-        dbName = "UID#{process.getuid()}-#{dbName}"
+        dbName = "UID#{process.getuid()}-#{dbConfig.dbName}"
+        # TODO should be configurable
         @dbClient = new Mongo.Db(dbName,
             new Mongo.Server("127.0.0.1", 27017, options:{auto_reconnect:true}))
-        @dbClient.open (err, pClient) ->
-            callback?(err)
-        @mongoStore = new MongoStore({db:"#{dbName}_sessions"})
-        @appCollection = "applications"
+        Async.series([
+                        (next) =>
+                            @dbClient.open (err, pClient) ->
+                                next(err)
+                        ,
+                        (next) =>
+                            @mongoStore = new MongoStore(
+                                {db:"#{dbName}_sessions"}, 
+                                (collection) ->
+                                    next(null)
+                                )
+
+                    ], 
+                    (err, results) =>
+                        callback(err, this)
+        )
+        
+    findAdminUser : (searchKey,callback) ->
+        @findUser(searchKey,@adminCollection,callback)
+
+    addAdminUser : (users,callback) ->
+        @addUser(users,@adminCollection,callback)
 
     findUser : (searchKey, collectionName, callback) ->
         Async.waterfall [
@@ -89,6 +111,7 @@ class MongoInterface
                 collection.remove(searchKey, next)
         ], callback
 
+    # TODO should be part of session manager
     getSession : (sessionID, callback) ->
         @mongoStore.get(sessionID, callback)
 
@@ -149,4 +172,4 @@ class MongoInterface
                 collection.ensureIndex(index, {unique:true}, next)
         ], callback
 
-module.exports = MongoInterface
+module.exports = DatabaseInterface

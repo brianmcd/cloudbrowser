@@ -42,11 +42,11 @@ class Authentication
             return callback?(cloudbrowserError('PARAM_MISSING', '- user'))
 
         {bserver, cbCtx} = _pvts[@_idx]
-        CBServer         = require("../server")
-        {domain, port}   = CBServer.getConfig()
+        
+        {domain, port}   = bserver.server.config
 
         mountPoint = getParentMountPoint(bserver.mountPoint)
-        appManager = CBServer.getAppManager()
+        appManager = bserver.server.applicationManager
         app    = appManager.find(mountPoint)
         appUrl = "http://#{domain}:#{port}#{mountPoint}"
         token  = null
@@ -93,8 +93,8 @@ class Authentication
     resetPassword : (password, callback) ->
         {bserver}  = _pvts[@_idx]
         mountPoint = getParentMountPoint(bserver.mountPoint)
-        CBServer   = require("../server")
-        appManager = CBServer.getAppManager()
+        sessionManager = bserver.server.sessionManager
+        appManager = bserver.server.applicationManager
         app     = appManager.find(mountPoint)
         session = null
 
@@ -107,8 +107,8 @@ class Authentication
             (result, next) ->
                 # Reset the key and salt for the corresponding user
                 app.resetUserPassword
-                    email : SessionManager.findPropOnSession(session, 'resetuser')
-                    token : SessionManager.findPropOnSession(session, 'resettoken')
+                    email : sessionManager.findPropOnSession(session, 'resetuser')
+                    token : sessionManager.findPropOnSession(session, 'resettoken')
                     salt  : result.salt.toString('hex')
                     key   : result.key.toString('hex')
                     callback : next

@@ -103,22 +103,20 @@ class VirtualBrowser extends EventEmitter
         @broadcastEvent('Redirect', URL)
        
     getSessions : (callback) ->
-        CBServer = require('../')
-        mongoInterface = CBServer.getMongoInterface()
+        mongoInterface = @server.mongoInterface
         getFromDB = (socket, callback) ->
             sessionID = socket.handshake.sessionID
             mongoInterface.getSession(sessionID, callback)
         Async.map(@sockets, getFromDB, callback)
 
     getFirstSession : (callback) ->
-        CBServer = require('../')
-        mongoInterface = CBServer.getMongoInterface()
+        mongoInterface = @server.mongoInterface
         sessionID = @sockets[0].handshake.sessionID
         mongoInterface.getSession(sessionID, callback)
 
     # arg can be an Application or URL string.
     load : (arg) ->
-        if not arg then arg = @server.applications.find(@mountPoint)
+        if not arg then arg = @server.applicationManager.find(@mountPoint)
         @browser.load(arg)
         weakRefToThis = Weak(this, cleanupBserver(@id))
         EmbedAPI(weakRefToThis)
@@ -210,7 +208,12 @@ class VirtualBrowser extends EventEmitter
                     args = Array.prototype.slice.call(arguments)
                     args.push(socket)
                     # Weak ref not required here
-                    func.apply(this, args)
+                    try
+                        func.apply(this, args)
+                    catch e
+                        console.log e
+                    
+                    
         socket.on 'disconnect', () =>
             @sockets       = (s for s in @sockets       when s != socket)
             @queuedSockets = (s for s in @queuedSockets when s != socket)
@@ -467,7 +470,7 @@ RPCMethods =
             @broadcastEvent('resumeRendering', id)
             if @server.config.traceMem
                 gc()
-            @server.processedEvents++
+            @server.eventTracker.inc()
             #console.log("Finished processing event: #{serverEv.type}")
 
     # Takes a clientEv (an event generated on the client and sent over DNode)

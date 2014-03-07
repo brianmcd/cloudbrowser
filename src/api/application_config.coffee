@@ -57,7 +57,7 @@ class AppConfig
     _pvts = []
 
     constructor : (options) ->
-        {app, userCtx, cbCtx} = options
+        {cbServer, app, userCtx, cbCtx} = options
 
         # Defining @_idx as a read-only property
         Object.defineProperty this, "_idx",
@@ -65,6 +65,7 @@ class AppConfig
 
         # Private instance variables
         _pvts.push
+            cbServer : cbServer
             app     : if app.parent? then app.parent else app
             cbCtx   : cbCtx
             userCtx : userCtx
@@ -95,9 +96,8 @@ class AppConfig
         @memberOf AppConfig
     ###
     getUrl : () ->
-        {app} = _pvts[@_idx]
-        CBServer = require('../server')
-        {domain, port} = CBServer.getConfig()
+        {cbServer, app} = _pvts[@_idx]
+        {domain, port} = cbServer.config
         return "http://#{domain}:#{port}#{app.getMountPoint()}"
 
     ###*
@@ -372,9 +372,9 @@ class AppConfig
                 userCtx = new User(arguments[0])
             else return
 
-        {app, cbCtx} = _pvts[@_idx]
-        CBServer = require('../server')
-        permissionManager = CBServer.getPermissionManager()
+        {cbServer, app, cbCtx} = _pvts[@_idx]
+        
+        permissionManager = cbServer.permissionManager
         mountPoint = app.getMountPoint()
         Browser = require('./browser')
 
@@ -422,9 +422,9 @@ class AppConfig
     getAppInstances : (callback) ->
         if typeof callback isnt "function" then return
 
-        {userCtx, app, cbCtx} = _pvts[@_idx]
-        CBServer = require('../server')
-        permissionManager = CBServer.getPermissionManager()
+        {cbServer, userCtx, app, cbCtx} = _pvts[@_idx]
+        
+        permissionManager = cbServer.permissionManager
         mountPoint = app.getMountPoint()
         AppInstance = require('./app_instance')
 
@@ -435,6 +435,7 @@ class AppConfig
                 appInstances = []
                 for id, appInstanceRec of appInstanceRecs
                     appInstances.push new AppInstance
+                        cbServer : cbServer
                         appInstance : app.appInstances.find(id)
                         userCtx : userCtx
                         cbCtx   : cbCtx
@@ -463,9 +464,9 @@ class AppConfig
         ]
         if validEvents.indexOf(event) is -1 then return
 
-        {userCtx, cbCtx, app} = _pvts[@_idx]
-        CBServer = require('../server')
-        permissionManager = CBServer.getPermissionManager()
+        {cbServer, userCtx, cbCtx, app} = _pvts[@_idx]
+        permissionManager = cbServer.permissionManager
+
         mountPoint = app.getMountPoint()
 
         # Events "addUser" and "removeUser" can be listened to
@@ -486,13 +487,14 @@ class AppConfig
 
         switch event
             when "share"
-                app["#{entityName}s"].on event, (id, userInfo) ->
+                app["#{entityName}s"]?.on event, (id, userInfo) ->
                     if userInfo instanceof User
                         user = userInfo
                     else
                         user = userInfo.user
                     if not userCtx.getEmail() is user.getEmail() then return
                     options =
+                        cbServer : cbServer
                         cbCtx   : cbCtx
                         userCtx : userCtx
                     entity = app["#{entityName}s"].find(id)
@@ -572,9 +574,9 @@ class AppConfig
         @memberOf AppConfig
     ###
     createAppInstance : (callback) ->
-        {app, cbCtx, userCtx} = _pvts[@_idx]
-        CBServer = require('../server')
-        permissionManager = CBServer.getPermissionManager()
+        {cbServer, app, cbCtx, userCtx} = _pvts[@_idx]
+        
+        permissionManager = cbServer.permissionManager
         AppInstance = require('./app_instance')
 
         Async.waterfall [
@@ -590,6 +592,8 @@ class AppConfig
             (canCreate, next) ->
                 if not canCreate then next(cloudbrowserError("PERM_DENIED"))
                 else app.appInstances.create(userCtx, next)
+                # TODO : appInstances is not set if appInstanceProvider is not provides.
+                # leading a crash
         ], (err, appInstance) ->
             if err then callback?(err)
             else callback null, new AppInstance

@@ -70,8 +70,7 @@ class Browser
         {bserver}  = _pvts[@_idx]
         id         = bserver.getID()
         mountPoint = bserver.getMountPoint()
-        CBServer = require('../server')
-        {domain, port} = CBServer.getConfig()
+        {domain, port} = bserver.server.config
         return "http://#{domain}:#{port}#{mountPoint}/browsers/#{id}/index"
 
     ###*
@@ -126,13 +125,13 @@ class Browser
         # Mountpoint needed for authentication in case of
         # the file uploader component
         options.cloudbrowser = {mountPoint : bserver.getMountPoint()}
+        options.cbServer = bserver.server
         # Create the component
         comp = browser.components[targetID] =
             new Ctor(options, rpcMethod, target)
         clientComponent = [name, targetID, comp.getRemoteOptions()]
         browser.clientComponents.push(clientComponent)
         browser.emit('CreateComponent', clientComponent)
-
         return target
 
     ###*
@@ -146,10 +145,10 @@ class Browser
         {bserver, cbCtx, userCtx} = _pvts[@_idx]
         mountPoint = bserver.getMountPoint()
         AppConfig  = require("./application_config")
-        CBServer   = require('../server')
-        app = CBServer.getAppManager().find(mountPoint)
+        app = bserver.server.applicationManager.find(mountPoint)
 
         return new AppConfig({
+            cbServer : bserver.server
             cbCtx   : cbCtx
             userCtx : userCtx
             app     : app
@@ -164,8 +163,8 @@ class Browser
     ###
     close : (callback) ->
         {bserver, userCtx} = _pvts[@_idx]
-        CBServer   = require('../server')
-        appManager = CBServer.getAppManager()
+        
+        appManager = bserver.server.applicationManager
         app = appManager.find(bserver.getMountPoint())
 
         if userCtx.getEmail() is "public"
@@ -197,8 +196,8 @@ class Browser
     ###
     getResetEmail : (callback) ->
         {bserver} = _pvts[@_idx]
-        CBServer   = require('../server')
-        mongoInterface = CBServer.getMongoInterface()
+        
+        mongoInterface = bserver.server.mongoInterface
 
         bserver.getFirstSession (err, session) ->
             return callback(err) if err
@@ -477,8 +476,8 @@ class Browser
     grantPermissions : (permission, user, callback) ->
         {bserver, userCtx} = _pvts[@_idx]
         {mountPoint, id}    = bserver
-        CBServer = require('../server')
-        permissionManager = CBServer.getPermissionManager()
+        
+        permissionManager = bserver.server.permissionManager
 
         Async.waterfall [
             (next) ->
@@ -536,6 +535,7 @@ class Browser
                 cbCtx       : cbCtx
                 userCtx     : userCtx
                 appInstance : appInstance
+                cbServer    : bserver.server
 
     ###*
         Gets the local state with the current browser

@@ -51,10 +51,12 @@
     "tar": "0.1.18",
     "fstream": "0.1.24",
     "http-auth": "1.2.7",
-    "nwglobal": "0.0.1"
+    "nwglobal": "0.0.1",
+    "lodash" : "2.4.1",
+    "http-proxy" : "1.0.2"
   },
   "devDependencies": {
-    "nodeunit": "0.6.4",
+    "nodeunit": "0.8.6",
     "mocha": "1.12.0",
     "sinon": "1.7.3",
     "chai" : "1.7.2",
