@@ -32,7 +32,7 @@ class Config
         @cmdOptions = parseOptionsFromCmd()
 
         # List of all the unmatched positional args (the path names)
-        @paths = (path for path in @cmdOptions._)
+        @paths = (pathFromCmd for pathFromCmd in @cmdOptions._)
         #paths.push(path) for path in @cmdOptions._
 
         @projectRoot = path.resolve(__dirname, '../..')

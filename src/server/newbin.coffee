@@ -50,6 +50,11 @@ class Runner
                         config=results.config
                         new DatabaseInterface(config.databaseConfig, callback)
                     ],
+            'uuidService' : ['config',
+                    (callback, results) ->
+                        UuidService = require('./uuid_service')
+                        new UuidService(results, callback)
+            ],
             # the user config need to be loaded from database
             'loadUserConfig' : ['database',
                                 (callback,results) ->
@@ -71,17 +76,9 @@ class Runner
                                 new HTTPServer(results, callback)
             ],
             'applicationManager' : ['eventTracker','permissionManager',
-                                    'database','httpServer', 'sessionManager',
+                                    'database','httpServer', 'sessionManager','uuidService',
                                     (callback,results) ->
                                         new ApplicationManager(results,callback);
-            ],
-            # routes in http server depend applicationManager! 
-            'setUpRoutes' : ['httpServer', 'applicationManager', 
-                            (callback,results) ->
-                                results.httpServer.setAppManager(results.applicationManager)
-                                #this function should accept a callback
-                                results.applicationManager.loadApplications()
-                                callback null, null
             ],
             'socketIOServer':['httpServer','applicationManager','sessionManager', 'permissionManager',
                                 (callback,results) ->

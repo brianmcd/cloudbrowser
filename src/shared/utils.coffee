@@ -52,8 +52,8 @@ exports.noCacheRequire = (name, regExp) ->
 
 
 logConfigFileError = (path, content) ->
-    console.log "Parse error in file #{path}."
-    console.log "The file's content was:"
+    console.log "Parse error in file #{path}"
+    console.log "The file's content is:"
     console.log fileContent
 
 # Parsing the json file into opts

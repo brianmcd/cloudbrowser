@@ -94,7 +94,7 @@ class LocalStrategy
             else bserver.redirect(appUrl)
             bserver.once 'NoClients', () ->
                 app = appManager.find(bserver.mountPoint)
-                app.browsers.close(bserver)
+                app.closeBrowser(bserver)
 
     ###*
         Registers a user with the application and sends a confirmation email to the user's registered email ID.
@@ -195,7 +195,7 @@ class GoogleStrategy
             bserver.once 'NoClients', () ->
                 appManager = bserver.server.applicationManager
                 app = appManager.find(bserver.mountPoint)
-                app.browsers.close(bserver)
+                app.closeBrowser(bserver)
 
 module.exports =
     LocalStrategy  : LocalStrategy

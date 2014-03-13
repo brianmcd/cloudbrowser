@@ -23,6 +23,7 @@ class DatabaseInterface
                                 next(err)
                         ,
                         (next) =>
+                            # using default setting localhost and 27017
                             @mongoStore = new MongoStore(
                                 {db:"#{dbName}_sessions"}, 
                                 (collection) ->

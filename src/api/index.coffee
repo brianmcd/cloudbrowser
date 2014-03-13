@@ -48,7 +48,9 @@ class CloudBrowser
             userCtx : creator
             cbCtx   : this
 
-        if @currentBrowser.getAppConfig().isAuthConfigured()
+        appConfig = @currentBrowser.getAppConfig()
+        # TODO 
+        if appConfig.isAuthConfigured() or appConfig.isAuthApp()
             @auth = new Authentication
                 bserver : bserver
                 cbCtx   : this

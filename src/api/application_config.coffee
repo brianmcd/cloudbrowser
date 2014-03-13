@@ -227,6 +227,16 @@ class AppConfig
         return _pvts[@_idx].app.isAuthConfigured()
 
     ###*
+        Checks if the current app is authentication app
+        @method isAuthConfigured
+        @return {Bool}
+        @instance
+        @memberOf AppConfig
+    ###
+    isAuthApp : () ->
+        return _pvts[@_idx].app.isAuthApp()
+
+    ###*
         Enables the authentication interface.
         @method enableAuthentication
         @instance
@@ -399,13 +409,14 @@ class AppConfig
         @memberOf AppConfig
     ###
     getAllBrowsers : () ->
-        if not @isOwner() then return
+        browsers     = []
+        if not @isOwner() then return browsers
 
         {app, userCtx, cbCtx} = _pvts[@_idx]
-        browsers     = []
+        
         Browser      = require('./browser')
 
-        for id, browser of app.browsers.get()
+        for id, browser of app.getAllBrowsers()
             browsers.push new Browser
                 browser : browser
                 userCtx : userCtx

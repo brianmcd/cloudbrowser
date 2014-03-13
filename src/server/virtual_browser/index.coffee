@@ -29,7 +29,8 @@ class VirtualBrowser extends EventEmitter
 
     constructor : (vbInfo) ->
 
-        {@server, @id, @mountPoint} = vbInfo
+        {@server, @id, @mountPoint, @appInstance} = vbInfo
+        @appInstanceId = @appInstance.id
         weakRefToThis = Weak(this, cleanupBserver(@id))
 
         @browser = new Browser(@id, weakRefToThis, @server.config)
@@ -77,9 +78,6 @@ class VirtualBrowser extends EventEmitter
     getBrowser : () -> return @browser
 
     getMountPoint : () -> return @mountPoint
-
-    setAppInstance : (appInstance) ->
-        @appInstance = appInstance
 
     getAppInstance : () ->
         return @appInstance
