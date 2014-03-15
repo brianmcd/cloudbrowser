@@ -80,7 +80,7 @@ class AuthApp extends BaseApplication
     # the authentication_interface
     _checkNotAuth : (req, res, next) ->
         # If user is already logged in then redirect to application
-        if not @sessionManager.findAppUserID(req, @baseMountPoint)
+        if not @sessionManager.findAppUserID(req.session, @baseMountPoint)
             next()
         else routes.redirect(res, @baseMountPoint)
 

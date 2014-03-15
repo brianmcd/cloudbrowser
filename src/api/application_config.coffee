@@ -602,7 +602,9 @@ class AppConfig
                     permissions : ['own', 'createBrowsers']
             (canCreate, next) ->
                 if not canCreate then next(cloudbrowserError("PERM_DENIED"))
-                else app.appInstances.create(userCtx, next)
+                else 
+                    appInstanceManager = if app.isStandalone() then app.appInstanceManager else app.parentApp.appInstanceManager
+                    appInstanceManager.create(userCtx, next)
                 # TODO : appInstances is not set if appInstanceProvider is not provides.
                 # leading a crash
         ], (err, appInstance) ->

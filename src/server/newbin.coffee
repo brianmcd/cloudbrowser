@@ -48,7 +48,7 @@ class Runner
             'database' : ['config',
                     (callback,results) ->
                         config=results.config
-                        new DatabaseInterface(config.databaseConfig, callback)
+                        new DatabaseInterface(config.serverConfig.databaseConfig, callback)
                     ],
             'uuidService' : ['config',
                     (callback, results) ->

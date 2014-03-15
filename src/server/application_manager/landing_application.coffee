@@ -9,7 +9,8 @@ class LandingApplication extends BaseApplication
         @config = AppConfig.newConfig(Path.resolve(__dirname,'../applications/landing_page'))
         @config.appConfig.instantiationStrategy = 'singleUserInstance'
         @config.deploymentConfig.authenticationInterface = true
-        {@server} = @parentApp
+        # need authApp to handle authentication in _mountPointHandler
+        {@server, @authApp} = @parentApp
         super(@config, @server)
         @baseMountPoint = @parentApp.mountPoint
         @mountPoint = routes.concatRoute(@baseMountPoint, '/landing_page')
@@ -17,13 +18,13 @@ class LandingApplication extends BaseApplication
 
     mount : () ->
         @httpServer.mount(@mountPoint, 
-            @parentApp.authApp.checkAuth, 
+            @authApp.checkAuth, 
             @mountPointHandler)
         @httpServer.mount(routes.concatRoute(@mountPoint, routes.browserRoute), 
-            @parentApp.authApp.checkAuth,
+            @authApp.checkAuth,
             @serveVirtualBrowserHandler)
         @httpServer.mount(routes.concatRoute(@mountPoint, routes.resourceRoute), 
-            @parentApp.authApp.checkAuth,
+            @authApp.checkAuth,
             @serveResourceHandler)
         @mounted = true
 

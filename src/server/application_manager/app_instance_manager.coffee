@@ -50,6 +50,12 @@ class AppInstanceManager extends EventEmitter
             throw new Error('newAppInstance method is only for default initiation strategy')
         return @_createAppInstance()
 
+    create :(user, callback) ->
+        if not @app.isMultiInstance()
+            throw new Error('create method is only for multiInstance initiation strategy')        
+        callback null, @_createAppInstance(user)
+
+
 
     find : (id) ->
         return @weakRefsToAppInstances[id]

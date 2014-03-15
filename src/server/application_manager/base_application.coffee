@@ -119,9 +119,11 @@ class BaseApplication extends EventEmitter
                 
         if @isSingleInstancePerUser()    
             # get or create instance for user
-            user = @sessionManager.findAppUserID(req.session, @mountPoint)
+            mountPoint = if this.isStandalone() then @mountPoint else @parentApp.mountPoint
+            user = @sessionManager.findAppUserID(req.session, mountPoint)
             if not user?
                 return @authApp._mountPointHandler(req, res, next)
+            # if the user has logged in, create appInstance and browsers
             appInstance = @appInstanceManager.getUserAppInstance(user)
             bserver = appInstance.getBrowser()
             return routes.redirect(res, 
@@ -181,6 +183,9 @@ class BaseApplication extends EventEmitter
     # unless you are the authentication app
     isAuthApp :() ->
         return false
+    # defualt false, auth, password rest and landing page are not standalone
+    isStandalone : () ->
+        return false
 
     # user authenticate stuff
     # TODO 
@@ -200,6 +205,7 @@ class BaseApplication extends EventEmitter
     
     closeBrowser : (vbrowser) ->
         vbrowser.close()
+
 
             
 

@@ -24,7 +24,8 @@ class AppInstance extends EventEmitter
         @server } = options
         {@uuidService} = @server
         if not @dateCreated then @dateCreated = new Date()
-        @owner = if owner instanceof User then owner else new User(owner._email)
+        if owner?
+            @owner = if owner instanceof User then owner else new User(owner._email)
         @readerwriters = []
         if readerwriters then for readerwriter in readerwriters
             @addReaderWriter(new User(readerwriter._email))

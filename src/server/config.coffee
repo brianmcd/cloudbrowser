@@ -12,7 +12,7 @@ utils = require '../shared/utils'
 
 ###
 read write config from config file and command line
-config class for the whole application. Config depends on datase system to get 
+config class for the whole application. Config depends on datase system to get
 user configurations. Need to setDataBase before invoke loadUserConfig to load
 user configurations.
 ###
@@ -36,9 +36,10 @@ class Config
         #paths.push(path) for path in @cmdOptions._
 
         @projectRoot = path.resolve(__dirname, '../..')
-        @databaseConfig=new DatabaseConfig
-        @serverConfigPath = "#{@projectRoot}/server_config.json"
-        @emailerConfigPath = "#{@projectRoot}/emailer_config.json"
+        configPath = if @cmdOptions.configPath? then @cmdOptions.configPath else @projectRoot
+
+        @serverConfigPath = "#{configPath}/server_config.json"
+        @emailerConfigPath = "#{configPath}/emailer_config.json"
 
         #read serverConfig and emailerConfig from file
         async.parallel({
@@ -162,7 +163,7 @@ readUserFromStdin = (database, prompt, callback) ->
 #   traceProtocol       - bool - Log protocol messages to #{browserid}-rpc.log.
 #   useRouter           - bool - Use a front-end router process with each app server
 #                                in its own process.
-#   class for serverConfig, set the default value on the object own properties to make them 
+#   class for serverConfig, set the default value on the object own properties to make them
 #   visible in console.log
 class ServerConfig
     constructor: () ->
@@ -186,19 +187,28 @@ class ServerConfig
         @useRouter = false
         @admins = []
         @defaultUser = null
+        @proxyDomain = null
+        @proxyPort = null
+        @name = 'worker1'
 
-      
+
 
 
 
 class DatabaseConfig
     constructor: () ->
         @dbName = 'cloudbrowser'
+        @host = 'localhost'
+        @port = 27017
+        @type = 'mongoDB'
 
 
 #get options from cmd
 parseOptionsFromCmd = () ->
   options =
+    configPath :
+      flag : true
+      help : 'configuration path, default [ProjectRoot]'
     deployment :
       flag    : true
       help    : "Start the server in deployment mode"
@@ -282,6 +292,15 @@ newServerConfig = (fileName,cmdOptions,callback) ->
     for own k, v of cmdOptions
         if serverConfig.hasOwnProperty(k)
             serverConfig[k] = v
+    # default value for proxyDomain and proxyPort
+    if not serverConfig.proxyDomain? 
+      serverConfig.proxyDomain = serverConfig.domain
+    if not serverConfig.proxyPort?
+      serverConfig.proxyPort = serverConfig.port
+    # merge the default database settings
+    oldDBConfig = serverConfig.databaseConfig
+    serverConfig.databaseConfig = new DatabaseConfig()
+    lodash.merge(serverConfig.databaseConfig, oldDBConfig)
     callback null, serverConfig
 
   fs.exists fileName, (exists) ->
