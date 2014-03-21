@@ -232,6 +232,7 @@ RPCMethods =
         @eventMonitor.add(type)
 
     Redirect : (URL) ->
+        console.log "redirect to #{URL}"
         window.location = URL
        
     disconnect : () ->

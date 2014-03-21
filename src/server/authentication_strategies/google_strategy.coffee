@@ -9,8 +9,8 @@ class GoogleStrategy
         # 3. A validate callback that calls done() with the user constructed from the information
         # returned by google
         Passport.use new Strategy
-            returnURL : "http://#{config.domain}:#{config.port}/checkauth"
-            realm     : "http://#{config.domain}:#{config.port}"
+            returnURL : "http://#{config.getHttpAddr()}/checkauth"
+            realm     : "http://#{config.getHttpAddr()}"
         , (identifier, profile, done) ->
             done(null, {email : profile.emails[0].value})
 

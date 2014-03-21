@@ -50,10 +50,9 @@ class Runner
                     if err
                         return @handlerInitializeError(err)
                     console.log "retriving config from master"
-                    console.log JSON.stringify(stub.obj.workerManager)
-
                     stub.obj.workerManager.registerWorker(serverConfig.getWorkerConfig())
-                    @config.proxyConfig = stub.obj.config.proxyConfig
+                    # configuration of proxy settings
+                    @config.setProxyConfig(stub.obj.config.proxyConfig)
                     @masterStub = stub
                     @initializeOtherComponets()
                 )

@@ -1,5 +1,5 @@
 urlModule = require('url')
-
+lodash = require('lodash')
 # using express's router to do path matching
 router = require('express').router
 routes = require('../server/application_manager/routes')
@@ -8,18 +8,33 @@ mountPointRoute = '/:mountPoint'
 subMountPointRoute = '/:mountPoint/:subApp'
 
 routers = {
+    routersMap : {}
     array : []
 
     addRoute : (appInfo) ->
         {mountPoint} = appInfo
+        if @routersMap[mountPoint]?
+            console.log "route for #{mountPoint} was registered"
+            return
+
         r = new router((app)->
             # the second argument will be passed in the matched result
             app.get(routes.concatRoute(mountPoint, routes.browserRoute), 
                 {pathType: 'browser', mountPoint: mountPoint})
             app.get(routes.concatRoute(mountPoint, routes.resourceRoute), 
                 {pathType: 'resource', mountPoint, mountPoint})
+            app.get(routes.concatRoute(mountPoint, '/*'), 
+                {pathType: 'other', mountPoint: mountPoint})
+            app.get(mountPoint, 
+                {pathType: 'root', mountPoint: mountPoint})
             )
+        r._mountPoint = mountPoint
+        @routersMap[mountPoint] = r
         @array.push(r)
+        # put the most specific path in the first
+        @array = lodash.sortBy(@array, (element)->
+            return 0 - element._mountPoint.length
+        )
 
     getRequestAppInfo: (path) ->
         matchResult = null

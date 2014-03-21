@@ -177,11 +177,7 @@ class ApplicationManager extends EventEmitter
         app = new Application(config, @server)
         @addApplication(app)
         app.mount()
-        @masterStub.obj.workerManager.registerApplication({
-            workerId: @config.serverConfig.id,
-            mountPoint : app.mountPoint
-            owner : app.owner
-            })
+        app.register()
 
     # path, type in options
     createAppFromDir : (options, callback) ->
@@ -228,6 +224,16 @@ class ApplicationManager extends EventEmitter
         # This is the URL google redirects the client to after authentication
         @httpServer.mount('/checkauth', Passport.authenticate('google'),
             lodash.bind(@_googleCheckAuthHandler,this))
+        stub = @masterStub.obj
+        stub.workerManager.registerApplication({
+            workerId : @config.serverConfig.id,
+            mountPoint : '/googleAuth'
+            })
+        stub.workerManager.registerApplication({
+            workerId : @config.serverConfig.id,
+            mountPoint : '/checkauth'
+            })
+
 
     _googleCheckAuthHandler : (req, res, next) ->
         if not req.user then redirect(res, mountPoint)

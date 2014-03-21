@@ -5,12 +5,15 @@ Weak                 = require('weak')
 {EventEmitter}       = require('events')
 Browser              = require('./browser')
 ResourceProxy        = require('./resource_proxy')
+
 DebugClient          = require('./debug_client')
 TestClient           = require('./test_client')
+{serialize}          = require('./serializer')
+routes               = require('../application_manager/routes')
 Compressor           = require('../../shared/compressor')
 EmbedAPI             = require('../../api')
 TaggedNodeCollection = require('../../shared/tagged_node_collection')
-{serialize}          = require('./serializer')
+
 {isVisibleOnClient}  = require('../../shared/utils')
 
 {eventTypeToGroup,
@@ -68,6 +71,9 @@ class VirtualBrowser extends EventEmitter
         @initLogs() if !@server.config.noLogs
 
     getID : () -> return @id
+
+    getUrl : () ->
+        return @server.config.getHttpAddr() + routes.buildBrowserPath(@mountPoint, @appInstanceId, @id)
 
     getDateCreated : () -> return @dateCreated
 

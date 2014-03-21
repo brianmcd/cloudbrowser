@@ -87,6 +87,10 @@ class BaseApplication extends EventEmitter
     getMountPoint : () ->
         return @mountPoint
 
+    getAppUrl : () ->
+        console.log "http://#{@server.config.getHttpAddr()}#{@mountPoint}"
+        return "http://#{@server.config.getHttpAddr()}#{@mountPoint}"
+
     getName : () ->
         @deploymentConfig.name
 
@@ -155,6 +159,17 @@ class BaseApplication extends EventEmitter
     mount : () ->
         @mounted = true
 
+    register : ()->
+        stub = @server.masterStub.obj
+        stub.workerManager.registerApplication({
+            workerId : @server.config.id,
+            mountPoint : @mountPoint,
+            owner : @owner
+            })
+        if @subApps?
+            for subApp in @subApps
+                subApp.register()
+            
 
     getAllBrowsers : () ->
         browsers = {}

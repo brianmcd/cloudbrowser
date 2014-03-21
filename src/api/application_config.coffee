@@ -96,9 +96,8 @@ class AppConfig
         @memberOf AppConfig
     ###
     getUrl : () ->
-        {cbServer, app} = _pvts[@_idx]
-        {domain, port} = cbServer.config
-        return "http://#{domain}:#{port}#{app.getMountPoint()}"
+        {app} = _pvts[@_idx]
+        return app.getAppUrl()
 
     ###*
         Gets the description of the application as provided in the

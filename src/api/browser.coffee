@@ -68,10 +68,7 @@ class Browser
     ###
     getURL : () ->
         {bserver}  = _pvts[@_idx]
-        id         = bserver.getID()
-        mountPoint = bserver.getMountPoint()
-        {domain, port} = bserver.server.config
-        return "http://#{domain}:#{port}#{mountPoint}/browsers/#{id}/index"
+        return bserver.getUrl()
 
     ###*
         Gets the date of creation of the instance.

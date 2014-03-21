@@ -99,6 +99,10 @@ class Config
         else
             callback(new Error('Should initialize database before loadUserConfig'))
 
+    setProxyConfig : (proxyConfig)->
+        @serverConfig.proxyHost = proxyConfig.host
+        @serverConfig.proxyPort = proxyConfig.httpPort
+
 
 
 isEmail = (str) ->
@@ -209,6 +213,19 @@ class ServerConfig
           httpPort : @port
           rmiPort : @rmiPort
         }
+    getHttpAddr: () ->
+        if not @httpAddr?
+            if @proxyHost?
+                @httpAddr = @proxyHost
+                if @proxyPort? and @proxyPort isnt 80
+                    @httpAddr = "#{@proxyHost}:#{@proxyPort}" 
+            else
+                # the server is not proxied
+                @httpAddr = @domain
+                if @port? and @port isnt 80
+                    @httpAddr = "#{@domain}:#{@port}"      
+        return @httpAddr
+        
 
 
 
