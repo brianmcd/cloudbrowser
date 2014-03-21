@@ -11,96 +11,72 @@ cleanupStates = (id) ->
 
 class AppInstanceManager extends EventEmitter
     constructor : (@appInstanceProvider, @server, @app) ->
-        @counter = 0
-        @appInstances  = {}
-        {@permissionManager} = @server
+        {@permissionManager, @uuidService} = @server
         @weakRefsToAppInstances = {}
+        @userToAppInstances = {}
+        @appInstances  = {}
 
-    create : (user, callback, id = @generateID(), name = @generateName()) ->
-        @appInstances[id] =
-            new AppInstance
-                id    : id
-                app   : @app
-                obj   : @appInstanceProvider.create()
-                name  : name
-                owner : user
-                server : @server
-        appInstance =
-            @weakRefsToAppInstances[id] = Weak(@appInstances[id], cleanupStates(id))
-        @setupProxyEventEmitter(appInstance)
-        @setupAutomaticStore(appInstance)
-        @permissionManager.addAppInstancePermRec
-            user        : user
-            mountPoint  : @app.getMountPoint()
-            permission  : 'own'
-            appInstanceID : id
-            callback : (err, appInstancePermRec) =>
-                return callback?(err) if err
-                callback?(null, appInstance)
-                @emit('add', id)
+    getAppInstance : () ->
+        if not @weakRefToAppInstance?
+            @weakRefToAppInstance = @_createAppInstance()
+            @appInstance = @appInstances[@weakRefToAppInstance.id]
+        return @weakRefToAppInstance
 
-    loadFromDbRec : (appInstanceRec) ->
-        {obj, owner, id, name, readerwriters, dateCreated} = appInstanceRec
-        if @find(id) then return
-        obj = @appInstanceProvider.load(obj)
-        owner = new User(owner._email)
-        @appInstances[id] = new AppInstance
-            id            : id
-            app           : @app
-            obj           : obj
-            name          : name
-            owner         : owner
-            dateCreated   : dateCreated
-            readerwriters : readerwriters
-            server        : @server
-        appInstance = @weakRefsToAppInstances[id] =
-            Weak(@appInstances[id], cleanupStates(id))
-        @setupProxyEventEmitter(appInstance)
-        @autoStoreID = @setupAutomaticStore(appInstance)
+    getUserAppInstance : (user) ->
+        if not user?
+            throw new Error('should specify user for getUserAppInstance')
+        email = if user._email? then user._email else user
+        if not @userToAppInstances[email]?
+            weakRefToAppInstance = @_createAppInstance(user)
+            @userToAppInstances[email] = weakRefToAppInstance
+        return @userToAppInstances[email]
 
-    # Stores to the database every 5 seconds
-    setupAutomaticStore : (appInstance) ->
-        intervalID = setInterval () =>
-            appInstance.store (obj) =>
-                @appInstanceProvider.store(obj)
-        , 5000
-        appInstance.setAutoStoreID(intervalID)
+    _createAppInstance :(user) ->
+        id = @uuidService.getId()
+        appInstance = new AppInstance ({
+            id : id
+            app : @app
+            obj : @appInstanceProvider?.create()
+            owner : if user? then user else @app.getOwner()
+            server : @server
+            })
+        @appInstances[id] = appInstance
+        weakRefToAppInstance = Weak(appInstance, cleanupStates(id))
+        @weakRefsToAppInstances[id] = weakRefToAppInstance
+        @server.masterStub.obj.workerManager.registerAppInstance({
+            workerId: @server.config.id,
+            appInstanceId : id
+            owner : appInstance.owner
+            })
+        return weakRefToAppInstance
 
-    setupProxyEventEmitter : (appInstance) ->
-        if @app.isAuthConfigured()
-            appInstance.on "share", (user) =>
-                @emit("share", appInstance.getID(), user)
+    newAppInstance : () ->
+        if @app.getInstantiationStrategy() isnt 'default'
+            throw new Error('newAppInstance method is only for default initiation strategy')
+        return @_createAppInstance()
+
+    create :(user, callback) ->
+        if not @app.isMultiInstance()
+            throw new Error('create method is only for multiInstance initiation strategy')        
+        callback null, @_createAppInstance(user)
+
+
 
     find : (id) ->
         return @weakRefsToAppInstances[id]
 
+    # should check permission, etc.
+    findBrowser : (appInstanceId, vBrowserId) ->
+        appInstance = @find(appInstanceId)
+        if appInstance?
+            return appInstance.findBrowser(vBrowserId)
+        return null
+        
     remove : (id, user, callback) ->
-        appInstance = @find(id)
-        if not appInstance then return
-        Async.waterfall [
-            (next) ->
-                appInstance.close(user, next)
-            (next) =>
-                @emit('remove', id)
-                delete @weakRefsToAppInstances[id]
-                delete @appInstances[id]
-                Async.each appInstance.getAllUsers()
-                , (user, callback) =>
-                    @permissionManager.rmAppInstancePermRec
-                        user          : user
-                        mountPoint    : @app.getMountPoint()
-                        appInstanceID : id
-                        callback      : callback
-                , next
-        ], callback
+        console.log "remove appInstance not implemented #{id}"
 
-    generateName : () ->
-        return @counter++
+    get : () ->
+        return @weakRefsToAppInstances
 
-    generateID : () ->
-        id = Hat()
-        while @find(id)
-            id = Hat()
-        return id
 
 module.exports = AppInstanceManager

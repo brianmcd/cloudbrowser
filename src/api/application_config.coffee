@@ -96,9 +96,8 @@ class AppConfig
         @memberOf AppConfig
     ###
     getUrl : () ->
-        {cbServer, app} = _pvts[@_idx]
-        {domain, port} = cbServer.config
-        return "http://#{domain}:#{port}#{app.getMountPoint()}"
+        {app} = _pvts[@_idx]
+        return app.getAppUrl()
 
     ###*
         Gets the description of the application as provided in the
@@ -225,6 +224,16 @@ class AppConfig
     ###
     isAuthConfigured : () ->
         return _pvts[@_idx].app.isAuthConfigured()
+
+    ###*
+        Checks if the current app is authentication app
+        @method isAuthConfigured
+        @return {Bool}
+        @instance
+        @memberOf AppConfig
+    ###
+    isAuthApp : () ->
+        return _pvts[@_idx].app.isAuthApp()
 
     ###*
         Enables the authentication interface.
@@ -399,13 +408,14 @@ class AppConfig
         @memberOf AppConfig
     ###
     getAllBrowsers : () ->
-        if not @isOwner() then return
+        browsers     = []
+        if not @isOwner() then return browsers
 
         {app, userCtx, cbCtx} = _pvts[@_idx]
-        browsers     = []
+        
         Browser      = require('./browser')
 
-        for id, browser of app.browsers.get()
+        for id, browser of app.getAllBrowsers()
             browsers.push new Browser
                 browser : browser
                 userCtx : userCtx
@@ -591,7 +601,9 @@ class AppConfig
                     permissions : ['own', 'createBrowsers']
             (canCreate, next) ->
                 if not canCreate then next(cloudbrowserError("PERM_DENIED"))
-                else app.appInstances.create(userCtx, next)
+                else 
+                    appInstanceManager = if app.isStandalone() then app.appInstanceManager else app.parentApp.appInstanceManager
+                    appInstanceManager.create(userCtx, next)
                 # TODO : appInstances is not set if appInstanceProvider is not provides.
                 # leading a crash
         ], (err, appInstance) ->

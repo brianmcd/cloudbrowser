@@ -1,7 +1,17 @@
 Async = require('async')
+Weak           = require('weak')
 {EventEmitter} = require('events')
+VirtualBrowser      = require('../virtual_browser')
+SecureVirtualBrowser = require('../virtual_browser/secure_virtual_browser')
 User           = require('../user')
 cloudbrowserError = require('../../shared/cloudbrowser_error')
+
+# Defining callback at the highest level
+# see https://github.com/TooTallNate/node-weak#weak-callback-function-best-practices
+# Dummy callback, does nothing
+cleanupBserver = (id) ->
+    return () ->
+        console.log "[Browser Manager] - Garbage collected vbrowser #{id}"
 
 class AppInstance extends EventEmitter
     constructor : (options) ->
@@ -9,16 +19,70 @@ class AppInstance extends EventEmitter
         , @obj
         , owner
         , @id
-        , @name
         , readerwriters
         , @dateCreated,
         @server } = options
+        {@uuidService} = @server
         if not @dateCreated then @dateCreated = new Date()
-        @owner = if owner instanceof User then owner else new User(owner._email)
+        if owner?
+            @owner = if owner instanceof User then owner else new User(owner._email)
         @readerwriters = []
         if readerwriters then for readerwriter in readerwriters
             @addReaderWriter(new User(readerwriter._email))
-        @browsers = []
+        @browsers = {}
+        @weakrefsToBrowsers = {}
+
+    getBrowser : ()->
+        if not @weakrefToBrowser
+            @browser = @createBrowser()
+            id = @browser.id
+            @weakrefToBrowser = @findBrowser(id)
+        return @weakrefToBrowser
+
+    findBrowser : (id) ->
+        @weakrefsToBrowsers[id]
+        
+    addBrowser : (vbrowser) ->
+        id = vbrowser.id
+        weakrefToBrowser = Weak(vbrowser, cleanupBserver(id))
+        @weakrefsToBrowsers[id] = weakrefToBrowser
+        @browsers[id] = vbrowser
+
+
+    _createSecure : () ->
+        vbrowser = @_createVirtualBrowser
+            type        : SecureVirtualBrowser
+            id          : @uuidService.getId()
+            creator     : @owner
+            permission  : 'own'
+        @addBrowser(vbrowser)
+        return vbrowser
+
+    _create : () ->
+        vbrowser = @_createVirtualBrowser
+            type : VirtualBrowser
+            id   : @uuidService.getId()
+        @addBrowser(vbrowser)
+        return vbrowser
+
+    _createVirtualBrowser : (browserInfo) ->
+        {id, type, creator, permission} = browserInfo
+        vbrowser = new type
+            id          : id
+            server      : @server
+            mountPoint  : @app.mountPoint
+            creator     : creator
+            permission  : permission
+            appInstance : this
+        vbrowser.load(@app)
+        return vbrowser
+
+    createBrowser : () ->
+        if @app.isAuthConfigured()
+            return @_createSecure()
+        else 
+            return @_create()
+
 
     _findReaderWriter : (user) ->
         return c for c in @readerwriters when c.getEmail() is user.getEmail()
@@ -28,9 +92,7 @@ class AppInstance extends EventEmitter
 
     getID : () -> return @id
 
-    getName : () -> return @name
-
-    setName : (name) -> @name = name
+    getName : () -> return @id
 
     getDateCreated : () -> return @dateCreated
 
@@ -49,75 +111,26 @@ class AppInstance extends EventEmitter
         @readerwriters.push(user)
         @emit('share', user)
 
-    createBrowser : (user, callback) ->
-        if @isOwner(user) or @isReaderWriter(user)
-            Async.waterfall [
-                (next) =>
-                    @app.browsers.create
-                        user     : user
-                        callback : next
-                        preLoadMethod : (bserver) => bserver.setAppInstance(@)
-                (bserver, next) =>
-                    @browsers.push(bserver)
-                    next(null, bserver)
-            ], callback
-        else callback(cloudbrowserError('PERM_DENIED'))
 
     removeBrowser : (bserver, user, callback) ->
-        {id} = bserver
-        Async.waterfall [
-            (next) =>
-                @app.browsers.close(bserver, user, next)
-            (next) =>
-                for browser in @browsers when browser.id is id
-                    idx = @browsers.indexOf(browser)
-                    @browsers.splice(idx, 1)
-                    break
-                next(null)
-        ], callback
+        console.log "removeBrowser not implemented #{bserver.id}"
 
     removeAllBrowsers : (user, callback) ->
-        if @isOwner(user) or @isReaderWriter(user)
-            Async.each @browsers
-            , (browser, callback) =>
-                @app.browsers.close(browser, user, callback)
-            , callback
-        else callback(cloudbrowserError('PERM_DENIED'))
-
-    setAutoStoreID : (intervalID) ->
-        @autoStoreID = intervalID
-
-    descheduleAutoStore : () ->
-        clearInterval(@autoStoreID)
+        console.log "removeAllBrowsers not implemented"
 
     close : (user, callback) ->
-        if @isOwner(user)
-            @removeAllListeners()
-            @removeAllBrowsers(user, callback)
-            @descheduleAutoStore()
-        else callback(cloudbrowserError('PERM_DENIED'))
+        console.log "close not implemented"
 
     store : (getStorableObj, callback) ->
-        dbRec = {}
-        excluded = ['app', '_events', 'browsers']
-        for own k, v of this
-            if typeof v isnt "function" and excluded.indexOf(k) is -1
-                dbRec[k] = v
-        dbRec.obj = getStorableObj(@obj)
-
-        return callback?(cloudbrowserError("INVALID_STORE")) if not dbRec.obj
-
-        appInstanceRec = {}
-        appInstanceRec["appInstances." + @id] = dbRec
-
-        
-        mongoInterface = @server.mongoInterface
-        searchKey = {mountPoint : @app.getMountPoint()}
-        mongoInterface.setApp(searchKey, appInstanceRec, callback)
+        console.log "store not implemented"
 
     getAllUsers : () ->
         users = []
         users.push(@owner)
         return users.concat(@readerwriters)
+
+    getAllBrowsers : () ->
+        return @weakrefsToBrowsers
+
 
 module.exports = AppInstance

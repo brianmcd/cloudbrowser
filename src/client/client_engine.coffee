@@ -71,7 +71,7 @@ class ClientEngine
             
             # socket.io-client for node doesn't seem to emit 'connect'
             process.nextTick () =>
-                @socket.emit('auth', @window.__appID, @window.__envSessionID)
+                @socket.emit('auth', @window.__appID, @window.__appInstanceID, @window.__envSessionID)
                 @eventMonitor = new EventMonitor(this)
             # If we're testing, expose a function to let the server signal when
             # a test is finished.
@@ -88,7 +88,7 @@ class ClientEngine
                 console.log("Error:"+err)
             socket.on 'connect', () =>
                 console.log("Socket.IO connected")
-                socket.emit('auth', @window.__appID, @window.__envSessionID)
+                socket.emit('auth', @window.__appID, @window.__appInstanceID, @window.__envSessionID)
                 @eventMonitor = new EventMonitor(this)
             socket.on 'disconnect', () ->
                 console.log("Socket.IO disconnected")
@@ -232,6 +232,7 @@ RPCMethods =
         @eventMonitor.add(type)
 
     Redirect : (URL) ->
+        console.log "redirect to #{URL}"
         window.location = URL
        
     disconnect : () ->

@@ -47,14 +47,13 @@ class LocalStrategy
             
         {bserver} = _pvts[@_idx]
         
-        {domain, port} = bserver.server.config
         user = new User(emailID)
 
         mountPoint = getParentMountPoint(bserver.mountPoint)
         appManager = bserver.server.applicationManager
         sessionManager = bserver.server.sessionManager
         app        = appManager.find(mountPoint)
-        appUrl     = "http://#{domain}:#{port}#{mountPoint}"
+        appUrl     = app.getAppUrl()
         dbKey      = null
         redirectto = null
         result     = null
@@ -94,7 +93,7 @@ class LocalStrategy
             else bserver.redirect(appUrl)
             bserver.once 'NoClients', () ->
                 app = appManager.find(bserver.mountPoint)
-                app.browsers.close(bserver)
+                app.closeBrowser(bserver)
 
     ###*
         Registers a user with the application and sends a confirmation email to the user's registered email ID.
@@ -118,12 +117,11 @@ class LocalStrategy
         {bserver, cbCtx} = _pvts[@_idx]
         {util}     = cbCtx
         
-        {domain, port} = bserver.server.config
         user       = new User(emailID)
         mountPoint = getParentMountPoint(bserver.mountPoint)
         appManager = bserver.server.applicationManager
         app        = appManager.find(mountPoint)
-        appUrl     = "http://#{domain}:#{port}#{mountPoint}"
+        appUrl     = app.getAppUrl()
         token      = null
 
         # Generating a random token to ensure the validity of user confirmation.
@@ -195,7 +193,7 @@ class GoogleStrategy
             bserver.once 'NoClients', () ->
                 appManager = bserver.server.applicationManager
                 app = appManager.find(bserver.mountPoint)
-                app.browsers.close(bserver)
+                app.closeBrowser(bserver)
 
 module.exports =
     LocalStrategy  : LocalStrategy

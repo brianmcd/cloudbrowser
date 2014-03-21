@@ -17,14 +17,16 @@ class HttpProxy
     proxyRequest : (req, res) ->
         {worker, redirect} = @workerManager.getWorker(req)
         if redirect?
-            console.log "Redirect #{req.url} to redirect"
+            console.log "Redirect #{req.url} to #{redirect}"
             req.url = redirect
+        if not worker?
+            console.log 'cannot find a worker'
         @proxy.web(req, res, {
             target:
                 {
                     host : worker.host,
                     port : worker.httpPort
-                    } 
+                } 
          })
     
     proxyWebSocketRequest : (req, socket, head) ->

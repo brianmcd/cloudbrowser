@@ -5,12 +5,15 @@ Weak                 = require('weak')
 {EventEmitter}       = require('events')
 Browser              = require('./browser')
 ResourceProxy        = require('./resource_proxy')
+
 DebugClient          = require('./debug_client')
 TestClient           = require('./test_client')
+{serialize}          = require('./serializer')
+routes               = require('../application_manager/routes')
 Compressor           = require('../../shared/compressor')
 EmbedAPI             = require('../../api')
 TaggedNodeCollection = require('../../shared/tagged_node_collection')
-{serialize}          = require('./serializer')
+
 {isVisibleOnClient}  = require('../../shared/utils')
 
 {eventTypeToGroup,
@@ -29,7 +32,8 @@ class VirtualBrowser extends EventEmitter
 
     constructor : (vbInfo) ->
 
-        {@server, @id, @mountPoint} = vbInfo
+        {@server, @id, @mountPoint, @appInstance} = vbInfo
+        @appInstanceId = @appInstance.id
         weakRefToThis = Weak(this, cleanupBserver(@id))
 
         @browser = new Browser(@id, weakRefToThis, @server.config)
@@ -68,6 +72,9 @@ class VirtualBrowser extends EventEmitter
 
     getID : () -> return @id
 
+    getUrl : () ->
+        return @server.config.getHttpAddr() + routes.buildBrowserPath(@mountPoint, @appInstanceId, @id)
+
     getDateCreated : () -> return @dateCreated
 
     getName : () -> return @name
@@ -77,9 +84,6 @@ class VirtualBrowser extends EventEmitter
     getBrowser : () -> return @browser
 
     getMountPoint : () -> return @mountPoint
-
-    setAppInstance : (appInstance) ->
-        @appInstance = appInstance
 
     getAppInstance : () ->
         return @appInstance

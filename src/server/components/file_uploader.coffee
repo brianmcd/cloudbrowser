@@ -24,12 +24,13 @@ class FileUploaderManager
         options.cloudbrowser =
             postURL : "http://#{domain}:#{port}#{relativeURL}"
         # TODO: omit the cbServer when create FileUpload, because components will 
-        # be serialized when socket emit PageLoaded event, cbServer is a circular
+        # be serialized when socket emit PageLoaded event (thorough Util.inspect), cbServer is a circular
         # struct and FileUpload constructor do not use cbServer anyway.
         uploader = FileUploaderManager.fileUploaders[id] =
             new FileUpload(lodash.omit(options,'cbServer'), rpcMethod, container)
 
-        httpServer.setupFileUploadRoute(relativeURL, mountPoint, uploader)
+        # TODO move this logic to application
+        #httpServer.setupFileUploadRoute(relativeURL, mountPoint, uploader)
 
         return uploader
 

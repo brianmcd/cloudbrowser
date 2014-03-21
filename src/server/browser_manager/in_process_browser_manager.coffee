@@ -7,19 +7,9 @@ Hat                 = require('hat')
 {EventEmitter}      = require('events')
 cloudbrowserError   = require('../../shared/cloudbrowser_error')
 
-# Defining callback at the highest level
-# see https://github.com/TooTallNate/node-weak#weak-callback-function-best-practices
-# Dummy callback, does nothing
-cleanupBserver = (id) ->
-    return () ->
-        console.log "[Browser Manager] - Garbage collected vbrowser #{id}"
 
 class InProcessBrowserManager extends EventEmitter
     constructor : (@server, @app) ->
-        # List of strong references to virtual browsers
-        @vbrowsers = {}
-        # List of weak references to vbrowsers
-        @weakVbrowsers = {}
 
     # Creates a browser server of type browserType
     # browserType can be VirtualBrowser(for normal apps) and SecureVirtualBrowser
@@ -29,31 +19,20 @@ class InProcessBrowserManager extends EventEmitter
     #
     _createVirtualBrowser : (browserInfo) ->
         {id, type, preLoadMethod, creator, permission} = browserInfo
-        @vbrowsers[id] = new type
+        vbrowser = new type
             id          : id
             server      : @server
-            mountPoint  : @app.getMountPoint()
+            mountPoint  : browserInfo.mountPoint
             creator     : creator
             permission  : permission
-        @weakVbrowsers[id] = Weak(@vbrowsers[id], cleanupBserver(id))
-        @_setupProxyEventEmitter(@weakVbrowsers[id])
-        preLoadMethod?(@weakVbrowsers[id])
-        @vbrowsers[id].load(@app)
-        @emit("add", id)
-        return @weakVbrowsers[id]
+        vbrowser.load(@app)
+        return vbrowser
 
     _setupProxyEventEmitter : (vbrowser) ->
         if @app.isAuthConfigured()
             vbrowser.on "share", (userInfo) =>
                 @emit("share", vbrowser.id, userInfo)
 
-    _closeVirtualBrowser : (vbrowser) ->
-        vbrowser.removeAllListeners()
-        vbrowser.close()
-        id = vbrowser.id
-        @emit("remove", id)
-        delete @weakVbrowsers[vbrowser.id]
-        delete @vbrowsers[vbrowser.id]
 
     _createSingleAppInstance : (options) ->
         {id, user, preLoadMethod, callback} = options
@@ -190,8 +169,7 @@ class InProcessBrowserManager extends EventEmitter
                 preLoadMethod : preLoadMethod
 
     create : (options = {}) ->
-        options.id = options.id || @generateUUID()
-        if @app.isAuthConfigured() or /landing_page$/.test(@app.getMountPoint())
+        if options.authConfigured
             @_createSecure(options)
         else @_create(options)
 
@@ -231,16 +209,5 @@ class InProcessBrowserManager extends EventEmitter
                 else next(cloudbrowserError('PERM_DENIED'))
         ], callback
 
-    find : (id) ->
-        return @weakVbrowsers[id]
-
-    get : () ->
-        return @weakVbrowsers
-
-    generateUUID : () ->
-        id = Hat()
-        while @find(id)
-            id = Hat()
-        return id
 
 module.exports = InProcessBrowserManager

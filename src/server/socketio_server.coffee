@@ -8,9 +8,8 @@ class SocketIOServer
     constructor: (dependencies, callback) ->
         @config = dependencies.config.serverConfig
         @mongoInterface = dependencies.database
-        @applications = dependencies.applicationManager
-        
-        {@permissionManager, @sessionManager} = dependencies
+
+        {@applicationManager, @permissionManager, @sessionManager} = dependencies
 
         io = sio.listen(dependencies.httpServer.server)
 
@@ -25,8 +24,8 @@ class SocketIOServer
         io.sockets.on 'connection', (socket) =>
             @addLatencyToClient(socket) if @config.simulateLatency
             # Custom event emitted by socket on the client side
-            socket.on 'auth', (mountPoint, browserID) =>
-                @customAuthHandler(mountPoint, browserID, socket)
+            socket.on 'auth', (mountPoint, appInstanceID, browserID) =>
+                @customAuthHandler(mountPoint, appInstanceID, browserID, socket)
 
         callback(null, this)
 
@@ -52,7 +51,8 @@ class SocketIOServer
 
     # Connects the client to the requested browser if the user
     # on the client side is authorized to use that browser
-    customAuthHandler : (mountPoint, browserID, socket) ->
+    # TODO : should put all authrize code to application or appInstance
+    customAuthHandler : (mountPoint, appInstanceID, browserID, socket) ->
         {headers, session} = socket.handshake
         cookies = ParseCookie(headers.cookie)
         sessionID = cookies[@config.cookieName]
@@ -60,16 +60,19 @@ class SocketIOServer
         # NOTE : app, browserID are provided by the client
         # and cannot be trusted
         browserID = decodeURIComponent(browserID)
-        bserver = @applications.find(mountPoint)?.browsers.find(browserID)
-
+        app = @applicationManager.find(mountPoint)
+        appInstance = app.findAppInstance(appInstanceID)
+        bserver = appInstance?.findBrowser(browserID)
+        
         if not bserver or not session then return socket.disconnect()
 
         async.waterfall [
             (next) =>
                 @isAuthorized
                     session    : session
-                    mountPoint : mountPoint
-                    browserID  : browserID
+                    app : app
+                    appInstance : appInstance
+                    bserver : bserver
                     callback   : next
             (isAuthorized, next) =>
                 if not isAuthorized then next(true) # Simulating an error
@@ -85,26 +88,20 @@ class SocketIOServer
 
 
     isAuthorized : (options) ->
-        {session, mountPoint, browserID, callback} = options
-
-        app = @applications.find(mountPoint)
+        {session, app, appInstance, callback} = options
 
         if not app.isAuthConfigured() then return callback(null, true)
-        
-        user = @sessionManager.findAppUserID(session,
-            mountPoint.replace(/\/landing_page$/, ""))
 
-        async.waterfall [
-            (next) =>
-                @permissionManager.findBrowserPermRec
-                    user       : user
-                    mountPoint : mountPoint
-                    browserID  : browserID
-                    callback   : next
-        ], (err, browserRec) ->
-            if err then callback(err)
-            else if not browserRec then callback(null, false)
-            else callback(null, true)
+        mountPoint = app.mountPoint
+        if not app.isStandalone()
+            mountPoint = app.parentApp.mountPoint
+        
+        user = @sessionManager.findAppUserID(session, mountPoint)
+
+        if appInstance.isOwner(user) or appInstance.isReaderWriter(user)
+            return callback null, true
+        else
+            return callback null, false
 
     addLatencyToClient : (socket) ->
         if typeof @config.simulateLatency == 'number'

@@ -42,13 +42,11 @@ class Authentication
             return callback?(cloudbrowserError('PARAM_MISSING', '- user'))
 
         {bserver, cbCtx} = _pvts[@_idx]
-        
-        {domain, port}   = bserver.server.config
 
         mountPoint = getParentMountPoint(bserver.mountPoint)
         appManager = bserver.server.applicationManager
         app    = appManager.find(mountPoint)
-        appUrl = "http://#{domain}:#{port}#{mountPoint}"
+        appUrl = app.getAppUrl()
         token  = null
 
         Async.waterfall [
