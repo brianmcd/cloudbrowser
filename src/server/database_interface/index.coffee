@@ -16,16 +16,19 @@ class DatabaseInterface
         dbName = "UID#{process.getuid()}-#{dbConfig.dbName}"
         # TODO should be configurable
         @dbClient = new Mongo.Db(dbName,
-            new Mongo.Server("127.0.0.1", 27017, options:{auto_reconnect:true}))
+            new Mongo.Server(dbConfig.host, dbConfig.port, options:{auto_reconnect:true}))
         Async.series([
                         (next) =>
                             @dbClient.open (err, pClient) ->
                                 next(err)
                         ,
                         (next) =>
-                            # using default setting localhost and 27017
                             @mongoStore = new MongoStore(
-                                {db:"#{dbName}_sessions"}, 
+                                {
+                                    host: dbConfig.host
+                                    port: dbConfig.port
+                                    db:"#{dbName}_sessions"
+                                }, 
                                 (collection) ->
                                     next(null)
                                 )
@@ -172,5 +175,24 @@ class DatabaseInterface
             (collection, next) ->
                 collection.ensureIndex(index, {unique:true}, next)
         ], callback
+
+    getSequence : (seqName, seq, callback) ->
+        Async.waterfall [
+            (next) =>
+                @dbClient.collection("counters", next)
+            (collection, next) ->
+                collection.findAndModify(
+                    {_id: seqName},
+                    [['_id','asc']],
+                    {$inc:{seq:seq}},
+                    {
+                        # return the newvalue
+                        "new":true,
+                        upsert:true
+                    },
+                    next
+                )
+        ], callback
+
 
 module.exports = DatabaseInterface

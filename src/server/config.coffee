@@ -17,12 +17,11 @@ user configurations. Need to setDataBase before invoke loadUserConfig to load
 user configurations.
 ###
 class Config
-    projectRoot : '.'
+    projectRoot : path.resolve(__dirname, '../..')
     paths : null
     cmdOptions : null
     serverConfigPath : null
     emailerConfigPath : null
-    databaseConfig : null
     serverConfig : null
     emailerConfig : null
     database : null
@@ -34,8 +33,7 @@ class Config
         # List of all the unmatched positional args (the path names)
         @paths = (pathFromCmd for pathFromCmd in @cmdOptions._)
         #paths.push(path) for path in @cmdOptions._
-
-        @projectRoot = path.resolve(__dirname, '../..')
+        
         configPath = if @cmdOptions.configPath? then @cmdOptions.configPath else @projectRoot
 
         @serverConfigPath = "#{configPath}/server_config.json"
@@ -165,6 +163,19 @@ readUserFromStdin = (database, prompt, callback) ->
 #                                in its own process.
 #   class for serverConfig, set the default value on the object own properties to make them
 #   visible in console.log
+
+class MasterConfig
+    constructor: () ->
+        @host = 'localhost'
+        @rmiPort = 3040
+
+class DatabaseConfig
+    constructor: () ->
+        @dbName = 'cloudbrowser'
+        @host = 'localhost'
+        @port = 27017
+        @type = 'mongoDB'
+
 class ServerConfig
     constructor: () ->
         @adminInterface = true
@@ -187,134 +198,123 @@ class ServerConfig
         @useRouter = false
         @admins = []
         @defaultUser = null
-        @proxyDomain = null
-        @proxyPort = null
-        @name = 'worker1'
+        @id = 'worker1'
+        @rmiPort = 5700
+        @masterConfig = new MasterConfig()
+        @databaseConfig = new DatabaseConfig()
+    getWorkerConfig: () ->
+        return {
+          id : @id
+          host : @domain
+          httpPort : @port
+          rmiPort : @rmiPort
+        }
 
-
-
-
-
-class DatabaseConfig
-    constructor: () ->
-        @dbName = 'cloudbrowser'
-        @host = 'localhost'
-        @port = 27017
-        @type = 'mongoDB'
 
 
 #get options from cmd
 parseOptionsFromCmd = () ->
-  options =
-    configPath :
-      flag : true
-      help : 'configuration path, default [ProjectRoot]'
-    deployment :
-      flag    : true
-      help    : "Start the server in deployment mode"
-    debug :
-      flag    : true
-      help    : "Show the configuration parameters."
-    noLogs:
-       full    : 'disable-logging'
-       flag    : true
-       help    : "Disable all logging to files."
-    debugServer:
-       full    : 'debug-server'
-       flag    : true
-       help    : "Enable the debug server."
-    compression:
-       help    : "Enable protocol compression."
-    'compressJS':
-       full : 'compress-js'
-       help : "Pass socket.io and client engine through uglify and gzip."
-    'cookieName':
-       full : 'cookie-name'
-       help : "Customize the name of the cookie"
-    'knockout':
-       flag    : true
-       help    : "Enable server-side knockout.js bindings."
-    'strict':
-       flag    : true
-       help    : "Enable strict mode - uncaught exceptions exit the program."
-    'resourceProxy':
-       full    : 'resource-proxy'
-       help    : "Enable ResourceProxy."
-    'monitorTraffic':
-       full    : 'monitor-traffic'
-       help    : "Monitor/log traffic to/from socket.io clients."
-    'traceProtocol':
-       full    : 'trace-protocol'
-       help    : "Log protocol messages to browserid-rpc.log."
-    'multiProcess':
-       full    : 'multi-process'
-       help    : "Run each browser in its own process (can't be used with shared global state)."
-    'useRouter':
-       full    : 'router'
-       help    : "Use a front-end router process with each app server in its own process."
-    'port':
-       help    : "Starting port to use."
-    'traceMem':
-       full    : 'trace-mem'
-       flag    : true
-       help    : "Trace memory usage."
-    'adminInterface':
-       full    : 'admin-interface'
-       help    : "Enable the admin interface."
-    'homePage':
-       full    : 'home-page'
-       help    : "Enable mounting of the home page application at '/'"
-    'simulateLatency':
-       full    : 'simulate-latency'
-       help    : "Simulate latency for clients in ms (if not given assign uniform randomly in 20-120 ms range."
-  #parse the command line arguments
-  require('nomnom').script(process.argv[1]).options(options).parse()
+    options =
+        configPath :
+            flag : true
+            help : 'configuration path, default [ProjectRoot]'
+        deployment :
+            flag    : true
+            help    : "Start the server in deployment mode"
+        debug :
+            flag    : true
+            help    : "Show the configuration parameters."
+        noLogs:
+            full    : 'disable-logging'
+            flag    : true
+            help    : "Disable all logging to files."
+        debugServer:
+            full    : 'debug-server'
+            flag    : true
+            help    : "Enable the debug server."
+        compression:
+            help    : "Enable protocol compression."
+        'compressJS':
+            full : 'compress-js'
+            help : "Pass socket.io and client engine through uglify and gzip."
+        'cookieName':
+            full : 'cookie-name'
+            help : "Customize the name of the cookie"
+        'knockout':
+            flag    : true
+            help    : "Enable server-side knockout.js bindings."
+        'strict':
+            flag    : true
+            help    : "Enable strict mode - uncaught exceptions exit the program."
+        'resourceProxy':
+            full    : 'resource-proxy'
+            help    : "Enable ResourceProxy."
+        'monitorTraffic':
+            full    : 'monitor-traffic'
+            help    : "Monitor/log traffic to/from socket.io clients."
+        'traceProtocol':
+            full    : 'trace-protocol'
+            help    : "Log protocol messages to browserid-rpc.log."
+        'multiProcess':
+            full    : 'multi-process'
+            help    : "Run each browser in its own process (can't be used with shared global state)."
+        'useRouter':
+            full    : 'router'
+            help    : "Use a front-end router process with each app server in its own process."
+        'port':
+            help    : "Starting port to use."
+        'traceMem':
+            full    : 'trace-mem'
+            flag    : true
+            help    : "Trace memory usage."
+        'adminInterface':
+            full    : 'admin-interface'
+            help    : "Enable the admin interface."
+        'homePage':
+            full    : 'home-page'
+            help    : "Enable mounting of the home page application at '/'"
+        'simulateLatency':
+            full    : 'simulate-latency'
+            help    : "Simulate latency for clients in ms (if not given assign uniform randomly in 20-120 ms range."
+    #parse the command line arguments
+    require('nomnom').script(process.argv[1]).options(options).parse()
 
 
 
 
 newEmailerConfig = (fileName,callback) ->
-  fs.exists fileName, (exists) ->
-    if exists
-      utils.readJsonFromFileAsync fileName, (err, result) ->
-        callback err,result
-    else
-      console.log("Emailer config: #{fileName} does not exist!")
-      callback null, {}
+    fs.exists fileName, (exists) ->
+        if exists
+            utils.readJsonFromFileAsync fileName, (err, result) ->
+                callback err,result
+        else
+            console.log("Emailer config: #{fileName} does not exist!")
+            callback null, {}
 
 
 newServerConfig = (fileName,cmdOptions,callback) ->
-  #merge new ServerConfig with config file and command line options
-  mergeConfig = (fromFile,callback) ->
-    serverConfig = new ServerConfig()
-    lodash.merge serverConfig, fromFile
-    #merge only properties defined in class
-    for own k, v of cmdOptions
-        if serverConfig.hasOwnProperty(k)
-            serverConfig[k] = v
-    # default value for proxyDomain and proxyPort
-    if not serverConfig.proxyDomain? 
-      serverConfig.proxyDomain = serverConfig.domain
-    if not serverConfig.proxyPort?
-      serverConfig.proxyPort = serverConfig.port
-    # merge the default database settings
-    oldDBConfig = serverConfig.databaseConfig
-    serverConfig.databaseConfig = new DatabaseConfig()
-    lodash.merge(serverConfig.databaseConfig, oldDBConfig)
-    callback null, serverConfig
+    #merge new ServerConfig with config file and command line options
+    mergeConfig = (fromFile,callback) ->
+        serverConfig = new ServerConfig()
+        lodash.merge serverConfig, fromFile
+        #merge only properties defined in class
+        for own k, v of cmdOptions
+            if serverConfig.hasOwnProperty(k)
+                serverConfig[k] = v
+        callback null, serverConfig
 
-  fs.exists fileName, (exists) ->
-    if exists
-      async.waterfall [
-              lodash.partial(utils.readJsonFromFileAsync, fileName)
-              mergeConfig
-              ],
-              (err, result) ->
-                callback err, result
-    else
-      console.warn "#{fileName} does not exist!"
-      result = mergeConfig null
-      callback null, result
+    fs.exists fileName, (exists) ->
+        if exists
+          async.waterfall [
+                  lodash.partial(utils.readJsonFromFileAsync, fileName)
+                  mergeConfig
+                  ],
+                  (err, result) ->
+                    callback err, result
+        else
+          console.warn "#{fileName} does not exist!"
+          result = mergeConfig null
+          callback null, result
 
 
 

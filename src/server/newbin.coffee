@@ -7,6 +7,8 @@ ApplicationManager = require('./application_manager')
 PermissionManager = require('./permission_manager')
 SessionManager = require('./session_manager')
 HTTPServer = require('./http_server')
+RmiService = require('./rmi_service')
+UuidService = require('./uuid_service')
 
 # https://github.com/trevnorris/node-ofe
 # This will overwrite OnFatalError to create a heapdump when your app fatally crashes.
@@ -17,7 +19,7 @@ class EventTracker
         @processedEvents = 0
         if serverConfig.printEventStats
             report()
-        
+
 
     report : () ->
         console.log("Processing #{@processedEvents/10} events/sec")
@@ -33,41 +35,65 @@ class EventTracker
 
 class Runner
     constructor: () ->
+        #get configuration from config file and user input
+        new Config((err, config) =>
+            if err?
+                return @handlerInitializeError(err)
+            @config = config
+            serverConfig = config.serverConfig
+            @rmiService = new RmiService(config.serverConfig)
+            masterConfig = serverConfig.masterConfig
+            console.log "connecting to master #{JSON.stringify(masterConfig)}"
+            @rmiService.createStub({host:masterConfig.host, port:masterConfig.rmiPort},
+                (err, stub) =>
+                    #TODO retry on error
+                    if err
+                        return @handlerInitializeError(err)
+                    console.log "retriving config from master"
+                    console.log JSON.stringify(stub.obj.workerManager)
+
+                    stub.obj.workerManager.registerWorker(serverConfig.getWorkerConfig())
+                    @config.proxyConfig = stub.obj.config.proxyConfig
+                    @masterStub = stub
+                    @initializeOtherComponets()
+                )
+        )
+        
+
+    initializeOtherComponets : () ->
         #we do not use series because there is no way to get result from previous steps
         #the constructor should pass this in the callback after proper initialization
         async.auto({
-            'eventTracker' : ['config', (callback,results) ->
-                serverConfig = results.config.serverConfig
-                callback(null, new EventTracker(serverConfig))
+            'masterStub' : (callback) =>
+                callback null, @masterStub
+            'config' : ['masterStub',(callback) =>
+                    callback null, @config
             ]
             ,
-            #get configuration from config file and user input
-            'config' : (callback) ->
-                        new Config(callback)
+            'eventTracker' : ['config', (callback,results) =>
+                callback(null, new EventTracker(@config.serverConfig))
+            ]
             ,
             'database' : ['config',
-                    (callback,results) ->
-                        config=results.config
-                        new DatabaseInterface(config.serverConfig.databaseConfig, callback)
+                    (callback,results) =>
+                        new DatabaseInterface(@config.serverConfig.databaseConfig, callback)
                     ],
-            'uuidService' : ['config',
+            'uuidService' : ['config', 'database',
                     (callback, results) ->
-                        UuidService = require('./uuid_service')
                         new UuidService(results, callback)
             ],
             # the user config need to be loaded from database
             'loadUserConfig' : ['database',
-                                (callback,results) ->
-                                    config=results.config
+                                (callback,results) =>
                                     db=results.database
-                                    config.setDatabase(db)
-                                    config.loadUserConfig(callback)
+                                    @config.setDatabase(db)
+                                    @config.loadUserConfig(callback)
                             ],
             'sessionManager' : ['database',
                                 (callback,results) ->
                                     new SessionManager(results.database,callback)
             ],
-            'permissionManager' : ['loadUserConfig', 
+            'permissionManager' : ['loadUserConfig',
                                     (callback,results) ->
                                         new PermissionManager(results.database,callback)
                                 ],
@@ -84,17 +110,19 @@ class Runner
                                 (callback,results) ->
                                     new SocketIoServer(results,callback)
             ]
-
-            },(err,results)->
+            },(err,results)=>
                 if err?
-                    console.log('Initialization error, exiting....')
-                    console.log(err)
-                    console.log(err.stack)
-                    process.exit(1)
+                    @handlerInitializeError(err)
                 else
+                    @rmiService.start()
                     console.log('Server started in local mode')
-                
             )
+
+    handlerInitializeError : (err) ->
+        console.log('Initialization error, exiting....')
+        console.log(err)
+        console.log(err.stack)
+        process.exit(1)
 
 
 process.on 'uncaughtException', (err) ->

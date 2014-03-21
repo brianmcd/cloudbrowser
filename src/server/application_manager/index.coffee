@@ -28,7 +28,7 @@ class ApplicationManager extends EventEmitter
     constructor : (dependencies, callback) ->
         {@config, @database, 
         @permissionManager, @httpServer,
-        @sessionManager} = dependencies
+        @sessionManager, @masterStub} = dependencies
         # the services exported to api
         @server = {
             config : @config.serverConfig
@@ -39,7 +39,8 @@ class ApplicationManager extends EventEmitter
             eventTracker : dependencies.eventTracker
             sessionManager : dependencies.sessionManager
             uuidService : dependencies.uuidService
-            applicationManager : this
+            applicationManager : this,
+            masterStub : @masterStub
         }
 
         @applications = {}
@@ -176,6 +177,11 @@ class ApplicationManager extends EventEmitter
         app = new Application(config, @server)
         @addApplication(app)
         app.mount()
+        @masterStub.obj.workerManager.registerApplication({
+            workerId: @config.serverConfig.id,
+            mountPoint : app.mountPoint
+            owner : app.owner
+            })
 
     # path, type in options
     createAppFromDir : (options, callback) ->
