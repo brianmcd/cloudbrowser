@@ -8,7 +8,7 @@ utils = require('../../shared/utils')
 class AppConfig
     constructor: () ->
         @entryPoint = 'index.html'
-        @applicationStateFile = 'state.js'
+        @applicationStateFile = null
         @instantiationStrategy = 'singleAppInstance'
 
 class DeploymentConfig
@@ -40,16 +40,16 @@ class Config
             lodash.merge(@appConfig, appConfig)
             deploymentConfigFile = Path.resolve(dir,'deployment_config.json')
             if fs.existsSync(deploymentConfigFile)
-                deploymentConfig = utils.getConfigFromFile(deploymentConfigFile)
-                # initialize appInstanceProvider
-                if deploymentConfig.applicationStateFile?
-                    appState = {}
-                    require(Path.resolve(dir, applicationStateFile)).initialize(appState)
-                    {@appInstanceProvider, @callOnStart} = appState            
+                deploymentConfig = utils.getConfigFromFile(deploymentConfigFile)          
                 lodash.merge(@deploymentConfig, deploymentConfig)
                 if @deploymentConfig.owner?
                     @deploymentConfig.owner = new User(@deploymentConfig.owner)
-                
+        if @appConfig.applicationStateFile? and @appConfig.applicationStateFile isnt ''
+            stateFile = Path.resolve(dir, @appConfig.applicationStateFile)
+            console.log "loading stateFile #{stateFile}"
+            #user defined functions to inject customize objects to config, like appInstanceProvider
+            require(stateFile).initialize(this)
+            
                 
         if callback?
             callback null, this

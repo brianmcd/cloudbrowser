@@ -48,6 +48,7 @@ class AppInstanceManager extends EventEmitter
             appInstanceId : id
             owner : appInstance.owner
             })
+        console.log "create appinstance #{id} for #{@app.mountPoint}"
         return weakRefToAppInstance
 
     newAppInstance : () ->

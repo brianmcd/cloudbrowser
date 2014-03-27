@@ -77,11 +77,18 @@ class AppInstance extends EventEmitter
         vbrowser.load(@app)
         return vbrowser
 
-    createBrowser : () ->
+    # user: the user try to create browser, callback(err, browser)
+    createBrowser : (user, callback) ->
+        console.log "createBrowser for #{@app.mountPoint}"
+        browser = null
         if @app.isAuthConfigured()
-            return @_createSecure()
+            browser = @_createSecure()
         else 
-            return @_create()
+            browser = @_create()
+        if callback?
+            return callback null,browser
+        return browser
+
 
 
     _findReaderWriter : (user) ->
