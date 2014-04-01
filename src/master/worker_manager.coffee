@@ -4,9 +4,6 @@ lodash = require('lodash')
 router = require('express').router
 routes = require('../server/application_manager/routes')
 
-mountPointRoute = '/:mountPoint'
-subMountPointRoute = '/:mountPoint/:subApp'
-
 routers = {
     routersMap : {}
     array : []
