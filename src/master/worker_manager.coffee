@@ -165,7 +165,8 @@ class WokerManager
                 console.log "cannot find instance for request #{path}"
                 return {worker : @getMostFreeWorker() , redirect : requestAppInfo.mountPoint}        
         else
-            return {worker : @getMostFreeWorker() , redirect : requestAppInfo.mountPoint}
+            #if no appInstanceId in the url, map to any worker, using the original url
+            return {worker : @getMostFreeWorker()}
 
 
 
