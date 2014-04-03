@@ -35,47 +35,35 @@ class EventTracker
 
 class Runner
     constructor: () ->
-        #get configuration from config file and user input
-        new Config((err, config) =>
-            if err?
-                return @handlerInitializeError(err)
-            @config = config
-            serverConfig = config.serverConfig
-            @rmiService = new RmiService(config.serverConfig)
-            masterConfig = serverConfig.masterConfig
-            console.log "connecting to master #{JSON.stringify(masterConfig)}"
-            @rmiService.createStub({host:masterConfig.host, port:masterConfig.rmiPort},
-                (err, stub) =>
-                    #TODO retry on error
-                    if err
-                        return @handlerInitializeError(err)
-                    console.log "retriving config from master"
-                    stub.obj.workerManager.registerWorker(serverConfig.getWorkerConfig())
-                    # configuration of proxy settings
-                    @config.setProxyConfig(stub.obj.config.proxyConfig)
-                    @masterStub = stub
-                    @initializeOtherComponets()
-                )
-        )
-        
-
-    initializeOtherComponets : () ->
         #we do not use series because there is no way to get result from previous steps
         #the constructor should pass this in the callback after proper initialization
         async.auto({
-            'masterStub' : (callback) =>
-                callback null, @masterStub
-            'config' : ['masterStub',(callback) =>
-                    callback null, @config
+            'config' : (callback)=>
+                new Config(callback)
+            'rmiService' : ['config', (callback, results)=>
+                new RmiService(results.config.serverConfig, callback)
             ]
-            ,
-            'eventTracker' : ['config', (callback,results) =>
-                callback(null, new EventTracker(@config.serverConfig))
+            'masterStub' : ['rmiService', (callback, results) =>
+                masterConfig = results.config.serverConfig.masterConfig
+                console.log "connecting to master #{JSON.stringify(masterConfig)}"
+                results.rmiService.createStub({
+                    host : masterConfig.host
+                    port : masterConfig.rmiPort
+                    }, callback)
+            ]
+            'register' : ['masterStub', (callback, results) =>
+                serverConfig = results.config.serverConfig
+                workerManager = results.masterStub.workerManager
+                workerManager.registerWorker(serverConfig.getWorkerConfig(),callback)
+            ]
+            'eventTracker' : ['register', (callback,results) =>
+                callback(null, new EventTracker(results.config.serverConfig))
             ]
             ,
             'database' : ['config',
                     (callback,results) =>
-                        new DatabaseInterface(@config.serverConfig.databaseConfig, callback)
+                        new DatabaseInterface(results.config.serverConfig.databaseConfig, 
+                            callback)
                     ],
             'uuidService' : ['config', 'database',
                     (callback, results) ->
@@ -84,9 +72,10 @@ class Runner
             # the user config need to be loaded from database
             'loadUserConfig' : ['database',
                                 (callback,results) =>
+                                    config = results.config
                                     db=results.database
-                                    @config.setDatabase(db)
-                                    @config.loadUserConfig(callback)
+                                    config.setDatabase(db)
+                                    config.loadUserConfig(callback)
                             ],
             'sessionManager' : ['database',
                                 (callback,results) ->
@@ -113,7 +102,6 @@ class Runner
                 if err?
                     @handlerInitializeError(err)
                 else
-                    @rmiService.start()
                     console.log('Server started in local mode')
             )
 

@@ -43,7 +43,7 @@ class AppInstanceManager extends EventEmitter
         @appInstances[id] = appInstance
         weakRefToAppInstance = Weak(appInstance, cleanupStates(id))
         @weakRefsToAppInstances[id] = weakRefToAppInstance
-        @server.masterStub.obj.workerManager.registerAppInstance({
+        @server.masterStub.workerManager.registerAppInstance({
             workerId: @server.config.id,
             appInstanceId : id
             owner : appInstance.owner

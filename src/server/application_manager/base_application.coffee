@@ -159,17 +159,6 @@ class BaseApplication extends EventEmitter
     mount : () ->
         @mounted = true
 
-    register : ()->
-        stub = @server.masterStub.obj
-        stub.workerManager.registerApplication({
-            workerId : @server.config.id,
-            mountPoint : @mountPoint,
-            owner : @owner
-            })
-        if @subApps?
-            for subApp in @subApps
-                subApp.register()
-            
 
     getAllBrowsers : () ->
         browsers = {}

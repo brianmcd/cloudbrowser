@@ -39,10 +39,7 @@ class Runner
             'rmiService' : ['config','appMaster','workerManager',
                             (callback, results) =>
                                 RmiService = require('../server/rmi_service')
-                                rmiService = new RmiService(results.config)
-                                @registerSkeleton(rmiService, results)
-                                rmiService.start()
-                                callback null, rmiService
+                                new RmiService(results.config, callback)
             ]
             },(err, results) ->
                 if err?
@@ -51,20 +48,12 @@ class Runner
                     console.log(err.stack)
                     process.exit(1)
                 else
+                    rmiService = results.rmiService
+                    rmiService.createSkeleton('workerManager', results.workerManager)
+                    rmiService.createSkeleton('config', results.config)
                     console.log 'Master started......'
                 
                 )
-    
-    registerSkeleton : (rmiService, components) ->
-        {config, workerManager} = components
-        #rmiService.serverObj.workerManager = workerManager
-        #rmiService.createSkeleton('workerManager',workerManager)
-        # the method in the prototype won't be serialized, so this verbose registration is necessory.
-        # or we should create every method in constructor
-        rmiService.createSkeleton('workerManager', 
-            workerManager, ['registerWorker','registerApplication','registerAppInstance'])
-        #createS('workerManager', obj, [listOfFuncname])
-        rmiService.createSkeleton('config',config)
             
 
 new Runner()

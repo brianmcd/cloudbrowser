@@ -1,18 +1,18 @@
-Fs             = require('fs')
-Path           = require('path')
-{EventEmitter} = require('events')
-Weak           = require('weak')
-Async          = require('async')
-lodash = require('lodash')
-Passport       = require('passport')
+Fs                  = require('fs')
+Path                = require('path')
+{EventEmitter}      = require('events')
+Weak                = require('weak')
+Async               = require('async')
+lodash              = require('lodash')
+Passport            = require('passport')
 
-Application    = require('./application')
-AppConfig = require('./app_config')
+Application         = require('./application')
+AppConfig           = require('./app_config')
 
-GoogleStrategy = require('../authentication_strategies/google_strategy')
-User           = require('../user')
+GoogleStrategy      = require('../authentication_strategies/google_strategy')
+User                = require('../user')
 {getConfigFromFile} = require('../../shared/utils')
-routes = require('./routes')
+routes              = require('./routes')
 
 
 
@@ -177,7 +177,7 @@ class ApplicationManager extends EventEmitter
         app = new Application(config, @server)
         @addApplication(app)
         app.mount()
-        app.register()
+        @registerApplication(app)
 
     # path, type in options
     createAppFromDir : (options, callback) ->
@@ -215,6 +215,27 @@ class ApplicationManager extends EventEmitter
         # for all apps and for only a particular user's apps
         return @weakRefsToApps
 
+    # register the application to master
+    registerApplication :(app, callback) ->
+        #surplus workerID
+        appInfo ={
+            workerId : @config.serverConfig.id
+            mountPoint : app.mountPoint
+            owner : app.owner
+            standalone : if app.isStandalone? then app.isStandalone() else false
+        }
+        @masterStub.workerManager.registerApplication(appInfo, callback)
+        if app.subApps?
+            for subApp in app.subApps
+                @registerApplication(subApp)
+            
+        
+
+    # register standalone urls
+    registerUrl : (url, callback) ->
+        @registerApplication({mountPoint:url}, callback)
+
+
     _setupGoogleAuthRoutes : () ->
         # TODO - config return url and realm
         GoogleStrategy.configure(@config.serverConfig)
@@ -224,15 +245,8 @@ class ApplicationManager extends EventEmitter
         # This is the URL google redirects the client to after authentication
         @httpServer.mount('/checkauth', Passport.authenticate('google'),
             lodash.bind(@_googleCheckAuthHandler,this))
-        stub = @masterStub.obj
-        stub.workerManager.registerApplication({
-            workerId : @config.serverConfig.id,
-            mountPoint : '/googleAuth'
-            })
-        stub.workerManager.registerApplication({
-            workerId : @config.serverConfig.id,
-            mountPoint : '/checkauth'
-            })
+        @registerUrl('/googleAuth')
+        @registerUrl('/checkauth')
 
 
     _googleCheckAuthHandler : (req, res, next) ->

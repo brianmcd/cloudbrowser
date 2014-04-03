@@ -11,7 +11,7 @@ routers = {
     addRoute : (appInfo) ->
         {mountPoint} = appInfo
         if @routersMap[mountPoint]?
-            console.log "route for #{mountPoint} was registered"
+            console.log "route for #{mountPoint} was registered before"
             return
 
         r = new router((app)->
@@ -63,8 +63,9 @@ class WokerManager
         # TODO
         result = null
         for id, worker of @workersMap
-            result = worker
-            break
+            if worker.id?
+                result = worker
+                break
         return result
         
 
@@ -94,6 +95,9 @@ class WokerManager
         console.log 'regist app'
         console.log(JSON.stringify(appInfo))
         routers.addRoute(appInfo)
+        if callback?
+            callback()
+        
         
     unRegisterApplication :(appInfo, callback) ->
 
