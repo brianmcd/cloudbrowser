@@ -18,13 +18,14 @@ class Runner
                 configPath = path.resolve(__dirname, '../..','master_config.json')
                 new MasterConfig(configPath, callback)
             ,
-            'appMaster' : ['config',
-                            (callback,results) ->
-                                require('./app_master')(results,callback)
-            ],
-            'workerManager' : ['config','appMaster'
+            'workerManager' : ['config',
                                 (callback,results) ->
                                     require('./worker_manager')(results,callback)
+
+            ],
+            'appManager' : [ 'workerManager', 
+                            (callback, results) ->
+                                require('./app_manager')(results,callback)
 
             ],
             'proxyServer' : ['config','workerManager',
@@ -36,7 +37,7 @@ class Runner
                                     callback null,null
                                 
             ],
-            'rmiService' : ['config','appMaster','workerManager',
+            'rmiService' : ['config','appManager','workerManager',
                             (callback, results) =>
                                 RmiService = require('../server/rmi_service')
                                 new RmiService(results.config, callback)
@@ -51,6 +52,7 @@ class Runner
                     rmiService = results.rmiService
                     rmiService.createSkeleton('workerManager', results.workerManager)
                     rmiService.createSkeleton('config', results.config)
+                    rmiService.createSkeleton('appManager', results.appManager)
                     console.log 'Master started......'
                 
                 )

@@ -18,3 +18,10 @@ Would like to chizzle away at jsdom patch to reduce it to zero.
 
 
 
+Refactor issues
+- remove ugly bindings in applications 
+@serveVirtualBrowserHandler = lodash.bind(@_serveVirtualBrowserHandler, this)
+
+- change private property names
+
+

@@ -159,38 +159,45 @@ class ApplicationManager extends EventEmitter
             
     # Checks if path in the list of paths supplied as the command line arg 
     # is a file or directory and takes the appropriate action
-    _loadFromCmdLine : (paths) ->
+    _loadFromCmdLine : (paths, callback) ->
         for path in paths
             path = Path.resolve(process.cwd(), path)
+            configs = []
             @_loadConfigFromPath(path, (err, config) =>
                 if err?
                     console.log err.stack
-                    return
+                    return callback err
                 if lodash.isArray(config)
                     for c in config
-                        @createApplication(c)
+                        configs.push(config)
                 else
-                    @createApplication(config)
+                    configs.push(config)
+                Async.each(
+                    configs, 
+                    (config,callback)=>
+                        @createApplication(config, callback)
+                    ,
+                    callback
+                    )
             )
 
-    createApplication : (config) ->
+    createApplication : (config, callback) ->
         app = new Application(config, @server)
         @addApplication(app)
         app.mount()
-        @registerApplication(app)
+        @registerApplication(app, callback)
 
     # path, type in options
     createAppFromDir : (options, callback) ->
         @_loadConfigFromDir(options.path, (err, config) =>
             if err
                 console.log err.stack
-                return
+                return callback err
             if options.mountPoint? then config.deploymentConfig.mountPoint = options.mountPoint
             if options.type is 'admin'
                 config.deploymentConfig.setOwner(@config.serverConfig.defaultUser)
             
-            @createApplication(config)
-            callback null, null
+            @createApplication(config, callback)
             )
 
     addApplication : (app) ->
@@ -217,24 +224,13 @@ class ApplicationManager extends EventEmitter
 
     # register the application to master
     registerApplication :(app, callback) ->
-        #surplus workerID
-        appInfo ={
-            workerId : @config.serverConfig.id
-            mountPoint : app.mountPoint
-            owner : app.owner
-            standalone : if app.isStandalone? then app.isStandalone() else false
-        }
-        @masterStub.workerManager.registerApplication(appInfo, callback)
-        if app.subApps?
-            for subApp in app.subApps
-                @registerApplication(subApp)
+        @masterStub.appManager.regsiterApp(@config.serverConfig.id, app, (err, masterApp)->
+            if err?
+                return callback err
+            app.setMasterApp(masterApp)
+            callback null,app
+        )
             
-        
-
-    # register standalone urls
-    registerUrl : (url, callback) ->
-        @registerApplication({mountPoint:url}, callback)
-
 
     _setupGoogleAuthRoutes : () ->
         # TODO - config return url and realm
@@ -245,8 +241,6 @@ class ApplicationManager extends EventEmitter
         # This is the URL google redirects the client to after authentication
         @httpServer.mount('/checkauth', Passport.authenticate('google'),
             lodash.bind(@_googleCheckAuthHandler,this))
-        @registerUrl('/googleAuth')
-        @registerUrl('/checkauth')
 
 
     _googleCheckAuthHandler : (req, res, next) ->

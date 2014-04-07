@@ -18,6 +18,7 @@ require('coffee-script')
 # Dependency for digest based authentication
 #Auth = require('http-auth')
 class HTTPServer extends EventEmitter
+    __r_skip : ['server']
     constructor : (dependencies, callback) ->
         @config = dependencies.config.serverConfig
         {@sessionManager, @database, @permissionManager} = dependencies
@@ -58,9 +59,9 @@ class HTTPServer extends EventEmitter
     setupClientEngineRoutes : () ->
         @clientEngineModified = new Date().toString()
         if @config.compressJS then @_gzipJS @_bundleJS(), (js) =>
-            @clientEngineJS = js
+            @_clientEngineJS = js
         else
-            @clientEngineJS = @_bundleJS()
+            @_clientEngineJS = @_bundleJS()
         @clientEngineHandler = lodash.bind(@_clientEngineHandler, this)
         @mount('/clientEngine.js', @clientEngineHandler)
 
@@ -85,7 +86,7 @@ class HTTPServer extends EventEmitter
         res.setHeader('Last-Modified', @clientEngineModified)
         res.setHeader('Content-Type', 'text/javascript')
         if @config.compressJS then res.setHeader('Content-Encoding', 'gzip')
-        res.end(@clientEngineJS)
+        res.end(@_clientEngineJS)
 
 
     close : (callback) ->

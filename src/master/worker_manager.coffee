@@ -91,39 +91,19 @@ class WokerManager
         if callback?
             callback null
 
-    registerApplication : (appInfo, callback) ->
-        console.log 'regist app'
-        console.log(JSON.stringify(appInfo))
-        routers.addRoute(appInfo)
-        if callback?
-            callback()
-        
-        
-    unRegisterApplication :(appInfo, callback) ->
-
-
-    # {mountPoint, appInstanceId, owner, workerId, initializationStrategy}
-    registerAppInstance : (appInstance, callback) ->
-        console.log "register appInstance #{JSON.stringify(appInstance)}"
-        {appInstanceId} = appInstance
-        @appInstanceMap[appInstanceId] = appInstance
-        if callback?
-            callback()
-        
-
-
-    unregisterAppInstance : (appInstanceId, callback) ->
-
-    # query{owner}
-    findAppInstance : (query, callback) ->
-
+    setupRoute : (application) ->
+        routers.addRoute(application)
+   
     getWorkerByAppInstanceId : (appInstanceId) ->
         appInstance = @appInstanceMap[appInstanceId]
         if appInstance?
             return @workersMap[appInstance.workerId]
         return null
         
-
+    registerAppInstance : (appInstance) ->
+        console.log "register appInstance #{appInstance.id} from #{appInstance.workerId}"
+        @appInstanceMap[appInstance.id] = appInstance
+        
     
     ###
     the response is an object indicating the worker, a redirect page

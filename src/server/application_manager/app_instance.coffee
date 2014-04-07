@@ -138,6 +138,9 @@ class AppInstance extends EventEmitter
 
     getAllBrowsers : () ->
         return @weakrefsToBrowsers
+    # set up listeners
+    setMasterInstance: (@_masterInstance) ->
+
 
 
 module.exports = AppInstance

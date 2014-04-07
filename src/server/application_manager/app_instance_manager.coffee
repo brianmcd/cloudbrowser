@@ -16,22 +16,36 @@ class AppInstanceManager extends EventEmitter
         @userToAppInstances = {}
         @appInstances  = {}
 
-    getAppInstance : () ->
+    getAppInstance : (callback) ->
         if not @weakRefToAppInstance?
-            @weakRefToAppInstance = @_createAppInstance()
-            @appInstance = @appInstances[@weakRefToAppInstance.id]
-        return @weakRefToAppInstance
+            @_createAppInstance(null, (err, instance)=>
+                if err?
+                    return callback err                
+                @weakRefToAppInstance = instance
+                @appInstance = @appInstances[@weakRefToAppInstance.id]
+                callback null, instance
+            )
+        else
+            callback null, @weakRefToAppInstance
 
-    getUserAppInstance : (user) ->
+    getUserAppInstance : (user, callback) ->
         if not user?
             throw new Error('should specify user for getUserAppInstance')
         email = if user._email? then user._email else user
         if not @userToAppInstances[email]?
-            weakRefToAppInstance = @_createAppInstance(user)
-            @userToAppInstances[email] = weakRefToAppInstance
-        return @userToAppInstances[email]
+            @_createAppInstance(user,(err, instance)=>
+                if err?
+                    return callback err
+                @userToAppInstances[email] = instance
+                callback null, instance    
+            )
+            
+        else
+            callback null, @userToAppInstances[email]
 
-    _createAppInstance :(user) ->
+    #TODO usually when we create appInstance, we want a brwoser as well, it 
+    #would be nice to create a browser here?
+    _createAppInstance :(user, callback) ->
         id = @uuidService.getId()
         appInstance = new AppInstance ({
             id : id
@@ -39,27 +53,32 @@ class AppInstanceManager extends EventEmitter
             obj : @appInstanceProvider?.create()
             owner : if user? then user else @app.getOwner()
             server : @server
-            })
-        @appInstances[id] = appInstance
-        weakRefToAppInstance = Weak(appInstance, cleanupStates(id))
-        @weakRefsToAppInstances[id] = weakRefToAppInstance
-        @server.masterStub.workerManager.registerAppInstance({
-            workerId: @server.config.id,
-            appInstanceId : id
-            owner : appInstance.owner
-            })
-        console.log "create appinstance #{id} for #{@app.mountPoint}"
-        return weakRefToAppInstance
+        })
+        
+        @app._masterApp.registerAppInstance(@server.config.id, id, 
+            (err, masterAppInstance)=>
+                if err?
+                    return callback err
+                @appInstances[id] = appInstance
+                weakRefToAppInstance = Weak(appInstance, cleanupStates(id))
+                @weakRefsToAppInstances[id] = weakRefToAppInstance
 
-    newAppInstance : () ->
+                console.log "create appinstance #{id} for #{@app.mountPoint}"
+
+                appInstance.setMasterInstance(masterAppInstance)
+                callback null, weakRefToAppInstance
+            )
+        
+
+    newAppInstance : (callback) ->
         if @app.getInstantiationStrategy() isnt 'default'
-            throw new Error('newAppInstance method is only for default initiation strategy')
-        return @_createAppInstance()
+            return callback new Error('newAppInstance method is only for default initiation strategy')
+        @_createAppInstance(null, callback)
 
     create :(user, callback) ->
         if not @app.isMultiInstance()
-            throw new Error('create method is only for multiInstance initiation strategy')        
-        callback null, @_createAppInstance(user)
+            return callback new Error('create method is only for multiInstance initiation strategy')        
+        @_createAppInstance(user, callback)
 
 
 

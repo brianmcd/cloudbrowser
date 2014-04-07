@@ -5,6 +5,9 @@ AppInstanceManager = require('./app_instance_manager')
 
 
 class BaseApplication extends EventEmitter
+    __r_skip : ['server','httpServer','sessionManager','mongoInterface',
+                'permissionManager','uuidService','appInstanceManager','config',
+                'path','appConfig','localState', 'deploymentConfig', 'appInstanceProvider']
     constructor: (@config, @server) ->
         {@httpServer, @sessionManager, 
         @permissionManager, @mongoInterface,
@@ -116,10 +119,15 @@ class BaseApplication extends EventEmitter
             return @landingPageApp._mountPointHandler(req, res, next)
         if @isSingleInstance()
             # get or create the only instance
-            appInstance = @appInstanceManager.getAppInstance()
-            bserver = appInstance.getBrowser()
-            return routes.redirect(res, 
-                routes.buildBrowserPath(@mountPoint, appInstance.id, bserver.id))
+            @appInstanceManager.getAppInstance((err, appInstance)=>
+                if err?
+                    return next err
+                bserver = appInstance.getBrowser()
+                routes.redirect(res,
+                    routes.buildBrowserPath(@mountPoint, appInstance.id, bserver.id))
+            )
+            return
+            
                 
         if @isSingleInstancePerUser()    
             # get or create instance for user
@@ -128,16 +136,25 @@ class BaseApplication extends EventEmitter
             if not user?
                 return @authApp._mountPointHandler(req, res, next)
             # if the user has logged in, create appInstance and browsers
-            appInstance = @appInstanceManager.getUserAppInstance(user)
-            bserver = appInstance.getBrowser()
-            return routes.redirect(res, 
-                routes.buildBrowserPath(@mountPoint, appInstance.id, bserver.id))
+            @appInstanceManager.getUserAppInstance(user, (err, appInstance)=>
+                if err?
+                    return next err
+                
+                bserver = appInstance.getBrowser()
+                routes.redirect(res, 
+                    routes.buildBrowserPath(@mountPoint, appInstance.id, bserver.id))    
+            )
+            return
 
         # we fall to default initiation strategy, create a new instance for every new request
-        appInstance = @appInstanceManager.newAppInstance()
-        bserver = appInstance.getBrowser()
-        return routes.redirect(res, 
-            routes.buildBrowserPath(@mountPoint, appInstance.id, bserver.id))
+        @appInstanceManager.newAppInstance((err, appInstance)=>
+            if err?
+                return next err
+            bserver = appInstance.getBrowser()
+            routes.redirect(res, 
+                routes.buildBrowserPath(@mountPoint, appInstance.id, bserver.id))
+        )
+        
 
 
     _serveAppInstanceHandler : (req, res, next) ->
@@ -210,6 +227,16 @@ class BaseApplication extends EventEmitter
     closeBrowser : (vbrowser) ->
         vbrowser.close()
 
+    setMasterApp : (@_masterApp) ->
+        console.log "setup masterApp"
+        if @_masterApp.subApps?
+            #key is mountPoint
+            for k, masterSubApp of @_masterApp.subApps
+                subApp = lodash.find(@subApps, {mountPoint: k})
+                subApp.setMasterApp(masterSubApp)
+            
+        
+        
 
             
 

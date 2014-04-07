@@ -52,8 +52,11 @@ class Runner
                     }, callback)
             ]
             'register' : ['masterStub', (callback, results) =>
+                masterStub = results.masterStub
+                results.config.setProxyConfig(masterStub.config.proxyConfig)
+
                 serverConfig = results.config.serverConfig
-                workerManager = results.masterStub.workerManager
+                workerManager = masterStub.workerManager
                 workerManager.registerWorker(serverConfig.getWorkerConfig(),callback)
             ]
             'eventTracker' : ['register', (callback,results) =>
