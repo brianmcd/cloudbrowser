@@ -31,17 +31,20 @@ _validAppConfig :
 
 class Application extends BaseApplication
 
-    constructor : (config, @server) ->
-        super(config, @server)
-        if @isMultiInstance() or @isSingleInstancePerUser() or @isAuthConfigured()
-            @authApp = new AuthApp(this)
-            @addSubApp(@authApp)
-            pwdRestApp = new PasswordRestApplication(this)
-            @addSubApp(pwdRestApp)
-        if @isMultiInstance()
-            @landingPageApp = new LandingApplication(this)
-            @addSubApp(@landingPageApp)
-            
+    constructor : (masterApp, @server) ->
+        super(masterApp, @server)
+        if masterApp.subApps?
+            for k, masterSubApp of masterApp.subApps
+                if masterSubApp.config.appType is 'auth'
+                    @authApp = new AuthApp(masterSubApp, this)
+                    @addSubApp(@authApp)
+                if masterSubApp.config.appType is 'landing'
+                    console.log "adding a landing app"
+                    @landingPageApp = new LandingApplication(masterSubApp, this)
+                    @addSubApp(@landingPageApp)
+                if masterSubApp.config.appType is 'pwdReset'
+                    pwdRestApp = new PasswordRestApplication(masterSubApp, this)
+                    @addSubApp(pwdRestApp)   
         
     mount : () ->
         if @subApps?

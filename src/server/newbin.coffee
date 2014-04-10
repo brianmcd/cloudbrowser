@@ -1,14 +1,14 @@
-async   = require('async')
-Config = require('./config').Config
-DatabaseInterface = require('./database_interface')
-PermissionManager = require('./permission_manager')
-SocketIoServer = require('./socketio_server')
+async              = require('async')
+Config             = require('./config').Config
+DatabaseInterface  = require('./database_interface')
+PermissionManager  = require('./permission_manager')
+SocketIoServer     = require('./socketio_server')
 ApplicationManager = require('./application_manager')
-PermissionManager = require('./permission_manager')
-SessionManager = require('./session_manager')
-HTTPServer = require('./http_server')
-RmiService = require('./rmi_service')
-UuidService = require('./uuid_service')
+PermissionManager  = require('./permission_manager')
+SessionManager     = require('./session_manager')
+HTTPServer         = require('./http_server')
+RmiService         = require('./rmi_service')
+UuidService        = require('./uuid_service')
 
 # https://github.com/trevnorris/node-ofe
 # This will overwrite OnFatalError to create a heapdump when your app fatally crashes.
@@ -51,18 +51,18 @@ class Runner
                     port : masterConfig.rmiPort
                     }, callback)
             ]
-            'register' : ['masterStub', (callback, results) =>
+            'appConfigs' : ['masterStub', (callback, results) =>
+                # retrive proxy config and app configurations from master
                 masterStub = results.masterStub
                 results.config.setProxyConfig(masterStub.config.proxyConfig)
 
                 serverConfig = results.config.serverConfig
-                workerManager = masterStub.workerManager
-                workerManager.registerWorker(serverConfig.getWorkerConfig(),callback)
-            ]
-            'eventTracker' : ['register', (callback,results) =>
+                appManager = masterStub.appManager
+                appManager.registerWorker(serverConfig.getWorkerConfig(),callback)
+            ],
+            'eventTracker' : ['appConfigs', (callback,results) =>
                 callback(null, new EventTracker(results.config.serverConfig))
-            ]
-            ,
+            ],
             'database' : ['config',
                     (callback,results) =>
                         new DatabaseInterface(results.config.serverConfig.databaseConfig, 

@@ -7,13 +7,9 @@ BaseApplication = require('./base_application')
 AppConfig = require('./app_config')
 
 class AuthApp extends BaseApplication
-    constructor: (@parentApp) ->
-        @config = AppConfig.newConfig(Path.resolve(__dirname,'../applications/authentication_interface'))
-        @config.appConfig.instantiationStrategy = 'default'
-        super(@config, @parentApp.server)
-
+    constructor: (masterApp, @parentApp) ->
         @baseMountPoint = @parentApp.mountPoint
-        @mountPoint = routes.concatRoute(@baseMountPoint,'/authenticate')
+        super(masterApp, @parentApp.server)
 
         @checkNotAuth = lodash.bind(@_checkNotAuth, this)
         @checkAuth = lodash.bind(@_checkAuth, this)

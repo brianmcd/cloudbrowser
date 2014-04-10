@@ -1,17 +1,30 @@
-{EventEmitter} = require('events')
-lodash = require('lodash')
-routes = require('./routes')
+Path               = require('path')
+{EventEmitter}     = require('events')
+
+lodash             = require('lodash')
+
+routes             = require('./routes')
 AppInstanceManager = require('./app_instance_manager')
 
 
 class BaseApplication extends EventEmitter
     __r_skip : ['server','httpServer','sessionManager','mongoInterface',
                 'permissionManager','uuidService','appInstanceManager','config',
-                'path','appConfig','localState', 'deploymentConfig', 'appInstanceProvider']
-    constructor: (@config, @server) ->
+                'path','appConfig','localState', 'deploymentConfig', 'appInstanceProvider',
+                'authApp','landingPageApp'
+                ]
+    constructor: (@_masterApp, @server) ->
         {@httpServer, @sessionManager, 
         @permissionManager, @mongoInterface,
-        @uuidService} = @server        
+        @uuidService} = @server
+        # copy configurations
+        @config = lodash.merge({}, @_masterApp.config)
+        # now we assume the master and worker put applications in the same directory
+        @config.appConfig.entryPoint = Path.resolve(@config.path, @config.appConfig.entryPoint)
+        if @config.appConfig.applicationStateFile? and @config.appConfig.applicationStateFile isnt ''
+            stateFile = Path.resolve(@config.path, @config.appConfig.applicationStateFile)
+            # inject customized objects like appInstanceProvider
+            require(stateFile).initialize(@config)
         {
             @path,
             @appConfig,
@@ -20,7 +33,10 @@ class BaseApplication extends EventEmitter
             @appInstanceProvider,
             @dontPersistConfigChanges
         } = @config
-        @mountPoint = @deploymentConfig.mountPoint
+        {@mountPoint, @isPublic, @name,
+         @description, @browserLimit, @authenticationInterface
+        } = @deploymentConfig
+        
         @remoteBrowsing = /^http/.test(@appConfig.entryPoint)
         @counter = 0 
         @appInstanceManager = new AppInstanceManager(@appInstanceProvider, @server, this)
@@ -29,6 +45,8 @@ class BaseApplication extends EventEmitter
         @serveResourceHandler = lodash.bind(@_serveResourceHandler, this)
         @mountPointHandler = lodash.bind(@_mountPointHandler, this)
         @serveAppInstanceHandler = lodash.bind(@_serveAppInstanceHandler,this)
+
+    _sanitizePath : (config) ->
 
  
     _serveVirtualBrowserHandler : (req, res, next) ->
@@ -155,8 +173,6 @@ class BaseApplication extends EventEmitter
                 routes.buildBrowserPath(@mountPoint, appInstance.id, bserver.id))
         )
         
-
-
     _serveAppInstanceHandler : (req, res, next) ->
         # if isSingleInstancePerUser, check authentication, and return the only vbrowser inside
         # if isSingleInstance, check if this instance exist

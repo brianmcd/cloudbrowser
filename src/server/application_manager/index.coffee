@@ -29,6 +29,7 @@ class ApplicationManager extends EventEmitter
         {@config, @database, 
         @permissionManager, @httpServer,
         @sessionManager, @masterStub} = dependencies
+        @_appConfigs = dependencies.appConfigs
         # the services exported to api
         @server = {
             config : @config.serverConfig
@@ -46,159 +47,17 @@ class ApplicationManager extends EventEmitter
         @applications = {}
         @weakRefsToApps = {}
 
-        # Path where cloudbrowser specific applications reside
-        @cbAppDir = Path.resolve(@config.projectRoot, "src/server/applications")
-        
         @_setupGoogleAuthRoutes()
         @loadApplications()
         callback null,this
 
     #load applications after the routes on http_server is ready
     loadApplications : ()->
-        Async.series [
-            (next) =>
-                # Mount the home page
-                if @config.serverConfig.homePage 
-                    @createAppFromDir({
-                        path : Path.resolve(@cbAppDir, 'home_page')
-                        type : 'admin'
-                        mountPoint : '/'
-                    }
-                    , next)
-                else
-                    next(null)
-            (next) =>
-                # Mount the admin interface
-                if @config.serverConfig.adminInterface 
-                    @createAppFromDir({
-                        path : Path.resolve(@cbAppDir, "admin_interface")
-                        type : "admin"
-                    }
-                    , next)
-                else 
-                    next(null)
-        ], (err) -> if err then console.log(err)
-
-        @_loadFromCmdLine(@config.paths) if @config.paths?
-
-
-    _loadConfigFromPath : (path, callback) ->
-        Fs.lstat path, (err, stats) =>
-            if err?
-                return callback err, null
-            if not stats?
-                return callback(new Error("The path #{path} does not exist"), null)
-            # mount a single html file
-            if stats.isFile()
-                mountPoint = _constructMountPoint(path)
-                if mountPoint?
-                    config = AppConfig.newConfig()
-                    config.appConfig.entryPoint = path
-                    config.deploymentConfig.mountPoint = mountPoint
-                    config.deploymentConfig.setOwner(@server.config.defaultUser)
-                    return callback null, config
-                return callback(new Error("Could not mount #{path}"), null)
-            if stats.isDirectory()
-                @_loadConfigFromDir(path, callback)
+        for mountPoint, masterApp of @_appConfigs
+            app = new Application(masterApp, @server)
+            @addApplication(app)
+            app.mount()
             
-    _loadConfigFromDir : (path, callback) ->
-        Fs.exists(Path.resolve(path, 'app_config.json'), (exists) =>
-                if exists
-                    console.log "loading #{path}"
-                    return AppConfig.newConfig(path, callback)
-                else
-                    # go to subdirectories
-                    Fs.readdir(path, (err, files) =>
-                        if err
-                            #if it is an error, path is a file, ignore it
-                            return callback null, null
-                        configs = []
-                        readEachFile = (file, next) =>
-                            @_loadConfigFromDir(Path.resolve(path,file), (err, config) ->
-                                if err
-                                    console.log err.stack
-                                    return
-                                if lodash.isArray(config)
-                                    for c in config
-                                        configs.push(c)
-                                else
-                                    configs.push(config)
-                                next null
-                            )
-
-                        Async.each(files, readEachFile, (err) ->
-                                callback(err, configs)
-                            )
-                        )
-                    )
-
-
-    _constructMountPoint : (path) ->
-        # Removing the trailing slash
-        if path.charAt(path.length-1) is "/" then path = path.slice(0, - 1)
-        # Get the components of the path
-        splitPath = path.split('/')
-
-        index = 1
-        # Start constructing the mountpoint from the last part of the path
-        mountPoint = "/#{splitPath[splitPath.length - index]}"
-
-        # Keep adding the components to the mountPoint backwards till
-        # we get a unique mountPoint
-        while @find(mountPoint) and index < splitPath.length
-            mountPoint = "/#{splitPath[splitPath.length - (++index)]}#{mountPoint}"
-
-        # If a unique mountPoint could not be constructed from the path
-        # then, the application at that path has already been mounted or
-        # that there are multiple apps sharing a config file.
-        if index is splitPath.length
-            # App has already been mounted
-            return
-        else return mountPoint
-
-            
-    # Checks if path in the list of paths supplied as the command line arg 
-    # is a file or directory and takes the appropriate action
-    _loadFromCmdLine : (paths, callback) ->
-        for path in paths
-            path = Path.resolve(process.cwd(), path)
-            configs = []
-            @_loadConfigFromPath(path, (err, config) =>
-                if err?
-                    console.log err.stack
-                    return callback err
-                if lodash.isArray(config)
-                    for c in config
-                        configs.push(config)
-                else
-                    configs.push(config)
-                Async.each(
-                    configs, 
-                    (config,callback)=>
-                        @createApplication(config, callback)
-                    ,
-                    callback
-                    )
-            )
-
-    createApplication : (config, callback) ->
-        app = new Application(config, @server)
-        @addApplication(app)
-        app.mount()
-        @registerApplication(app, callback)
-
-    # path, type in options
-    createAppFromDir : (options, callback) ->
-        @_loadConfigFromDir(options.path, (err, config) =>
-            if err
-                console.log err.stack
-                return callback err
-            if options.mountPoint? then config.deploymentConfig.mountPoint = options.mountPoint
-            if options.type is 'admin'
-                config.deploymentConfig.setOwner(@config.serverConfig.defaultUser)
-            
-            @createApplication(config, callback)
-            )
 
     addApplication : (app) ->
         mountPoint = app.mountPoint
@@ -221,16 +80,7 @@ class ApplicationManager extends EventEmitter
         # Permission Check Required
         # for all apps and for only a particular user's apps
         return @weakRefsToApps
-
-    # register the application to master
-    registerApplication :(app, callback) ->
-        @masterStub.appManager.regsiterApp(@config.serverConfig.id, app, (err, masterApp)->
-            if err?
-                return callback err
-            app.setMasterApp(masterApp)
-            callback null,app
-        )
-            
+        
 
     _setupGoogleAuthRoutes : () ->
         # TODO - config return url and realm
