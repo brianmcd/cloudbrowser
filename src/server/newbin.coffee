@@ -105,6 +105,8 @@ class Runner
                 if err?
                     @handlerInitializeError(err)
                 else
+                    rmiService = results.rmiService
+                    rmiService.createSkeleton('appManager', results.applicationManager)
                     console.log('Server started in local mode')
             )
 

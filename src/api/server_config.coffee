@@ -90,6 +90,7 @@ class ServerConfig
 
         # Apps that the current user owns
         if filters.indexOf('perUser') isnt -1
+            console.log "listApps for email #{JSON.stringify(userCtx)}"
             permissionManager.getAppPermRecs
                 user        : userCtx
                 permission  : 'own'
@@ -171,7 +172,6 @@ class ServerConfig
 
         {cbServer, userCtx, cbCtx} = _pvts[@_idx]
         email = userCtx.getEmail()
-
         ApplicationUploader.process email, pathToFile, (err, app) ->
             return callback(err) if err
             callback new AppConfig

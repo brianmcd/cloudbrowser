@@ -18,23 +18,39 @@ class AppInstance
         @_browserMap[bid] = true
         callback null
 
+    _waitForCreate : (func) ->
+        if not @_waiting?
+            @_waiting = []
+        @_waiting.push(func)
+
+    _notifyWaiting : (err) ->
+        if @_waiting?
+            if err
+                for i in @_waiting
+                    i(err)
+            else
+                for i in @_waiting
+                    i(null, @_remote)    
+
+    _setRemoteInstance : (remote)->
+        @_remote = remote
+        {@id, @browserId}= remote
+        @_notifyWaiting()
+        
 
 class Application
-    constructor: (@_masterConfig, @_workerManager, @config) ->
+    constructor: (@_masterConfig, @_workerManager,@_uuidService, @config) ->
         {@mountPoint} = @config.deploymentConfig
         #mounted by default
         @mounted = true
         @url = "http://#{@_masterConfig.getHttpAddr()}#{@mountPoint}"
         #@workers = {}
-        @_appInstanceWorkerMap = {}
-        @_appInstanceMap ={}
+        @_appInstanceMap = {}
+        @_userToAppInstance = {}
     
-    #TODO register listeners in one call    
-    registerAppInstance: (workerId, appInstanceId, callback) ->
-        @_appInstanceWorkerMap[appInstanceId] = workerId
-        @_appInstanceMap[appInstanceId] = new AppInstance(@_workerManager, appInstanceId, workerId)
-        @_workerManager.registerAppInstance(@_appInstanceMap[appInstanceId])
-        callback null, @_appInstanceMap[appInstanceId]
+    _addAppInstance: (appInstance) ->
+        @_appInstanceMap[appInstance.id] = appInstance
+        @_workerManager.registerAppInstance(appInstance)
 
     getName: (callback)->
         callback null, @name
@@ -68,6 +84,81 @@ class Application
     isAuthConfigured : (callback) ->
         callback null, @authenticationInterface
 
+    getAppInstance : (callback) ->
+        # get the only app instance, for single instance apps
+        if not @_appInstance?
+            # create a new one
+            worker = @_workerManager.getMostFreeWorker()
+            appInstance = new AppInstance(@_workerManager, null, worker.id)
+            # avoid initiating appInstance on two workers
+            # TODO : if the master has send a create request, all others shall wait. listen to 'created' event of the appInstance?
+            # it won't be a big issue for single instance apps, if they have no states
+            @_appInstance = appInstance
+            # now tell the worker to initiate a appInstance
+            
+            @_workerManager._getWorkerStub(worker, (err, stub)=>
+                if err?
+                    @_appInstance._notifyWaiting(err)
+                    @_appInstance = null
+                    return callback err
+                stub.appManager.createAppInstance(@mountPoint,(err, result)=>
+                    if err?
+                        @_appInstance._notifyWaiting(err)
+                        @_appInstance = null
+                        return callback err
+                    appInstance._setRemoteInstance(result)
+                    @_addAppInstance(appInstance)
+                    callback null, appInstance
+                )
+            )
+        else
+            if @_appInstance.id?
+                callback null, @_appInstance
+            else
+                @_appInstance._waitForCreate(callback)
+
+    getUserAppInstance : (user, callback) ->
+        appInstance = @_userToAppInstance[user]
+        if appInstance?
+            if appInstance.id?
+                return callback null, appInstance
+            else
+                appInstance._waitForCreate(callback)
+        else
+            worker = @_workerManager.getMostFreeWorker()
+            appInstance = new AppInstance(@_workerManager, null, worker.id)
+            @_userToAppInstance[user] = appInstance
+            @_workerManager._getWorkerStub(worker, (err, stub)=>
+                if err?
+                    appInstance._notifyWaiting(err)
+                    delete @_userToAppInstance[user]
+                    return callback err
+                stub.appManager.createAppInstanceForUser(@mountPoint, user, (err, result)=>
+                    if err?
+                        appInstance._notifyWaiting(err)
+                        delete @_userToAppInstance[user]
+                        return callback err
+                    appInstance._setRemoteInstance(result)
+                    @_addAppInstance(appInstance)
+                    callback null, appInstance
+                )
+            )
+
+    getNewAppInstance : (callback) ->
+        worker = @_workerManager.getMostFreeWorker()
+        appInstance = new AppInstance(@_workerManager, null, worker.id)
+        @_workerManager._getWorkerStub(worker, (err, stub)=>
+            if err?
+                return callback err
+            stub.appManager.createAppInstance(@mountPoint, (err, result)=>
+                if err?
+                    return callback err
+                appInstance._setRemoteInstance(result)
+                @_addAppInstance(appInstance)
+                callback null, appInstance
+            )
+        )        
+
 
     _addSubApp : (subApp) ->
         if not @subApps
@@ -84,6 +175,7 @@ class Application
 class AppManager
     constructor: (dependencies, callback) ->
         @_workerManager = dependencies.workerManager
+        @_uuidService = dependencies.uuidService
         @_config = dependencies.config
         @_workerAppMap = {}
         # a map of mountPoint to applications
@@ -151,12 +243,12 @@ class AppManager
             console.log "#{mountPoint} has already been registered. Skipping app #{appConfig.path}"
         else
             console.log "load #{mountPoint}"
-            app = new Application(@_config, @_workerManager, appConfig)
+            app = new Application(@_config, @_workerManager,@_uuidService, appConfig)
             @_applications[mountPoint] = app
             @_workerManager.setupRoute(app)
             subAppConfigs = @_getSubAppConfigs(appConfig)
             for subAppConfig in subAppConfigs
-                subApp = new Application(@_config, @_workerManager, subAppConfig)
+                subApp = new Application(@_config, @_workerManager,@_uuidService, subAppConfig)
                 subApp._setParent(app)
                 app._addSubApp(subApp)
                 @_applications[subApp.mountPoint] = subApp

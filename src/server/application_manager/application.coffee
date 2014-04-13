@@ -1,15 +1,15 @@
-Path     = require('path')
-Fs       = require('fs')
-Async    = require('async')
+Path                    = require('path')
+Fs                      = require('fs')
+Async                   = require('async')
 
-User     = require('../user')
-{hashPassword}     = require('../../api/utils')
-cloudbrowserError  = require('../../shared/cloudbrowser_error')
-BaseApplication = require('./base_application')
-AuthApp = require('./authenticate_application')
-LandingApplication = require('./landing_application')
+User                    = require('../user')
+{hashPassword}          = require('../../api/utils')
+cloudbrowserError       = require('../../shared/cloudbrowser_error')
+BaseApplication         = require('./base_application')
+AuthApp                 = require('./authenticate_application')
+LandingApplication      = require('./landing_application')
 PasswordRestApplication = require('./pwd_reset_application')
-routes = require('./routes')
+routes                  = require('./routes')
 
 
 ###

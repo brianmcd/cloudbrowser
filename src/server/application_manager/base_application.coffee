@@ -3,6 +3,7 @@ Path               = require('path')
 
 lodash             = require('lodash')
 
+User               = require('../user')
 routes             = require('./routes')
 AppInstanceManager = require('./app_instance_manager')
 
@@ -46,14 +47,15 @@ class BaseApplication extends EventEmitter
         @mountPointHandler = lodash.bind(@_mountPointHandler, this)
         @serveAppInstanceHandler = lodash.bind(@_serveAppInstanceHandler,this)
 
-    _sanitizePath : (config) ->
 
  
     _serveVirtualBrowserHandler : (req, res, next) ->
         appInstanceID = req.params.appInstanceID
         vBrowserID = req.params.browserID
 
+
         #should check by user and permission
+        #check in local object is suffice because the master has routed this appInstance here
         appInstance = @appInstanceManager.find(appInstanceID)
         if not appInstance then return routes.notFound(res, "The application instance #{appInstanceID} was not found")
 
@@ -97,7 +99,13 @@ class BaseApplication extends EventEmitter
         return @deploymentConfig.authenticationInterface
 
     getOwner : () ->
-        return @deploymentConfig.owner
+        if not @_owner?
+            if typeof @deploymentConfig.owner is 'string'
+                @_owner = new User(@deploymentConfig.owner)
+            else
+                @_owner = @deploymentConfig.owner
+            console.log "the owner for #{@mountPoint} is #{JSON.stringify(@_owner)}"
+        return @_owner
 
     entryURL : () ->
         return @appConfig.entryPoint
@@ -138,11 +146,9 @@ class BaseApplication extends EventEmitter
         if @isSingleInstance()
             # get or create the only instance
             @appInstanceManager.getAppInstance((err, appInstance)=>
-                if err?
-                    return next err
-                bserver = appInstance.getBrowser()
+                return next(err) if err?
                 routes.redirect(res,
-                    routes.buildBrowserPath(@mountPoint, appInstance.id, bserver.id))
+                    routes.buildBrowserPath(@mountPoint, appInstance.id, appInstance.browserId))
             )
             return
             
@@ -158,9 +164,8 @@ class BaseApplication extends EventEmitter
                 if err?
                     return next err
                 
-                bserver = appInstance.getBrowser()
                 routes.redirect(res, 
-                    routes.buildBrowserPath(@mountPoint, appInstance.id, bserver.id))    
+                    routes.buildBrowserPath(@mountPoint, appInstance.id, appInstance.browserId))    
             )
             return
 
@@ -168,9 +173,8 @@ class BaseApplication extends EventEmitter
         @appInstanceManager.newAppInstance((err, appInstance)=>
             if err?
                 return next err
-            bserver = appInstance.getBrowser()
             routes.redirect(res, 
-                routes.buildBrowserPath(@mountPoint, appInstance.id, bserver.id))
+                routes.buildBrowserPath(@mountPoint, appInstance.id, appInstance.browserId))
         )
         
     _serveAppInstanceHandler : (req, res, next) ->
@@ -243,17 +247,12 @@ class BaseApplication extends EventEmitter
     closeBrowser : (vbrowser) ->
         vbrowser.close()
 
-    setMasterApp : (@_masterApp) ->
-        console.log "setup masterApp"
-        if @_masterApp.subApps?
-            #key is mountPoint
-            for k, masterSubApp of @_masterApp.subApps
-                subApp = lodash.find(@subApps, {mountPoint: k})
-                subApp.setMasterApp(masterSubApp)
-            
-        
-        
+    # for single instance
+    createAppInstance : (callback) ->
+        callback null, @appInstanceManager.createAppInstance()
 
-            
+    createAppInstanceForUser : (user, callback) ->
+        callback null, @appInstanceManager.createAppInstance(user)
+                   
 
 module.exports = BaseApplication

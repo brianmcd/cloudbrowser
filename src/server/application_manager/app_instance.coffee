@@ -14,6 +14,8 @@ cleanupBserver = (id) ->
         console.log "[Browser Manager] - Garbage collected vbrowser #{id}"
 
 class AppInstance extends EventEmitter
+    __r_skip :['app', 'browsers', 'browser', 'readerwriters','weakrefsToBrowsers',
+                'weakrefToBrowser', 'server', 'obj', 'uuidService']
     constructor : (options) ->
         {@app
         , @obj
@@ -32,12 +34,6 @@ class AppInstance extends EventEmitter
         @browsers = {}
         @weakrefsToBrowsers = {}
 
-    getBrowser : ()->
-        if not @weakrefToBrowser
-            @browser = @createBrowser()
-            id = @browser.id
-            @weakrefToBrowser = @findBrowser(id)
-        return @weakrefToBrowser
 
     findBrowser : (id) ->
         @weakrefsToBrowsers[id]
@@ -45,25 +41,34 @@ class AppInstance extends EventEmitter
     addBrowser : (vbrowser) ->
         id = vbrowser.id
         weakrefToBrowser = Weak(vbrowser, cleanupBserver(id))
+        # the appinstance is just contianer of browsers, we are interested in getting
+        # browser id as soon as we create an appInstance. 
+        # for singleAppInstance and singleUserInstance, there would be only one browser
+        # in appInstance, it is convenient to fileds for the first browser created
+        if not @browserId?
+            @browserId = id
+            @weakrefToBrowser = weakrefToBrowser
+            @browser = vbrowser
         @weakrefsToBrowsers[id] = weakrefToBrowser
         @browsers[id] = vbrowser
+        return weakrefToBrowser
 
 
-    _createSecure : () ->
-        vbrowser = @_createVirtualBrowser
-            type        : SecureVirtualBrowser
-            id          : @uuidService.getId()
-            creator     : @owner
-            permission  : 'own'
-        @addBrowser(vbrowser)
-        return vbrowser
-
-    _create : () ->
-        vbrowser = @_createVirtualBrowser
-            type : VirtualBrowser
-            id   : @uuidService.getId()
-        @addBrowser(vbrowser)
-        return vbrowser
+    _create : (user) ->
+        vbrowser = null
+        if @app.isAuthConfigured()
+            vbrowser = @_createVirtualBrowser
+                type        : SecureVirtualBrowser
+                id          : @uuidService.getId()
+                creator     : @owner
+                permission  : 'own'
+        else 
+            vbrowser = @_createVirtualBrowser
+                type : VirtualBrowser
+                id   : @uuidService.getId()
+        # retrun weak reference
+        return @addBrowser(vbrowser)
+        
 
     _createVirtualBrowser : (browserInfo) ->
         {id, type, creator, permission} = browserInfo
@@ -80,16 +85,18 @@ class AppInstance extends EventEmitter
     # user: the user try to create browser, callback(err, browser)
     createBrowser : (user, callback) ->
         console.log "createBrowser for #{@app.mountPoint}"
-        browser = null
-        if @app.isAuthConfigured()
-            browser = @_createSecure()
-        else 
-            browser = @_create()
-        if callback?
-            return callback null,browser
-        return browser
-
-
+        if not @app.isMultiInstance()
+            # return the only instance
+            if not @weakrefToBrowser
+                @_create(user)
+            if callback?
+                return callback(@weakrefToBrowser)
+            return @weakrefToBrowser
+        else
+            browser = @_create(user)
+            if callback
+                return callback null, browser
+            return browser
 
     _findReaderWriter : (user) ->
         return c for c in @readerwriters when c.getEmail() is user.getEmail()

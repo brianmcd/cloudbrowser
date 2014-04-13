@@ -22,6 +22,7 @@ class MasterConfig
         # enable embeded reverse proxy server, we may also need a option to start a standalone proxy
         @enableProxy = false
         @proxyConfig = new ProxyConfig()
+        @databaseConfig = new DatabaseConfig()
         # port for rmi service
         @rmiPort = 3040
         
@@ -38,7 +39,15 @@ class MasterConfig
         if @proxyConfig.httpPort isnt 80
             result += ":#{@proxyConfig.httpPort}"
         return result
-        
+
+class DatabaseConfig
+    constructor: () ->
+        @dbName = 'cloudbrowser'
+        @host = 'localhost'
+        @port = 27017
+        @type = 'mongoDB'
+ 
+
 
 class ProxyConfig
     constructor: () ->

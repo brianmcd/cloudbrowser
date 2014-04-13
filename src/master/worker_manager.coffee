@@ -52,11 +52,10 @@ routers = {
 # need better naming here
 class WokerManager
     constructor : (dependencies, callback) ->
+        @_rmiService = dependencies.rmiService
         @workersMap = {}
         @appInstanceMap = {}
-        @appMaster = dependencies.appMaster
-        #using in-memory object to hold all the records
-        @pathToWorkers = {}
+        @_workerStubs = {}
         callback null, this
 
     getMostFreeWorker : () ->
@@ -149,6 +148,19 @@ class WokerManager
             #if no appInstanceId in the url, map to any worker, using the original url
             return {worker : @getMostFreeWorker()}
 
+    _getWorkerStub : (worker, callback) ->
+        if not @_workerStubs[worker.id]?
+            @_rmiService.createStub({
+                host : worker.host
+                port : worker.rmiPort
+                }, (err, stub)=>
+                    return callback(err) if err?
+                    @_workerStubs[worker.id] = stub
+                    callback null, stub
+                )
+        else
+            callback null, @_workerStubs[worker.id]
+        
 
 
 module.exports = (dependencies, callback) ->
