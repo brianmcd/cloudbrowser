@@ -157,7 +157,16 @@ class Application
                 @_addAppInstance(appInstance)
                 callback null, appInstance
             )
-        )        
+        )
+
+    
+    regsiterAppInstance : (workerId, appInstance, callback) ->
+        localAppInstance = new AppInstance(@_workerManager, null, workerId)
+        localAppInstance._setRemoteInstance(appInstance)
+        @_addAppInstance(localAppInstance)
+        callback null
+
+
 
 
     _addSubApp : (subApp) ->

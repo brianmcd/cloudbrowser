@@ -108,7 +108,10 @@ class AppConfig
         @memberOf AppConfig
     ###
     getDescription: () ->
-        _pvts[@_idx].app.getDescription()
+        app = _pvts[@_idx].app
+        if app.parentApp?
+            app = app.parentApp
+        app.getDescription()
 
     ###*
         Gets the name of the application as provided in the
@@ -119,7 +122,10 @@ class AppConfig
         @memberOf AppConfig
     ###
     getName: () ->
-        return _pvts[@_idx].app.getName()
+        app = _pvts[@_idx].app
+        if app.parentApp?
+            app = app.parentApp
+        return app.getName()
 
     ###*
         Wraps all calls on the application object with a permission check

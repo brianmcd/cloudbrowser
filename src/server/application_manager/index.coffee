@@ -110,10 +110,12 @@ class ApplicationManager extends EventEmitter
             if not redirectto then redirectto = mountPoint
             routes.redirect(res, redirectto)
 
+    # called by master
     createAppInstance : (mountPoint, callback) ->
         app = @applications[mountPoint]
         app.createAppInstance(callback)
 
+    # called by master
     createAppInstanceForUser : (mountPoint, user, callback) ->
         app = @applications[mountPoint]
         app.createAppInstanceForUser(user, callback)

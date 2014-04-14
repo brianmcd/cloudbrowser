@@ -67,6 +67,7 @@ class AppInstance extends EventEmitter
                 type : VirtualBrowser
                 id   : @uuidService.getId()
         # retrun weak reference
+        console.log "createBrowser #{vbrowser.id} for #{@app.mountPoint} - #{@id}"
         return @addBrowser(vbrowser)
         
 
@@ -84,7 +85,7 @@ class AppInstance extends EventEmitter
 
     # user: the user try to create browser, callback(err, browser)
     createBrowser : (user, callback) ->
-        console.log "createBrowser for #{@app.mountPoint}"
+        console.log "getBrowser for #{@app.mountPoint} - #{@id}"
         if not @app.isMultiInstance()
             # return the only instance
             if not @weakrefToBrowser
@@ -94,7 +95,7 @@ class AppInstance extends EventEmitter
             return @weakrefToBrowser
         else
             browser = @_create(user)
-            if callback
+            if callback?
                 return callback null, browser
             return browser
 
@@ -145,8 +146,7 @@ class AppInstance extends EventEmitter
 
     getAllBrowsers : () ->
         return @weakrefsToBrowsers
-    # set up listeners
-    setMasterInstance: (@_masterInstance) ->
+    
 
 
 

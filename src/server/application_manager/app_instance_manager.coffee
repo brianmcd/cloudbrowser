@@ -24,7 +24,11 @@ class AppInstanceManager extends EventEmitter
         else
             callback null, @weakRefToAppInstance
 
+    # user is always string
     createAppInstance : (user) ->
+        if user? and typeof user isnt 'string'
+            throw new Error("User #{user} should be string")
+
         if @app.isSingleInstance()
             if not @weakRefToAppInstance?
                 @weakRefToAppInstance = @_createAppInstance(user)
@@ -41,9 +45,10 @@ class AppInstanceManager extends EventEmitter
 
 
     getUserAppInstance : (user, callback) ->
-        if not user?
-            throw new Error('should specify user for getUserAppInstance')
-        email = if user._email? then user._email else user
+        if not user? or not user._email?
+            throw new Error("should specify user for getUserAppInstance : #{user}")
+        email = user._email
+            
         if not @userToAppInstances[email]?
             # query master
             @_masterApp.getUserAppInstance(email, callback)
@@ -59,7 +64,7 @@ class AppInstanceManager extends EventEmitter
                 owner = new User(user)
         else
             owner = @app.getOwner()
-            
+
         id = @uuidService.getId()
         appInstance = new AppInstance ({
             id : id
@@ -75,17 +80,33 @@ class AppInstanceManager extends EventEmitter
         @weakRefsToAppInstances[id] = weakRefToAppInstance
         return weakRefToAppInstance
         
-
-    newAppInstance : (callback) ->
-        if @app.getInstantiationStrategy() isnt 'default'
-            throw new Error('newAppInstance method is only for default initiation strategy')
-        @_masterApp.getNewAppInstance(callback)
-
-    create :(user) ->
+    # called by api, need to register the new appInstance to master
+    create :(user, callback) ->
         if not @app.isMultiInstance()
             throw new Error('create method is only for multiInstance initiation strategy')        
-        return @_createAppInstance(user)
-
+        appInstance = @_createAppInstance(user)
+        @_masterApp.regsiterAppInstance(@server.config.id, appInstance, (err)=>
+            if err?
+                @_removeAppInstance(appInstance)
+                return callback err
+            callback err, appInstance
+        )
+        
+    _removeAppInstance : (appInstance) ->
+        delete @appInstances[appInstance.id]
+        delete @weakRefsToAppInstances[appInstance.id]
+        if @appInstance? and @appInstance.id is appInstance.id
+            @appInstance = null
+            @weakRefToAppInstance = null
+        if @appInstance.owner?
+            email = @appInstance.owner._email
+            ref = @userToAppInstances[email]
+            if ref? and ref.id is appInstance.id
+                delete @userToAppInstances[email]
+        appInstance.close()
+            
+        
+        
 
 
     find : (id) ->

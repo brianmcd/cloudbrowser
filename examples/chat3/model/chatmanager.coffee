@@ -32,8 +32,9 @@ class ChatManager extends EventEmitter
             @users.push(user)
         else
             user.setEventHandler(eventHandler)
-            for roomName in user.roomsToBeJoined
-                @addUserToRoom(user, @findRoom(roomName))
+            if user.roomsToBeJoined?
+                for roomName in user.roomsToBeJoined
+                    @addUserToRoom(user, @findRoom(roomName))
         return user
 
     findRoom : (roomName) ->
