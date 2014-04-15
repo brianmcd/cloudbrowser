@@ -2,11 +2,12 @@ Async = require('async')
 CacheManager           = require('./cache_manager')
 SystemPermissions      = require('./system_permissions')
 
-class UserPermissionManager extends CacheManager
+# the permission might be changed by other workers.
+# caching is disabled
+class UserPermissionManager
     collectionName = "Permissions"
 
     constructor : (@mongoInterface, callback) ->
-        super(SystemPermissions)
         @dbOperation('addIndex', null, {_email:1}, 
             (err) =>
                 callback(err,this)
@@ -34,19 +35,14 @@ class UserPermissionManager extends CacheManager
                 callback(null, null)
             else callback(null, sysPermRec)
 
-        # If entry is in cache, use cache entry
-        sysPermRec = @find(user)
-        if sysPermRec then filterOnPermission(sysPermRec)
-
-        # Else, hit the DB
-        else Async.waterfall [
+        Async.waterfall [
             (next) =>
                 @dbOperation('findUser', user, null, next)
             (dbRecord, next) =>
                 if not dbRecord then next(null, null)
                 else
                     # Add to cache
-                    sysPermRec = @add(user, dbRecord.permission)
+                    sysPermRec = new SystemPermissions(user, dbRecord.permission)
                     for mountPoint, app of dbRecord.apps
                         appPerm = sysPermRec.addItem(mountPoint, app.permission)
                         if app.appInstances
@@ -70,7 +66,7 @@ class UserPermissionManager extends CacheManager
                 if not sysPermRec
                     @dbOperation 'addUser', user, null, (err) =>
                         # Add to cache
-                        next(err, @add(user))
+                        next(err, new SystemPermissions(user))
                 else next(null, sysPermRec)
             (sysPermRec, next) =>
                 @setSysPerm
@@ -92,7 +88,7 @@ class UserPermissionManager extends CacheManager
                 if sysPermRec
                     @dbOperation 'removeUser', user, null, (err) ->
                         # Remove from cache
-                        next(err, @remove(user))
+                        next(err, null)
                 else next(null, null)
         ], callback
 
@@ -124,7 +120,6 @@ class UserPermissionManager extends CacheManager
 
     addAppPermRec : (options) ->
         {user, mountPoint, permission, callback} = options
-        
         setPerm = (callback) =>
             @setAppPerm
                 user        : user
