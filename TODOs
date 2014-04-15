@@ -26,3 +26,7 @@ Refactor issues
 
 - consolidate classes : configs
 
+- serverConfig.listApps  : every worker has full set of applications
+
+- appConfig.listBrowsers : 
+

@@ -120,8 +120,16 @@ class BaseApplication extends EventEmitter
         console.log "http://#{@server.config.getHttpAddr()}#{@mountPoint}"
         return "http://#{@server.config.getHttpAddr()}#{@mountPoint}"
 
-    getName : () ->
-        @deploymentConfig.name
+    getName : (callback) ->
+        if callback?
+            @_masterApp.getName(callback)
+        else
+            return @deploymentConfig.name
+        
+
+    setName : (newName, callback) ->
+        @_masterApp.setName(newName, callback)
+        
 
     isMounted : () ->
         return @mounted
@@ -249,10 +257,10 @@ class BaseApplication extends EventEmitter
 
     # for single instance
     createAppInstance : (callback) ->
-        callback null, @appInstanceManager.createAppInstance()
+        @appInstanceManager.createAppInstance(null, callback)
 
     createAppInstanceForUser : (user, callback) ->
-        callback null, @appInstanceManager.createAppInstance(user)
+        @appInstanceManager.createAppInstance(user, callback)
                    
 
 module.exports = BaseApplication

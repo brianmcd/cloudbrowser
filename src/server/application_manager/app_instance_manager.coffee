@@ -18,30 +18,38 @@ class AppInstanceManager extends EventEmitter
         @appInstances  = {}
 
     getAppInstance : (callback) ->
-        if not @weakRefToAppInstance?
+        if not @appInstance?
             #not in local, query master
             @_masterApp.getAppInstance(callback)
         else
-            callback null, @weakRefToAppInstance
+            callback null, @appInstance
 
+    # actual create a new instance in local
     # user is always string
-    createAppInstance : (user) ->
+    createAppInstance : (user, callback) ->
         if user? and typeof user isnt 'string'
             throw new Error("User #{user} should be string")
 
         if @app.isSingleInstance()
-            if not @weakRefToAppInstance?
-                @weakRefToAppInstance = @_createAppInstance(user)
-                @appInstance = @appInstances[@weakRefToAppInstance.id]
-            return @weakRefToAppInstance
+            # check if we had it
+            if not @appInstance?
+                return @_createAppInstance(user, (err, instance) =>
+                        return callback(err) if err?
+                        @appInstance = instance
+                        callback null, instance
+                    )
+            return callback null, @appInstance
         else if @app.isSingleInstancePerUser()
             if not user?
-                throw new Error('should specify user for getAppInstanceForUser')
+                return callback(new Error('should specify user for getAppInstanceForUser'))
             if not @userToAppInstances[user]?
-                @userToAppInstances[user] = @_createAppInstance(user)
-            return @userToAppInstances[user]
+                return @_createAppInstance(user, (err, instance)=>
+                        @userToAppInstances[user] = instance
+                        callback null, instance
+                )
+            return callback null, @userToAppInstances[user]
         else    
-            return @_createAppInstance(user)
+            return @_createAppInstance(user, callback)
 
 
     getUserAppInstance : (user, callback) ->
@@ -57,7 +65,7 @@ class AppInstanceManager extends EventEmitter
 
         
     
-    _createAppInstance :(user) ->
+    _createAppInstance :(user, callback) ->
         owner = user
         if user?
             if typeof user is 'string'
@@ -75,29 +83,40 @@ class AppInstanceManager extends EventEmitter
         })
         # usually when we create appInstance, we want a brwoser as well
         appInstance.createBrowser(user)
-        @appInstances[id] = appInstance
-        weakRefToAppInstance = Weak(appInstance, cleanupStates(id))
-        @weakRefsToAppInstances[id] = weakRefToAppInstance
-        return weakRefToAppInstance
+        @permissionManager.addAppInstancePermRec
+            user        : user
+            mountPoint  : @app.getMountPoint()
+            permission  : 'own'
+            appInstanceID : id
+            callback : (err, appInstancePermRec) =>
+                return callback(err) if err
+                @appInstances[id] = appInstance
+                weakRefToAppInstance = Weak(appInstance, cleanupStates(id))
+                @weakRefsToAppInstances[id] = weakRefToAppInstance                
+                @emit('add', id)
+                callback(null, weakRefToAppInstance)
+
         
     # called by api, need to register the new appInstance to master
     create :(user, callback) ->
         if not @app.isMultiInstance()
             throw new Error('create method is only for multiInstance initiation strategy')        
-        appInstance = @_createAppInstance(user)
-        @_masterApp.regsiterAppInstance(@server.config.id, appInstance, (err)=>
-            if err?
-                @_removeAppInstance(appInstance)
-                return callback err
-            callback err, appInstance
+        appInstance = @_createAppInstance(user, (err, instance)=>
+            return callback(err) if err?
+            @_masterApp.regsiterAppInstance(@server.config.id, appInstance, (err)=>
+                if err?
+                    @_removeAppInstance(appInstance)
+                    return callback err
+                callback err, appInstance
+            )
         )
+        
         
     _removeAppInstance : (appInstance) ->
         delete @appInstances[appInstance.id]
         delete @weakRefsToAppInstances[appInstance.id]
         if @appInstance? and @appInstance.id is appInstance.id
             @appInstance = null
-            @weakRefToAppInstance = null
         if @appInstance.owner?
             email = @appInstance.owner._email
             ref = @userToAppInstances[email]

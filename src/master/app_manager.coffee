@@ -56,7 +56,8 @@ class Application
         callback null, @name
 
     setName: (@name, callback)->
-        callback null
+        if callback?
+            callback null
 
     getDescription : (callback) ->
         callback null, @description
