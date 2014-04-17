@@ -398,6 +398,7 @@ class AppConfig
             mountPoint : mountPoint
             callback   : (err, browserRecs) ->
                 return callback(err) if err
+
                 browsers = []
                 for id, browserRec of browserRecs
                     browsers.push new Browser
@@ -449,13 +450,29 @@ class AppConfig
             mountPoint : mountPoint
             callback   : (err, appInstanceRecs) ->
                 appInstances = []
-                for id, appInstanceRec of appInstanceRecs
-                    appInstances.push new AppInstance
-                        cbServer : cbServer
-                        appInstance : app.appInstances.find(id)
-                        userCtx : userCtx
-                        cbCtx   : cbCtx
-                callback(null, appInstances)
+                # todo, make findinstance by batch
+                Async.each(appInstanceRecs,
+                    (appInstanceRec, appInstanceRecCb)->
+                        app.appInstanceManager.findInstance(id, (err, instance)->
+                            return appInstanceRecCb(err) if err?
+                            #the instance associated with the id may have long gone
+                            if instance?
+                                appInstances.push(instance)
+                            appInstanceRecCb null
+                            )
+                    ,
+                    (err) ->
+                        return callback(err) if err?
+                        result = []
+                        for appInstance in appInstances
+                            result.push new AppInstance
+                                cbServer : cbServer
+                                appInstance : appInstance
+                                userCtx : userCtx
+                                cbCtx   : cbCtx
+                        callback null, result
+                    )
+                
 
     ###*
         Registers a listener for an event on an application.

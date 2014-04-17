@@ -48,25 +48,44 @@ class ApplicationManager extends EventEmitter
         @weakRefsToApps = {}
 
         @_setupGoogleAuthRoutes()
-        @loadApplications()
-        callback null,this
+        @loadApplications((err)=>
+            callback err,this
+        )
+        
 
     #load applications after the routes on http_server is ready
-    loadApplications : ()->
+    loadApplications : (callback)->
         for mountPoint, masterApp of @_appConfigs
             app = new Application(masterApp, @server)
-            @addApplication(app)
-            app.mount()
+            addAppCallBack = do(app)->
+                (err)->
+                    return callback(err) if err?
+                    app.mount()
+                    callback null    
+
+            @addApplication(app,addAppCallBack)
             
 
-    addApplication : (app) ->
-        mountPoint = app.mountPoint
-        @applications[mountPoint] = app
-        @weakRefsToApps[mountPoint] = Weak(@applications[mountPoint], cleanupApp(mountPoint))
-        if app.subApps?
-            for subApp in app.subApps
-                @addApplication(subApp)
-            
+    addApplication : (app, callback) ->
+        # Add the permission record for this application's owner 
+        @permissionManager.addAppPermRec
+            user        : app.getOwner()
+            mountPoint  : app.mountPoint
+            permission  : 'own'
+            callback    : (err)=>
+                return callback(err) if err?
+                mountPoint = app.mountPoint
+                @applications[mountPoint] = app
+                @weakRefsToApps[mountPoint] = Weak(@applications[mountPoint], cleanupApp(mountPoint))
+                if app.subApps?
+                    Async.each(app.subApps,(subApp,subAppCallback)=>
+                        @addApplication(subApp, subAppCallback)
+                    ,(err)->
+                        callback err
+                    )
+                else
+                    callback null
+                    
     remove : (mountPoint) ->
         delete @applications[mountPoint]
         delete @weakRefsToApps[mountPoint]

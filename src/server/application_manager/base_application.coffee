@@ -99,6 +99,9 @@ class BaseApplication extends EventEmitter
         return @deploymentConfig.authenticationInterface
 
     getOwner : () ->
+        if @parentApp?
+            return @parentApp.getOwner()
+
         if not @_owner?
             if typeof @deploymentConfig.owner is 'string'
                 @_owner = new User(@deploymentConfig.owner)
@@ -178,7 +181,7 @@ class BaseApplication extends EventEmitter
             return
 
         # we fall to default initiation strategy, create a new instance for every new request
-        @appInstanceManager.newAppInstance((err, appInstance)=>
+        @appInstanceManager.create(null, (err, appInstance)=>
             if err?
                 return next err
             routes.redirect(res, 
@@ -254,6 +257,7 @@ class BaseApplication extends EventEmitter
     
     closeBrowser : (vbrowser) ->
         vbrowser.close()
+        
 
     # for single instance
     createAppInstance : (callback) ->

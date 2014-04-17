@@ -24,6 +24,8 @@ class AppInstanceManager extends EventEmitter
         else
             callback null, @appInstance
 
+
+
     # actual create a new instance in local
     # user is always string
     createAppInstance : (user, callback) ->
@@ -81,14 +83,18 @@ class AppInstanceManager extends EventEmitter
             owner : owner
             server : @server
         })
-        # usually when we create appInstance, we want a brwoser as well
-        appInstance.createBrowser(user)
-        @permissionManager.addAppInstancePermRec
-            user        : user
-            mountPoint  : @app.getMountPoint()
-            permission  : 'own'
-            appInstanceID : id
-            callback : (err, appInstancePermRec) =>
+        # usually when we create appInstance, we want a browser as well
+        Async.series([
+            (next)->
+                appInstance.createBrowser(user, next)
+            (next)=>
+                @permissionManager.addAppInstancePermRec
+                    user        : owner
+                    mountPoint  : @app.getMountPoint()
+                    permission  : 'own'
+                    appInstanceID : id
+                    callback : next
+            ],(err)=>
                 return callback(err) if err
                 @appInstances[id] = appInstance
                 weakRefToAppInstance = Weak(appInstance, cleanupStates(id))
@@ -96,18 +102,18 @@ class AppInstanceManager extends EventEmitter
                 @emit('add', id)
                 callback(null, weakRefToAppInstance)
 
+            )
+
         
     # called by api, need to register the new appInstance to master
     create :(user, callback) ->
-        if not @app.isMultiInstance()
-            throw new Error('create method is only for multiInstance initiation strategy')        
-        appInstance = @_createAppInstance(user, (err, instance)=>
+        @_createAppInstance(user, (err, instance)=>
             return callback(err) if err?
-            @_masterApp.regsiterAppInstance(@server.config.id, appInstance, (err)=>
+            @_masterApp.regsiterAppInstance(@server.config.id, instance, (err)=>
                 if err?
-                    @_removeAppInstance(appInstance)
+                    @_removeAppInstance(instance)
                     return callback err
-                callback err, appInstance
+                callback err, instance
             )
         )
         
@@ -124,12 +130,14 @@ class AppInstanceManager extends EventEmitter
                 delete @userToAppInstances[email]
         appInstance.close()
             
-        
-        
-
-
+    # find in local
     find : (id) ->
         return @weakRefsToAppInstances[id]
+
+    # query the master
+    findInstance : (id, callback) ->
+        @_masterApp.findInstance(id, callback)
+
 
     # should check permission, etc.
     findBrowser : (appInstanceId, vBrowserId) ->

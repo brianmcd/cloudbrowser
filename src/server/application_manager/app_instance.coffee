@@ -1,10 +1,10 @@
-Async = require('async')
-Weak           = require('weak')
-{EventEmitter} = require('events')
-VirtualBrowser      = require('../virtual_browser')
+Async                = require('async')
+Weak                 = require('weak')
+{EventEmitter}       = require('events')
+VirtualBrowser       = require('../virtual_browser')
 SecureVirtualBrowser = require('../virtual_browser/secure_virtual_browser')
-User           = require('../user')
-cloudbrowserError = require('../../shared/cloudbrowser_error')
+User                 = require('../user')
+cloudbrowserError    = require('../../shared/cloudbrowser_error')
 
 # Defining callback at the highest level
 # see https://github.com/TooTallNate/node-weak#weak-callback-function-best-practices
@@ -54,21 +54,37 @@ class AppInstance extends EventEmitter
         return weakrefToBrowser
 
 
-    _create : (user) ->
-        vbrowser = null
-        if @app.isAuthConfigured()
-            vbrowser = @_createVirtualBrowser
-                type        : SecureVirtualBrowser
-                id          : @uuidService.getId()
-                creator     : @owner
-                permission  : 'own'
-        else 
-            vbrowser = @_createVirtualBrowser
-                type : VirtualBrowser
-                id   : @uuidService.getId()
-        # retrun weak reference
-        console.log "createBrowser #{vbrowser.id} for #{@app.mountPoint} - #{@id}"
-        return @addBrowser(vbrowser)
+    _create : (user, callback) ->
+        id = @uuidService.getId()
+
+        Async.series([
+            (cb)=>
+                @server.permissionManager.addBrowserPermRec
+                    user        : user
+                    mountPoint  : @app.getMountPoint()
+                    browserID   : id
+                    permission  : 'own'
+                    callback    : cb    
+            ,
+            (cb)=>
+                vbrowser = null
+                if @app.isAuthConfigured()
+                    vbrowser = @_createVirtualBrowser
+                        type        : SecureVirtualBrowser
+                        id          : @uuidService.getId()
+                        creator     : @owner
+                        permission  : 'own'
+                else 
+                    vbrowser = @_createVirtualBrowser
+                        type : VirtualBrowser
+                        id   : @uuidService.getId()
+                # retrun weak reference
+                console.log "createBrowser #{vbrowser.id} for #{@app.mountPoint} - #{@id}"
+                callback null, @addBrowser(vbrowser)       
+            ],(err)->
+                callback(err) if err?
+        )
+        
         
 
     _createVirtualBrowser : (browserInfo) ->
@@ -89,15 +105,10 @@ class AppInstance extends EventEmitter
         if not @app.isMultiInstance()
             # return the only instance
             if not @weakrefToBrowser
-                @_create(user)
-            if callback?
-                return callback(@weakrefToBrowser)
-            return @weakrefToBrowser
+                @_create(user, callback)
         else
-            browser = @_create(user)
-            if callback?
-                return callback null, browser
-            return browser
+            browser = @_create(user, callback)
+            
 
     _findReaderWriter : (user) ->
         return c for c in @readerwriters when c.getEmail() is user.getEmail()

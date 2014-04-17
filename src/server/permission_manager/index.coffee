@@ -206,33 +206,33 @@ class UserPermissionManager
     
     addBrowserPermRec : (options) ->
         {user, mountPoint, browserID, permission, callback} = options
-
-        Async.waterfall [
+        Async.waterfall([
             (next) =>
-                @findBrowserPermRec
-                    user       : user
+                @findAppPermRec({
+                    user : user
                     mountPoint : mountPoint
-                    browserID  : browserID
-                    callback   : next
-            (browserPerms, next) =>
-                if not browserPerms then @findAppPermRec
-                    user       : user
-                    mountPoint : mountPoint
-                    callback   : next
-                else
-                    browserPerms.set(permission)
-                    # Bypassing the async waterfall
-                    callback?(null, browserPerms)
-            (appPerms, next) ->
+                    callback: next
+                    })
+            (appPerms, next) =>
                 if appPerms
-                    browserPerms = appPerms.addBrowser(browserID, permission)
-                    next(null, browserPerms)
-                # Not adding app perm rec if it doesn't exist as browser's can't
-                # be created without the app perm rec being created first (when
-                # the user signs up with the app)
-                else next(null, null)
-        ], callback
+                    browserPerm = appPerms.findBrowser(browserID, permission)
+                    if browserPerm?
+                        callback null, browserPerm
+                    else
+                        browserPerms = appPerms.addBrowser(browserID, permission)
+                        # save it to DB
+                        @setAppPerm
+                            user        : user
+                            mountPoint  : mountPoint
+                            permission  : permission
+                            callback    : (err)->
+                                callback err, browserPerm
+                else
+                    # Bypassing waterfall
+                    callback null, null
+            ], callback)
 
+        
     rmBrowserPermRec: (options) ->
         {user, mountPoint, browserID, callback} = options
 
@@ -450,6 +450,7 @@ class UserPermissionManager
                     @dbOperation('setUser', user, info, (err) ->
                         next(err, appInstancePerms))
         ], callback
+
 
     setBrowserPerm: (options) ->
         {user, mountPoint, browserID, permission, callback} = options

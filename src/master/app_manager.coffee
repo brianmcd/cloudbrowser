@@ -167,7 +167,8 @@ class Application
         @_addAppInstance(localAppInstance)
         callback null
 
-
+    findInstance : (id, callback) ->
+        callback null, @_appInstanceMap[id]
 
 
     _addSubApp : (subApp) ->

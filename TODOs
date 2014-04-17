@@ -30,3 +30,13 @@ Refactor issues
 
 - appConfig.listBrowsers : 
 
+- application.closeBrowser, need to close the appInstance if needed
+
+Permission issues
+
+- add permission for create app : done
+
+- add permission for create appInstance : done
+
+- permission checking for create browser -- should put this in appinstance
+
