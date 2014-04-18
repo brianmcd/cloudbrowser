@@ -32,6 +32,11 @@ Refactor issues
 
 - application.closeBrowser, need to close the appInstance if needed
 
+- app = appManager.find(rec.getMountPoint()) and get all apps in serverConfig should be async
+
+- give non standalone app sensible names, or hide them from displayed in admin ui
+
+
 Permission issues
 
 - add permission for create app : done
@@ -40,3 +45,6 @@ Permission issues
 
 - permission checking for create browser -- should put this in appinstance
 
+- addBrowserPermRec, should persist to DB
+
+- a lot of implementation in permission manager are deviced on top of cache, need to change that

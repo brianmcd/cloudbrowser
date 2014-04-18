@@ -12,11 +12,7 @@ the master side counterpart of application manager
 
 class AppInstance
     constructor: (@_workerManager, @id, @workerId) ->
-        @_browserMap = {}
-    # appInstance could only reside on one machine, so no need to pass workerId    
-    addBrowser : (bid, callback) ->
-        @_browserMap[bid] = true
-        callback null
+        
 
     _waitForCreate : (func) ->
         if not @_waiting?
@@ -30,11 +26,12 @@ class AppInstance
                     i(err)
             else
                 for i in @_waiting
-                    i(null, @_remote)    
+                    i(null, @_remote)
+        @_waiting = null    
 
     _setRemoteInstance : (remote)->
         @_remote = remote
-        {@id, @browserId}= remote
+        {@id}= remote
         @_notifyWaiting()
         
 
@@ -109,12 +106,12 @@ class Application
                         return callback err
                     appInstance._setRemoteInstance(result)
                     @_addAppInstance(appInstance)
-                    callback null, appInstance
+                    callback null, result
                 )
             )
         else
             if @_appInstance.id?
-                callback null, @_appInstance
+                callback null, @_appInstance._remote
             else
                 @_appInstance._waitForCreate(callback)
 
@@ -122,7 +119,7 @@ class Application
         appInstance = @_userToAppInstance[user]
         if appInstance?
             if appInstance.id?
-                return callback null, appInstance
+                return callback null, appInstance._remote
             else
                 appInstance._waitForCreate(callback)
         else
@@ -141,7 +138,7 @@ class Application
                         return callback err
                     appInstance._setRemoteInstance(result)
                     @_addAppInstance(appInstance)
-                    callback null, appInstance
+                    callback null, result
                 )
             )
 
@@ -156,19 +153,31 @@ class Application
                     return callback err
                 appInstance._setRemoteInstance(result)
                 @_addAppInstance(appInstance)
-                callback null, appInstance
+                callback null, result
             )
         )
 
     
     regsiterAppInstance : (workerId, appInstance, callback) ->
+        console.log "#{workerId} register #{appInstance.id} for @mountPoint"
         localAppInstance = new AppInstance(@_workerManager, null, workerId)
         localAppInstance._setRemoteInstance(appInstance)
         @_addAppInstance(localAppInstance)
         callback null
 
     findInstance : (id, callback) ->
-        callback null, @_appInstanceMap[id]
+        result = null
+        appInstance = @_appInstanceMap[id]
+        if appInstance?
+            result = appInstance._remote
+        callback null, result
+
+    getAllAppInstances : (callback) ->
+        result = []
+        for k, appInstance of @_appInstanceMap
+            if appInstance.id?
+                result.push(appInstance._remote)
+        callback null, result
 
 
     _addSubApp : (subApp) ->

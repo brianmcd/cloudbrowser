@@ -171,21 +171,26 @@ CBAdminInterface.controller "AppCtrl", [
             app = appManager.find(appConfig.getMountPoint())
             if app then return app
             app = appManager.add(appConfig)
-            Async.waterfall NwGlobal.Array(
-                (next) ->
-                    for browserConfig in app.api.getAllBrowsers()
-                        $scope.safeApply -> addBrowser(app, browserConfig)
-                    app.api.getAppInstances(next)
-                (appInstanceConfigs, next) ->
-                    $scope.safeApply ->
-                        for appInstConfig in appInstanceConfigs
-                            addAppInstance(app, appInstConfig)
-                    app.api.getUsers(next)
-            ), (err, users) ->
+            app.api.getAllBrowsers((err, browsers)->
                 return console.log(err) if err
-                setupEventListeners(app)
-                for user in users
-                    $scope.safeApply -> app.userMgr.add(user)
+                for browserConfig in browsers
+                    $scope.safeApply -> addBrowser(app, browserConfig)
+                Async.waterfall(NwGlobal.Array([
+                    (next) ->
+                        app.api.getUsers(next)
+                    (appInstanceConfigs, next) ->
+                        $scope.safeApply ->
+                            for appInstConfig in appInstanceConfigs
+                                addAppInstance(app, appInstConfig)
+                        app.api.getUsers(next)
+                ]) , (err, users) ->
+                    return console.log(err) if err
+                    setupEventListeners(app)
+                    for user in users
+                        $scope.safeApply -> app.userMgr.add(user)
+                )
+            )
+
 
         # Application related events
         serverConfig.addEventListener "addApp", (appConfig) ->

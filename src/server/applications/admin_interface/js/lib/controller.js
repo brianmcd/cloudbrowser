@@ -262,41 +262,47 @@
           return app;
         }
         app = appManager.add(appConfig);
-        return Async.waterfall(NwGlobal.Array(function(next) {
-          var browserConfig, _i, _len, _ref1;
-          _ref1 = app.api.getAllBrowsers();
-          for (_i = 0, _len = _ref1.length; _i < _len; _i++) {
-            browserConfig = _ref1[_i];
+        return app.api.getAllBrowsers(function(err, browsers) {
+          var browserConfig, _i, _len;
+          if (err) {
+            return console.log(err);
+          }
+          for (_i = 0, _len = browsers.length; _i < _len; _i++) {
+            browserConfig = browsers[_i];
             $scope.safeApply(function() {
               return addBrowser(app, browserConfig);
             });
           }
-          return app.api.getAppInstances(next);
-        }, function(appInstanceConfigs, next) {
-          $scope.safeApply(function() {
-            var appInstConfig, _i, _len, _results;
+          return Async.waterfall(NwGlobal.Array([
+            function(next) {
+              return app.api.getUsers(next);
+            }, function(appInstanceConfigs, next) {
+              $scope.safeApply(function() {
+                var appInstConfig, _j, _len1, _results;
+                _results = [];
+                for (_j = 0, _len1 = appInstanceConfigs.length; _j < _len1; _j++) {
+                  appInstConfig = appInstanceConfigs[_j];
+                  _results.push(addAppInstance(app, appInstConfig));
+                }
+                return _results;
+              });
+              return app.api.getUsers(next);
+            }
+          ]), function(err, users) {
+            var user, _j, _len1, _results;
+            if (err) {
+              return console.log(err);
+            }
+            setupEventListeners(app);
             _results = [];
-            for (_i = 0, _len = appInstanceConfigs.length; _i < _len; _i++) {
-              appInstConfig = appInstanceConfigs[_i];
-              _results.push(addAppInstance(app, appInstConfig));
+            for (_j = 0, _len1 = users.length; _j < _len1; _j++) {
+              user = users[_j];
+              _results.push($scope.safeApply(function() {
+                return app.userMgr.add(user);
+              }));
             }
             return _results;
           });
-          return app.api.getUsers(next);
-        }), function(err, users) {
-          var user, _i, _len, _results;
-          if (err) {
-            return console.log(err);
-          }
-          setupEventListeners(app);
-          _results = [];
-          for (_i = 0, _len = users.length; _i < _len; _i++) {
-            user = users[_i];
-            _results.push($scope.safeApply(function() {
-              return app.userMgr.add(user);
-            }));
-          }
-          return _results;
         });
       };
       serverConfig.addEventListener("addApp", function(appConfig) {

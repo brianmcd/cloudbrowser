@@ -1,7 +1,8 @@
-Path               = require('path')
-{EventEmitter}     = require('events')
+Path                     = require('path')
+{EventEmitter} = require('events')
 
-lodash             = require('lodash')
+lodash = require('lodash')
+async  = require('async')
 
 User               = require('../user')
 routes             = require('./routes')
@@ -158,6 +159,8 @@ class BaseApplication extends EventEmitter
             # get or create the only instance
             @appInstanceManager.getAppInstance((err, appInstance)=>
                 return next(err) if err?
+                # a browser will be created for the appinstance before worker return appInstance to master,
+                # the browserId of the first appinstance will be put in filed browserId of appinstance
                 routes.redirect(res,
                     routes.buildBrowserPath(@mountPoint, appInstance.id, appInstance.browserId))
             )
@@ -207,12 +210,25 @@ class BaseApplication extends EventEmitter
     mount : () ->
         @mounted = true
 
-
-    getAllBrowsers : () ->
-        browsers = {}
-        for k, appInstance of @appInstanceManager.get()
-            lodash.merge(browsers, appInstance.getAllBrowsers())
-        return browsers
+    # this method query the master for all the browsers
+    getAllBrowsers : (callback) ->
+        @_masterApp.getAllAppInstances((err, instances)->
+            return callback(err) if err?
+            result = []
+            async.each(
+                instances, 
+                (instance, instanceCb)->
+                    instance.getAllBrowsers((err, browsers)->
+                        return instanceCb(err) if err?
+                        for k, browser of browsers
+                            result.push(browser)
+                        instanceCb null
+                        )
+                , (err)->
+                    return callback(err) if err
+                    callback null, result
+                )
+            )
 
     # TODO deprecated : add authentication
     findBrowser : (id) ->

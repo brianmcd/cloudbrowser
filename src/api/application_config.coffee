@@ -66,7 +66,7 @@ class AppConfig
         # Private instance variables
         _pvts.push
             cbServer : cbServer
-            app     : if app.parent? then app.parent else app
+            app     : app
             cbCtx   : cbCtx
             userCtx : userCtx
 
@@ -398,14 +398,21 @@ class AppConfig
             mountPoint : mountPoint
             callback   : (err, browserRecs) ->
                 return callback(err) if err
-
+                browserIds = []
+                for id, browserRecs of browserRecs
+                    browserIds.push(id)
                 browsers = []
-                for id, browserRec of browserRecs
-                    browsers.push new Browser
-                        browser : app.browsers.find(id)
-                        userCtx : userCtx
-                        cbCtx   : cbCtx
-                callback(null, browsers)
+                app.appInstanceManager.getBrowsers(browserIds, (err, browsers)->
+                    callback(err) if err
+                    for browser in browsers
+                        browsers.push new Browser
+                            browser : browser
+                            userCtx : userCtx
+                            cbCtx   : cbCtx
+                        callback(null, browsers)
+                )
+                
+                
 
     ###*
         Gets all the browsers of the application.
@@ -414,20 +421,23 @@ class AppConfig
         @instance
         @memberOf AppConfig
     ###
-    getAllBrowsers : () ->
+    getAllBrowsers : (callback) ->
         browsers     = []
         if not @isOwner() then return browsers
 
         {app, userCtx, cbCtx} = _pvts[@_idx]
         
         Browser      = require('./browser')
+        app.getAllBrowsers((err, result)->
+            callback(err) if err?
+            for id, browser of result
+                browsers.push new Browser
+                    browser : browser
+                    userCtx : userCtx
+                    cbCtx   : cbCtx            
+            callback null, browsers
+        )
 
-        for id, browser of app.getAllBrowsers()
-            browsers.push new Browser
-                browser : browser
-                userCtx : userCtx
-                cbCtx   : cbCtx
-        return browsers
 
     ###*
         Gets all the instances of the application associated with the given user.
@@ -449,6 +459,10 @@ class AppConfig
             user       : userCtx
             mountPoint : mountPoint
             callback   : (err, appInstanceRecs) ->
+                return callback(err) if err?
+                if not appInstanceRecs?
+                    return callback(null, [])
+                
                 appInstances = []
                 # todo, make findinstance by batch
                 Async.each(appInstanceRecs,
@@ -630,7 +644,7 @@ class AppConfig
                 # TODO : appInstances is not set if appInstanceProvider is not provides.
                 # leading a crash
         ], (err, appInstance) ->
-            if err then callback?(err)
+            if err then callback(err)
             else callback null, new AppInstance
                 cbCtx       : cbCtx
                 userCtx     : userCtx

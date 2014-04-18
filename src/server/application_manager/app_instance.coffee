@@ -155,8 +155,21 @@ class AppInstance extends EventEmitter
         users.push(@owner)
         return users.concat(@readerwriters)
 
-    getAllBrowsers : () ->
+    # all the browsers are in local, it can be called in sync or async style
+    getAllBrowsers : (callback) ->
+        if callback?
+            return callback null, @weakrefsToBrowsers
+        
         return @weakrefsToBrowsers
+
+    getBrowsers : (idList, callback)->
+        result = []
+        for id in idList
+            if @browsers[id]?
+                result.push(@browsers[id])
+        callback null, result
+
+        
     
 
 

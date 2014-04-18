@@ -220,13 +220,8 @@ class UserPermissionManager
                         callback null, browserPerm
                     else
                         browserPerms = appPerms.addBrowser(browserID, permission)
-                        # save it to DB
-                        @setAppPerm
-                            user        : user
-                            mountPoint  : mountPoint
-                            permission  : permission
-                            callback    : (err)->
-                                callback err, browserPerm
+                        #TODO save it to DB
+                        callback null, browserPerms
                 else
                     # Bypassing waterfall
                     callback null, null
@@ -413,22 +408,28 @@ class UserPermissionManager
     setAppPerm : (options) ->
         {user, mountPoint, permission, callback} = options
 
+
         Async.waterfall [
             (next) =>
-                @findAppPermRec
-                    user       : user
-                    mountPoint : mountPoint
-                    callback   : next
-            (appPerms, next) =>
-                if not appPerms then next(null, null)
-                else if not permission then next(null, appPerms)
-                else
-                    key = "apps.#{mountPoint}.permission"
-                    info = {}
-                    info["#{key}"] = appPerms.set(permission)
-                    @dbOperation('setUser', user, info, (err) ->
-                        next(err, appPerms))
+                @findSysPermRec
+                    user     : user
+                    callback : next
+            (sysPermRec, next) =>
+                if not sysPermRec
+                    next(null, null)
+                else 
+                    appPerm = sysPermRec.findItem(mountPoint, permission)
+                    if appPerm?
+                        next(null, appPerm)
+                    else
+                        appPerm = sysPermRec.addItem(mountPoint, permission)
+                        key = "apps.#{mountPoint}.permission"
+                        info = {}
+                        info["#{key}"] = appPerm.set(permission)
+                        @dbOperation('setUser', user, info, (err) ->
+                            next(err, appPerm))
         ], callback
+
         
     setAppInstancePerm : (options) ->
         {user, mountPoint, appInstanceID, permission, callback} = options

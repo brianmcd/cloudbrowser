@@ -97,6 +97,7 @@ class ServerConfig
                 callback    : (err, appRecs) ->
                     return callback(err) if err
                     for rec in appRecs
+                        # TODO this should change to async call as well
                         app = appManager.find(rec.getMountPoint())
                         if filters.indexOf('public') isnt -1
                             if not app.isAppPublic() then continue

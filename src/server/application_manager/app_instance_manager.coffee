@@ -145,6 +145,35 @@ class AppInstanceManager extends EventEmitter
         if appInstance?
             return appInstance.findBrowser(vBrowserId)
         return null
+
+    # get the browsers by id
+    getBrowsers : (idList, callback) ->
+        Async.waterfall([
+            (next)=>
+                @_masterApp.getAllAppInstances(next)
+            (appInstances, next) =>
+                result = []
+                Async.each(
+                    appInstances, 
+                    (appInstance, appInstanceCb)->
+                        appInstance.getBrowsers(idList, (err, browsers)->
+                            return appInstanceCb(err) if err?
+                            for b in browsers
+                                result.push(b)
+                            appInstanceCb null
+                            
+                            )
+                    ,
+                    (err)->
+                        return next(err) if err?
+                        next null, result
+                )
+        ]
+        ,(err, result)->
+            return callback(err) if err?
+            callback null, result
+            )
+        
         
     remove : (id, user, callback) ->
         console.log "remove appInstance not implemented #{id}"
