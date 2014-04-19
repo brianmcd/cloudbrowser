@@ -344,7 +344,7 @@ class AppConfig
         @memberOf AppConfig
     ###
     createBrowser : (callback) ->
-        {userCtx, cbCtx} = _pvts[@_idx]
+        {cbServer, userCtx, cbCtx} = _pvts[@_idx]
         Browser = require('./browser')
 
         finalCallback = (bserver) ->
@@ -352,6 +352,7 @@ class AppConfig
                 browser : bserver
                 userCtx : userCtx
                 cbCtx   : cbCtx
+                cbServer : cbServer
 
         if userCtx.getEmail() is "public"
             finalCallback(app.browsers.create())
@@ -409,6 +410,7 @@ class AppConfig
                             browser : browser
                             userCtx : userCtx
                             cbCtx   : cbCtx
+                            cbServer : cbServer
                         callback(null, browsers)
                 )
                 
@@ -425,7 +427,7 @@ class AppConfig
         browsers     = []
         if not @isOwner() then return browsers
 
-        {app, userCtx, cbCtx} = _pvts[@_idx]
+        {cbServer, app, userCtx, cbCtx} = _pvts[@_idx]
         
         Browser      = require('./browser')
         app.getAllBrowsers((err, result)->
@@ -434,7 +436,8 @@ class AppConfig
                 browsers.push new Browser
                     browser : browser
                     userCtx : userCtx
-                    cbCtx   : cbCtx            
+                    cbCtx   : cbCtx
+                    cbServer : cbServer            
             callback null, browsers
         )
 
@@ -562,6 +565,7 @@ class AppConfig
                     options =
                         cbCtx   : cbCtx
                         userCtx : userCtx
+                        cbServer : cbServer
                     options[entityName] = entity
                     switch className
                         when 'Browser'
@@ -647,6 +651,7 @@ class AppConfig
             if err then callback(err)
             else callback null, new AppInstance
                 cbCtx       : cbCtx
+                cbServer : cbServer
                 userCtx     : userCtx
                 appInstance : appInstance
                 

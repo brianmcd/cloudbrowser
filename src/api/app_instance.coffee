@@ -36,6 +36,11 @@ class AppInstance
 
         {cbServer, appInstance, cbCtx, userCtx} = options
 
+        if not cbServer?
+            console.log "error"
+            err = new Error()
+            console.log err.stack
+
         _pvts.push
             cbServer : cbServer
             cbCtx       : cbCtx
@@ -55,7 +60,7 @@ class AppInstance
         @memberOf AppInstance
     ###
     getID : () ->
-        return _pvts[@_idx].appInstance.getID()
+        return _pvts[@_idx].appInstance.id
 
     ###*
         Gets the name of the application state.
@@ -67,9 +72,8 @@ class AppInstance
     getName : () ->
         {appInstance} = _pvts[@_idx]
         # This name is actually a number
-        name = appInstance.getName()
-        prefix = appInstance.app.getAppInstanceName()
-        return "#{prefix} #{name + 1}"
+        name = appInstance.name
+        return name
 
     ###*
         Creates a browser associated with the current application instance.
@@ -79,7 +83,7 @@ class AppInstance
         @memberOf AppInstance
     ###
     createBrowser : (callback) ->
-        {userCtx, cbCtx, appInstance} = _pvts[@_idx]
+        {cbServer, userCtx, cbCtx, appInstance} = _pvts[@_idx]
         # Permission checking is done inside call to createBrowser
         # in the application instance and in the browser manager
         Async.waterfall [
@@ -90,6 +94,7 @@ class AppInstance
                     browser : bserver
                     userCtx : userCtx
                     cbCtx   : cbCtx
+                    cbServer : cbServer
                 }))
         ], callback
 
@@ -101,7 +106,7 @@ class AppInstance
         @memberOf AppInstance
     ###
     getDateCreated : () ->
-        return _pvts[@_idx].appInstance.getDateCreated()
+        return _pvts[@_idx].appInstance.dateCreated
 
     ###*
         Closes the appInstance.
@@ -114,12 +119,7 @@ class AppInstance
         {cbServer, appInstance, userCtx} = _pvts[@_idx]
         {appInstances} = appInstance.app
         
-        permissionManager = cbServer.permissionManager
-        id = appInstance.getID()
-
-        # Permission checking is done in the close() method
-        # of the app instance itself
-        appInstances.remove(id, userCtx, callback)
+        appInstance.close(userCtx, callback)
 
     ###*
         Gets the owner of the application instance.
@@ -133,7 +133,7 @@ class AppInstance
         # the owner of an app instance when they are associated
         # with a browser of the app instance but not with the 
         # app instance itself
-        return appInstance.getOwner().getEmail()
+        return appInstance.owner
 
     ###*
         Registers a listener for an event on the appInstance.
@@ -171,10 +171,13 @@ class AppInstance
     isAssocWithCurrentUser : () ->
         {appInstance, userCtx} = _pvts[@_idx]
 
-        if appInstance.isOwner(userCtx) or appInstance.isReaderWriter(userCtx)
+        if @isOwner(userCtx._email)
             return true
-        else
-            return false
+        if @isReaderWriter(userCtx._email)
+            return true
+        
+        return false
+
 
     ###*
         Gets all users that have the permission to read and
@@ -189,7 +192,7 @@ class AppInstance
 
         if @isAssocWithCurrentUser()
             users = []
-            users.push(rw.getEmail()) for rw in appInstance.getReaderWriters()
+            users.push(rw._email) for rw in appInstance.readerwriters
             return users
 
     ###*
@@ -205,9 +208,11 @@ class AppInstance
 
         if typeof emailID isnt "string" then return
 
-        if @isAssocWithCurrentUser()
-            if appInstance.isReaderWriter(new User(emailID)) then return true
-            else return false
+        for i in appInstance.readerwriters
+            if i._email is userCtx._email
+                return true
+        return false
+
 
     ###*
         Checks if the user is the owner of the application instance
@@ -222,9 +227,8 @@ class AppInstance
 
         if typeof user isnt "string" then return
 
-        if @isAssocWithCurrentUser()
-            if appInstance.isOwner(new User(user)) then return true
-            else return false
+        return user is appInstance.owner._email
+        
 
     ###*
         Grants the user readwrite permissions on the application instance.
@@ -245,39 +249,27 @@ class AppInstance
         user = new User(emailID)
 
         Async.waterfall [
-            (next) ->
-                if not appInstance.isOwner(userCtx)
+            (next) =>
+                if appInstance.owner._email isnt userCtx._email
                     next(cloudbrowserError("PERM_DENIED"))
-                else if appInstance.isOwner(user)
+                else if appInstance.owner._email is user._email
                     next(cloudbrowserError("IS_OWNER"))
                 else permissionManager.addAppInstancePermRec
                     user          : user
-                    mountPoint    : appInstance.app.getMountPoint()
+                    mountPoint    : appInstance.app.mountPoint
                     permission    : 'readwrite'
+                    appInstanceID : appInstance.id
                     callback      : (err) -> next(err)
-                    appInstanceID : appInstance.getID()
+            (next) ->
+                appInstance.addReaderWriter(user, next)
         ], (err, next) ->
-            appInstance.addReaderWriter(user) if not err
             callback(err)
             
-    ###*
-        Renames the application instance.
-        @method rename
-        @param {String} newName
-        @fires AppInstance#rename
-        @instance
-        @memberof AppInstance
-    ###
-    rename : (newName) ->
-        {appInstance, userCtx} = _pvts[@_idx]
-        if typeof newName isnt "string" or not appInstance.isOwner(userCtx)
-            return
-        appInstance.setName(newName)
-        appInstance.emit('rename', newName)
 
     ###*
         Get the application instance JavaScript object that can be used
-        by the application and that is serialized and stored in the database
+        by the application and that is serialized and stored in the database.
+        This is only called when the appInstance is a local object.
         @method getObj
         @return {Object} Custom object, the details of which are known only
         to the application code itself

@@ -14,7 +14,7 @@ cleanupBserver = (id) ->
         console.log "[Browser Manager] - Garbage collected vbrowser #{id}"
 
 class AppInstance extends EventEmitter
-    __r_skip :['app', 'browsers', 'browser', 'readerwriters','weakrefsToBrowsers',
+    __r_skip :['app','browsers','weakrefsToBrowsers', 'browser', 
                 'weakrefToBrowser', 'server', 'obj', 'uuidService']
     constructor : (options) ->
         {@app
@@ -132,9 +132,12 @@ class AppInstance extends EventEmitter
     isReaderWriter : (user) ->
         return true for c in @readerwriters when c.getEmail() is user.getEmail()
 
-    addReaderWriter : (user) ->
-        if @isOwner(user) or @isReaderWriter(user) then return
-        @readerwriters.push(user)
+    addReaderWriter : (user, callback) ->
+        if not (@isOwner(user) or @isReaderWriter(user))
+            @readerwriters.push(user)
+
+        if callback?
+                callback null
         @emit('share', user)
 
 
@@ -146,6 +149,7 @@ class AppInstance extends EventEmitter
 
     close : (user, callback) ->
         console.log "close not implemented"
+        callback null
 
     store : (getStorableObj, callback) ->
         console.log "store not implemented"

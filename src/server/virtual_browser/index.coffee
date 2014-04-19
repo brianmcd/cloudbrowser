@@ -29,7 +29,8 @@ cleanupBserver = (id) ->
 
 # Serves 1 Browser to n clients.
 class VirtualBrowser extends EventEmitter
-    __r_skip :['server','browser']
+    __r_skip :['server','browser','sockets','compressor','registeredEventTypes','queuedSockets',
+                'localState','consoleLog','rpcLog']
 
     constructor : (vbInfo) ->
 

@@ -1,8 +1,10 @@
-Components = require('../server/components')
 Async      = require('async')
+
+Components = require('../server/components')
 User       = require('../server/user')
 cloudbrowserError = require('../shared/cloudbrowser_error')
 {areArgsValid} = require('./utils')
+routes = require('../server/application_manager/routes')
 
 # Permission checks are included wherever possible and a note is made if
 # missing. Details like name, id, url etc. are available to everybody.
@@ -37,12 +39,19 @@ class Browser
         Object.defineProperty this, "_idx",
             value : _pvts.length
 
-        {browser, cbCtx, userCtx} = options
+        {cbServer, browser, cbCtx, userCtx} = options
+
+        if not cbServer?
+            console.log "error"
+            err = new Error()
+            console.log err.stack
+        
 
         _pvts.push
             bserver : browser
             userCtx : userCtx
             cbCtx   : cbCtx
+            cbServer : cbServer
 
         # Freezing the prototype to protect from unauthorized changes
         # by people using the API
@@ -57,7 +66,7 @@ class Browser
         @memberOf Browser
     ###
     getID : () ->
-        return _pvts[@_idx].bserver.getID()
+        return _pvts[@_idx].bserver.id
 
     ###*
         Gets the url of the instance.
@@ -67,8 +76,10 @@ class Browser
         @memberOf Browser
     ###
     getURL : () ->
-        {bserver}  = _pvts[@_idx]
-        return bserver.getUrl()
+        {cbServer, bserver}  = _pvts[@_idx]
+
+        return "http://#{cbServer.config.getHttpAddr()}#{routes.buildBrowserPath(bserver.mountPoint, bserver.appInstanceId, bserver.id)}"
+        
 
     ###*
         Gets the date of creation of the instance.
@@ -78,7 +89,7 @@ class Browser
         @memberOf Browser
     ###
     getDateCreated : () ->
-        return _pvts[@_idx].bserver.getDateCreated()
+        return _pvts[@_idx].bserver.dateCreated
 
     ###*
         Gets the name of the instance.
@@ -88,10 +99,10 @@ class Browser
         @memberOf Browser
     ###
     getName : () ->
-        return _pvts[@_idx].bserver.getName()
+        return _pvts[@_idx].bserver.name
 
     ###*
-        Creates a new component
+        Creates a new component. This is called only when the browser is a local object.
         @method createComponent
         @param {String}  name    The registered name of the component.          
         @param {DOMNode} target  The DOM node in which the component will be embedded.         
@@ -102,7 +113,7 @@ class Browser
     ###
     createComponent : (name, target, options) ->
         return if typeof name isnt "string" or not target or not target.__nodeID
-        {bserver} = _pvts[@_idx]
+        {cbServer, bserver} = _pvts[@_idx]
         browser  = bserver.getBrowser()
         targetID = target.__nodeID
 
@@ -122,7 +133,7 @@ class Browser
         # Mountpoint needed for authentication in case of
         # the file uploader component
         options.cloudbrowser = {mountPoint : bserver.getMountPoint()}
-        options.cbServer = bserver.server
+        options.cbServer = cbServer
         # Create the component
         comp = browser.components[targetID] =
             new Ctor(options, rpcMethod, target)
@@ -139,13 +150,13 @@ class Browser
         @instance
     ###
     getAppConfig : () ->
-        {bserver, cbCtx, userCtx} = _pvts[@_idx]
-        mountPoint = bserver.getMountPoint()
+        {cbServer, bserver, cbCtx, userCtx} = _pvts[@_idx]
+        mountPoint = bserver.mountPoint
         AppConfig  = require("./application_config")
-        app = bserver.server.applicationManager.find(mountPoint)
+        app = cbServer.applicationManager.find(mountPoint)
 
         return new AppConfig({
-            cbServer : bserver.server
+            cbServer : cbServer
             cbCtx   : cbCtx
             userCtx : userCtx
             app     : app
@@ -159,9 +170,9 @@ class Browser
         @param {errorCallback} callback
     ###
     close : (callback) ->
-        {bserver, userCtx} = _pvts[@_idx]
+        {cbServer, bserver, userCtx} = _pvts[@_idx]
         
-        appManager = bserver.server.applicationManager
+        appManager = cbServer.applicationManager
         app = appManager.find(bserver.getMountPoint())
 
         if userCtx.getEmail() is "public"
@@ -192,9 +203,9 @@ class Browser
         @instance
     ###
     getResetEmail : (callback) ->
-        {bserver} = _pvts[@_idx]
+        {cbServer, bserver} = _pvts[@_idx]
         
-        mongoInterface = bserver.server.mongoInterface
+        mongoInterface = cbServer.mongoInterface
 
         bserver.getFirstSession (err, session) ->
             return callback(err) if err
@@ -471,10 +482,10 @@ class Browser
         @memberof Browser
     ###
     grantPermissions : (permission, user, callback) ->
-        {bserver, userCtx} = _pvts[@_idx]
+        {cbServer, bserver, userCtx} = _pvts[@_idx]
         {mountPoint, id}    = bserver
         
-        permissionManager = bserver.server.permissionManager
+        permissionManager = cbServer.permissionManager
 
         Async.waterfall [
             (next) ->
@@ -522,7 +533,7 @@ class Browser
         @memberof Browser
     ###
     getAppInstanceConfig : () ->
-        {bserver, cbCtx, userCtx} = _pvts[@_idx]
+        {cbServer, bserver, cbCtx, userCtx} = _pvts[@_idx]
 
         appInstance = bserver.getAppInstance()
         if not appInstance then return
@@ -532,7 +543,7 @@ class Browser
                 cbCtx       : cbCtx
                 userCtx     : userCtx
                 appInstance : appInstance
-                cbServer    : bserver.server
+                cbServer    : cbServer
 
     ###*
         Gets the local state with the current browser
