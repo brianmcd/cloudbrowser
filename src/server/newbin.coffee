@@ -34,12 +34,13 @@ class EventTracker
 
 
 class Runner
-    constructor: () ->
+    # argv, arguments, by default it is process.argv
+    constructor: (argv, postConstruct) ->
         #we do not use series because there is no way to get result from previous steps
         #the constructor should pass this in the callback after proper initialization
         async.auto({
             'config' : (callback)=>
-                new Config(callback)
+                new Config(argv, callback)
             'rmiService' : ['config', (callback, results)=>
                 new RmiService(results.config.serverConfig, callback)
             ]
@@ -104,10 +105,13 @@ class Runner
             },(err,results)=>
                 if err?
                     @handlerInitializeError(err)
+                    if postConstruct?
+                        postConstruct(err)
                 else
                     rmiService = results.rmiService
                     rmiService.createSkeleton('appManager', results.applicationManager)
-                    console.log('Server started in local mode')
+                    if postConstruct?
+                        postConstruct null
             )
 
     handlerInitializeError : (err) ->
@@ -122,4 +126,9 @@ process.on 'uncaughtException', (err) ->
     console.log(err)
     console.log(err.stack)
 
-new Runner()
+if require.main is module
+    new Runner(null, (err)->
+        console.log('Server started in local mode')
+        )
+
+module.exports = Runner

@@ -12,11 +12,10 @@ process.on 'uncaughtException', (err) ->
     console.log(err.stack)
 
 class Runner
-    constructor: (postConstruct) ->
+    constructor: (argv, postConstruct) ->
         async.auto({
             'config' : (callback) ->
-                configPath = path.resolve(__dirname, '../..','master_config.json')
-                new MasterConfig(configPath, callback)
+                new MasterConfig(argv, callback)
             ,
             'database' : ['config', (callback, results)->
                 DBInterface = require('../server/database_interface')
@@ -70,7 +69,7 @@ class Runner
                 )
             
 if require.main is module
-    new Runner()
+    new Runner(null)
 
 
 module.exports = Runner

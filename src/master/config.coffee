@@ -7,13 +7,19 @@ utils  = require '../shared/utils'
 
 
 
-parseCommandLineOptions = () ->
-    options = {}
-    require('nomnom').script(process.argv[1]).options(options).parse()
+parseCommandLineOptions = (argv) ->
+    options = {
+        configPath :
+            flag : true
+            help : 'configuration path, default [ProjectRoot/config]'
+    }
+    if not argv?
+        argv = process.argv
+    require('nomnom').script(argv[1]).options(options).parse(argv.slice(2))
 
 class MasterConfig
-    constructor: (configFile, callback) ->
-        @_cmdOptions = parseCommandLineOptions()
+    constructor: (argv, callback) ->
+        @_cmdOptions = parseCommandLineOptions(argv)
         # array of all the unmatched positional args (the path names)
         @_appPaths = (pathFromCmd for pathFromCmd in @_cmdOptions._)
         if @_appPaths.length is 0
@@ -25,6 +31,10 @@ class MasterConfig
         @databaseConfig = new DatabaseConfig()
         # port for rmi service
         @rmiPort = 3040
+
+        configPath = if @_cmdOptions.configPath? then @_cmdOptions.configPath else path.resolve(__dirname, '../..','config')
+        
+        configFile = path.resolve(configPath, 'master_config.json')
         
         utils.readJsonFromFileAsync(configFile, (e, obj) =>
             if e

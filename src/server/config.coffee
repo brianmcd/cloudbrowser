@@ -26,15 +26,15 @@ class Config
     emailerConfig : null
     database : null
     #for the sake of ease of unit testing
-    constructor: (callback) ->
+    constructor: (argv, callback) ->
         #parse the command line options
-        @cmdOptions = parseOptionsFromCmd()
+        @cmdOptions = parseOptionsFromCmd(argv)
 
         # List of all the unmatched positional args (the path names)
         @paths = (pathFromCmd for pathFromCmd in @cmdOptions._)
         #paths.push(path) for path in @cmdOptions._
         
-        configPath = if @cmdOptions.configPath? then @cmdOptions.configPath else @projectRoot
+        configPath = if @cmdOptions.configPath? then @cmdOptions.configPath else path.resolve(@projectRoot,'config','worker1')
 
         @serverConfigPath = "#{configPath}/server_config.json"
         @emailerConfigPath = "#{configPath}/emailer_config.json"
@@ -230,7 +230,7 @@ class ServerConfig
 
 
 #get options from cmd
-parseOptionsFromCmd = () ->
+parseOptionsFromCmd = (argv) ->
     options =
         configPath :
             flag : true
@@ -293,8 +293,10 @@ parseOptionsFromCmd = () ->
         'simulateLatency':
             full    : 'simulate-latency'
             help    : "Simulate latency for clients in ms (if not given assign uniform randomly in 20-120 ms range."
-    #parse the command line arguments
-    require('nomnom').script(process.argv[1]).options(options).parse()
+    #parse the command line arguments 
+    if not argv?
+        argv = process.argv
+    require('nomnom').script(argv[1]).options(options).parse(argv.slice(2))
 
 
 
