@@ -218,12 +218,12 @@ class ServerConfig
             if @proxyHost?
                 @httpAddr = @proxyHost
                 if @proxyPort? and @proxyPort isnt 80
-                    @httpAddr = "#{@proxyHost}:#{@proxyPort}" 
+                    @httpAddr = "http://#{@proxyHost}:#{@proxyPort}" 
             else
                 # the server is not proxied
                 @httpAddr = @domain
                 if @port? and @port isnt 80
-                    @httpAddr = "#{@domain}:#{@port}"      
+                    @httpAddr = "http://#{@domain}:#{@port}"      
         return @httpAddr
         
 

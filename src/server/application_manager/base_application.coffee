@@ -69,6 +69,7 @@ class BaseApplication extends EventEmitter
             appid     : @mountPoint
             browserID : vBrowserID
             appInstanceID : appInstanceID
+            host : @server.config.getHttpAddr()
     
     _serveResourceHandler : (req, res, next) ->
         appInstanceID = req.params.appInstanceID
@@ -121,8 +122,9 @@ class BaseApplication extends EventEmitter
         return @mountPoint
 
     getAppUrl : () ->
-        console.log "http://#{@server.config.getHttpAddr()}#{@mountPoint}"
-        return "http://#{@server.config.getHttpAddr()}#{@mountPoint}"
+        appUrl = "#{@server.config.getHttpAddr()}#{@mountPoint}"
+        console.log appUrl
+        return appUrl
 
     getName : (callback) ->
         if callback?

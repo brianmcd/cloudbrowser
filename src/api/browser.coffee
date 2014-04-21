@@ -78,7 +78,7 @@ class Browser
     getURL : () ->
         {cbServer, bserver}  = _pvts[@_idx]
 
-        return "http://#{cbServer.config.getHttpAddr()}#{routes.buildBrowserPath(bserver.mountPoint, bserver.appInstanceId, bserver.id)}"
+        return "#{cbServer.config.getHttpAddr()}#{routes.buildBrowserPath(bserver.mountPoint, bserver.appInstanceId, bserver.id)}"
         
 
     ###*

@@ -75,7 +75,7 @@ class VirtualBrowser extends EventEmitter
     getID : () -> return @id
 
     getUrl : () ->
-        return "http://#{@server.config.getHttpAddr()}#{routes.buildBrowserPath(@mountPoint, @appInstanceId, @id)}"
+        return "#{@server.config.getHttpAddr()}#{routes.buildBrowserPath(@mountPoint, @appInstanceId, @id)}"
 
     getDateCreated : () -> return @dateCreated
 

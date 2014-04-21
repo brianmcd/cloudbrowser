@@ -48,7 +48,7 @@ class MasterConfig
         result = @proxyConfig.host
         if @proxyConfig.httpPort isnt 80
             result += ":#{@proxyConfig.httpPort}"
-        return result
+        return "http://#{result}"
 
 class DatabaseConfig
     constructor: () ->

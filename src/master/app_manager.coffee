@@ -40,7 +40,7 @@ class Application
         {@mountPoint} = @config.deploymentConfig
         #mounted by default
         @mounted = true
-        @url = "http://#{@_masterConfig.getHttpAddr()}#{@mountPoint}"
+        @url = "#{@_masterConfig.getHttpAddr()}#{@mountPoint}"
         #@workers = {}
         @_appInstanceMap = {}
         @_userToAppInstance = {}
@@ -159,7 +159,7 @@ class Application
 
     
     regsiterAppInstance : (workerId, appInstance, callback) ->
-        console.log "#{workerId} register #{appInstance.id} for @mountPoint"
+        console.log "#{workerId} register #{appInstance.id} for #{@mountPoint}"
         localAppInstance = new AppInstance(@_workerManager, null, workerId)
         localAppInstance._setRemoteInstance(appInstance)
         @_addAppInstance(localAppInstance)

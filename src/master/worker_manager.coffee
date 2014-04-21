@@ -1,4 +1,5 @@
 urlModule = require('url')
+querystring = require('querystring')
 lodash = require('lodash')
 # using express's router to do path matching
 router = require('express').router
@@ -54,18 +55,20 @@ class WokerManager
     constructor : (dependencies, callback) ->
         @_rmiService = dependencies.rmiService
         @workersMap = {}
+        # a list of workers, this is for getMostFreeWorker
+        @_workerList = []
+        # counter for getMostFreeWorker
+        @_counter = 0
         @appInstanceMap = {}
         @_workerStubs = {}
         callback null, this
 
+    # pick a worker in round robin 
     getMostFreeWorker : () ->
-        # TODO
-        result = null
-        for id, worker of @workersMap
-            if worker.id?
-                result = worker
-                break
-        return result
+        if @_workerList.length>0
+            @_counter++
+            return @_workerList[@_counter%@_workerList.length]
+        return null
         
 
     isStaticFileRequest : (path) ->
@@ -85,8 +88,13 @@ class WokerManager
         }
         if @workersMap[worker.id]?
             console.log "worker exists, updating with new info"
-        console.log JSON.stringify(workerInfo)
+            @_workerList = lodash.filter(@_workerList, (oldWorker)->
+                return oldWorker.id isnt worker.id
+                );
+                
+        console.log "register #{JSON.stringify(workerInfo)}"
         @workersMap[worker.id]=workerInfo
+        @_workerList.push(workerInfo)
         if callback?
             callback null
 
@@ -118,14 +126,16 @@ class WokerManager
 
         # the static file requests should be handled by proxy
         if @isStaticFileRequest(path) or @isSocketIoRequest(path)
-            # referer from websocket is actually in query string
-            # maybe node does not distinguish header and query string.
             referer = request.headers.referer
             # todo /favicon.ico do not have referer
             if not referer?
-                console.log "#{path} has no referer"
-                return {worker : @getMostFreeWorker()}
-            
+                # get the referer from query string
+                query = querystring.parse(urlObj.query)
+                referer = query.referer
+                if not referer?
+                    console.log "#{path} has no referer"
+                    return {worker : @getMostFreeWorker()}
+                
             result = @getWorkerByBrowserUrl(referer)
             if result.redirect?
                 throw new Error("should have worker mapped for #{referer}, request is #{url}")
