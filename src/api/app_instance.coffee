@@ -1,4 +1,5 @@
 Async   = require('async')
+lodash = require('lodash')
 Browser = require('./browser')
 User    = require('../server/user')
 cloudbrowserError = require('../shared/cloudbrowser_error')
@@ -34,10 +35,10 @@ class AppInstance
         # Defining @_idx as a read-only property
         Object.defineProperty(this, "_idx", {value : _pvts.length})
 
-        {cbServer, appInstance, cbCtx, userCtx} = options
+        {cbServer, appInstance, cbCtx, userCtx, appConfig} = options
 
-        if not cbServer?
-            console.log "error"
+        if not cbServer? or not appConfig?
+            console.log "appInstance missing elements"
             err = new Error()
             console.log err.stack
 
@@ -46,6 +47,7 @@ class AppInstance
             cbCtx       : cbCtx
             userCtx     : userCtx
             appInstance : appInstance
+            appConfig : appConfig
 
         # Freezing the prototype to protect from unauthorized changes
         # by people using the API
@@ -89,12 +91,13 @@ class AppInstance
         Async.waterfall [
             (next) ->
                 appInstance.createBrowser(userCtx, next)
-            (bserver, next) ->
+            (bserver, next) =>
                 next(null, new Browser({
                     browser : bserver
                     userCtx : userCtx
                     cbCtx   : cbCtx
                     cbServer : cbServer
+                    appInstanceConfig : this
                 }))
         ], callback
 
@@ -146,19 +149,38 @@ class AppInstance
     addEventListener : (event, callback) ->
         if typeof callback isnt "function" then return
 
-        validEvents = ["rename", "share"]
+        validEvents = ["rename", "share", "addBrowser", "removeBrowser"]
         if typeof event isnt "string" or validEvents.indexOf(event) is -1
             return
 
-        {appInstance, userCtx} = _pvts[@_idx]
+        {appInstance, userCtx, appConfig} = _pvts[@_idx]
 
-        # Only users associated with the app instance can listen
-        # on its events
-        if @isAssocWithCurrentUser() then switch(event)
-            when "rename"
-                appInstance.on(event, callback)
-            when "share"
-                appInstance.on(event, (user) -> callback(user.getEmail()))
+        appInstance.getUserPrevilege(userCtx, (err, previlege)=>
+            return callback(err) if err?
+            return callback(null, null) if not previlege
+            console.log "#{__filename} : regist #{event} to appInstance #{appInstance.id}"
+            switch(event)
+                when 'share'
+                    appInstance.on(event, (user)->
+                        callback(if user._email? then user._email else user)
+                        )
+                when 'rename'
+                    appInstance.on(event, callback)
+                else
+                    appInstance.on(event, (browser)=>
+                        options =
+                            cbServer : cbServer
+                            cbCtx   : cbCtx
+                            userCtx : userCtx
+                            appInstanceConfig : this
+                            appConfig : appConfig
+                            browser : browser
+                        callback(new Browser(options))
+                    )
+            
+            )
+
+
 
     ###*
         Checks if the current user has some permissions associated with the 
@@ -294,5 +316,22 @@ class AppInstance
         appURL    = appConfig.getUrl()
 
         return "#{appURL}/application_instance/#{@getID()}"
+
+    getAllBrowsers : (callback) ->
+        {cbServer, appInstance, cbCtx, userCtx, appConfig} = _pvts[@_idx]
+        appInstance.getAllBrowsers((err, browsers)=>
+            return callback(err) if err?
+            result=[]
+            options = lodash.merge({}, _pvts[@_idx])
+            options.appInstance = null
+            options.appInstanceConfig = this
+            for k, browser of browsers
+                newOption = lodash.merge({}, options)
+                newOption.browser = browser
+                result.push(new Browser(newOption))
+            
+            callback null, result
+        )
+
 
 module.exports = AppInstance

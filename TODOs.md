@@ -1,5 +1,5 @@
 
-Some notes on TODOs.
+# Some notes on TODOs.
 
 Would like to chizzle away at jsdom patch to reduce it to zero.
 
@@ -18,7 +18,7 @@ Would like to chizzle away at jsdom patch to reduce it to zero.
 
 
 
-Refactor issues
+## Refactor issues
 - remove ugly bindings in applications 
 @serveVirtualBrowserHandler = lodash.bind(@_serveVirtualBrowserHandler, this)
 
@@ -36,8 +36,30 @@ Refactor issues
 
 - give non standalone app sensible names, or hide them from displayed in admin ui
 
+### api 
 
-Permission issues
+- appConfig will directly change local app object, local app listen to masterApp change event....
+
+- appIntanceConfig, has few attributes, directly use remote obj
+
+- appInstanceConfig should have field of appConfig
+- likewise, browser should have filed of appConfig, appInstanceConfig
+- event registration in app
+    + register add/remove appInstance in app object
+    + add/remove browser in appInstance obj
+- change the apis accordingly to reflect our current obj structure
+
+## admin interface
+
+- addUser. isOwner ... etc, change to async.
+- addBrowser. getAppInstance, change to async.
+- addBrowser. connect, disconnect, share events from browser
+
+# issues
+
+- will event listeners be a memory issue
+
+## Permission issues
 
 - add permission for create app : done
 
@@ -50,7 +72,7 @@ Permission issues
 - a lot of implementation in permission manager are deviced on top of cache, need to change that
 
 
-Weird issues
+## Weird issues
 
 - api, rename api for appInstance, no corresponding method in appInstance: deleted
 
@@ -59,3 +81,12 @@ Plan
 - api/appConfig
 
 - api/browserConfig
+
+
+# method with both async and sync behaviors
+
+- the object could be called remotely
+
+- the object has been called synchronously as a local object, it would be hard to remove the sync behavior entirely
+
+# refresh for virtual browser

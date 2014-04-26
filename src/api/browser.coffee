@@ -39,10 +39,10 @@ class Browser
         Object.defineProperty this, "_idx",
             value : _pvts.length
 
-        {cbServer, browser, cbCtx, userCtx} = options
+        {cbServer, browser, cbCtx, userCtx, appConfig, appInstanceConfig} = options
 
-        if not cbServer?
-            console.log "error"
+        if not cbServer? or not appConfig? or not appInstanceConfig?
+            console.log "browser api missing elements"
             err = new Error()
             console.log err.stack
         
@@ -52,6 +52,8 @@ class Browser
             userCtx : userCtx
             cbCtx   : cbCtx
             cbServer : cbServer
+            appConfig : appConfig
+            appInstanceConfig : appInstanceConfig
 
         # Freezing the prototype to protect from unauthorized changes
         # by people using the API
@@ -415,6 +417,12 @@ class Browser
             if bserver.isOwner(userCtx) then return true
             else return false
 
+    getUserPrevilege:(user, callback)->
+        {bserver, userCtx} = _pvts[@_idx]
+        return callback(null, null) if typeof bserver.getUserPrevilege isnt 'function'
+        bserver.getUserPrevilege(user, callback)
+
+
     ###*
         Adds a user as a readerwriter of the current browser
         @method addReaderWriter
@@ -544,6 +552,10 @@ class Browser
                 userCtx     : userCtx
                 appInstance : appInstance
                 cbServer    : cbServer
+
+    getAppInstanceId : ()->
+        {bserver} = _pvts[@_idx]
+        return bserver.appInstanceId
 
     ###*
         Gets the local state with the current browser

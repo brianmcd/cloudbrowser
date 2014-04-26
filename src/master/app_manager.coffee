@@ -1,5 +1,6 @@
 fs     = require('fs')
 path   = require('path')
+{EventEmitter} = require('events')
 
 async  = require('async')
 
@@ -35,7 +36,7 @@ class AppInstance
         @_notifyWaiting()
         
 
-class Application
+class Application extends EventEmitter
     constructor: (@_masterConfig, @_workerManager,@_uuidService, @config) ->
         {@mountPoint} = @config.deploymentConfig
         #mounted by default
@@ -48,6 +49,7 @@ class Application
     _addAppInstance: (appInstance) ->
         @_appInstanceMap[appInstance.id] = appInstance
         @_workerManager.registerAppInstance(appInstance)
+        @emit('addAppInstance', appInstance._remote)
 
     getName: (callback)->
         callback null, @name
@@ -55,6 +57,12 @@ class Application
     setName: (@name, callback)->
         if callback?
             callback null
+
+    isOwner: (user, callback) ->
+        eamil = if user._email? then user._email else user
+        result = email is @config.deploymentConfig.owner
+        callback null, result
+        
 
     getDescription : (callback) ->
         callback null, @description

@@ -51,6 +51,8 @@ class AppInstance extends EventEmitter
             @browser = vbrowser
         @weakrefsToBrowsers[id] = weakrefToBrowser
         @browsers[id] = vbrowser
+        console.log "#{__filename} : appInstance #{@id} emit addBrowser event #{vbrowser.id}"
+        @emit('addBrowser', vbrowser)
         return weakrefToBrowser
 
 
@@ -140,6 +142,21 @@ class AppInstance extends EventEmitter
                 callback null
         @emit('share', user)
 
+    getUserPrevilege : (user, callback) ->
+        result = null
+        if @isOwner(user)
+            result = 'own'
+        else if @isReader(user)
+            result = 'readonly'
+        else if @isReaderWriter(user)
+            result = 'readwrite'
+        if callback?
+            callback null, result
+        else
+            return result
+        
+        
+        
 
     removeBrowser : (bserver, user, callback) ->
         console.log "removeBrowser not implemented #{bserver.id}"

@@ -4,12 +4,12 @@
 
   Browser = (function() {
     function Browser(browserConfig, format) {
-      var client, clients, _i, _len, _ref;
+      var client, clients, _i, _len;
       this.id = browserConfig.getID();
       this.api = browserConfig;
       this.name = browserConfig.getName();
       this.dateCreated = format.date(browserConfig.getDateCreated());
-      this.appInstanceID = (_ref = browserConfig.getAppInstanceConfig()) != null ? _ref.getID() : void 0;
+      this.appInstanceID = browserConfig.getAppInstanceId();
       this.connectedClientMgr = new POJOListManager(null, 'address');
       if ((clients = browserConfig.getConnectedClients())) {
         for (_i = 0, _len = clients.length; _i < _len; _i++) {

@@ -12,6 +12,7 @@ BrowserAPI     = require('./browser')
 Authentication = require('./authentication')
 cloudbrowserError = require('../shared/cloudbrowser_error')
 AppConfig  = require("./application_config")
+AppInstance = require('./app_instance')
 
 class CloudBrowser
 
@@ -44,12 +45,6 @@ class CloudBrowser
 
         @util = new Util(bserver.server.config.emailerConfig)
 
-        @currentBrowser = new BrowserAPI
-            browser : bserver
-            userCtx : creator
-            cbCtx   : this
-            cbServer : bserver.server
-            
         app = bserver.appInstance.app
 
         @currentAppConfig = new AppConfig({
@@ -58,6 +53,22 @@ class CloudBrowser
             userCtx : creator
             app     : app
         })
+
+        @currentAppInstanceConfig = new AppInstance
+            cbServer : bserver.server
+            appInstance : bserver.appInstance
+            cbCtx : this
+            userCtx : creator
+            appConfig : @currentAppConfig
+
+
+        @currentBrowser = new BrowserAPI
+            browser : bserver
+            userCtx : creator
+            cbCtx   : this
+            cbServer : bserver.server
+            appConfig : @currentAppConfig
+            appInstanceConfig : @currentAppInstanceConfig
 
         
         # TODO 

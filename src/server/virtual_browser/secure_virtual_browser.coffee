@@ -48,6 +48,21 @@ class SecureVirtualBrowser extends VirtualBrowser
     isReader : (user) ->
         @_isUserInList(user, 'readonly')
 
+    getUserPrevilege : (user, callback) ->
+        result = null
+        if isOwner(user)
+            result = 'own'
+        else if isReader(user)
+            result = 'readonly'
+        else if isReaderWriter(user)
+            result = 'readwrite'
+        if callback?
+            callback null, result
+        else
+            return result
+        
+        
+
     _removeUserFromList : (user, listType) ->
         list = @[listType]
         for u in list when u.getEmail() is user.getEmail()
@@ -56,7 +71,14 @@ class SecureVirtualBrowser extends VirtualBrowser
             break
 
     _isUserInList : (user, listType) ->
-        for u in @[listType] when u.getEmail() is user.getEmail()
+        if user.getEmail?
+            email = user.getEmail()
+        else if user._email?
+            email = user._email
+        else
+            email = user
+
+        for u in @[listType] when u.getEmail() is user
             return true
         return false
 

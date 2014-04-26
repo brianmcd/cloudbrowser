@@ -6,7 +6,8 @@ CBAdminInterface = angular.module("CBAdminInterface.controller", ['CBAdminInterf
 CBAdminInterface.controller "AppCtrl", [
     '$scope'
     'cb-appManager'
-    ($scope, appManager) ->
+    '$timeout'
+    ($scope, appManager, $timeout) ->
         # Path to templates used in the view
         $scope.templates =
             switch           : "switch.html"
@@ -42,8 +43,8 @@ CBAdminInterface.controller "AppCtrl", [
         # TODO Must create directive instead
         $scope.setError = (err) ->
             $scope.error = err
-            setTimeout () ->
-                $scope.safeApply -> $scope.error = null
+            $timeout () ->
+                $scope.error = null
             , 5000
 
         listsToRoles = {
@@ -68,21 +69,38 @@ CBAdminInterface.controller "AppCtrl", [
             app.userMgr.add(user)
             app.api.getBrowsers user, (err, browserConfigs) ->
                 for browserConfig in browserConfigs
-                    if browserConfig.isOwner(user)
-                        $scope.safeApply -> u.owners.add({
-                            id   : browserConfig.getID()
-                            role : 'owner'
-                        })
-                    else if browserConfig.isReaderWriter(user)
-                        $scope.safeApply -> u.readerwriters.add({
-                            id   : browserConfig.getID()
-                            role : 'readerwriter'
-                        })
-                    else if browserConfig.isReader(user)
-                        $scope.safeApply -> u.readers.add({
-                            id   : browserConfig.getID()
-                            role : 'reader'
-                        })
+                    u = app.browserMgr.find(browserConfig.getID())
+                    browserConfig.getUserPrevilege((err,result)->
+                        return setError(err) if err?
+                        if result?
+                            switch(result)
+                                when 'own'
+                                    $scope.safeApply -> u.owners.add({
+                                        id   : browserConfig.getID()
+                                        role : 'owner'
+                                    })
+                                when 'readwrite'
+                                    $scope.safeApply -> u.readerwriters.add({
+                                        id   : browserConfig.getID()
+                                        role : 'readerwriter'
+                                    })
+                                when 'readonly'
+                                    $scope.safeApply -> u.readers.add({
+                                        id   : browserConfig.getID()
+                                        role : 'reader'
+                                    })
+                        )
+
+
+        addBrowsers = (app, browserConfigs, callback) ->
+            if browserConfigs?
+                for browserConfig in browserConfigs
+                    addBrowser(app, browserConfig)
+
+            if callback?
+                callback null
+            
+            
 
         addBrowser = (app, browserConfig) ->
             browser = app.browserMgr.find(browserConfig.getID())
@@ -90,10 +108,14 @@ CBAdminInterface.controller "AppCtrl", [
             # Add browser if its not part of the list
             browser = app.browserMgr.add(browserConfig)
             # Add browser to its corresponding appInstance's list
-            if browser.appInstanceID
-                appInstance = app.appInstanceMgr.add(browser.api
-                    .getAppInstanceConfig())
-                appInstance.browserIDMgr.add(browser.id)
+            appInstance = app.appInstanceMgr.find(browser.appInstanceID)
+            if not appInstance?
+                #rare case, the appInstance has not been registered yet
+                #TODO
+                console.log "the appinstance is not registed for browser #{browserConfig.getID()}"
+                return
+
+            appInstance.browserIDMgr.add(browser.id)
             # Add browser to the corresponding users' list
             for listName, role of listsToRoles
                 list = browser[listName]
@@ -124,6 +146,12 @@ CBAdminInterface.controller "AppCtrl", [
                 if list instanceof NwGlobal.Array then for user in list
                     removeFromUserList(app, user, 'browserIDMgr', browser.id)
 
+        addAppInstances = (app, appInstanceConfigs, callback) ->
+            for appInstanceConfig in appInstanceConfigs
+                addAppInstance(app, appInstanceConfig)
+            callback null
+            
+
         addAppInstance = (app, appInstanceConfig) ->
             appInstance = app.appInstanceMgr.find(appInstanceConfig.getID())
             if appInstance then return appInstance
@@ -137,11 +165,25 @@ CBAdminInterface.controller "AppCtrl", [
                     addToUserList(app, list, 'appInstanceIDMgr', appInstance.id, role)
                 else if list instanceof NwGlobal.Array then for user in list
                     addToUserList(app, user, 'appInstanceIDMgr', appInstance.id, role)
+
             appInstance.api.addEventListener 'share', (user) ->
                 $scope.safeApply ->
                     appInstance.updateUsers()
                     addToUserList(app, user, 'appInstanceIDMgr', appInstance.id, 'readwriter')
-            # Setup event listener for rename
+
+            appInstance.api.addEventListener "addBrowser", (browserConfig) ->
+                $scope.safeApply -> addBrowser(app, browserConfig)
+            appInstance.api.addEventListener "removeBrowser", (id) ->
+                $scope.safeApply -> removeBrowser(app, id)
+
+            # get all browser from that appInstance
+            appInstanceConfig.getAllBrowsers((err, browserConfigs)->
+                if err?
+                    console.log "error in getAllBrowsers #{err}"
+                    return console.log err.stack
+                addBrowsers(app, browserConfigs)
+            )
+            
             
         removeAppInstance = (app, appInstanceID) ->
             appInstance = app.appInstanceMgr.remove(appInstanceID)
@@ -154,10 +196,6 @@ CBAdminInterface.controller "AppCtrl", [
                     removeFromUserList(app, user, 'appInstanceIDMgr', appInstance.id)
 
         setupEventListeners = (app) ->
-            app.api.addEventListener "addBrowser", (browserConfig) ->
-                $scope.safeApply -> addBrowser(app, browserConfig)
-            app.api.addEventListener "removeBrowser", (id) ->
-                $scope.safeApply -> removeBrowser(app, id)
             app.api.addEventListener "addAppInstance", (appInstanceConfig) ->
                 $scope.safeApply -> addAppInstance(app, appInstanceConfig)
             app.api.addEventListener "removeAppInstance", (id) ->
@@ -169,27 +207,33 @@ CBAdminInterface.controller "AppCtrl", [
 
         addApp = (appConfig) ->
             app = appManager.find(appConfig.getMountPoint())
+            # has already added
             if app then return app
             app = appManager.add(appConfig)
-            app.api.getAllBrowsers((err, browsers)->
-                return console.log(err) if err
-                for browserConfig in browsers
-                    $scope.safeApply -> addBrowser(app, browserConfig)
-                Async.waterfall(NwGlobal.Array([
-                    (next) ->
+            setupEventListeners(app)
+            # the browsers need to be retrieved after appInstances
+            Async.auto(
+                {
+                    'appInstances' : (next)->
+                        app.api.getAppInstances(next)
+                    'addAppInstances' : ['appInstances', (next, results) ->
+                        addAppInstances(app, results.appInstances, next)
+                    ]
+                    'users' : (next)->
                         app.api.getUsers(next)
-                    (appInstanceConfigs, next) ->
-                        $scope.safeApply ->
-                            for appInstConfig in appInstanceConfigs
-                                addAppInstance(app, appInstConfig)
-                        app.api.getUsers(next)
-                ]) , (err, users) ->
-                    return console.log(err) if err
-                    setupEventListeners(app)
-                    for user in users
-                        $scope.safeApply -> app.userMgr.add(user)
+                    'addUsers' : ['users', (next,results)->
+                        users = results.users
+                        for user in users
+                            app.userMgr.add(user)
+                        next(null)
+                    ]
+                }
+                ,(err, results)->
+                    console.log(err) if err
+                    # pass an empty function to trigger apply
+                    $scope.safeApply ->
                 )
-            )
+
 
 
         # Application related events
@@ -218,13 +262,18 @@ CBAdminInterface.controller "AppCtrl", [
                     if err then $scope.setError(err)
                     else App.add(appConfig)
             
-        # Loading all the apps at startup
-        serverConfig.listApps ['perUser'], (err, appConfigs) ->
-            if err then console.log err
-            else
-                addApp(appConfig) for appConfig in appConfigs
-                # Select the first app initially
-                $scope.safeApply -> $scope.selectedApp = $scope.apps?[0]
+        $scope.init = ()->
+            # Loading all the apps at startup
+            serverConfig.listApps ['perUser'], (err, appConfigs) ->
+                if err then console.log err
+                else
+                    addApp(appConfig) for appConfig in appConfigs
+                    # Select the first app initially
+                    $scope.safeApply -> $scope.selectedApp = $scope.apps?[0]
+
+        $scope.init()
+
+
 
         # Methods on the angular scope
         $scope.leftClick = (url) -> curVB.redirect(url)

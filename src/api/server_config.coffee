@@ -101,11 +101,14 @@ class ServerConfig
                         app = appManager.find(rec.getMountPoint())
                         if filters.indexOf('public') isnt -1
                             if not app.isAppPublic() then continue
-                        appConfigs.push new AppConfig
-                            cbServer : cbServer
-                            userCtx : userCtx
-                            cbCtx   : cbCtx
-                            app     : app
+                        if not app?
+                            console.log "empty app for #{rec.getMountPoint()}"
+                        else
+                            appConfigs.push new AppConfig
+                                cbServer : cbServer
+                                userCtx : userCtx
+                                cbCtx   : cbCtx
+                                app     : app
                     callback(null, appConfigs)
         # Get all public apps
         else if filters.indexOf('public') isnt -1

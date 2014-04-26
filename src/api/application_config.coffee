@@ -430,14 +430,22 @@ class AppConfig
         {cbServer, app, userCtx, cbCtx} = _pvts[@_idx]
         
         Browser      = require('./browser')
-        app.getAllBrowsers((err, result)->
+        AppInstance = require('./app_instance')
+        options = {
+            userCtx : userCtx
+            cbCtx   : cbCtx
+            cbServer : cbServer
+            appConfig : this
+        }
+        app.getAllBrowsers((err, result)=>
             callback(err) if err?
             for id, browser of result
-                browsers.push new Browser
-                    browser : browser
-                    userCtx : userCtx
-                    cbCtx   : cbCtx
-                    cbServer : cbServer            
+                appInstance = browser.appInstance
+                options.appInstance = browser.appInstance
+                appInstanceConfig = new AppInstance(options)
+                options.browser = browser
+                options.appInstanceConfig = appInstanceConfig
+                browsers.push(new Browser(options))
             callback null, browsers
         )
 
@@ -505,9 +513,6 @@ class AppConfig
         validEvents = [
             'addUser'
             'removeUser'
-            'addBrowser'
-            'shareBrowser'
-            'removeBrowser'
             'addAppInstance'
             'shareAppInstance'
             'removeAppInstance'
@@ -519,68 +524,43 @@ class AppConfig
 
         mountPoint = app.getMountPoint()
 
-        # Events "addUser" and "removeUser" can be listened to
-        # only by the owner
-        switch event
-            when "addUser", "removeUser"
-                if @isOwner() then app.on(event, callback)
-                return
-
+        
         result = /([a-z]*)([A-Z].*)/g.exec(event)
         # Now event will be either 'add' or 'remove'
         # And entityName will be 'browser' or 'appInstance'
-        event  = result[1]
+        action  = result[1]
         entityName = result[2].charAt(0).toLowerCase() + result[2].slice(1)
         className  = result[2]
-        Browser     = require('./browser')
+        
         AppInstance = require('./app_instance')
 
-        switch event
-            when "share"
-                app["#{entityName}s"]?.on event, (id, userInfo) ->
-                    if userInfo instanceof User
-                        user = userInfo
-                    else
-                        user = userInfo.user
-                    if not userCtx.getEmail() is user.getEmail() then return
-                    options =
-                        cbServer : cbServer
-                        cbCtx   : cbCtx
-                        userCtx : userCtx
-                    entity = app["#{entityName}s"].find(id)
-                    options[entityName] = entity
-                    switch className
-                        when 'Browser'
-                            callback(new Browser(options))
-                        when 'AppInstance'
-                            callback(new AppInstance(options))
-            when "add"
-                app["#{entityName}s"]?.on event, (id) =>
-                    entity = app["#{entityName}s"].find(id)
-                    if not (@isOwner() or
-                    entity.isOwner?(userCtx) or
-                    entity.isReaderWriter?(userCtx) or
-                    entity.isReader?(userCtx))
-                        return
-                    options =
-                        cbCtx   : cbCtx
-                        userCtx : userCtx
-                        cbServer : cbServer
-                    options[entityName] = entity
-                    switch className
-                        when 'Browser'
-                            callback(new Browser(options))
-                        when 'AppInstance'
-                            callback(new AppInstance(options))
-            when "remove"
-                app["#{entityName}s"]?.on event, (id) =>
-                    entity = app["#{entityName}s"].find(id)
-                    if not (@isOwner() or
-                    entity.isOwner?(userCtx) or
-                    entity.isReaderWriter?(userCtx) or
-                    entity.isReader?(userCtx))
-                        return
-                    callback(id)
+        switch className
+            when 'AppInstance'
+                app.addEventListener(event, (appInstance, userInfo)=>
+                    if action is 'share'
+                        if userInfo instanceof User
+                            user = userInfo
+                        else
+                            user = userInfo.user
+                        if not userCtx.getEmail() is user.getEmail() then return
+                    
+
+                    appInstance.getUserPrevilege(userCtx, (err, result)=>
+                        return callback(err) if err?
+                        return if not result
+                        options =
+                            cbServer : cbServer
+                            cbCtx   : cbCtx
+                            userCtx : userCtx
+                            appInstance : appInstance
+                            appConfig : this
+                        callback(new AppInstance(options))    
+                    )
+                )
+            else
+                if @isOwner()
+                    app.addEventListener(event, callback)
+
 
     ###*
         Checks if a user is already registered/signed up with the application.

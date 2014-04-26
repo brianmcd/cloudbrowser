@@ -283,6 +283,9 @@ class BaseApplication extends EventEmitter
 
     createAppInstanceForUser : (user, callback) ->
         @appInstanceManager.createAppInstance(user, callback)
+
+    addEventListener :(event, eventcallback, callback) ->
+        @_masterApp.on(event, eventcallback)
                    
 
 module.exports = BaseApplication
