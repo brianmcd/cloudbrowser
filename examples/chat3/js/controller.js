@@ -26,7 +26,7 @@
       return $scope.$apply();
     };
     currentBrowser = cloudbrowser.currentBrowser;
-    chatManager = currentBrowser.getAppInstanceConfig().getObj();
+    chatManager = cloudbrowser.currentAppInstanceConfig.getObj();
     $scope.user = chatManager.addUser(currentBrowser.getCreator(), newMessageHandler);
     $scope.toggleForm = function(type) {
       var formName;

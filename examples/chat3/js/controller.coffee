@@ -21,7 +21,7 @@ app.controller "ChatCtrl", ($scope) ->
  
     # Initialize
     {currentBrowser} = cloudbrowser
-    chatManager = currentBrowser.getAppInstanceConfig().getObj()
+    chatManager = currentBrowser.currentAppInstanceConfig.getObj()
     $scope.user = chatManager.addUser(currentBrowser.getCreator(), newMessageHandler)
 
     # Methods on scope

@@ -54,6 +54,16 @@ class CloudBrowser
             app     : app
         })
 
+        if app.parentApp?
+            @parentAppConfig = new AppConfig({
+                cbServer : bserver.server
+                cbCtx   : this
+                userCtx : creator
+                app     : app.parentApp
+
+            })
+        
+
         @currentAppInstanceConfig = new AppInstance
             cbServer : bserver.server
             appInstance : bserver.appInstance

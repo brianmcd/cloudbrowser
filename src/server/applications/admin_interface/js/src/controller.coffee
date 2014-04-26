@@ -96,7 +96,7 @@ CBAdminInterface.controller "AppCtrl", [
             if browserConfigs?
                 for browserConfig in browserConfigs
                     addBrowser(app, browserConfig)
-
+            $scope.safeApply ->
             if callback?
                 callback null
             
@@ -149,6 +149,7 @@ CBAdminInterface.controller "AppCtrl", [
         addAppInstances = (app, appInstanceConfigs, callback) ->
             for appInstanceConfig in appInstanceConfigs
                 addAppInstance(app, appInstanceConfig)
+            $scope.safeApply ->
             callback null
             
 

@@ -68,7 +68,7 @@ app.controller 'AppInstanceCtrl', [
                         $scope.setError(err)
                         appInstance.processing = false
                     else
-                        $scope.addBrowser(browserConfig, appInstance)
+                        $scope.addBrowser(browserConfig, appInstance.api)
 
         $scope.areCollaboratorsVisible = () ->
             return appInstance.showOptions and appInstance.readerwriters.length

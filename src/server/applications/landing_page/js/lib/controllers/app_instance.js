@@ -75,7 +75,7 @@
               $scope.setError(err);
               return appInstance.processing = false;
             } else {
-              return $scope.addBrowser(browserConfig, appInstance);
+              return $scope.addBrowser(browserConfig, appInstance.api);
             }
           });
         });

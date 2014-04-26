@@ -85,7 +85,7 @@ class AppInstance
         @memberOf AppInstance
     ###
     createBrowser : (callback) ->
-        {cbServer, userCtx, cbCtx, appInstance} = _pvts[@_idx]
+        {cbServer, userCtx, cbCtx, appInstance, appConfig} = _pvts[@_idx]
         # Permission checking is done inside call to createBrowser
         # in the application instance and in the browser manager
         Async.waterfall [
@@ -98,6 +98,7 @@ class AppInstance
                     cbCtx   : cbCtx
                     cbServer : cbServer
                     appInstanceConfig : this
+                    appConfig : appConfig
                 }))
         ], callback
 
@@ -153,7 +154,7 @@ class AppInstance
         if typeof event isnt "string" or validEvents.indexOf(event) is -1
             return
 
-        {appInstance, userCtx, appConfig} = _pvts[@_idx]
+        {cbServer, appInstance, cbCtx, userCtx, appConfig} = _pvts[@_idx]
 
         appInstance.getUserPrevilege(userCtx, (err, previlege)=>
             return callback(err) if err?

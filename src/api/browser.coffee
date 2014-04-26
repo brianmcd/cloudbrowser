@@ -416,9 +416,18 @@ class Browser
         if @isAssocWithCurrentUser()
             if bserver.isOwner(userCtx) then return true
             else return false
-
-    getUserPrevilege:(user, callback)->
+            
+    # [user],[callback]
+    getUserPrevilege:()->
         {bserver, userCtx} = _pvts[@_idx]
+        switch arguments.length
+            when 1
+                user = userCtx
+                callback = arguments[0]
+            when 2
+                user = arguments[0]
+                callback = arguments[1]
+
         return callback(null, null) if typeof bserver.getUserPrevilege isnt 'function'
         bserver.getUserPrevilege(user, callback)
 

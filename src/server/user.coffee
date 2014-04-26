@@ -4,4 +4,23 @@ class User
 
     getEmail : () -> return @_email
 
+
+User.getEmail = (user) ->
+    if user.getEmail?
+        return user.getEmail()
+    if user._email?
+        return user._email
+    return user
+
+User.toUser = (user)->
+    if user.getEmail?
+        return user
+    if user._email?
+        return new User(user._email)
+    return new User(user)
+    
+
 module.exports = User
+
+
+    

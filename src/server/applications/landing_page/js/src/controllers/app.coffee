@@ -3,7 +3,7 @@ app = angular.module('CBLandingPage.controllers.app',
 
 # Cloudbrowser API objects
 curVB     = cloudbrowser.currentBrowser
-appConfig = curVB.getAppConfig()
+appConfig = cloudbrowser.parentAppConfig
 
 app.run ($rootScope) ->
     # A replacement to $apply that calls digest only if
@@ -51,23 +51,24 @@ app.controller 'AppCtrl', [
             else for k, v of path
                 path[k] = "#{__dirname}/partials/#{v}"
 
-        $scope.addBrowser = (browserConfig, appInstance) ->
+        $scope.addBrowser = (browserConfig, appInstanceConfig) ->
             # Don't add the browsers if you're just the owner of the app
-            if not browserConfig.isOwner() and
-               not browserConfig.isReader() and
-               not browserConfig.isReaderWriter() then return
-            # Add the app instance to the view if not already present
-            if not appInstance
-                appInstanceConfig = browserConfig.getAppInstanceConfig()
+            browserConfig.getUserPrevilege((err, result)->
+                return $scope.setError(err) if err?
+                return if not result
                 appInstance = appInstanceMgr.add(appInstanceConfig)
-            # Then add the browser to the app instance
-            browser = appInstance.browserMgr.add(browserConfig)
-            appInstance.showOptions = true
-            appInstance.processing = false
+                # Then add the browser to the app instance
+                browser = appInstance.browserMgr.add(browserConfig)
+                appInstance.showOptions = true
+                appInstance.processing = false
+                $scope.safeApply ->
+                )
+            
 
         $scope.removeBrowser = (browserID) ->
             for appInstance in appInstanceMgr.items
                 appInstance.browserMgr.remove(browserID)
+            $scope.safeApply ->
 
         $scope.removeAppInstance = (appInstanceID) ->
             appInstanceMgr.remove(appInstanceID)
@@ -91,16 +92,10 @@ app.controller 'AppCtrl', [
             appConfig.createAppInstance (err, appInstanceConfig) ->
                 $scope.safeApply () ->
                     if err then $scope.setError(err)
-                    else appInstanceMgr.add(appInstanceConfig)
+                    else addAppInstanceConfig(appInstanceConfig)
 
         # Event handlers that keep all browsers of the application in sync
-        appConfig.addEventListener 'addBrowser', (browserConfig) ->
-            $scope.safeApply ->
-                $scope.addBrowser(browserConfig)
-        appConfig.addEventListener 'shareBrowser', (browserConfig) ->
-            $scope.safeApply -> $scope.addBrowser(browserConfig)
-        appConfig.addEventListener 'removeBrowser', (browserID) ->
-            $scope.safeApply -> $scope.removeBrowser(browserID)
+        
         appConfig.addEventListener 'addAppInstance', (appInstanceConfig) ->
             $scope.safeApply -> appInstanceMgr.add(appInstanceConfig)
         appConfig.addEventListener 'shareAppInstance', (appInstanceConfig) ->
@@ -109,14 +104,27 @@ app.controller 'AppCtrl', [
             $scope.safeApply -> $scope.removeAppInstance(appInstanceID)
 
         # Populate appInstances and browsers at startup
-        appConfig.getBrowsers (err, browserConfigs) ->
-            $scope.safeApply ->
-                if err then $scope.setError(err)
+        
+
+        addAppInstanceConfig = (appInstanceConfig)->
+            appInstanceMgr.add(appInstanceConfig)
+            appInstanceConfig.addEventListener('addBrowser', (browserConfig)->
+                $scope.addBrowser(browserConfig, appInstanceConfig)
+                )
+            appInstanceConfig.addEventListener('shareBrowser',(browserConfig)->
+                $scope.addBrowser(browserConfig, appInstanceConfig)
+                )
+            appInstanceConfig.addEventListener('removeBrowser',(id)->
+                $scope.removeBrowser(id, appInstanceConfig)
+                )
+            appInstanceConfig.getAllBrowsers((err, browserConfigs)->
+                $scope.setError(err) if err?
                 for browserConfig in browserConfigs
-                    $scope.addBrowser(browserConfig)
+                    $scope.addBrowser(browserConfig, appInstanceConfig)
+                )
 
         appConfig.getAppInstances (err, appInstanceConfigs) ->
             $scope.safeApply ->
                 for appInstanceConfig in appInstanceConfigs
-                    appInstanceMgr.add(appInstanceConfig)
+                    addAppInstanceConfig(appInstanceConfig)
 ]

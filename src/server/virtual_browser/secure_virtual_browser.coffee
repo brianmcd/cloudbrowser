@@ -1,4 +1,5 @@
 VirtualBrowser = require('./index')
+User = require('../user')
 
 class SecureVirtualBrowser extends VirtualBrowser
     @nameCount : 0
@@ -50,11 +51,11 @@ class SecureVirtualBrowser extends VirtualBrowser
 
     getUserPrevilege : (user, callback) ->
         result = null
-        if isOwner(user)
+        if @isOwner(user)
             result = 'own'
-        else if isReader(user)
+        else if @isReader(user)
             result = 'readonly'
-        else if isReaderWriter(user)
+        else if @isReaderWriter(user)
             result = 'readwrite'
         if callback?
             callback null, result
@@ -71,14 +72,8 @@ class SecureVirtualBrowser extends VirtualBrowser
             break
 
     _isUserInList : (user, listType) ->
-        if user.getEmail?
-            email = user.getEmail()
-        else if user._email?
-            email = user._email
-        else
-            email = user
-
-        for u in @[listType] when u.getEmail() is user
+        email=User.getEmail(user)
+        for u in @[listType] when u.getEmail() is email
             return true
         return false
 

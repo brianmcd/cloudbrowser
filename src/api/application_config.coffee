@@ -622,18 +622,17 @@ class AppConfig
                     permissions : ['own', 'createBrowsers']
             (canCreate, next) ->
                 if not canCreate then next(cloudbrowserError("PERM_DENIED"))
-                else 
-                    appInstanceManager = if app.isStandalone() then app.appInstanceManager else app.parentApp.appInstanceManager
-                    appInstanceManager.create(userCtx, next)
+                app.appInstanceManager.create(userCtx, next)
                 # TODO : appInstances is not set if appInstanceProvider is not provides.
                 # leading a crash
-        ], (err, appInstance) ->
+        ], (err, appInstance) =>
             if err then callback(err)
             else callback null, new AppInstance
                 cbCtx       : cbCtx
                 cbServer : cbServer
                 userCtx     : userCtx
                 appInstance : appInstance
+                appConfig : this
                 
     ###*
         Gets the registered name of the application instance template
@@ -662,5 +661,6 @@ class AppConfig
         if not app.findUser(user)
             app.addNewUser user, (err) -> callback?(null, user)
         else callback?(null, user)
+
 
 module.exports = AppConfig

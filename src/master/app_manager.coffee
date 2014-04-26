@@ -49,6 +49,7 @@ class Application extends EventEmitter
     _addAppInstance: (appInstance) ->
         @_appInstanceMap[appInstance.id] = appInstance
         @_workerManager.registerAppInstance(appInstance)
+        console.log "#{__filename}: emit addAppInstance #{appInstance.id} for #{@mountPoint}"
         @emit('addAppInstance', appInstance._remote)
 
     getName: (callback)->

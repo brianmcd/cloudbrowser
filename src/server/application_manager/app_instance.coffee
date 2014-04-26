@@ -108,8 +108,10 @@ class AppInstance extends EventEmitter
             # return the only instance
             if not @weakrefToBrowser
                 @_create(user, callback)
+            else
+                callback null, @weakrefToBrowser
         else
-            browser = @_create(user, callback)
+            @_create(user, callback)
             
 
     _findReaderWriter : (user) ->
