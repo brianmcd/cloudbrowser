@@ -58,6 +58,7 @@ Would like to chizzle away at jsdom patch to reduce it to zero.
 # issues
 
 - will event listeners be a memory issue
+    + the actual event register are done in api objects, we can do something there
 
 ## Permission issues
 

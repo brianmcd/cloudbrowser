@@ -7,6 +7,7 @@ async  = require('async')
 User               = require('../user')
 routes             = require('./routes')
 AppInstanceManager = require('./app_instance_manager')
+utils = require('../../shared/utils')
 
 
 class BaseApplication extends EventEmitter
@@ -38,6 +39,44 @@ class BaseApplication extends EventEmitter
         {@mountPoint, @isPublic, @name,
          @description, @browserLimit, @authenticationInterface
         } = @deploymentConfig
+
+        attrMaps = @_masterApp.attrMaps
+        for attrMap in attrMaps
+            attrPaths = attrMap.attr.split('.')
+            name = if attrMap['name']? then attrMap['name'] else attrPaths[attrPaths.length-1]
+            getter = if attrMap['getter']? then attrMap['getter'] else 'get'+utils.toCamelCase(name)
+            setter = if attrMap['setter']? then attrMap['setter'] else 'set'+utils.toCamelCase(name)
+            thisArg = @
+            attrPath = attrMap.attr
+            if not @[getter]?
+                @[getter] = do (attrPath, thisArg)->
+                    (callback)->
+                        if callback?
+                            thisArg._masterApp[getter](callback)
+                        else
+                            parseResult = utils.parseAttributePath(thisArg, attrPath)
+                            if not parseResult
+                                console.trace("cannot find #{attrPath} in app #{thisArg.mountPoint}")
+                                return null
+                            return parseResult.dest
+                            
+            if not @[setter]?
+                @[setter] = do (attrPath, thisArg)->
+                    (newVal, callback)->
+                        parseResult = utils.parseAttributePath(thisArg, attrPath)
+                        if not parseResult
+                            console.trace("cannot find #{attrPath} in app #{thisArg.mountPoint}")
+                            if callback
+                                return callback(new Error("cannot find #{attrPath}"))
+                            throw new Error("cannot find #{attrPath}") 
+                        else
+                            parseResult.obj[parseResult.attr] = newVal
+                            thisArg._masterApp[setter](newVal, callback)
+        
+
+        @_masterApp.on('change', (changeObj)=>
+            @_handleChange(changeObj)
+            )
         
         @remoteBrowsing = /^http/.test(@appConfig.entryPoint)
         @counter = 0 
@@ -48,7 +87,18 @@ class BaseApplication extends EventEmitter
         @mountPointHandler = lodash.bind(@_mountPointHandler, this)
         @serveAppInstanceHandler = lodash.bind(@_serveAppInstanceHandler,this)
 
+        
 
+    _handleChange : (changeObj)->
+        {attr, newVal} = changeObj
+        parseResult = utils.parseAttributePath(this, attr)
+        if not parseResult
+            return console.log "canot find #{attr} for app #{@mountPoint}"
+        if parseResult.desc isnt newVal
+            parseResult.obj[parseResult.attr] = newVal
+            @emit('change',changeObj)
+
+                
  
     _serveVirtualBrowserHandler : (req, res, next) ->
         appInstanceID = req.params.appInstanceID
@@ -140,8 +190,6 @@ class BaseApplication extends EventEmitter
     isMounted : () ->
         return @mounted
 
-    getDescription : () ->
-        @deploymentConfig.description 
 
     getBrowserLimit : () ->
         @deploymentConfig.browserLimit

@@ -7,6 +7,7 @@ async  = require('async')
 
 config = require('./config')
 routes = require('../server/application_manager/routes')
+utils = require('../shared/utils')
 ###
 the master side counterpart of application manager
 ###
@@ -34,7 +35,7 @@ class AppInstance
         @_remote = remote
         {@id}= remote
         @_notifyWaiting()
-        
+    
 
 class Application extends EventEmitter
     constructor: (@_masterConfig, @_workerManager,@_uuidService, @config) ->
@@ -45,7 +46,61 @@ class Application extends EventEmitter
         #@workers = {}
         @_appInstanceMap = {}
         @_userToAppInstance = {}
-    
+        
+        @attrMaps = [{
+            attr : 'config.deploymentConfig.description'
+        }]
+
+        for attrMap in @attrMaps
+            attrPaths = attrMap.attr.split('.')
+            name = if attrMap['name']? then attrMap['name'] else attrPaths[attrPaths.length-1]
+            getter = if attrMap['getter']? then attrMap['getter'] else 'get'+utils.toCamelCase(name)
+            setter = if attrMap['setter']? then attrMap['setter'] else 'set'+utils.toCamelCase(name)
+            thisArg = @
+            attrPath = attrMap.attr
+            if not @[getter]?
+                @[getter] = do (attrPath, thisArg)->
+                    (callback)->
+                        if callback?
+                            callback thisArg._getAttr(attrPath)
+                        else
+                            return thisArg._getAttr(attrPath)
+            if not @[setter]?
+                @[setter] = do (attrPath, thisArg)->
+                    (newVal, callback)->
+                        setted = thisArg._setAttr(attrPath,newVal)
+                        if callback?
+                            if setted
+                                callback null
+                            else
+                                callback new Error('cannot find #{attrPath}')
+                            return
+                        if setted
+                            console.log "app #{thisArg.mountPoint} change #{attrPath} to #{newVal}"
+                            thisArg.emit('change',{
+                                attr: attrPath
+                                newVal : newVal
+                                })  
+
+        
+    _getAttr : (attr)->
+        parseResult = utils.parseAttributePath(this, attr)
+        if not parseResult
+            console.trace "cannot find #{attr} in app #{@mountPoint}"
+            return
+        return parseResult.dest
+        
+
+    _setAttr : (attr, newVal)->
+        parseResult = utils.parseAttributePath(this, attr)
+        if not parseResult
+            console.trace "cannot find #{attr} in app #{@mountPoint}"
+            return false
+        parseResult.obj[parseResult.attr] = newVal
+        return true
+
+            
+
     _addAppInstance: (appInstance) ->
         @_appInstanceMap[appInstance.id] = appInstance
         @_workerManager.registerAppInstance(appInstance)
@@ -64,12 +119,7 @@ class Application extends EventEmitter
         result = email is @config.deploymentConfig.owner
         callback null, result
         
-
-    getDescription : (callback) ->
-        callback null, @description
-
-    setDescription : (@description, callback) ->
-        callback null
+        
 
     getBrowserLimit : (callback) ->
         callback null, @browserLimit
