@@ -290,13 +290,6 @@ class BaseApplication extends EventEmitter
     isStandalone : () ->
         return false
 
-    # user authenticate stuff
-    # TODO 
-    isLocalUser : (user, callback) ->
-        callback null, false
-
-    addNewUser : (userRec, callback) ->
-        callback null, userRec
         ###
     TODO : Figure out who can perform this action
     closeAll : () ->

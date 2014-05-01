@@ -8,7 +8,7 @@
 
   app = angular.module('CBLandingPage.controllers.appInstance', ['CBLandingPage.models', 'CBLandingPage.services']);
 
-  appConfig = cloudbrowser.currentBrowser.getAppConfig();
+  appConfig = cloudbrowser.parentAppConfig;
 
   app.controller('AppInstanceCtrl', [
     '$scope', 'cb-mail', 'cb-format', 'cb-appInstanceManager', function($scope, mail, format, appInstanceMgr) {

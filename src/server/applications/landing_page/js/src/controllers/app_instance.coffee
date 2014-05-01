@@ -8,7 +8,7 @@ app = angular.module('CBLandingPage.controllers.appInstance',
     ]
 )
 
-appConfig = cloudbrowser.currentBrowser.getAppConfig()
+appConfig = cloudbrowser.parentAppConfig
 
 app.controller 'AppInstanceCtrl', [
     '$scope'

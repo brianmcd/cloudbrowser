@@ -41,7 +41,6 @@ class UserPermissionManager
             (dbRecord, next) =>
                 if not dbRecord then next(null, null)
                 else
-                    # Add to cache
                     sysPermRec = new SystemPermissions(user, dbRecord.permission)
                     for mountPoint, app of dbRecord.apps
                         appPerm = sysPermRec.addItem(mountPoint, app.permission)
