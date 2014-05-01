@@ -165,8 +165,6 @@ class BaseApplication extends EventEmitter
     entryURL : () ->
         return @appConfig.entryPoint
 
-    isAppPublic : () ->
-        return @deploymentConfig.isPublic
 
     getMountPoint : () ->
         return @mountPoint
@@ -175,24 +173,11 @@ class BaseApplication extends EventEmitter
         appUrl = "#{@server.config.getHttpAddr()}#{@mountPoint}"
         console.log appUrl
         return appUrl
-
-    getName : (callback) ->
-        if callback?
-            @_masterApp.getName(callback)
-        else
-            return @deploymentConfig.name
-        
-
-    setName : (newName, callback) ->
-        @_masterApp.setName(newName, callback)
-        
+     
 
     isMounted : () ->
         return @mounted
 
-
-    getBrowserLimit : () ->
-        @deploymentConfig.browserLimit
 
     getAppInstanceName : () ->
         if @appInstanceProvider then return @appInstanceProvider.name       

@@ -47,9 +47,22 @@ class Application extends EventEmitter
         @_appInstanceMap = {}
         @_userToAppInstance = {}
         
-        @attrMaps = [{
-            attr : 'config.deploymentConfig.description'
-        }]
+        @attrMaps = [
+            {
+                attr : 'config.deploymentConfig.description'
+            },
+            {
+                attr : 'config.deploymentConfig.name'
+            },
+            {
+                attr : 'config.deploymentConfig.browserLimit'
+            },
+            {
+                attr : 'config.deploymentConfig.isPublic'
+                getter : 'isAppPublic'
+                setter : 'setAppPublic'
+            }
+        ]
 
         for attrMap in @attrMaps
             attrPaths = attrMap.attr.split('.')
@@ -107,26 +120,12 @@ class Application extends EventEmitter
         console.log "#{__filename}: emit addAppInstance #{appInstance.id} for #{@mountPoint}"
         @emit('addAppInstance', appInstance._remote)
 
-    getName: (callback)->
-        callback null, @name
-
-    setName: (@name, callback)->
-        if callback?
-            callback null
-
+   
     isOwner: (user, callback) ->
         eamil = if user._email? then user._email else user
         result = email is @config.deploymentConfig.owner
         callback null, result
         
-        
-
-    getBrowserLimit : (callback) ->
-        callback null, @browserLimit
-
-    setBrowserLimit : (@browserLimit,callback) ->
-        callback null
-
     isAppPublic : (callback) ->
         callback null, @isPublic 
 

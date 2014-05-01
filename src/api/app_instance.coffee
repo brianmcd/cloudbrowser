@@ -159,7 +159,7 @@ class AppInstance
         appInstance.getUserPrevilege(userCtx, (err, previlege)=>
             return callback(err) if err?
             return callback(null, null) if not previlege
-            console.log "#{__filename} : regist #{event} to appInstance #{appInstance.id}"
+            console.log "#{__filename} : addEvent #{event} to appInstance #{appInstance.id}"
             switch(event)
                 when 'share'
                     appInstance.on(event, (user)->

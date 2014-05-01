@@ -133,6 +133,7 @@ class AppInstance extends EventEmitter
     isOwner : (user) ->
         return user.getEmail() is @owner.getEmail()
 
+
     isReaderWriter : (user) ->
         return true for c in @readerwriters when c.getEmail() is user.getEmail()
 
@@ -148,8 +149,6 @@ class AppInstance extends EventEmitter
         result = null
         if @isOwner(user)
             result = 'own'
-        else if @isReader(user)
-            result = 'readonly'
         else if @isReaderWriter(user)
             result = 'readwrite'
         if callback?
