@@ -47,14 +47,14 @@
     "xmlhttprequest": "1.5.0",
     "coffee-script-mapped": "0.1.4",
     "read": "1.0.5",
-    "async": "0.2.9",
+    "async": "0.7.0",
     "tar": "0.1.18",
     "fstream": "0.1.24",
     "http-auth": "1.2.7",
     "nwglobal": "0.0.1",
     "lodash" : "2.4.1",
     "http-proxy" : "1.0.2",
-    "dnode" : "1.2.0"
+    "nodermi" : "git://github.com/bladepan/nodermi.git"
   },
   "devDependencies": {
     "nodeunit": "0.8.6",

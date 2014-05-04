@@ -5,14 +5,10 @@ AppConfig = require('./app_config')
 routes = require('./routes')
 
 class PasswordRestApplication extends BaseApplication
-    constructor: (@parentApp) ->
+    constructor: (masterApp, @parentApp) ->
         {@server} = @parentApp
-        @config = AppConfig.newConfig(Path.resolve(__dirname,'../applications/password_reset'))
-        @config.appConfig.instantiationStrategy = 'singleUserInstance'
-        @config.deploymentConfig.authenticationInterface = true
-        super(@config, @server)
-        @baseMountPoint = @parentApp.mountPoint
-        @mountPoint = routes.concatRoute(@baseMountPoint,'/password_reset')
+        super(masterApp, @server)
+        
 
 module.exports = PasswordRestApplication
     

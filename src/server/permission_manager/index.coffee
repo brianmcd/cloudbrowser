@@ -2,11 +2,12 @@ Async = require('async')
 CacheManager           = require('./cache_manager')
 SystemPermissions      = require('./system_permissions')
 
-class UserPermissionManager extends CacheManager
+# the permission might be changed by other workers.
+# caching is disabled
+class UserPermissionManager
     collectionName = "Permissions"
 
     constructor : (@mongoInterface, callback) ->
-        super(SystemPermissions)
         @dbOperation('addIndex', null, {_email:1}, 
             (err) =>
                 callback(err,this)
@@ -34,19 +35,13 @@ class UserPermissionManager extends CacheManager
                 callback(null, null)
             else callback(null, sysPermRec)
 
-        # If entry is in cache, use cache entry
-        sysPermRec = @find(user)
-        if sysPermRec then filterOnPermission(sysPermRec)
-
-        # Else, hit the DB
-        else Async.waterfall [
+        Async.waterfall [
             (next) =>
                 @dbOperation('findUser', user, null, next)
             (dbRecord, next) =>
                 if not dbRecord then next(null, null)
                 else
-                    # Add to cache
-                    sysPermRec = @add(user, dbRecord.permission)
+                    sysPermRec = new SystemPermissions(user, dbRecord.permission)
                     for mountPoint, app of dbRecord.apps
                         appPerm = sysPermRec.addItem(mountPoint, app.permission)
                         if app.appInstances
@@ -70,7 +65,7 @@ class UserPermissionManager extends CacheManager
                 if not sysPermRec
                     @dbOperation 'addUser', user, null, (err) =>
                         # Add to cache
-                        next(err, @add(user))
+                        next(err, new SystemPermissions(user))
                 else next(null, sysPermRec)
             (sysPermRec, next) =>
                 @setSysPerm
@@ -92,7 +87,7 @@ class UserPermissionManager extends CacheManager
                 if sysPermRec
                     @dbOperation 'removeUser', user, null, (err) ->
                         # Remove from cache
-                        next(err, @remove(user))
+                        next(err, null)
                 else next(null, null)
         ], callback
 
@@ -124,7 +119,6 @@ class UserPermissionManager extends CacheManager
 
     addAppPermRec : (options) ->
         {user, mountPoint, permission, callback} = options
-        
         setPerm = (callback) =>
             @setAppPerm
                 user        : user
@@ -211,33 +205,28 @@ class UserPermissionManager extends CacheManager
     
     addBrowserPermRec : (options) ->
         {user, mountPoint, browserID, permission, callback} = options
-
-        Async.waterfall [
+        Async.waterfall([
             (next) =>
-                @findBrowserPermRec
-                    user       : user
+                @findAppPermRec({
+                    user : user
                     mountPoint : mountPoint
-                    browserID  : browserID
-                    callback   : next
-            (browserPerms, next) =>
-                if not browserPerms then @findAppPermRec
-                    user       : user
-                    mountPoint : mountPoint
-                    callback   : next
-                else
-                    browserPerms.set(permission)
-                    # Bypassing the async waterfall
-                    callback?(null, browserPerms)
-            (appPerms, next) ->
+                    callback: next
+                    })
+            (appPerms, next) =>
                 if appPerms
-                    browserPerms = appPerms.addBrowser(browserID, permission)
-                    next(null, browserPerms)
-                # Not adding app perm rec if it doesn't exist as browser's can't
-                # be created without the app perm rec being created first (when
-                # the user signs up with the app)
-                else next(null, null)
-        ], callback
+                    browserPerm = appPerms.findBrowser(browserID, permission)
+                    if browserPerm?
+                        callback null, browserPerm
+                    else
+                        browserPerms = appPerms.addBrowser(browserID, permission)
+                        #TODO save it to DB
+                        callback null, browserPerms
+                else
+                    # Bypassing waterfall
+                    callback null, null
+            ], callback)
 
+        
     rmBrowserPermRec: (options) ->
         {user, mountPoint, browserID, callback} = options
 
@@ -296,13 +285,14 @@ class UserPermissionManager extends CacheManager
     addAppInstancePermRec : (options) ->
         {user, mountPoint, appInstanceID, permission, callback} = options
 
-        setPerm = (callback) =>
-            @setAppInstancePerm
-                user        : user
-                callback    : callback
-                mountPoint  : mountPoint
-                permission : permission
-                appInstanceID : appInstanceID
+        setPerm = (appInstancePerms) =>
+            key = "apps.#{mountPoint}.appInstances.#{appInstanceID}.permission"
+            if not permission then callback(null, appInstancePerms)
+            else
+                info = {}
+                info["#{key}"] = appInstancePerms.set(permission)
+                @dbOperation('setUser', user, info, (err) ->
+                    callback(err, appInstancePerms))
 
         Async.waterfall [
             (next) =>
@@ -317,15 +307,16 @@ class UserPermissionManager extends CacheManager
                     mountPoint : mountPoint
                     callback   : next
                 # Bypassing the async waterfall
-                else setPerm(callback)
+                else setPerm(appInstancePerms)
             (appPerms, next) ->
                 if appPerms
-                    appInstancePerms =
-                        appPerms.addAppInstance(appInstanceID, permission)
-                    setPerm(next)
+                    appInstancePerms = appPerms.addAppInstance(appInstanceID, permission)
+                    setPerm(appInstancePerms)
                 else
                     next(null, null)
         ], callback
+
+
 
     rmAppInstancePermRec: (options) ->
         {user, mountPoint, appInstanceID, callback} = options
@@ -418,26 +409,34 @@ class UserPermissionManager extends CacheManager
     setAppPerm : (options) ->
         {user, mountPoint, permission, callback} = options
 
+
         Async.waterfall [
             (next) =>
-                @findAppPermRec
-                    user       : user
-                    mountPoint : mountPoint
-                    callback   : next
-            (appPerms, next) =>
-                if not appPerms then next(null, null)
-                else if not permission then next(null, appPerms)
-                else
-                    key = "apps.#{mountPoint}.permission"
-                    info = {}
-                    info["#{key}"] = appPerms.set(permission)
-                    @dbOperation('setUser', user, info, (err) ->
-                        next(err, appPerms))
+                @findSysPermRec
+                    user     : user
+                    callback : next
+            (sysPermRec, next) =>
+                if not sysPermRec
+                    next(null, null)
+                else 
+                    appPerm = sysPermRec.findItem(mountPoint, permission)
+                    if appPerm?
+                        next(null, appPerm)
+                    else
+                        appPerm = sysPermRec.addItem(mountPoint, permission)
+                        key = "apps.#{mountPoint}.permission"
+                        info = {}
+                        info["#{key}"] = appPerm.set(permission)
+                        @dbOperation('setUser', user, info, (err) ->
+                            next(err, appPerm))
         ], callback
-        
+
+      
+
     setAppInstancePerm : (options) ->
         {user, mountPoint, appInstanceID, permission, callback} = options
         key = "apps.#{mountPoint}.appInstances.#{appInstanceID}.permission"
+
 
         Async.waterfall [
             (next) =>
@@ -455,6 +454,7 @@ class UserPermissionManager extends CacheManager
                     @dbOperation('setUser', user, info, (err) ->
                         next(err, appInstancePerms))
         ], callback
+
 
     setBrowserPerm: (options) ->
         {user, mountPoint, browserID, permission, callback} = options

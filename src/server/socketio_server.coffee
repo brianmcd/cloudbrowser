@@ -75,7 +75,7 @@ class SocketIOServer
                     bserver : bserver
                     callback   : next
             (isAuthorized, next) =>
-                if not isAuthorized then next(true) # Simulating an error
+                if not isAuthorized then next(new Error("user is not authorized")) # Simulating an error
                 else @mongoInterface.getSession(sessionID, next)
         ], (err, session) =>
             if err?
@@ -88,7 +88,7 @@ class SocketIOServer
 
 
     isAuthorized : (options) ->
-        {session, app, appInstance, callback} = options
+        {bserver, session, app, appInstance, callback} = options
 
         if not app.isAuthConfigured() then return callback(null, true)
 
@@ -97,8 +97,10 @@ class SocketIOServer
             mountPoint = app.parentApp.mountPoint
         
         user = @sessionManager.findAppUserID(session, mountPoint)
+        if bserver.getUserPrevilege?(user)?
+            return callback null, true
 
-        if appInstance.isOwner(user) or appInstance.isReaderWriter(user)
+        if appInstance.getUserPrevilege(user)?
             return callback null, true
         else
             return callback null, false

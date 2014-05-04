@@ -18,8 +18,7 @@
     ChatRoom.prototype.postMessage = function(user, message) {
       var formattedMessage;
       formattedMessage = "[" + (user.getName()) + "]: " + message;
-      this.messages.push(formattedMessage);
-      return this.emit('newMessage', message);
+      return this.messages.push(formattedMessage);
     };
 
     ChatRoom.prototype.getName = function() {

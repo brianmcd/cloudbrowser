@@ -8,7 +8,7 @@
 
   auth = cloudbrowser.auth;
 
-  appConfig = curBrowser.getAppConfig();
+  appConfig = cloudbrowser.parentAppConfig;
 
   googleStrategy = auth.getGoogleStrategy();
 

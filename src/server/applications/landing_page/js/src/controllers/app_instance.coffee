@@ -8,7 +8,7 @@ app = angular.module('CBLandingPage.controllers.appInstance',
     ]
 )
 
-appConfig = cloudbrowser.currentBrowser.getAppConfig()
+appConfig = cloudbrowser.parentAppConfig
 
 app.controller 'AppInstanceCtrl', [
     '$scope'
@@ -68,7 +68,7 @@ app.controller 'AppInstanceCtrl', [
                         $scope.setError(err)
                         appInstance.processing = false
                     else
-                        $scope.addBrowser(browserConfig, appInstance)
+                        $scope.addBrowser(browserConfig, appInstance.api)
 
         $scope.areCollaboratorsVisible = () ->
             return appInstance.showOptions and appInstance.readerwriters.length
@@ -114,11 +114,12 @@ app.controller 'AppInstanceCtrl', [
                         mountPoint : appConfig.getMountPoint()
             ), (err) ->
                 $scope.safeApply ->
+                    appInstance.processing = false
+                    appInstance.showOptions = true
                     if err then $scope.setError(err)
                     else $scope.success.message =
                         "#{entity.name} is shared with #{collaborator}."
-                    appInstance.processing = false
-                    appInstance.showOptions = true
+                    
 
         $scope.addCollaborator = () ->
             {collaborator} = $scope.shareForm

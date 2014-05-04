@@ -14,13 +14,20 @@
         return curVB.redirect(browserConfig.getURL());
       };
       this.dateCreated = format.date(browserConfig.getDateCreated());
-      this.updateUsers();
-    }
-
-    Browser.prototype.updateUsers = function() {
       this.owners = this.api.getOwners();
       this.readers = this.api.getReaders();
-      return this.readerwriters = this.api.getReaderWriters();
+      this.readerwriters = this.api.getReaderWriters();
+    }
+
+    Browser.prototype.updateUsers = function(callback) {
+      var _this = this;
+      return this.api.getUsers(function(err, result) {
+        if (err != null) {
+          return callback(err);
+        }
+        _this.owners = result.owners, _this.readers = result.readers, _this.readerwriters = result.readerwriters;
+        return callback(null);
+      });
     };
 
     Browser.prototype.roles = [

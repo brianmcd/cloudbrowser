@@ -6,7 +6,6 @@ class ChatRoom extends EventEmitter
     postMessage : (user, message) ->
         formattedMessage = "[#{user.getName()}]: #{message}"
         @messages.push(formattedMessage)
-        @emit('newMessage', message)
 
     getName : () ->
         return @name

@@ -29,6 +29,8 @@ cleanupBserver = (id) ->
 
 # Serves 1 Browser to n clients.
 class VirtualBrowser extends EventEmitter
+    __r_skip :['server','browser','sockets','compressor','registeredEventTypes','queuedSockets',
+                'localState','consoleLog','rpcLog', 'nodes', 'resources']
 
     constructor : (vbInfo) ->
 
@@ -73,7 +75,7 @@ class VirtualBrowser extends EventEmitter
     getID : () -> return @id
 
     getUrl : () ->
-        return @server.config.getHttpAddr() + routes.buildBrowserPath(@mountPoint, @appInstanceId, @id)
+        return "#{@server.config.getHttpAddr()}#{routes.buildBrowserPath(@mountPoint, @appInstanceId, @id)}"
 
     getDateCreated : () -> return @dateCreated
 

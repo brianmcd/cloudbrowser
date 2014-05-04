@@ -1933,6 +1933,16 @@
     }
 
   , matcher: function (item) {
+      if (!item.toLowerCase) {
+        console.log("item has no toLowerCase")
+        console.log(typeof item)
+        console.log(item);
+      }
+      if (!this.query.toLowerCase) {
+        console.log("query has no toLowerCase")
+        console.log(typeof this.query)
+        console.log(this.query); 
+      }
       return ~item.toLowerCase().indexOf(this.query.toLowerCase())
     }
 

@@ -90,20 +90,26 @@ class ServerConfig
 
         # Apps that the current user owns
         if filters.indexOf('perUser') isnt -1
+            console.log "listApps for email #{JSON.stringify(userCtx)}"
             permissionManager.getAppPermRecs
                 user        : userCtx
                 permission  : 'own'
                 callback    : (err, appRecs) ->
                     return callback(err) if err
-                    for rec in appRecs
-                        app = appManager.find(rec.getMountPoint())
-                        if filters.indexOf('public') isnt -1
-                            if not app.isAppPublic() then continue
-                        appConfigs.push new AppConfig
-                            cbServer : cbServer
-                            userCtx : userCtx
-                            cbCtx   : cbCtx
-                            app     : app
+                    if appRecs?
+                        for rec in appRecs
+                            # TODO this should change to async call as well
+                            app = appManager.find(rec.getMountPoint())
+                            if filters.indexOf('public') isnt -1
+                                if not app.isAppPublic() then continue
+                            if not app?
+                                console.log "empty app for #{rec.getMountPoint()}"
+                            else
+                                appConfigs.push new AppConfig
+                                    cbServer : cbServer
+                                    userCtx : userCtx
+                                    cbCtx   : cbCtx
+                                    app     : app
                     callback(null, appConfigs)
         # Get all public apps
         else if filters.indexOf('public') isnt -1
@@ -171,7 +177,6 @@ class ServerConfig
 
         {cbServer, userCtx, cbCtx} = _pvts[@_idx]
         email = userCtx.getEmail()
-
         ApplicationUploader.process email, pathToFile, (err, app) ->
             return callback(err) if err
             callback new AppConfig

@@ -12,58 +12,131 @@ cleanupStates = (id) ->
 class AppInstanceManager extends EventEmitter
     constructor : (@appInstanceProvider, @server, @app) ->
         {@permissionManager, @uuidService} = @server
+        {@_masterApp} = @app
         @weakRefsToAppInstances = {}
         @userToAppInstances = {}
         @appInstances  = {}
 
-    getAppInstance : () ->
-        if not @weakRefToAppInstance?
-            @weakRefToAppInstance = @_createAppInstance()
-            @appInstance = @appInstances[@weakRefToAppInstance.id]
-        return @weakRefToAppInstance
+    getAppInstance : (callback) ->
+        if not @appInstance?
+            #not in local, query master
+            @_masterApp.getAppInstance(callback)
+        else
+            callback null, @appInstance
 
-    getUserAppInstance : (user) ->
-        if not user?
-            throw new Error('should specify user for getUserAppInstance')
-        email = if user._email? then user._email else user
+
+
+    # actual create a new instance in local
+    # user is always string
+    createAppInstance : (user, callback) ->
+        if user? and typeof user isnt 'string'
+            throw new Error("User #{user} should be string")
+
+        if @app.isSingleInstance()
+            # check if we had it
+            if not @appInstance?
+                return @_createAppInstance(user, (err, instance) =>
+                        return callback(err) if err?
+                        @appInstance = instance
+                        callback null, instance
+                    )
+            return callback null, @appInstance
+        else if @app.isSingleInstancePerUser()
+            if not user?
+                return callback(new Error('should specify user for getAppInstanceForUser'))
+            if not @userToAppInstances[user]?
+                return @_createAppInstance(user, (err, instance)=>
+                        @userToAppInstances[user] = instance
+                        callback null, instance
+                )
+            return callback null, @userToAppInstances[user]
+        else    
+            return @_createAppInstance(user, callback)
+
+
+    getUserAppInstance : (user, callback) ->
+        if not user? or not user._email?
+            throw new Error("should specify user for getUserAppInstance : #{user}")
+        email = user._email
+            
         if not @userToAppInstances[email]?
-            weakRefToAppInstance = @_createAppInstance(user)
-            @userToAppInstances[email] = weakRefToAppInstance
-        return @userToAppInstances[email]
+            # query master
+            @_masterApp.getUserAppInstance(email, callback)
+        else
+            callback null, @userToAppInstances[email]
 
-    _createAppInstance :(user) ->
+        
+    
+    _createAppInstance :(user, callback) ->
+        owner = user
+        if user?
+            if typeof user is 'string'
+                owner = new User(user)
+        else
+            owner = @app.getOwner()
+
         id = @uuidService.getId()
         appInstance = new AppInstance ({
             id : id
             app : @app
             obj : @appInstanceProvider?.create()
-            owner : if user? then user else @app.getOwner()
+            owner : owner
             server : @server
-            })
-        @appInstances[id] = appInstance
-        weakRefToAppInstance = Weak(appInstance, cleanupStates(id))
-        @weakRefsToAppInstances[id] = weakRefToAppInstance
-        @server.masterStub.obj.workerManager.registerAppInstance({
-            workerId: @server.config.id,
-            appInstanceId : id
-            owner : appInstance.owner
-            })
-        return weakRefToAppInstance
+        })
+        # usually when we create appInstance, we want a browser as well
+        Async.series([
+            (next)->
+                appInstance.createBrowser(user, next)
+            (next)=>
+                @permissionManager.addAppInstancePermRec
+                    user        : owner
+                    mountPoint  : @app.getMountPoint()
+                    permission  : 'own'
+                    appInstanceID : id
+                    callback : next
+            ],(err)=>
+                return callback(err) if err
+                @appInstances[id] = appInstance
+                weakRefToAppInstance = Weak(appInstance, cleanupStates(id))
+                @weakRefsToAppInstances[id] = weakRefToAppInstance                
+                callback(null, weakRefToAppInstance)
 
-    newAppInstance : () ->
-        if @app.getInstantiationStrategy() isnt 'default'
-            throw new Error('newAppInstance method is only for default initiation strategy')
-        return @_createAppInstance()
+            )
 
+        
+    # called by api, need to register the new appInstance to master
     create :(user, callback) ->
-        if not @app.isMultiInstance()
-            throw new Error('create method is only for multiInstance initiation strategy')        
-        callback null, @_createAppInstance(user)
-
-
-
+        @_createAppInstance(user, (err, instance)=>
+            return callback(err) if err?
+            @_masterApp.regsiterAppInstance(@server.config.id, instance, (err)=>
+                if err?
+                    @_removeAppInstance(instance)
+                    return callback err
+                callback err, instance
+            )
+        )
+        
+        
+    _removeAppInstance : (appInstance) ->
+        delete @appInstances[appInstance.id]
+        delete @weakRefsToAppInstances[appInstance.id]
+        if @appInstance? and @appInstance.id is appInstance.id
+            @appInstance = null
+        if @appInstance.owner?
+            email = @appInstance.owner._email
+            ref = @userToAppInstances[email]
+            if ref? and ref.id is appInstance.id
+                delete @userToAppInstances[email]
+        appInstance.close()
+            
+    # find in local
     find : (id) ->
         return @weakRefsToAppInstances[id]
+
+    # query the master
+    findInstance : (id, callback) ->
+        @_masterApp.findInstance(id, callback)
+
 
     # should check permission, etc.
     findBrowser : (appInstanceId, vBrowserId) ->
@@ -71,6 +144,35 @@ class AppInstanceManager extends EventEmitter
         if appInstance?
             return appInstance.findBrowser(vBrowserId)
         return null
+
+    # get the browsers by id
+    getBrowsers : (idList, callback) ->
+        Async.waterfall([
+            (next)=>
+                @_masterApp.getAllAppInstances(next)
+            (appInstances, next) =>
+                result = []
+                Async.each(
+                    appInstances, 
+                    (appInstance, appInstanceCb)->
+                        appInstance.getBrowsers(idList, (err, browsers)->
+                            return appInstanceCb(err) if err?
+                            for b in browsers
+                                result.push(b)
+                            appInstanceCb null
+                            
+                            )
+                    ,
+                    (err)->
+                        return next(err) if err?
+                        next null, result
+                )
+        ]
+        ,(err, result)->
+            return callback(err) if err?
+            callback null, result
+            )
+        
         
     remove : (id, user, callback) ->
         console.log "remove appInstance not implemented #{id}"

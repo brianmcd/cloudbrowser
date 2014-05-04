@@ -11,6 +11,8 @@ User           = require('../server/user')
 BrowserAPI     = require('./browser')
 Authentication = require('./authentication')
 cloudbrowserError = require('../shared/cloudbrowser_error')
+AppConfig  = require("./application_config")
+AppInstance = require('./app_instance')
 
 class CloudBrowser
 
@@ -43,14 +45,44 @@ class CloudBrowser
 
         @util = new Util(bserver.server.config.emailerConfig)
 
+        app = bserver.appInstance.app
+
+        @currentAppConfig = new AppConfig({
+            cbServer : bserver.server
+            cbCtx   : this
+            userCtx : creator
+            app     : app
+        })
+
+        if app.parentApp?
+            @parentAppConfig = new AppConfig({
+                cbServer : bserver.server
+                cbCtx   : this
+                userCtx : creator
+                app     : app.parentApp
+
+            })
+        
+
+        @currentAppInstanceConfig = new AppInstance
+            cbServer : bserver.server
+            appInstance : bserver.appInstance
+            cbCtx : this
+            userCtx : creator
+            appConfig : @currentAppConfig
+
+
         @currentBrowser = new BrowserAPI
             browser : bserver
             userCtx : creator
             cbCtx   : this
+            cbServer : bserver.server
+            appConfig : @currentAppConfig
+            appInstanceConfig : @currentAppInstanceConfig
 
-        appConfig = @currentBrowser.getAppConfig()
+        
         # TODO 
-        if appConfig.isAuthConfigured() or appConfig.isAuthApp()
+        if app.isAuthConfigured() or app.isAuthApp()
             @auth = new Authentication
                 bserver : bserver
                 cbCtx   : this

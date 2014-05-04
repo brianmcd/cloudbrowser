@@ -6,7 +6,7 @@
 
   curVB = cloudbrowser.currentBrowser;
 
-  appConfig = curVB.getAppConfig();
+  appConfig = cloudbrowser.parentAppConfig;
 
   app.run(function($rootScope) {
     $rootScope.safeApply = function(fn) {
@@ -28,7 +28,7 @@
 
   app.controller('AppCtrl', [
     '$scope', 'cb-appInstanceManager', 'cb-format', function($scope, appInstanceMgr, format) {
-      var k, name, path, v, _ref;
+      var addAppInstanceConfig, k, name, path, v, _ref;
       $scope.templates = {
         header: "header.html",
         initial: "initial.html",
@@ -64,28 +64,31 @@
           }
         }
       }
-      $scope.addBrowser = function(browserConfig, appInstance) {
-        var appInstanceConfig, browser;
-        if (!browserConfig.isOwner() && !browserConfig.isReader() && !browserConfig.isReaderWriter()) {
-          return;
-        }
-        if (!appInstance) {
-          appInstanceConfig = browserConfig.getAppInstanceConfig();
+      $scope.addBrowser = function(browserConfig, appInstanceConfig) {
+        return browserConfig.getUserPrevilege(function(err, result) {
+          var appInstance, browser;
           appInstance = appInstanceMgr.add(appInstanceConfig);
-        }
-        browser = appInstance.browserMgr.add(browserConfig);
-        appInstance.showOptions = true;
-        return appInstance.processing = false;
+          appInstance.showOptions = true;
+          appInstance.processing = false;
+          if (err != null) {
+            return $scope.setError(err);
+          }
+          if (!result) {
+            console.log("failed to addBrowser");
+            return;
+          }
+          browser = appInstance.browserMgr.add(browserConfig);
+          return $scope.safeApply(function() {});
+        });
       };
       $scope.removeBrowser = function(browserID) {
-        var appInstance, _i, _len, _ref1, _results;
+        var appInstance, _i, _len, _ref1;
         _ref1 = appInstanceMgr.items;
-        _results = [];
         for (_i = 0, _len = _ref1.length; _i < _len; _i++) {
           appInstance = _ref1[_i];
-          _results.push(appInstance.browserMgr.remove(browserID));
+          appInstance.browserMgr.remove(browserID);
         }
-        return _results;
+        return $scope.safeApply(function() {});
       };
       $scope.removeAppInstance = function(appInstanceID) {
         return appInstanceMgr.remove(appInstanceID);
@@ -109,26 +112,11 @@
             if (err) {
               return $scope.setError(err);
             } else {
-              return appInstanceMgr.add(appInstanceConfig);
+              return addAppInstanceConfig(appInstanceConfig);
             }
           });
         });
       };
-      appConfig.addEventListener('addBrowser', function(browserConfig) {
-        return $scope.safeApply(function() {
-          return $scope.addBrowser(browserConfig);
-        });
-      });
-      appConfig.addEventListener('shareBrowser', function(browserConfig) {
-        return $scope.safeApply(function() {
-          return $scope.addBrowser(browserConfig);
-        });
-      });
-      appConfig.addEventListener('removeBrowser', function(browserID) {
-        return $scope.safeApply(function() {
-          return $scope.removeBrowser(browserID);
-        });
-      });
       appConfig.addEventListener('addAppInstance', function(appInstanceConfig) {
         return $scope.safeApply(function() {
           return appInstanceMgr.add(appInstanceConfig);
@@ -144,27 +132,37 @@
           return $scope.removeAppInstance(appInstanceID);
         });
       });
-      appConfig.getBrowsers(function(err, browserConfigs) {
-        return $scope.safeApply(function() {
+      addAppInstanceConfig = function(appInstanceConfig) {
+        appInstanceMgr.add(appInstanceConfig);
+        appInstanceConfig.addEventListener('addBrowser', function(browserConfig) {
+          return $scope.addBrowser(browserConfig, appInstanceConfig);
+        });
+        appInstanceConfig.addEventListener('shareBrowser', function(browserConfig) {
+          return $scope.addBrowser(browserConfig, appInstanceConfig);
+        });
+        appInstanceConfig.addEventListener('removeBrowser', function(id) {
+          return $scope.removeBrowser(id, appInstanceConfig);
+        });
+        return appInstanceConfig.getAllBrowsers(function(err, browserConfigs) {
           var browserConfig, _i, _len, _results;
-          if (err) {
+          if (err != null) {
             $scope.setError(err);
           }
           _results = [];
           for (_i = 0, _len = browserConfigs.length; _i < _len; _i++) {
             browserConfig = browserConfigs[_i];
-            _results.push($scope.addBrowser(browserConfig));
+            _results.push($scope.addBrowser(browserConfig, appInstanceConfig));
           }
           return _results;
         });
-      });
+      };
       return appConfig.getAppInstances(function(err, appInstanceConfigs) {
         return $scope.safeApply(function() {
           var appInstanceConfig, _i, _len, _results;
           _results = [];
           for (_i = 0, _len = appInstanceConfigs.length; _i < _len; _i++) {
             appInstanceConfig = appInstanceConfigs[_i];
-            _results.push(appInstanceMgr.add(appInstanceConfig));
+            _results.push(addAppInstanceConfig(appInstanceConfig));
           }
           return _results;
         });

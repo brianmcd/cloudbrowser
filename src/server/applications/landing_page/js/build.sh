@@ -1,2 +1,2 @@
 rm -rf lib
-coffee --output lib --compile src
+../../../../../node_modules/coffee-script/bin/coffee --output lib --compile src

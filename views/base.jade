@@ -12,5 +12,5 @@ html
     script
         $(function () {
             var ClientEngine = require('/client_engine');
-            window.__client = new ClientEngine(window, document);
+            window.__client = new ClientEngine('#{host}', window, document);
         });

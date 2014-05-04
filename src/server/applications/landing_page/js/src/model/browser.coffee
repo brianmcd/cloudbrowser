@@ -11,13 +11,17 @@ class Browser
             curVB = cloudbrowser.currentBrowser
             curVB.redirect(browserConfig.getURL())
         @dateCreated = format.date(browserConfig.getDateCreated())
-        @updateUsers()
-
-    updateUsers : () ->
         @owners        = @api.getOwners()
         @readers       = @api.getReaders()
         @readerwriters = @api.getReaderWriters()
 
+    updateUsers : (callback) ->
+        @api.getUsers((err,result)=>
+            return callback(err) if err?
+            {@owners, @readers, @readerwriters} =result
+            callback null
+        )
+        
     roles : [
         {
             name : 'is owner'

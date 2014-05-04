@@ -1,14 +1,33 @@
+Path                     = require('path')
 {EventEmitter} = require('events')
+
 lodash = require('lodash')
-routes = require('./routes')
+async  = require('async')
+
+User               = require('../user')
+routes             = require('./routes')
 AppInstanceManager = require('./app_instance_manager')
+utils = require('../../shared/utils')
 
 
 class BaseApplication extends EventEmitter
-    constructor: (@config, @server) ->
+    __r_skip : ['server','httpServer','sessionManager','mongoInterface',
+                'permissionManager','uuidService','appInstanceManager','config',
+                'path','appConfig','localState', 'deploymentConfig', 'appInstanceProvider',
+                'authApp','landingPageApp'
+                ]
+    constructor: (@_masterApp, @server) ->
         {@httpServer, @sessionManager, 
         @permissionManager, @mongoInterface,
-        @uuidService} = @server        
+        @uuidService} = @server
+        # copy configurations
+        @config = lodash.merge({}, @_masterApp.config)
+        # now we assume the master and worker put applications in the same directory
+        @config.appConfig.entryPoint = Path.resolve(@config.path, @config.appConfig.entryPoint)
+        if @config.appConfig.applicationStateFile? and @config.appConfig.applicationStateFile isnt ''
+            stateFile = Path.resolve(@config.path, @config.appConfig.applicationStateFile)
+            # inject customized objects like appInstanceProvider
+            require(stateFile).initialize(@config)
         {
             @path,
             @appConfig,
@@ -17,7 +36,48 @@ class BaseApplication extends EventEmitter
             @appInstanceProvider,
             @dontPersistConfigChanges
         } = @config
-        @mountPoint = @deploymentConfig.mountPoint
+        {@mountPoint, @isPublic, @name,
+         @description, @browserLimit, @authenticationInterface
+        } = @deploymentConfig
+
+        attrMaps = @_masterApp.attrMaps
+        for attrMap in attrMaps
+            attrPaths = attrMap.attr.split('.')
+            name = if attrMap['name']? then attrMap['name'] else attrPaths[attrPaths.length-1]
+            getter = if attrMap['getter']? then attrMap['getter'] else 'get'+utils.toCamelCase(name)
+            setter = if attrMap['setter']? then attrMap['setter'] else 'set'+utils.toCamelCase(name)
+            thisArg = @
+            attrPath = attrMap.attr
+            if not @[getter]?
+                @[getter] = do (attrPath, thisArg)->
+                    (callback)->
+                        if callback?
+                            thisArg._masterApp[getter](callback)
+                        else
+                            parseResult = utils.parseAttributePath(thisArg, attrPath)
+                            if not parseResult
+                                console.trace("cannot find #{attrPath} in app #{thisArg.mountPoint}")
+                                return null
+                            return parseResult.dest
+                            
+            if not @[setter]?
+                @[setter] = do (attrPath, thisArg)->
+                    (newVal, callback)->
+                        parseResult = utils.parseAttributePath(thisArg, attrPath)
+                        if not parseResult
+                            console.trace("cannot find #{attrPath} in app #{thisArg.mountPoint}")
+                            if callback
+                                return callback(new Error("cannot find #{attrPath}"))
+                            throw new Error("cannot find #{attrPath}") 
+                        else
+                            parseResult.obj[parseResult.attr] = newVal
+                            thisArg._masterApp[setter](newVal, callback)
+        
+
+        @_masterApp.on('change', (changeObj)=>
+            @_handleChange(changeObj)
+            )
+        
         @remoteBrowsing = /^http/.test(@appConfig.entryPoint)
         @counter = 0 
         @appInstanceManager = new AppInstanceManager(@appInstanceProvider, @server, this)
@@ -27,12 +87,26 @@ class BaseApplication extends EventEmitter
         @mountPointHandler = lodash.bind(@_mountPointHandler, this)
         @serveAppInstanceHandler = lodash.bind(@_serveAppInstanceHandler,this)
 
+        
+
+    _handleChange : (changeObj)->
+        {attr, newVal} = changeObj
+        parseResult = utils.parseAttributePath(this, attr)
+        if not parseResult
+            return console.log "canot find #{attr} for app #{@mountPoint}"
+        if parseResult.desc isnt newVal
+            parseResult.obj[parseResult.attr] = newVal
+            @emit('change',changeObj)
+
+                
  
     _serveVirtualBrowserHandler : (req, res, next) ->
         appInstanceID = req.params.appInstanceID
         vBrowserID = req.params.browserID
 
+
         #should check by user and permission
+        #check in local object is suffice because the master has routed this appInstance here
         appInstance = @appInstanceManager.find(appInstanceID)
         if not appInstance then return routes.notFound(res, "The application instance #{appInstanceID} was not found")
 
@@ -45,6 +119,7 @@ class BaseApplication extends EventEmitter
             appid     : @mountPoint
             browserID : vBrowserID
             appInstanceID : appInstanceID
+            host : @server.config.getHttpAddr()
     
     _serveResourceHandler : (req, res, next) ->
         appInstanceID = req.params.appInstanceID
@@ -76,32 +151,33 @@ class BaseApplication extends EventEmitter
         return @deploymentConfig.authenticationInterface
 
     getOwner : () ->
-        return @deploymentConfig.owner
+        if @parentApp?
+            return @parentApp.getOwner()
+
+        if not @_owner?
+            if typeof @deploymentConfig.owner is 'string'
+                @_owner = new User(@deploymentConfig.owner)
+            else
+                @_owner = @deploymentConfig.owner
+            console.log "the owner for #{@mountPoint} is #{JSON.stringify(@_owner)}"
+        return @_owner
 
     entryURL : () ->
         return @appConfig.entryPoint
 
-    isAppPublic : () ->
-        return @deploymentConfig.isPublic
 
     getMountPoint : () ->
         return @mountPoint
 
     getAppUrl : () ->
-        console.log "http://#{@server.config.getHttpAddr()}#{@mountPoint}"
-        return "http://#{@server.config.getHttpAddr()}#{@mountPoint}"
-
-    getName : () ->
-        @deploymentConfig.name
+        appUrl = "#{@server.config.getHttpAddr()}#{@mountPoint}"
+        console.log appUrl
+        return appUrl
+     
 
     isMounted : () ->
         return @mounted
 
-    getDescription : () ->
-        @deploymentConfig.description 
-
-    getBrowserLimit : () ->
-        @deploymentConfig.browserLimit
 
     getAppInstanceName : () ->
         if @appInstanceProvider then return @appInstanceProvider.name       
@@ -116,10 +192,15 @@ class BaseApplication extends EventEmitter
             return @landingPageApp._mountPointHandler(req, res, next)
         if @isSingleInstance()
             # get or create the only instance
-            appInstance = @appInstanceManager.getAppInstance()
-            bserver = appInstance.getBrowser()
-            return routes.redirect(res, 
-                routes.buildBrowserPath(@mountPoint, appInstance.id, bserver.id))
+            @appInstanceManager.getAppInstance((err, appInstance)=>
+                return next(err) if err?
+                # a browser will be created for the appinstance before worker return appInstance to master,
+                # the browserId of the first appinstance will be put in filed browserId of appinstance
+                routes.redirect(res,
+                    routes.buildBrowserPath(@mountPoint, appInstance.id, appInstance.browserId))
+            )
+            return
+            
                 
         if @isSingleInstancePerUser()    
             # get or create instance for user
@@ -128,18 +209,23 @@ class BaseApplication extends EventEmitter
             if not user?
                 return @authApp._mountPointHandler(req, res, next)
             # if the user has logged in, create appInstance and browsers
-            appInstance = @appInstanceManager.getUserAppInstance(user)
-            bserver = appInstance.getBrowser()
-            return routes.redirect(res, 
-                routes.buildBrowserPath(@mountPoint, appInstance.id, bserver.id))
+            @appInstanceManager.getUserAppInstance(user, (err, appInstance)=>
+                if err?
+                    return next err
+                
+                routes.redirect(res, 
+                    routes.buildBrowserPath(@mountPoint, appInstance.id, appInstance.browserId))    
+            )
+            return
 
         # we fall to default initiation strategy, create a new instance for every new request
-        appInstance = @appInstanceManager.newAppInstance()
-        bserver = appInstance.getBrowser()
-        return routes.redirect(res, 
-            routes.buildBrowserPath(@mountPoint, appInstance.id, bserver.id))
-
-
+        @appInstanceManager.create(null, (err, appInstance)=>
+            if err?
+                return next err
+            routes.redirect(res, 
+                routes.buildBrowserPath(@mountPoint, appInstance.id, appInstance.browserId))
+        )
+        
     _serveAppInstanceHandler : (req, res, next) ->
         # if isSingleInstancePerUser, check authentication, and return the only vbrowser inside
         # if isSingleInstance, check if this instance exist
@@ -159,23 +245,25 @@ class BaseApplication extends EventEmitter
     mount : () ->
         @mounted = true
 
-    register : ()->
-        stub = @server.masterStub.obj
-        stub.workerManager.registerApplication({
-            workerId : @server.config.id,
-            mountPoint : @mountPoint,
-            owner : @owner
-            })
-        if @subApps?
-            for subApp in @subApps
-                subApp.register()
-            
-
-    getAllBrowsers : () ->
-        browsers = {}
-        for k, appInstance of @appInstanceManager.get()
-            lodash.merge(browsers, appInstance.getAllBrowsers())
-        return browsers
+    # this method query the master for all the browsers
+    getAllBrowsers : (callback) ->
+        @_masterApp.getAllAppInstances((err, instances)->
+            return callback(err) if err?
+            result = []
+            async.each(
+                instances, 
+                (instance, instanceCb)->
+                    instance.getAllBrowsers((err, browsers)->
+                        return instanceCb(err) if err?
+                        for k, browser of browsers
+                            result.push(browser)
+                        instanceCb null
+                        )
+                , (err)->
+                    return callback(err) if err
+                    callback null, result
+                )
+            )
 
     # TODO deprecated : add authentication
     findBrowser : (id) ->
@@ -202,13 +290,6 @@ class BaseApplication extends EventEmitter
     isStandalone : () ->
         return false
 
-    # user authenticate stuff
-    # TODO 
-    isLocalUser : (user, callback) ->
-        callback null, false
-
-    addNewUser : (userRec, callback) ->
-        callback null, userRec
         ###
     TODO : Figure out who can perform this action
     closeAll : () ->
@@ -219,9 +300,23 @@ class BaseApplication extends EventEmitter
         return [@getOwner()]
     
     closeBrowser : (vbrowser) ->
-        vbrowser.close()
+        vbrowser.close()       
 
+    # for single instance
+    createAppInstance : (callback) ->
+        @appInstanceManager.createAppInstance(null, callback)
 
-            
+    createAppInstanceForUser : (user, callback) ->
+        @appInstanceManager.createAppInstance(user, callback)
+
+    addEventListener :(event, eventcallback) ->
+        @_masterApp.addEvent({
+            name: event
+            callback: eventcallback
+            })
+
+    emitAppEvent :(eventObj)->
+        @_masterApp.emitEvent(eventObj)
+                   
 
 module.exports = BaseApplication

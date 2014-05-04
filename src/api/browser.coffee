@@ -1,8 +1,11 @@
-Components = require('../server/components')
 Async      = require('async')
+lodash = require('lodash')
+
+Components = require('../server/components')
 User       = require('../server/user')
 cloudbrowserError = require('../shared/cloudbrowser_error')
 {areArgsValid} = require('./utils')
+routes = require('../server/application_manager/routes')
 
 # Permission checks are included wherever possible and a note is made if
 # missing. Details like name, id, url etc. are available to everybody.
@@ -37,12 +40,21 @@ class Browser
         Object.defineProperty this, "_idx",
             value : _pvts.length
 
-        {browser, cbCtx, userCtx} = options
+        {cbServer, browser, cbCtx, userCtx, appConfig, appInstanceConfig} = options
+
+        if not cbServer? or not appConfig? or not appInstanceConfig?
+            console.log "browser api missing elements"
+            err = new Error()
+            console.log err.stack
+        
 
         _pvts.push
             bserver : browser
             userCtx : userCtx
             cbCtx   : cbCtx
+            cbServer : cbServer
+            appConfig : appConfig
+            appInstanceConfig : appInstanceConfig
 
         # Freezing the prototype to protect from unauthorized changes
         # by people using the API
@@ -57,7 +69,7 @@ class Browser
         @memberOf Browser
     ###
     getID : () ->
-        return _pvts[@_idx].bserver.getID()
+        return _pvts[@_idx].bserver.id
 
     ###*
         Gets the url of the instance.
@@ -67,8 +79,10 @@ class Browser
         @memberOf Browser
     ###
     getURL : () ->
-        {bserver}  = _pvts[@_idx]
-        return bserver.getUrl()
+        {cbServer, bserver}  = _pvts[@_idx]
+
+        return "#{cbServer.config.getHttpAddr()}#{routes.buildBrowserPath(bserver.mountPoint, bserver.appInstanceId, bserver.id)}"
+        
 
     ###*
         Gets the date of creation of the instance.
@@ -78,7 +92,7 @@ class Browser
         @memberOf Browser
     ###
     getDateCreated : () ->
-        return _pvts[@_idx].bserver.getDateCreated()
+        return _pvts[@_idx].bserver.dateCreated
 
     ###*
         Gets the name of the instance.
@@ -88,10 +102,10 @@ class Browser
         @memberOf Browser
     ###
     getName : () ->
-        return _pvts[@_idx].bserver.getName()
+        return _pvts[@_idx].bserver.name
 
     ###*
-        Creates a new component
+        Creates a new component. This is called only when the browser is a local object.
         @method createComponent
         @param {String}  name    The registered name of the component.          
         @param {DOMNode} target  The DOM node in which the component will be embedded.         
@@ -102,7 +116,7 @@ class Browser
     ###
     createComponent : (name, target, options) ->
         return if typeof name isnt "string" or not target or not target.__nodeID
-        {bserver} = _pvts[@_idx]
+        {cbServer, bserver} = _pvts[@_idx]
         browser  = bserver.getBrowser()
         targetID = target.__nodeID
 
@@ -122,7 +136,7 @@ class Browser
         # Mountpoint needed for authentication in case of
         # the file uploader component
         options.cloudbrowser = {mountPoint : bserver.getMountPoint()}
-        options.cbServer = bserver.server
+        options.cbServer = cbServer
         # Create the component
         comp = browser.components[targetID] =
             new Ctor(options, rpcMethod, target)
@@ -139,13 +153,13 @@ class Browser
         @instance
     ###
     getAppConfig : () ->
-        {bserver, cbCtx, userCtx} = _pvts[@_idx]
-        mountPoint = bserver.getMountPoint()
+        {cbServer, bserver, cbCtx, userCtx} = _pvts[@_idx]
+        mountPoint = bserver.mountPoint
         AppConfig  = require("./application_config")
-        app = bserver.server.applicationManager.find(mountPoint)
+        app = cbServer.applicationManager.find(mountPoint)
 
         return new AppConfig({
-            cbServer : bserver.server
+            cbServer : cbServer
             cbCtx   : cbCtx
             userCtx : userCtx
             app     : app
@@ -159,9 +173,9 @@ class Browser
         @param {errorCallback} callback
     ###
     close : (callback) ->
-        {bserver, userCtx} = _pvts[@_idx]
+        {cbServer, bserver, userCtx} = _pvts[@_idx]
         
-        appManager = bserver.server.applicationManager
+        appManager = cbServer.applicationManager
         app = appManager.find(bserver.getMountPoint())
 
         if userCtx.getEmail() is "public"
@@ -192,9 +206,9 @@ class Browser
         @instance
     ###
     getResetEmail : (callback) ->
-        {bserver} = _pvts[@_idx]
+        {cbServer, bserver} = _pvts[@_idx]
         
-        mongoInterface = bserver.server.mongoInterface
+        mongoInterface = cbServer.mongoInterface
 
         bserver.getFirstSession (err, session) ->
             return callback(err) if err
@@ -274,7 +288,7 @@ class Browser
         return if typeof bserver.getReaderWriters isnt "function"
         if @isAssocWithCurrentUser()
             users = []
-            users.push(rw.getEmail()) for rw in bserver.getReaderWriters()
+            users.push(rw._email) for rw in bserver.readwrite
             return users
 
     ###*
@@ -291,7 +305,7 @@ class Browser
         return if typeof bserver.getReaders isnt "function"
         if @isAssocWithCurrentUser()
             users = []
-            users.push(rw.getEmail()) for rw in bserver.getReaders()
+            users.push(rw._email) for rw in bserver.readonly
             return users
 
     ###*
@@ -311,7 +325,7 @@ class Browser
         return if typeof bserver.getOwners isnt "function"
         if @isAssocWithCurrentUser()
             users = []
-            users.push(rw.getEmail()) for rw in bserver.getOwners()
+            users.push(rw._email) for rw in bserver.own
             return users
 
     ###*
@@ -403,6 +417,21 @@ class Browser
         if @isAssocWithCurrentUser()
             if bserver.isOwner(userCtx) then return true
             else return false
+            
+    # [user],[callback]
+    getUserPrevilege:()->
+        {bserver, userCtx} = _pvts[@_idx]
+        switch arguments.length
+            when 1
+                user = userCtx
+                callback = arguments[0]
+            when 2
+                user = arguments[0]
+                callback = arguments[1]
+
+        return callback(null, null) if typeof bserver.getUserPrevilege isnt 'function'
+        bserver.getUserPrevilege(user, callback)
+
 
     ###*
         Adds a user as a readerwriter of the current browser
@@ -471,34 +500,33 @@ class Browser
         @memberof Browser
     ###
     grantPermissions : (permission, user, callback) ->
-        {bserver, userCtx} = _pvts[@_idx]
+        {cbServer, bserver, userCtx} = _pvts[@_idx]
         {mountPoint, id}    = bserver
         
-        permissionManager = bserver.server.permissionManager
+        permissionManager = cbServer.permissionManager
 
-        Async.waterfall [
-            (next) ->
-                if not bserver.isOwner(userCtx)
-                    return next(cloudbrowserError("PERM_DENIED"))
-                # Add the user -> bserver lookup reference
-                else permissionManager.addBrowserPermRec
-                    user        : user
-                    mountPoint  : mountPoint
-                    browserID   : id
-                    permission  : permission
-                    callback    : next
-        ], (err, browserRec) ->
-            # Add the bserver -> user lookup reference
-            if err then return callback(err)
-            switch permission
-                when 'own'
-                    bserver.addOwner(user)
-                when 'readwrite'
-                    bserver.addReaderWriter(user)
-                when 'readonly'
-                    bserver.addReader(user)
-            callback(null)
-            
+        Async.waterfall([
+            (next)->
+                bserver.getUserPrevilege(userCtx, next)
+            (result, next)->
+                if result isnt 'own'
+                    next(cloudbrowserError("PERM_DENIED"))
+                else
+                    permissionManager.addBrowserPermRec
+                        user        : user
+                        mountPoint  : mountPoint
+                        browserID   : id
+                        permission  : permission
+                        callback    : next
+            (browserRec, next)->
+                bserver.addUser({
+                    user : user
+                    permission : permission
+                    }, next)
+            ],(err)->
+                return callback(err) if err?
+        )
+
     ###*
         Renames the instance.
         @method rename
@@ -522,7 +550,7 @@ class Browser
         @memberof Browser
     ###
     getAppInstanceConfig : () ->
-        {bserver, cbCtx, userCtx} = _pvts[@_idx]
+        {cbServer, bserver, cbCtx, userCtx} = _pvts[@_idx]
 
         appInstance = bserver.getAppInstance()
         if not appInstance then return
@@ -532,7 +560,11 @@ class Browser
                 cbCtx       : cbCtx
                 userCtx     : userCtx
                 appInstance : appInstance
-                cbServer    : bserver.server
+                cbServer    : cbServer
+
+    getAppInstanceId : ()->
+        {bserver} = _pvts[@_idx]
+        return bserver.appInstanceId
 
     ###*
         Gets the local state with the current browser
@@ -557,5 +589,16 @@ class Browser
         {bserver} = _pvts[@_idx]
         if @isAssocWithCurrentUser()
             return bserver.getConnectedClients()
+
+    getUsers : (callback)->
+        {bserver} = _pvts[@_idx]
+        bserver.getUsers((err, users)->
+            return callback(err) if err
+            result ={}
+            for k, v of users
+                if lodash.isArray(v)
+                    result[k]= lodash.pluck(v, '_email')
+            callback null, result        
+        )
 
 module.exports = Browser
