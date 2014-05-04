@@ -85,15 +85,21 @@ class AuthApp extends BaseApplication
         user = @sessionManager.findAppUserID(req.session, @baseMountPoint)
         appInstanceID = req.params.appInstanceID
         appInstance = @parentApp.appInstanceManager.find(appInstanceID)
-        if appInstance? and (appInstance.isOwner(user) or appInstance.isReaderWriter(user))
+        browserID = req.params.browserID
+        if appInstance? and browserID?
+            browser = appInstance.findBrowser(browserID)
+            if browser.getUserPrevilege?(user)?
+                return next()
+        
+        if appInstance?.getUserPrevilege(user)?
             return next()
         else
-            res.send('Permission Denied', 403)
+            res.send(403, 'Permission Denied')
             res.end()
 
     _activateHandler: (req, res, next) ->
         @parentApp.activateUser req.params.token, (err) ->
-            if err then res.send(err.message, 400)
+            if err then res.send(400, err.message)
             else res.render('activate.jade', {url : mountPoint})
 
     _deactivateHandler: (req, res, next) ->

@@ -285,13 +285,14 @@ class UserPermissionManager
     addAppInstancePermRec : (options) ->
         {user, mountPoint, appInstanceID, permission, callback} = options
 
-        setPerm = (callback) =>
-            @setAppInstancePerm
-                user        : user
-                callback    : callback
-                mountPoint  : mountPoint
-                permission : permission
-                appInstanceID : appInstanceID
+        setPerm = (appInstancePerms) =>
+            key = "apps.#{mountPoint}.appInstances.#{appInstanceID}.permission"
+            if not permission then callback(null, appInstancePerms)
+            else
+                info = {}
+                info["#{key}"] = appInstancePerms.set(permission)
+                @dbOperation('setUser', user, info, (err) ->
+                    callback(err, appInstancePerms))
 
         Async.waterfall [
             (next) =>
@@ -306,15 +307,16 @@ class UserPermissionManager
                     mountPoint : mountPoint
                     callback   : next
                 # Bypassing the async waterfall
-                else setPerm(callback)
+                else setPerm(appInstancePerms)
             (appPerms, next) ->
                 if appPerms
-                    appInstancePerms =
-                        appPerms.addAppInstance(appInstanceID, permission)
-                    setPerm(next)
+                    appInstancePerms = appPerms.addAppInstance(appInstanceID, permission)
+                    setPerm(appInstancePerms)
                 else
                     next(null, null)
         ], callback
+
+
 
     rmAppInstancePermRec: (options) ->
         {user, mountPoint, appInstanceID, callback} = options
@@ -429,10 +431,12 @@ class UserPermissionManager
                             next(err, appPerm))
         ], callback
 
-        
+      
+
     setAppInstancePerm : (options) ->
         {user, mountPoint, appInstanceID, permission, callback} = options
         key = "apps.#{mountPoint}.appInstances.#{appInstanceID}.permission"
+
 
         Async.waterfall [
             (next) =>

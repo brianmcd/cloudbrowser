@@ -136,13 +136,13 @@
           });
         }), function(err) {
           return $scope.safeApply(function() {
-            if (err) {
-              $scope.setError(err);
-            } else {
-              $scope.success.message = "" + entity.name + " is shared with " + collaborator + ".";
-            }
             appInstance.processing = false;
-            return appInstance.showOptions = true;
+            appInstance.showOptions = true;
+            if (err) {
+              return $scope.setError(err);
+            } else {
+              return $scope.success.message = "" + entity.name + " is shared with " + collaborator + ".";
+            }
           });
         });
       };

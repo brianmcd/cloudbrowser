@@ -11,3 +11,6 @@ npm-debug.log
 ./applications
 
 .project
+
+*.log
+

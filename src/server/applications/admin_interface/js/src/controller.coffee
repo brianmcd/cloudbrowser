@@ -136,6 +136,9 @@ CBAdminInterface.controller "AppCtrl", [
             
         removeBrowser = (app, browserID) ->
             browser = app.browserMgr.remove(browserID)
+            if not browser
+                return
+            
             # Remove browser from its corresponding appInstance's list
             if browser.appInstanceID
                 appInstance = app.appInstanceMgr.find(browser.appInstanceID)

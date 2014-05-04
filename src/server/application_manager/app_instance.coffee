@@ -138,12 +138,19 @@ class AppInstance extends EventEmitter
         return true for c in @readerwriters when c.getEmail() is user.getEmail()
 
     addReaderWriter : (user, callback) ->
-        if not (@isOwner(user) or @isReaderWriter(user))
+        # the permission records are updated by the caller
+        if not @getUserPrevilege(user)
             @readerwriters.push(user)
+            callback(null)
+            @emit('share', user)
+            @app.emitAppEvent({
+                name : 'shareAppInstance'
+                id : @id
+                args : [this, user]
+                })            
+        else
+            callback(null)
 
-        if callback?
-                callback null
-        @emit('share', user)
 
     getUserPrevilege : (user, callback) ->
         result = null

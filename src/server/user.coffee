@@ -13,6 +13,11 @@ User.getEmail = (user) ->
     return user
 
 User.toUser = (user)->
+    if not user?
+        return null
+    if user.user?
+        user = user.user
+        
     if user.getEmail?
         return user
     if user._email?

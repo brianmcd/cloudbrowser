@@ -1,5 +1,6 @@
 fs     = require('fs')
 path   = require('path')
+lodash = require('lodash')
 {EventEmitter} = require('events')
 
 async  = require('async')
@@ -120,6 +121,18 @@ class Application extends EventEmitter
         console.log "#{__filename}: emit addAppInstance #{appInstance.id} for #{@mountPoint}"
         @emit('addAppInstance', appInstance._remote)
 
+    emitEvent: (eventObj, callback)->
+        console.log "#{__filename}: app #{@mountPoint} emitEvent #{eventObj.name} : #{eventObj.id}"
+        if lodash.isArray(eventObj.args)
+            @emit.apply(@, [eventObj.name].concat(eventObj.args))
+        else
+            @emit(eventObj.name, eventObj.args)
+        callback?(null)
+
+    addEvent: (eventObj, callback)->
+        console.log "#{__filename}: app #{@mountPoint} listen #{eventObj.name}"
+        @on(eventObj.name, eventObj.callback)
+        callback?(null)
    
     isOwner: (user, callback) ->
         eamil = if user._email? then user._email else user

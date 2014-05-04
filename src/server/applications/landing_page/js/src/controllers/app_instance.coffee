@@ -114,11 +114,12 @@ app.controller 'AppInstanceCtrl', [
                         mountPoint : appConfig.getMountPoint()
             ), (err) ->
                 $scope.safeApply ->
+                    appInstance.processing = false
+                    appInstance.showOptions = true
                     if err then $scope.setError(err)
                     else $scope.success.message =
                         "#{entity.name} is shared with #{collaborator}."
-                    appInstance.processing = false
-                    appInstance.showOptions = true
+                    
 
         $scope.addCollaborator = () ->
             {collaborator} = $scope.shareForm

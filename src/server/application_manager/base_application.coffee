@@ -300,8 +300,7 @@ class BaseApplication extends EventEmitter
         return [@getOwner()]
     
     closeBrowser : (vbrowser) ->
-        vbrowser.close()
-        
+        vbrowser.close()       
 
     # for single instance
     createAppInstance : (callback) ->
@@ -310,8 +309,14 @@ class BaseApplication extends EventEmitter
     createAppInstanceForUser : (user, callback) ->
         @appInstanceManager.createAppInstance(user, callback)
 
-    addEventListener :(event, eventcallback, callback) ->
-        @_masterApp.on(event, eventcallback)
+    addEventListener :(event, eventcallback) ->
+        @_masterApp.addEvent({
+            name: event
+            callback: eventcallback
+            })
+
+    emitAppEvent :(eventObj)->
+        @_masterApp.emitEvent(eventObj)
                    
 
 module.exports = BaseApplication

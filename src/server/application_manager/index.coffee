@@ -116,10 +116,10 @@ class ApplicationManager extends EventEmitter
         if not req.user then redirect(res, mountPoint)
 
         mountPoint = @sessionManager.findPropOnSession(req.session, 'mountPoint')
-        if not mountPoint then return res.send(403)
+        if not mountPoint then return res.send(403,'cannot find application')
 
         app = @find(mountPoint)
-        if not app then return res.send(403)
+        if not app then return res.send(403, 'cannot find application')
 
         app.addNewUser new User(req.user.email), (err, user) =>
             mountPoint = @sessionManager.findPropOnSession(req.session, 'mountPoint')

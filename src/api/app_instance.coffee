@@ -158,7 +158,8 @@ class AppInstance
 
         appInstance.getUserPrevilege(userCtx, (err, previlege)=>
             return callback(err) if err?
-            return callback(null, null) if not previlege
+            # if you are not associated with the appInstance, do nothing
+            return if not previlege
             console.log "#{__filename} : addEvent #{event} to appInstance #{appInstance.id}"
             switch(event)
                 when 'share'
@@ -227,12 +228,12 @@ class AppInstance
         @memberof AppInstance
     ###
     isReaderWriter : (emailID) ->
-        {appInstance} = _pvts[@_idx]
+        {appInstance, userCtx} = _pvts[@_idx]
 
         if typeof emailID isnt "string" then return
 
         for i in appInstance.readerwriters
-            if i._email is userCtx._email
+            if i._email is emailID
                 return true
         return false
 

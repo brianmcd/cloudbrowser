@@ -1,4 +1,5 @@
 Async             = require('async')
+lodash = require('lodash')
 User              = require('../server/user')
 cloudbrowserError = require('../shared/cloudbrowser_error')
 {areArgsValid}    = require('./utils')
@@ -476,9 +477,11 @@ class AppConfig
                 
                 appInstances = []
                 # todo, make findinstance by batch
-                Async.each(appInstanceRecs,
-                    (appInstanceRec, appInstanceRecCb)->
-                        app.appInstanceManager.findInstance(id, (err, instance)->
+                # appInstanceRecs is a id to rec map
+                instanceIds = lodash.keys(appInstanceRecs)
+                Async.each(instanceIds,
+                    (instanceId, appInstanceRecCb)->
+                        app.appInstanceManager.findInstance(instanceId, (err, instance)->
                             return appInstanceRecCb(err) if err?
                             #the instance associated with the id may have long gone
                             if instance?
@@ -486,13 +489,14 @@ class AppConfig
                             appInstanceRecCb null
                             )
                     ,
-                    (err) ->
+                    (err) =>
                         return callback(err) if err?
                         result = []
                         for appInstance in appInstances
                             result.push new AppInstance
                                 cbServer : cbServer
                                 appInstance : appInstance
+                                appConfig : this
                                 userCtx : userCtx
                                 cbCtx   : cbCtx
                         callback null, result
@@ -538,13 +542,10 @@ class AppConfig
             when 'AppInstance'
                 app.addEventListener(event, (appInstance, userInfo)=>
                     if action is 'share'
-                        if userInfo instanceof User
-                            user = userInfo
-                        else
-                            user = userInfo.user
-                        if not userCtx.getEmail() is user.getEmail() then return
-                    
-
+                        # this pair of parenthesis caused me 1 hour debugging
+                        # the userInfo could be a remote obj
+                        if not (userCtx.getEmail() is userInfo._email) then return
+                    #maybe we could omit the check here
                     appInstance.getUserPrevilege(userCtx, (err, result)=>
                         return callback(err) if err?
                         return if not result
