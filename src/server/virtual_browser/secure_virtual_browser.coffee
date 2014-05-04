@@ -22,23 +22,29 @@ class SecureVirtualBrowser extends VirtualBrowser
     getCreator : () ->
         return @creator
 
+    _emitShareEvent :(user, permission)->
+        shareObj={user:user, role: permission}
+        @emit('share', shareObj)
+        @appInstance.emit('shareBrowser', this, shareObj)
+
     addReaderWriter : (user) ->
         if @isOwner(user) or @isReaderWriter(user) then return
         @removeReader(user)
         @readwrite.push(user)
-        @emit('share', {user:user, role:'readwrite'})
+        @_emitShareEvent(user, 'readwrite')
 
     addOwner : (user) ->
         if @isOwner(user) then return
         @removeReaderWriter(user)
         @removeReader(user)
         @own.push(user)
-        @emit('share', {user:user, role:'own'})
+        @_emitShareEvent(user, 'own')
+        
 
     addReader : (user) ->
         if @isReader(user) or @isReaderWriter(user) or @isOwner(user) then return
         @readonly.push(user)
-        @emit('share', {user:user, role:'readonly'})
+        @_emitShareEvent(user, 'readonly')
 
     isReaderWriter : (user) ->
         @_isUserInList(user, 'readwrite')
@@ -62,6 +68,20 @@ class SecureVirtualBrowser extends VirtualBrowser
             callback null, result
         else
             return result
+
+    # the caller will insert proper permission records
+    addUser : (obj, callback)->
+        user = User.toUser(obj.user)
+        switch obj.permission
+            when 'own'
+                @addOwner(user)
+            when 'readonly'
+                @addReader(user)
+            when 'readwrite'
+                @addReaderWriter(user)
+            else
+                console.log "Unknown permission #{obj.permission}"
+        callback null
         
         
 
@@ -98,7 +118,7 @@ class SecureVirtualBrowser extends VirtualBrowser
     
     getUsers : (callback) ->
         callback null, {
-            owners : [@owner]
+            owners : @own
             readerwriters : @readwrite
             readers : @readonly
         }

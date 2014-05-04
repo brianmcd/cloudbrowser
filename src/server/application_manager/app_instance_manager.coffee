@@ -99,7 +99,6 @@ class AppInstanceManager extends EventEmitter
                 @appInstances[id] = appInstance
                 weakRefToAppInstance = Weak(appInstance, cleanupStates(id))
                 @weakRefsToAppInstances[id] = weakRefToAppInstance                
-                @emit('add', id)
                 callback(null, weakRefToAppInstance)
 
             )

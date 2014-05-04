@@ -150,7 +150,7 @@ class AppInstance
     addEventListener : (event, callback) ->
         if typeof callback isnt "function" then return
 
-        validEvents = ["rename", "share", "addBrowser", "removeBrowser"]
+        validEvents = ["rename", "share", "addBrowser", "removeBrowser", "shareBrowser"]
         if typeof event isnt "string" or validEvents.indexOf(event) is -1
             return
 
@@ -168,8 +168,10 @@ class AppInstance
                         )
                 when 'rename'
                     appInstance.on(event, callback)
+                when 'removeBrowser'
+                    appInstance.on(event, callback)
                 else
-                    appInstance.on(event, (browser)=>
+                    appInstance.on(event, (browser, userObj)=>
                         options =
                             cbServer : cbServer
                             cbCtx   : cbCtx
@@ -177,7 +179,7 @@ class AppInstance
                             appInstanceConfig : this
                             appConfig : appConfig
                             browser : browser
-                        callback(new Browser(options))
+                        callback(new Browser(options), userObj)
                     )
             
             )
@@ -337,7 +339,16 @@ class AppInstance
 
     getUsers : (callback) ->
         {appInstance} = _pvts[@_idx]
-        appInstance.getUsers(callback)
+        appInstance.getUsers((err, users)->
+            result = {}
+            for k, v of users
+                if k is 'owners'
+                    result.owner = v[0]._email
+                    
+                if lodash.isArray(v)
+                    result[k]=lodash.pluck(v, '_email')
+            
+        )
 
 
 module.exports = AppInstance

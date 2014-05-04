@@ -20,8 +20,7 @@
         if (err) {
           return callback(err);
         }
-        _this.owner = result.owners[0];
-        _this.readerwriters = result.readerwriters;
+        _this.owner = result.owner, _this.readerwriters = result.readerwriters;
         return callback(null);
       });
     };

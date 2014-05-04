@@ -12,8 +12,7 @@ class AppInstance
     updateUsers : (callback) ->
         @api.getUsers((err, result)=>
             return callback(err) if err
-            @owner = result.owners[0]
-            @readerwriters = result.readerwriters
+            {@owner,@readerwriters} = result
             callback null
             )
 

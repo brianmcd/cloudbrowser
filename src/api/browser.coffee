@@ -1,4 +1,5 @@
 Async      = require('async')
+lodash = require('lodash')
 
 Components = require('../server/components')
 User       = require('../server/user')
@@ -287,7 +288,7 @@ class Browser
         return if typeof bserver.getReaderWriters isnt "function"
         if @isAssocWithCurrentUser()
             users = []
-            users.push(rw.getEmail()) for rw in bserver.getReaderWriters()
+            users.push(rw._email) for rw in bserver.readwrite
             return users
 
     ###*
@@ -304,7 +305,7 @@ class Browser
         return if typeof bserver.getReaders isnt "function"
         if @isAssocWithCurrentUser()
             users = []
-            users.push(rw.getEmail()) for rw in bserver.getReaders()
+            users.push(rw._email) for rw in bserver.readonly
             return users
 
     ###*
@@ -324,7 +325,7 @@ class Browser
         return if typeof bserver.getOwners isnt "function"
         if @isAssocWithCurrentUser()
             users = []
-            users.push(rw.getEmail()) for rw in bserver.getOwners()
+            users.push(rw._email) for rw in bserver.own
             return users
 
     ###*
@@ -504,29 +505,28 @@ class Browser
         
         permissionManager = cbServer.permissionManager
 
-        Async.waterfall [
-            (next) ->
-                if not bserver.isOwner(userCtx)
-                    return next(cloudbrowserError("PERM_DENIED"))
-                # Add the user -> bserver lookup reference
-                else permissionManager.addBrowserPermRec
-                    user        : user
-                    mountPoint  : mountPoint
-                    browserID   : id
-                    permission  : permission
-                    callback    : next
-        ], (err, browserRec) ->
-            # Add the bserver -> user lookup reference
-            if err then return callback(err)
-            switch permission
-                when 'own'
-                    bserver.addOwner(user)
-                when 'readwrite'
-                    bserver.addReaderWriter(user)
-                when 'readonly'
-                    bserver.addReader(user)
-            callback(null)
-            
+        Async.waterfall([
+            (next)->
+                bserver.getUserPrevilege(userCtx, next)
+            (result, next)->
+                if result isnt 'own'
+                    next(cloudbrowserError("PERM_DENIED"))
+                else
+                    permissionManager.addBrowserPermRec
+                        user        : user
+                        mountPoint  : mountPoint
+                        browserID   : id
+                        permission  : permission
+                        callback    : next
+            (browserRec, next)->
+                bserver.addUser({
+                    user : user
+                    permission : permission
+                    }, next)
+            ],(err)->
+                return callback(err) if err?
+        )
+
     ###*
         Renames the instance.
         @method rename
@@ -592,6 +592,13 @@ class Browser
 
     getUsers : (callback)->
         {bserver} = _pvts[@_idx]
-        bserver.getUsers(callback)
+        bserver.getUsers((err, users)->
+            return callback(err) if err
+            result ={}
+            for k, v of users
+                if lodash.isArray(v)
+                    result[k]= lodash.pluck(v, '_email')
+            callback null, result        
+        )
 
 module.exports = Browser

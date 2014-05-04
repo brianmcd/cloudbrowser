@@ -53,14 +53,16 @@ app.controller 'AppCtrl', [
 
         $scope.addBrowser = (browserConfig, appInstanceConfig) ->
             # Don't add the browsers if you're just the owner of the app
+            # this step is somewhat redundant, api already checked this
             browserConfig.getUserPrevilege((err, result)->
+                appInstance = appInstanceMgr.add(appInstanceConfig)
                 appInstance.showOptions = true
                 appInstance.processing = false
                 return $scope.setError(err) if err?
                 if not result
                     console.log "failed to addBrowser"
                     return
-                appInstance = appInstanceMgr.add(appInstanceConfig)
+                
                 # Then add the browser to the app instance
                 browser = appInstance.browserMgr.add(browserConfig)
                 $scope.safeApply ->

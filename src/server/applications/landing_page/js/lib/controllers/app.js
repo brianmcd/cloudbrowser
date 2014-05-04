@@ -67,16 +67,17 @@
       $scope.addBrowser = function(browserConfig, appInstanceConfig) {
         return browserConfig.getUserPrevilege(function(err, result) {
           var appInstance, browser;
+          appInstance = appInstanceMgr.add(appInstanceConfig);
+          appInstance.showOptions = true;
+          appInstance.processing = false;
           if (err != null) {
             return $scope.setError(err);
           }
           if (!result) {
+            console.log("failed to addBrowser");
             return;
           }
-          appInstance = appInstanceMgr.add(appInstanceConfig);
           browser = appInstance.browserMgr.add(browserConfig);
-          appInstance.showOptions = true;
-          appInstance.processing = false;
           return $scope.safeApply(function() {});
         });
       };
