@@ -335,5 +335,9 @@ class AppInstance
             callback null, result
         )
 
+    getUsers : (callback) ->
+        {appInstance} = _pvts[@_idx]
+        appInstance.getUsers(callback)
+
 
 module.exports = AppInstance

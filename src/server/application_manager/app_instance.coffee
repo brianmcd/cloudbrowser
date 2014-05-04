@@ -57,8 +57,9 @@ class AppInstance extends EventEmitter
 
 
     _create : (user, callback) ->
+        user = User.toUser(user)
+        
         id = @uuidService.getId()
-
         Async.series([
             (cb)=>
                 @server.permissionManager.addBrowserPermRec
@@ -74,7 +75,7 @@ class AppInstance extends EventEmitter
                     vbrowser = @_createVirtualBrowser
                         type        : SecureVirtualBrowser
                         id          : @uuidService.getId()
-                        creator     : @owner
+                        creator     : user
                         permission  : 'own'
                 else 
                     vbrowser = @_createVirtualBrowser
@@ -154,6 +155,8 @@ class AppInstance extends EventEmitter
 
     getUserPrevilege : (user, callback) ->
         result = null
+        # deal with remote objs or strings
+        user=User.toUser(user)
         if @isOwner(user)
             result = 'own'
         else if @isReaderWriter(user)
@@ -161,9 +164,7 @@ class AppInstance extends EventEmitter
         if callback?
             callback null, result
         else
-            return result
-        
-        
+            return result      
         
 
     removeBrowser : (bserver, user, callback) ->
@@ -179,10 +180,11 @@ class AppInstance extends EventEmitter
     store : (getStorableObj, callback) ->
         console.log "store not implemented"
 
-    getAllUsers : () ->
-        users = []
-        users.push(@owner)
-        return users.concat(@readerwriters)
+    getUsers : (callback) ->
+        callback null, {
+            owners : [@owner]
+            readerwriters : @readerwriters
+        }
 
     # all the browsers are in local, it can be called in sync or async style
     getAllBrowsers : (callback) ->

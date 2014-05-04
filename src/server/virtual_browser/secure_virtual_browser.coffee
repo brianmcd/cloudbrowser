@@ -51,6 +51,7 @@ class SecureVirtualBrowser extends VirtualBrowser
 
     getUserPrevilege : (user, callback) ->
         result = null
+        user=User.toUser(user)
         if @isOwner(user)
             result = 'own'
         else if @isReader(user)
@@ -94,11 +95,13 @@ class SecureVirtualBrowser extends VirtualBrowser
 
     getOwners : () ->
         return @own
-   
-    getAllUsers : () ->
-        listTypes = ['own', 'readwrite', 'readonly']
-        users = []
-        return users.concat(@[list]) for list in listTypes
+    
+    getUsers : (callback) ->
+        callback null, {
+            owners : [@owner]
+            readerwriters : @readwrite
+            readers : @readonly
+        }
 
     close : () ->
         super

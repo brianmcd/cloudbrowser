@@ -4,12 +4,18 @@ class AppInstance
         @id   = appInstanceConfig.getID()
         @name = appInstanceConfig.getName()
         @owner = appInstanceConfig.getOwner()
+        @readerwriters = appInstanceConfig.getReaderWriters()
         @dateCreated = @format.date(appInstanceConfig.getDateCreated())
         @browserMgr = new CRUDManager(@format, Browser)
-        @updateUsers()
+    
 
-    updateUsers : () ->
-        @readerwriters = @api.getReaderWriters()
+    updateUsers : (callback) ->
+        @api.getUsers((err, result)=>
+            return callback(err) if err
+            @owner = result.owners[0]
+            @readerwriters = result.readerwriters
+            callback null
+            )
 
     roles : [
         {

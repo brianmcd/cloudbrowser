@@ -6,20 +6,22 @@ class User
 
 
 User.getEmail = (user) ->
-    if user.getEmail?
-        return user.getEmail()
     if user._email?
         return user._email
+    if user instanceof User
+        return user.getEmail()
     return user
 
+# convert remote obj or string to real User obj
 User.toUser = (user)->
     if not user?
         return null
     if user.user?
         user = user.user
-        
-    if user.getEmail?
+
+    if user instanceof User
         return user
+
     if user._email?
         return new User(user._email)
     return new User(user)

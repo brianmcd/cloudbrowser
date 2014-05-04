@@ -590,4 +590,8 @@ class Browser
         if @isAssocWithCurrentUser()
             return bserver.getConnectedClients()
 
+    getUsers : (callback)->
+        {bserver} = _pvts[@_idx]
+        bserver.getUsers(callback)
+
 module.exports = Browser
