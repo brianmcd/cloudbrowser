@@ -46,7 +46,6 @@ class ChatManager extends EventEmitter
         if not room
             room = new ChatRoom(name, messages)
             @rooms.push(room)
-            @emit("newRoom", room)
         return [null, room]
 
     addUserToRoom : (user, room) ->

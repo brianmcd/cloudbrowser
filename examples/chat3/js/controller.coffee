@@ -15,12 +15,15 @@ app.controller "ChatCtrl", ($scope) ->
     $scope.showJoinForm   = false
     $scope.currentMessage = ""
 
-    # Helper Functions
-    newMessageHandler = () ->
-        $scope.$apply()
+    # handling new message
+    newMessageHandler = (obj) ->
+        if obj.browserId is browserId
+            return
+        $scope.safeApply ->
  
     # Initialize
     {currentBrowser} = cloudbrowser
+    browserId = currentBrowser.getID()
     chatManager = cloudbrowser.currentAppInstanceConfig.getObj()
     $scope.user = chatManager.addUser(currentBrowser.getCreator(), newMessageHandler)
 
@@ -39,10 +42,18 @@ app.controller "ChatCtrl", ($scope) ->
 
     $scope.createRoom = () ->
         [err, room] = chatManager.createRoom($scope.roomName)
-        if err then $scope.error = err.message
-        else chatManager.addUserToRoom($scope.user, room)
+        if err
+            $scope.error = err.message
+        else 
+            chatManager.addUserToRoom($scope.user, room)
+            chatManager.emit("newRoom", {
+                room:room
+                user:$scope.user
+                browserId : browserId
+                })
         $scope.roomName = null
         $scope.closeForm('Create')
+
 
     $scope.joinRoom = () ->
         chatManager.addUserToRoom($scope.user, $scope.selectedRoom)
@@ -54,26 +65,35 @@ app.controller "ChatCtrl", ($scope) ->
 
     $scope.postMessage = () ->
         if $scope.user.currentRoom
-            $scope.user.currentRoom.postMessage($scope.user, $scope.currentMessage)
+            msg = $scope.currentMessage
+            $scope.user.currentRoom.postMessage($scope.user, msg)
             $scope.currentMessage = ""
+            $scope.user.currentRoom.emit('newMessage',{
+                user : $scope.user
+                msg : msg
+                browserId : browserId
+                })
 
     # Event listeners
-    chatManager.on "newRoom", (room) ->
-        console.log "event new room"
-        $scope.safeApply -> $scope.user.addToOtherRooms(room)
+    chatManager.on "newRoom", (obj) ->
+        if obj.browserId is browserId
+            return
+
+        $scope.safeApply ->
+            if obj.user isnt $scope.user
+                $scope.user.addToOtherRooms(obj.room)
+            
+        
 
 app.directive 'enterSubmit', () ->
     return directive =
         restrict: 'A',
         link: (scope, element, attrs) ->
-            submit = false
-            $(element).on
-                keydown : (e) ->
-                    submit = false
-                    if e.which is 13 and not e.shiftKey
-                        submit = true
-                        e.preventDefault()
-                keyup : () ->
-                    if submit
-                        scope.$eval(attrs.enterSubmit)
-                        scope.$digest()
+            element.bind('keydown', (e) ->                
+                if e.which is 13
+                    scope.safeApply -> scope.$eval(attrs.enterSubmit)
+                    # clean the text area
+                    element.val('')
+                    element.text('')
+                    e.preventDefault()
+            )

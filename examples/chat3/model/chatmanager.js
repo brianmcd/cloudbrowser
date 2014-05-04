@@ -103,7 +103,6 @@
       if (!room) {
         room = new ChatRoom(name, messages);
         this.rooms.push(room);
-        this.emit("newRoom", room);
       }
       return [null, room];
     };
