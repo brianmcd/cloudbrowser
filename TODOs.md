@@ -60,6 +60,8 @@ Would like to chizzle away at jsdom patch to reduce it to zero.
     + need no change to landing page code
     + hard to implement such mechanism  
 
+## chat3
+
 # issues
 
 - will event listeners be a memory issue

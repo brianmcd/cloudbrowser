@@ -1,4 +1,5 @@
 {EventEmitter} = require('events')
+lodash = require('lodash')
 
 class User
     constructor : (@name, @eventHandler) ->
@@ -35,7 +36,9 @@ class User
         if idx isnt -1 then @otherRooms.splice(idx, 1)
 
     addToOtherRooms : (room) ->
+        console.log "#{@name} add #{room.name} to other rooms #{lodash.pluck(@otherRooms, 'name')}"
         if @otherRooms.indexOf(room) is -1 then @otherRooms.push(room)
+        console.log "#{@name} after add #{room.name} to other rooms #{lodash.pluck(@otherRooms, 'name')}"
 
     getSerializableInfo : () ->
         joinedRooms = []

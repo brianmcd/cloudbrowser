@@ -69,6 +69,7 @@
       }
     };
     return chatManager.on("newRoom", function(room) {
+      console.log("event new room");
       return $scope.safeApply(function() {
         return $scope.user.addToOtherRooms(room);
       });

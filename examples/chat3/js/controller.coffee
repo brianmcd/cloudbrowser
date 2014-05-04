@@ -21,7 +21,7 @@ app.controller "ChatCtrl", ($scope) ->
  
     # Initialize
     {currentBrowser} = cloudbrowser
-    chatManager = currentBrowser.currentAppInstanceConfig.getObj()
+    chatManager = cloudbrowser.currentAppInstanceConfig.getObj()
     $scope.user = chatManager.addUser(currentBrowser.getCreator(), newMessageHandler)
 
     # Methods on scope
@@ -59,6 +59,7 @@ app.controller "ChatCtrl", ($scope) ->
 
     # Event listeners
     chatManager.on "newRoom", (room) ->
+        console.log "event new room"
         $scope.safeApply -> $scope.user.addToOtherRooms(room)
 
 app.directive 'enterSubmit', () ->
