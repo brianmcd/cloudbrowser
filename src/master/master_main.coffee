@@ -2,8 +2,8 @@
 enter script of master module
 ###
 
-path = require('path')
-async = require('async')
+path           = require('path')
+async          = require('async')
 {MasterConfig} = require('./config')
 
 process.on 'uncaughtException', (err) ->
@@ -12,19 +12,27 @@ process.on 'uncaughtException', (err) ->
     console.log(err.stack)
 
 class Runner
-    constructor: () ->
+    constructor: (argv, postConstruct) ->
         async.auto({
             'config' : (callback) ->
-                configPath = path.resolve(__dirname, '../..','master_config.json')
-                new MasterConfig(configPath, callback)
+                new MasterConfig(argv, callback)
             ,
-            'appMaster' : ['config',
-                            (callback,results) ->
-                                require('./app_master')(results,callback)
+            'database' : ['config', (callback, results)->
+                DBInterface = require('../server/database_interface')
+                new DBInterface(results.config.databaseConfig, callback)
             ],
-            'workerManager' : ['config','appMaster'
+            'uuidService' : ['database', (callback, results)->
+                UuidService = require('../server/uuid_service')
+                new UuidService(results, callback)
+            ],
+            'workerManager' : ['config', 'rmiService',
                                 (callback,results) ->
                                     require('./worker_manager')(results,callback)
+
+            ],
+            'appManager' : [ 'workerManager', 'uuidService', 
+                            (callback, results) ->
+                                require('./app_manager')(results,callback)
 
             ],
             'proxyServer' : ['config','workerManager',
@@ -36,7 +44,7 @@ class Runner
                                     callback null,null
                                 
             ],
-            'rmiService' : ['config','appMaster','workerManager',
+            'rmiService' : ['config',
                             (callback, results) =>
                                 RmiService = require('../server/rmi_service')
                                 new RmiService(results.config, callback)
@@ -46,14 +54,23 @@ class Runner
                     console.log('Initialization error, exiting....')
                     console.log(err)
                     console.log(err.stack)
-                    process.exit(1)
+                    if postConstruct?
+                        postConstruct err
+                    else
+                        process.exit(1)
                 else
                     rmiService = results.rmiService
                     rmiService.createSkeleton('workerManager', results.workerManager)
                     rmiService.createSkeleton('config', results.config)
+                    rmiService.createSkeleton('appManager', results.appManager)
                     console.log 'Master started......'
-                
+                    if postConstruct?
+                        postConstruct null                
                 )
             
+if require.main is module
+    new Runner(null)
 
-new Runner()
+
+module.exports = Runner
+

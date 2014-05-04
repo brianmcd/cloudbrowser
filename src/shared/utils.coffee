@@ -84,4 +84,22 @@ exports.readJsonFromFileAsync = (path,callback) ->
 
     Fs.readFile path, {encoding : "utf8"}, readJsonDataHandler
 
+exports.parseAttributePath = (obj, attr) ->
+    attrPaths = attr.split('.')
+    lastAttrPath = attrPaths[attrPaths.length-1]
+    attrPaths = attrPaths[0...-1]
+    for attrPath in attrPaths
+        if not obj[attrPath]?
+            console.log "cannot find #{attr} in obj"
+            return null
+        obj = obj[attrPath]
+    return {
+        obj : obj
+        attr : lastAttrPath
+        dest : obj[lastAttrPath]
+    }
+
+exports.toCamelCase = (str)->
+    return str.charAt(0).toUpperCase() + str.slice(1)
+
             

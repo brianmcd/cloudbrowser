@@ -5,16 +5,9 @@ routes = require('./routes')
 AppConfig = require('./app_config')
 
 class LandingApplication extends BaseApplication
-    constructor: (@parentApp) ->
-        @config = AppConfig.newConfig(Path.resolve(__dirname,'../applications/landing_page'))
-        @config.appConfig.instantiationStrategy = 'singleUserInstance'
-        @config.deploymentConfig.authenticationInterface = true
-        # need authApp to handle authentication in _mountPointHandler
+    constructor: (masterApp, @parentApp) ->
         {@server, @authApp} = @parentApp
-        super(@config, @server)
-        @baseMountPoint = @parentApp.mountPoint
-        @mountPoint = routes.concatRoute(@baseMountPoint, '/landing_page')
-
+        super(masterApp, @server)
 
     mount : () ->
         @httpServer.mount(@mountPoint, 

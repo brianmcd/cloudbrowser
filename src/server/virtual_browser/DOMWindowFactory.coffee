@@ -105,6 +105,12 @@ class DOMWindowFactory
         window.console =
             log : () ->
                 #console.log new Error().stack
+                for a in arguments
+                    console.log a
+                    if a.stack
+                        console.log a.stack
+                    
+                
                 args = Array.prototype.slice.call(arguments)
                 args.push('\n')
                 self.browser.emit 'ConsoleLog',

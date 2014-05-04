@@ -75,10 +75,12 @@
         this.users.push(user);
       } else {
         user.setEventHandler(eventHandler);
-        _ref1 = user.roomsToBeJoined;
-        for (_j = 0, _len1 = _ref1.length; _j < _len1; _j++) {
-          roomName = _ref1[_j];
-          this.addUserToRoom(user, this.findRoom(roomName));
+        if (user.roomsToBeJoined != null) {
+          _ref1 = user.roomsToBeJoined;
+          for (_j = 0, _len1 = _ref1.length; _j < _len1; _j++) {
+            roomName = _ref1[_j];
+            this.addUserToRoom(user, this.findRoom(roomName));
+          }
         }
       }
       return user;
@@ -101,7 +103,6 @@
       if (!room) {
         room = new ChatRoom(name, messages);
         this.rooms.push(room);
-        this.emit("newRoom", room);
       }
       return [null, room];
     };

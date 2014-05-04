@@ -5,7 +5,7 @@
   app = angular.module("Chat3", []);
 
   app.controller("ChatCtrl", function($scope) {
-    var chatManager, currentBrowser, newMessageHandler;
+    var browserId, chatManager, currentBrowser, newMessageHandler;
     $scope.safeApply = function(fn) {
       var phase;
       phase = this.$root.$$phase;
@@ -22,11 +22,15 @@
     $scope.showCreateForm = false;
     $scope.showJoinForm = false;
     $scope.currentMessage = "";
-    newMessageHandler = function() {
-      return $scope.$apply();
+    newMessageHandler = function(obj) {
+      if (obj.browserId === browserId) {
+        return;
+      }
+      return $scope.safeApply(function() {});
     };
     currentBrowser = cloudbrowser.currentBrowser;
-    chatManager = currentBrowser.getAppInstanceConfig().getObj();
+    browserId = currentBrowser.getID();
+    chatManager = cloudbrowser.currentAppInstanceConfig.getObj();
     $scope.user = chatManager.addUser(currentBrowser.getCreator(), newMessageHandler);
     $scope.toggleForm = function(type) {
       var formName;
@@ -50,6 +54,11 @@
         $scope.error = err.message;
       } else {
         chatManager.addUserToRoom($scope.user, room);
+        chatManager.emit("newRoom", {
+          room: room,
+          user: $scope.user,
+          browserId: browserId
+        });
       }
       $scope.roomName = null;
       return $scope.closeForm('Create');
@@ -63,14 +72,26 @@
       return chatManager.removeUserFromRoom($scope.user, room);
     };
     $scope.postMessage = function() {
+      var msg;
       if ($scope.user.currentRoom) {
-        $scope.user.currentRoom.postMessage($scope.user, $scope.currentMessage);
-        return $scope.currentMessage = "";
+        msg = $scope.currentMessage;
+        $scope.user.currentRoom.postMessage($scope.user, msg);
+        $scope.currentMessage = "";
+        return $scope.user.currentRoom.emit('newMessage', {
+          user: $scope.user,
+          msg: msg,
+          browserId: browserId
+        });
       }
     };
-    return chatManager.on("newRoom", function(room) {
+    return chatManager.on("newRoom", function(obj) {
+      if (obj.browserId === browserId) {
+        return;
+      }
       return $scope.safeApply(function() {
-        return $scope.user.addToOtherRooms(room);
+        if (obj.user !== $scope.user) {
+          return $scope.user.addToOtherRooms(obj.room);
+        }
       });
     });
   });
@@ -80,21 +101,14 @@
     return directive = {
       restrict: 'A',
       link: function(scope, element, attrs) {
-        var submit;
-        submit = false;
-        return $(element).on({
-          keydown: function(e) {
-            submit = false;
-            if (e.which === 13 && !e.shiftKey) {
-              submit = true;
-              return e.preventDefault();
-            }
-          },
-          keyup: function() {
-            if (submit) {
-              scope.$eval(attrs.enterSubmit);
-              return scope.$digest();
-            }
+        return element.bind('keydown', function(e) {
+          if (e.which === 13) {
+            scope.safeApply(function() {
+              return scope.$eval(attrs.enterSubmit);
+            });
+            element.val('');
+            element.text('');
+            return e.preventDefault();
           }
         });
       }

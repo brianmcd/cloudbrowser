@@ -53,7 +53,10 @@ app.controller 'BrowserCtrl', [
 
         # Event Handlers
         browser.api.addEventListener 'share', () ->
-            $scope.safeApply -> browser.updateUsers()
+            browser.updateUsers(()->
+                $scope.safeApply -> 
+            )
+            
 
         browser.api.addEventListener 'rename', (name) =>
             $scope.safeApply -> browser.name = name

@@ -9,13 +9,20 @@
       this.id = appInstanceConfig.getID();
       this.name = appInstanceConfig.getName();
       this.owner = appInstanceConfig.getOwner();
+      this.readerwriters = appInstanceConfig.getReaderWriters();
       this.dateCreated = this.format.date(appInstanceConfig.getDateCreated());
       this.browserMgr = new CRUDManager(this.format, Browser);
-      this.updateUsers();
     }
 
-    AppInstance.prototype.updateUsers = function() {
-      return this.readerwriters = this.api.getReaderWriters();
+    AppInstance.prototype.updateUsers = function(callback) {
+      var _this = this;
+      return this.api.getUsers(function(err, result) {
+        if (err) {
+          return callback(err);
+        }
+        _this.owner = result.owner, _this.readerwriters = result.readerwriters;
+        return callback(null);
+      });
     };
 
     AppInstance.prototype.roles = [

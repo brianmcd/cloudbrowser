@@ -8,7 +8,7 @@ Components           = require('./components')
 test_env = !!process?.env?.TESTS_RUNNING
 
 class ClientEngine
-    constructor : (@window, @document) ->
+    constructor : (@host, @window, @document) ->
         @config = {}
         @compressor = new Compressor()
         @socket = @connectSocket()
@@ -55,6 +55,9 @@ class ClientEngine
 
     connectSocket : () ->
         socket = null
+        encodedUrl = encodeURIComponent(@window.location.href)
+        # to let the master know how to route this request
+        console.log "referer #{encodedUrl}"
         if test_env
             # We need to clear out the require cache so that each TestClient
             # gets its own Socket.IO client
@@ -67,7 +70,7 @@ class ClientEngine
                 xhr = new XMLHttpRequest()
                 xhr.setRequestHeader("cookie", "cb.id=testCookie;path=/")
                 return xhr
-            socket = io.connect('http://localhost:4000')
+            socket = io.connect(@host, { query: "referer=#{encodedUrl}" })
             
             # socket.io-client for node doesn't seem to emit 'connect'
             process.nextTick () =>
@@ -77,11 +80,8 @@ class ClientEngine
             # a test is finished.
             socket.on 'TestDone', () =>
                 @window.testClient.emit('TestDone')
-        else
-            encodedUrl = encodeURIComponent(@window.location.href)
-            # to let the master know how to route this request
-            console.log "referer #{encodedUrl}"
-            socket = @window.io.connect('http://localhost:4000',
+        else 
+            socket = @window.io.connect(@host,
                 { query: "referer=#{encodedUrl}" }
                 )
             socket.on 'error', (err) ->

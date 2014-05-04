@@ -55,8 +55,8 @@
         return browser.api.getURL();
       };
       browser.api.addEventListener('share', function() {
-        return $scope.safeApply(function() {
-          return browser.updateUsers();
+        return browser.updateUsers(function() {
+          return $scope.safeApply(function() {});
         });
       });
       return browser.api.addEventListener('rename', function(name) {

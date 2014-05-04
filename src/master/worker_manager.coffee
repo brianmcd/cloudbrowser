@@ -1,4 +1,5 @@
 urlModule = require('url')
+querystring = require('querystring')
 lodash = require('lodash')
 # using express's router to do path matching
 router = require('express').router
@@ -52,21 +53,22 @@ routers = {
 # need better naming here
 class WokerManager
     constructor : (dependencies, callback) ->
+        @_rmiService = dependencies.rmiService
         @workersMap = {}
+        # a list of workers, this is for getMostFreeWorker
+        @_workerList = []
+        # counter for getMostFreeWorker
+        @_counter = 0
         @appInstanceMap = {}
-        @appMaster = dependencies.appMaster
-        #using in-memory object to hold all the records
-        @pathToWorkers = {}
+        @_workerStubs = {}
         callback null, this
 
+    # pick a worker in round robin 
     getMostFreeWorker : () ->
-        # TODO
-        result = null
-        for id, worker of @workersMap
-            if worker.id?
-                result = worker
-                break
-        return result
+        if @_workerList.length>0
+            @_counter++
+            return @_workerList[@_counter%@_workerList.length]
+        return null
         
 
     isStaticFileRequest : (path) ->
@@ -86,44 +88,29 @@ class WokerManager
         }
         if @workersMap[worker.id]?
             console.log "worker exists, updating with new info"
-        console.log JSON.stringify(workerInfo)
+            @_workerList = lodash.filter(@_workerList, (oldWorker)->
+                return oldWorker.id isnt worker.id
+                );
+                
+        console.log "register #{JSON.stringify(workerInfo)}"
         @workersMap[worker.id]=workerInfo
+        @_workerList.push(workerInfo)
         if callback?
             callback null
 
-    registerApplication : (appInfo, callback) ->
-        console.log 'regist app'
-        console.log(JSON.stringify(appInfo))
-        routers.addRoute(appInfo)
-        if callback?
-            callback()
-        
-        
-    unRegisterApplication :(appInfo, callback) ->
-
-
-    # {mountPoint, appInstanceId, owner, workerId, initializationStrategy}
-    registerAppInstance : (appInstance, callback) ->
-        console.log "register appInstance #{JSON.stringify(appInstance)}"
-        {appInstanceId} = appInstance
-        @appInstanceMap[appInstanceId] = appInstance
-        if callback?
-            callback()
-        
-
-
-    unregisterAppInstance : (appInstanceId, callback) ->
-
-    # query{owner}
-    findAppInstance : (query, callback) ->
-
+    setupRoute : (application) ->
+        routers.addRoute(application)
+   
     getWorkerByAppInstanceId : (appInstanceId) ->
         appInstance = @appInstanceMap[appInstanceId]
         if appInstance?
             return @workersMap[appInstance.workerId]
         return null
         
-
+    registerAppInstance : (appInstance) ->
+        console.log "register appInstance #{appInstance.id} from #{appInstance.workerId}"
+        @appInstanceMap[appInstance.id] = appInstance
+        
     
     ###
     the response is an object indicating the worker, a redirect page
@@ -139,14 +126,16 @@ class WokerManager
 
         # the static file requests should be handled by proxy
         if @isStaticFileRequest(path) or @isSocketIoRequest(path)
-            # referer from websocket is actually in query string
-            # maybe node does not distinguish header and query string.
             referer = request.headers.referer
             # todo /favicon.ico do not have referer
             if not referer?
-                console.log "#{path} has no referer"
-                return {worker : @getMostFreeWorker()}
-            
+                # get the referer from query string
+                query = querystring.parse(urlObj.query)
+                referer = query.referer
+                if not referer?
+                    console.log "#{path} has no referer"
+                    return {worker : @getMostFreeWorker()}
+                
             result = @getWorkerByBrowserUrl(referer)
             if result.redirect?
                 throw new Error("should have worker mapped for #{referer}, request is #{url}")
@@ -169,6 +158,19 @@ class WokerManager
             #if no appInstanceId in the url, map to any worker, using the original url
             return {worker : @getMostFreeWorker()}
 
+    _getWorkerStub : (worker, callback) ->
+        if not @_workerStubs[worker.id]?
+            @_rmiService.createStub({
+                host : worker.host
+                port : worker.rmiPort
+                }, (err, stub)=>
+                    return callback(err) if err?
+                    @_workerStubs[worker.id] = stub
+                    callback null, stub
+                )
+        else
+            callback null, @_workerStubs[worker.id]
+        
 
 
 module.exports = (dependencies, callback) ->

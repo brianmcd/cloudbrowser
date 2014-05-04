@@ -9,8 +9,8 @@
   CBAdminInterface = angular.module("CBAdminInterface.controller", ['CBAdminInterface.models']);
 
   CBAdminInterface.controller("AppCtrl", [
-    '$scope', 'cb-appManager', function($scope, appManager) {
-      var addApp, addAppInstance, addBrowser, addToUserList, addUser, curVB, fileUploader, listsToRoles, name, path, removeAppInstance, removeBrowser, removeFromUserList, serverConfig, setupEventListeners, toggleMethods, _ref;
+    '$scope', 'cb-appManager', '$timeout', function($scope, appManager, $timeout) {
+      var addApp, addAppInstance, addAppInstances, addBrowser, addBrowsers, addToUserList, addUser, curVB, fileUploader, listsToRoles, name, path, removeAppInstance, removeBrowser, removeFromUserList, serverConfig, setupEventListeners, toggleMethods, _ref;
       $scope.templates = {
         "switch": "switch.html",
         appTable: "app_table.html",
@@ -46,10 +46,8 @@
       $scope.user = curVB.getCreator();
       $scope.setError = function(err) {
         $scope.error = err;
-        return setTimeout(function() {
-          return $scope.safeApply(function() {
-            return $scope.error = null;
-          });
+        return $timeout(function() {
+          return $scope.error = null;
         }, 5000);
       };
       listsToRoles = {
@@ -74,37 +72,56 @@
       addUser = function(app, user) {
         app.userMgr.add(user);
         return app.api.getBrowsers(user, function(err, browserConfigs) {
-          var browserConfig, _i, _len, _results;
+          var browserConfig, u, _i, _len, _results;
           _results = [];
           for (_i = 0, _len = browserConfigs.length; _i < _len; _i++) {
             browserConfig = browserConfigs[_i];
-            if (browserConfig.isOwner(user)) {
-              _results.push($scope.safeApply(function() {
-                return u.owners.add({
-                  id: browserConfig.getID(),
-                  role: 'owner'
-                });
-              }));
-            } else if (browserConfig.isReaderWriter(user)) {
-              _results.push($scope.safeApply(function() {
-                return u.readerwriters.add({
-                  id: browserConfig.getID(),
-                  role: 'readerwriter'
-                });
-              }));
-            } else if (browserConfig.isReader(user)) {
-              _results.push($scope.safeApply(function() {
-                return u.readers.add({
-                  id: browserConfig.getID(),
-                  role: 'reader'
-                });
-              }));
-            } else {
-              _results.push(void 0);
-            }
+            u = app.browserMgr.find(browserConfig.getID());
+            _results.push(browserConfig.getUserPrevilege(function(err, result) {
+              if (err != null) {
+                return setError(err);
+              }
+              if (result != null) {
+                switch (result) {
+                  case 'own':
+                    return $scope.safeApply(function() {
+                      return u.owners.add({
+                        id: browserConfig.getID(),
+                        role: 'owner'
+                      });
+                    });
+                  case 'readwrite':
+                    return $scope.safeApply(function() {
+                      return u.readerwriters.add({
+                        id: browserConfig.getID(),
+                        role: 'readerwriter'
+                      });
+                    });
+                  case 'readonly':
+                    return $scope.safeApply(function() {
+                      return u.readers.add({
+                        id: browserConfig.getID(),
+                        role: 'reader'
+                      });
+                    });
+                }
+              }
+            }));
           }
           return _results;
         });
+      };
+      addBrowsers = function(app, browserConfigs, callback) {
+        var browserConfig, _i, _len;
+        if (browserConfigs != null) {
+          for (_i = 0, _len = browserConfigs.length; _i < _len; _i++) {
+            browserConfig = browserConfigs[_i];
+            addBrowser(app, browserConfig);
+          }
+        }
+        if (callback != null) {
+          return callback(null);
+        }
       };
       addBrowser = function(app, browserConfig) {
         var appInstance, browser, list, listName, role, user, _i, _len;
@@ -113,10 +130,12 @@
           return browser;
         }
         browser = app.browserMgr.add(browserConfig);
-        if (browser.appInstanceID) {
-          appInstance = app.appInstanceMgr.add(browser.api.getAppInstanceConfig());
-          appInstance.browserIDMgr.add(browser.id);
+        appInstance = app.appInstanceMgr.find(browser.appInstanceID);
+        if (appInstance == null) {
+          console.log("the appinstance is not registed for browser " + (browserConfig.getID()));
+          return;
         }
+        appInstance.browserIDMgr.add(browser.id);
         for (listName in listsToRoles) {
           role = listsToRoles[listName];
           list = browser[listName];
@@ -172,6 +191,14 @@
         }
         return _results;
       };
+      addAppInstances = function(app, appInstanceConfigs, callback) {
+        var appInstanceConfig, _i, _len;
+        for (_i = 0, _len = appInstanceConfigs.length; _i < _len; _i++) {
+          appInstanceConfig = appInstanceConfigs[_i];
+          addAppInstance(app, appInstanceConfig);
+        }
+        return callback(null);
+      };
       addAppInstance = function(app, appInstanceConfig) {
         var appInstance, list, listName, role, user, _i, _len;
         appInstance = app.appInstanceMgr.find(appInstanceConfig.getID());
@@ -191,11 +218,28 @@
             }
           }
         }
-        return appInstance.api.addEventListener('share', function(user) {
+        appInstance.api.addEventListener('share', function(user) {
           return $scope.safeApply(function() {
             appInstance.updateUsers();
             return addToUserList(app, user, 'appInstanceIDMgr', appInstance.id, 'readwriter');
           });
+        });
+        appInstance.api.addEventListener("addBrowser", function(browserConfig) {
+          return $scope.safeApply(function() {
+            return addBrowser(app, browserConfig);
+          });
+        });
+        appInstance.api.addEventListener("removeBrowser", function(id) {
+          return $scope.safeApply(function() {
+            return removeBrowser(app, id);
+          });
+        });
+        return appInstanceConfig.getAllBrowsers(function(err, browserConfigs) {
+          if (err != null) {
+            console.log("error in getAllBrowsers " + err);
+            return console.log(err.stack);
+          }
+          return addBrowsers(app, browserConfigs);
         });
       };
       removeAppInstance = function(app, appInstanceID) {
@@ -224,16 +268,6 @@
         return _results;
       };
       setupEventListeners = function(app) {
-        app.api.addEventListener("addBrowser", function(browserConfig) {
-          return $scope.safeApply(function() {
-            return addBrowser(app, browserConfig);
-          });
-        });
-        app.api.addEventListener("removeBrowser", function(id) {
-          return $scope.safeApply(function() {
-            return removeBrowser(app, id);
-          });
-        });
         app.api.addEventListener("addAppInstance", function(appInstanceConfig) {
           return $scope.safeApply(function() {
             return addAppInstance(app, appInstanceConfig);
@@ -262,41 +296,35 @@
           return app;
         }
         app = appManager.add(appConfig);
-        return Async.waterfall(NwGlobal.Array(function(next) {
-          var browserConfig, _i, _len, _ref1;
-          _ref1 = app.api.getAllBrowsers();
-          for (_i = 0, _len = _ref1.length; _i < _len; _i++) {
-            browserConfig = _ref1[_i];
-            $scope.safeApply(function() {
-              return addBrowser(app, browserConfig);
-            });
-          }
-          return app.api.getAppInstances(next);
-        }, function(appInstanceConfigs, next) {
-          $scope.safeApply(function() {
-            var appInstConfig, _i, _len, _results;
-            _results = [];
-            for (_i = 0, _len = appInstanceConfigs.length; _i < _len; _i++) {
-              appInstConfig = appInstanceConfigs[_i];
-              _results.push(addAppInstance(app, appInstConfig));
+        setupEventListeners(app);
+        return Async.auto({
+          'appInstances': function(next) {
+            return app.api.getAppInstances(next);
+          },
+          'addAppInstances': [
+            'appInstances', function(next, results) {
+              return addAppInstances(app, results.appInstances, next);
             }
-            return _results;
-          });
-          return app.api.getUsers(next);
-        }), function(err, users) {
-          var user, _i, _len, _results;
+          ],
+          'users': function(next) {
+            return app.api.getUsers(next);
+          },
+          'addUsers': [
+            'users', function(next, results) {
+              var user, users, _i, _len;
+              users = results.users;
+              for (_i = 0, _len = users.length; _i < _len; _i++) {
+                user = users[_i];
+                app.userMgr.add(user);
+              }
+              return next(null);
+            }
+          ]
+        }, function(err, results) {
           if (err) {
-            return console.log(err);
+            console.log(err);
           }
-          setupEventListeners(app);
-          _results = [];
-          for (_i = 0, _len = users.length; _i < _len; _i++) {
-            user = users[_i];
-            _results.push($scope.safeApply(function() {
-              return app.userMgr.add(user);
-            }));
-          }
-          return _results;
+          return $scope.safeApply(function() {});
         });
       };
       serverConfig.addEventListener("addApp", function(appConfig) {
@@ -334,21 +362,24 @@
           });
         });
       });
-      serverConfig.listApps(['perUser'], function(err, appConfigs) {
-        var appConfig, _i, _len;
-        if (err) {
-          return console.log(err);
-        } else {
-          for (_i = 0, _len = appConfigs.length; _i < _len; _i++) {
-            appConfig = appConfigs[_i];
-            addApp(appConfig);
+      $scope.init = function() {
+        return serverConfig.listApps(['perUser'], function(err, appConfigs) {
+          var appConfig, _i, _len;
+          if (err) {
+            return console.log(err);
+          } else {
+            for (_i = 0, _len = appConfigs.length; _i < _len; _i++) {
+              appConfig = appConfigs[_i];
+              addApp(appConfig);
+            }
+            return $scope.safeApply(function() {
+              var _ref1;
+              return $scope.selectedApp = (_ref1 = $scope.apps) != null ? _ref1[0] : void 0;
+            });
           }
-          return $scope.safeApply(function() {
-            var _ref1;
-            return $scope.selectedApp = (_ref1 = $scope.apps) != null ? _ref1[0] : void 0;
-          });
-        }
-      });
+        });
+      };
+      $scope.init();
       $scope.leftClick = function(url) {
         return curVB.redirect(url);
       };

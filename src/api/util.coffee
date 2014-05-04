@@ -37,6 +37,10 @@ class Util
     ###
     sendEmail : (options) ->
         {callback} = options
+        if not _pvts[@_idx].emailerConfig
+            callback?(cloudbrowserError('NO_EMAIL_CONFIG'))
+            return
+        
         {email, password} = _pvts[@_idx].emailerConfig
 
         if not (email and password)

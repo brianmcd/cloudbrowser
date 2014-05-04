@@ -1,6 +1,10 @@
-class APIListManager
+{EventEmitter} = require('events')
+
+class APIListManager extends EventEmitter
+
     constructor : (@TypeOfItems, @format, @idProperty='id', @idMethod='getID') ->
         @items = []
+        @setMaxListeners(500)
 
     # Takes the ID of the object
     find : (id) ->

@@ -7,13 +7,9 @@ BaseApplication = require('./base_application')
 AppConfig = require('./app_config')
 
 class AuthApp extends BaseApplication
-    constructor: (@parentApp) ->
-        @config = AppConfig.newConfig(Path.resolve(__dirname,'../applications/authentication_interface'))
-        @config.appConfig.instantiationStrategy = 'default'
-        super(@config, @parentApp.server)
-
+    constructor: (masterApp, @parentApp) ->
         @baseMountPoint = @parentApp.mountPoint
-        @mountPoint = routes.concatRoute(@baseMountPoint,'/authenticate')
+        super(masterApp, @parentApp.server)
 
         @checkNotAuth = lodash.bind(@_checkNotAuth, this)
         @checkAuth = lodash.bind(@_checkAuth, this)
@@ -89,15 +85,21 @@ class AuthApp extends BaseApplication
         user = @sessionManager.findAppUserID(req.session, @baseMountPoint)
         appInstanceID = req.params.appInstanceID
         appInstance = @parentApp.appInstanceManager.find(appInstanceID)
-        if appInstance? and (appInstance.isOwner(user) or appInstance.isReaderWriter(user))
+        browserID = req.params.browserID
+        if appInstance? and browserID?
+            browser = appInstance.findBrowser(browserID)
+            if browser.getUserPrevilege?(user)?
+                return next()
+        
+        if appInstance?.getUserPrevilege(user)?
             return next()
         else
-            res.send('Permission Denied', 403)
+            res.send(403, 'Permission Denied')
             res.end()
 
     _activateHandler: (req, res, next) ->
         @parentApp.activateUser req.params.token, (err) ->
-            if err then res.send(err.message, 400)
+            if err then res.send(400, err.message)
             else res.render('activate.jade', {url : mountPoint})
 
     _deactivateHandler: (req, res, next) ->

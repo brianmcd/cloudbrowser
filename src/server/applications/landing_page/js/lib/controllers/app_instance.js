@@ -8,7 +8,7 @@
 
   app = angular.module('CBLandingPage.controllers.appInstance', ['CBLandingPage.models', 'CBLandingPage.services']);
 
-  appConfig = cloudbrowser.currentBrowser.getAppConfig();
+  appConfig = cloudbrowser.parentAppConfig;
 
   app.controller('AppInstanceCtrl', [
     '$scope', 'cb-mail', 'cb-format', 'cb-appInstanceManager', function($scope, mail, format, appInstanceMgr) {
@@ -75,7 +75,7 @@
               $scope.setError(err);
               return appInstance.processing = false;
             } else {
-              return $scope.addBrowser(browserConfig, appInstance);
+              return $scope.addBrowser(browserConfig, appInstance.api);
             }
           });
         });
@@ -136,13 +136,13 @@
           });
         }), function(err) {
           return $scope.safeApply(function() {
-            if (err) {
-              $scope.setError(err);
-            } else {
-              $scope.success.message = "" + entity.name + " is shared with " + collaborator + ".";
-            }
             appInstance.processing = false;
-            return appInstance.showOptions = true;
+            appInstance.showOptions = true;
+            if (err) {
+              return $scope.setError(err);
+            } else {
+              return $scope.success.message = "" + entity.name + " is shared with " + collaborator + ".";
+            }
           });
         });
       };
