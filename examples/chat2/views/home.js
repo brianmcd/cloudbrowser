@@ -1,6 +1,6 @@
 (function () {
-  var chats = vt.shared.chats;
-  var user = vt.local.user;
+  var chats = cloudbrowser.app.shared.chats;
+  var user = cloudbrowser.app.local.user;
   var viewModel = {
     rooms        : chats.rooms,
     username     : ko.observable(user.username()),
@@ -27,12 +27,12 @@
     try {
         var room = chats.create(name); // Might throw
         user.joinRoom(room);
-        vt.pageMan.swap('chats')
+        cloudbrowser.pageMan.swap('chats')
     } catch (e) {}
   });
 
   $('#join-room').click(function () {
     user.joinRoom(viewModel.selectedRoom());
-    vt.pageMan.swap('chats')
+    cloudbrowser.pageMan.swap('chats')
   });
 })();

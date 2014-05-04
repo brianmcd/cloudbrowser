@@ -1,0 +1,5 @@
+{
+    "entryPoint": "index.html",
+    "instantiationStrategy": "singleUserInstance",
+    "applicationStateFile": ""
+}

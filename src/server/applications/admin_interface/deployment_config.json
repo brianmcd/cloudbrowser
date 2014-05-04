@@ -1,0 +1,11 @@
+{
+    "authenticationInterface": true,
+    "name": "Administration Interface",
+    "mountOnStartup": true,
+    "mountPoint": "/admin_interface",
+    "collectionName": "admin_interface.users",
+    "browserLimit": 0,
+    "description": "The administration interface.",
+    "isPublic": true,
+    "owner": "panxiaozhong@gmail.com"
+}

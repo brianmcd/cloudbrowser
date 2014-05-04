@@ -1,0 +1,197 @@
+#!/usr/bin/env coffee
+
+Request = require('request')
+Async   = require('async')
+Fs      = require('fs')
+Tar     = require('tar')
+Zlib    = require('zlib')
+Read    = require('read')
+Path    = require('path')
+Fstream = require('fstream')
+
+# Defaults
+hostname = "localhost"
+port   = "3000"
+user   = {}
+# Validate args by checking if the files exist and that they
+# have the required files
+validatePath = (path, callback) ->
+    Fs.exists path, (exists) ->
+        # File doesn't exist
+        if not exists
+            callback(new Error("#{path} does not exist"))
+
+        else Fs.stat path, (err, stats) ->
+            if err then callback(err)
+
+            # File is not a directory
+            else if not stats.isDirectory()
+                callback(new Error("#{path} is not a directory"))
+
+            else Async.parallel [
+                (callback) ->
+                    Fs.exists "#{path}/app_config.json", (exists) ->
+                        # No app_config.json file
+                        if not exists
+                            callback(new Error("#{path} must contain" +
+                            " app_config.json."))
+                        else callback(null)
+                        
+                (callback) ->
+                    Fs.exists "#{path}/deployment_config.json", (exists) ->
+                        # No deployment_config.json file
+                        if not exists
+                            callback(new Error("#{path} must contain" +
+                            " deployment_config.json."))
+                        else callback(null)
+
+            ], (err, results) ->
+                if err then callback(err)
+                else callback(null)
+
+createTarball = (path, callback) ->
+    path = if path[path.length - 1] is "/" then path.slice(0, path.length - 1) else path
+    tarPath = "#{path}.tar.gz"
+    Fstream.Reader
+        path : path
+        type : 'Directory'
+    .pipe(Tar.Pack())
+    .pipe(Zlib.Gzip())
+    .pipe(Fs.createWriteStream(tarPath))
+    .on("finish", () -> callback(null, Path.resolve(tarPath)))
+    .on("error", (err) -> callback(err))
+
+configureUser = (callback) ->
+    Async.waterfall [
+        (next) ->
+            Read({prompt : "Email: "}, next)
+        (email, isDefault, next) ->
+            user.username = email
+            Read({prompt : "Password: ", silent : true}, next)
+    ], (err, password, isDefault) ->
+        return callback(err) if err
+        user.password = password
+
+uploadToServer = (path, appName, callback) ->
+    serverEndPoint = "http://#{hostname}:#{port}/local-deploy"
+
+    # Using basic HTTP authentication to authenticate the user 
+    # on the server
+
+    request = Request.post serverEndPoint,
+        auth :
+            user : user.username
+            pass : user.password
+            # Setting sendImmediately to false will make the client use digest
+            # access authentication instead of basic authentication
+            sendImmediately : true
+        , (err, response, body) ->
+            if err then callback(err)
+            # Error
+            else if response.statusCode isnt 200 and
+            response.statusCode isnt 204
+                callback(new Error("Could not deploy to"+
+                " #{hostname}:#{port} : Status code" +
+                " #{response.statusCode} - #{response.body}"))
+            # Success
+            else
+                callback(null)
+    
+    # Simulating an HTTP multipart form upload with the same
+    # parameters as the admin_interface upload
+    form = request.form()
+    form.append("appName", appName)
+    form.append("newApp", Fs.createReadStream(path))
+
+deployApp = (app, callback) ->
+    validatePath app.path, (err) ->
+        # Don't propogate the error, let all parallel tasks complete
+        # See https://github.com/caolan/async/issues/334
+        if err
+            console.log("\n#{err}")
+            callback(null, null)
+        else
+            Async.waterfall [
+                (next) ->
+                    createTarball(app.path, next)
+                (targzPath, next) ->
+                    if not app.mountPoint then callback(null, null)
+                    else uploadToServer(targzPath, app.mountPoint, next)
+                ], (err) ->
+                    if not err then callback(null, app)
+                    else
+                        console.log(err)
+                        callback(null, null)
+                
+opts = require('nomnom')
+    .option 'deploy',
+        help : 'Upload applications to the cloudbrowser server'
+        metavar : 'FILES'
+        flag : true
+    .option 'port',
+        help : 'Port of cloudbrowser server to upload to'
+        metavar : 'NUM'
+    .option 'hostname',
+        help : 'Hostname of cloudbrowser server to upload to'
+        metavar : 'STRING'
+    .parse()
+
+apps = []
+
+if opts.port then port = opts.port
+if opts.hostname then hostname = opts.hostname
+
+# Parsing the json file into opts
+_getConfigFromFile = (path) ->
+    try
+        fileContent = Fs.readFileSync(path, {encoding:"utf8"})
+        content = JSON.parse(fileContent)
+    catch e
+        console.log "Parse error in file #{path}."
+        console.log "The file's content was:"
+        console.log fileContent
+        return null
+
+    return content
+
+readMountPoint = (app, callback) ->
+    deploymentConfigPath = "#{app.path}/deployment_config\.json"
+    deploymentConfig = _getConfigFromFile(deploymentConfigPath)
+    if not deploymentConfig
+        console.log("Invalid #{deploymentConfigPath}")
+    else if not deploymentConfig.mountPoint
+        console.log("#{deploymentConfigPath} must contain a mount point")
+    else
+        app.mountPoint = deploymentConfig.mountPoint
+    callback(null)
+
+deploy = (callback) ->
+    Async.waterfall [
+        (next) ->
+            Async.map(apps, deployApp, next)
+    ], (err, apps) ->
+        return callback(err) if err
+        for app in apps
+            if app? then console.log "Deployed #{app.mountPoint}"
+        callback(null)
+
+apps.push({path : path}) for path in opts._ if opts._
+
+Async.series [
+    (next) ->
+        configureUser(next)
+    (next) ->
+        Async.map(apps, readMountPoint, next)
+    (next) ->
+        if opts.deploy then deploy(next)
+        else next(null)
+], (err) ->
+    if err then console.log(err)
+
+process.on 'uncaughtException', (err) ->
+    console.log("Uncaught Exception:")
+    console.log(err)
+    console.log(err.stack)
+
+module.exports =
+    validatePath : validatePath

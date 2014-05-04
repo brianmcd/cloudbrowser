@@ -1,0 +1,11 @@
+{
+    "isPublic": true,
+    "name": "Angular App",
+    "owner": "godmar@gmail.com",
+    "mountOnStartup": true,
+    "description": "A basic AngularJS web application.",
+    "browserLimit": 0,
+    "mountPoint": "/angularjs-basic",
+    "authenticationInterface": true,
+    "collectionName": "angularjs-basic.users"
+}

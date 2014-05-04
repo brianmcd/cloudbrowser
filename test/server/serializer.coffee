@@ -1,108 +1,100 @@
 {EventEmitter}  = require('events')
-Config          = require('../../src/shared/config')
 {serialize}     = require('../../src/server/browser_server/serializer')
 {getFreshJSDOM} = require('../helpers')
 
-Config.resourceProxy = false
+# TODO Write one test with compression:true in config
 
-jsdom = getFreshJSDOM()
+describe "serializer", () ->
+    jsdom = null
 
-createDoc = (html) ->
-    return jsdom.jsdom(html, null, {browser : new EventEmitter})
-    
+    before () ->
+        jsdom = getFreshJSDOM()
 
-compareRecords = (actual, expected, test) ->
-    test.equal(actual.length, expected.length)
-    test.notEqual(actual, null)
+    createDoc = (html) ->
+        return jsdom.jsdom(html, null, {browser : new EventEmitter})
 
-    for i in [0..actual.length - 1]
-        test.equal(actual[i].type, expected[i].type)
-        test.equal(actual[i].name, expected[i].name)
-        actualAttrs = actual[i].attributes
-        if !actualAttrs
-            test.equal(actualAttrs, expected[i].attributes)
-            continue
-        expectedAttrs = expected[i].attributes
-        test.notEqual(expectedAttrs, null)
-        for own key, val of actualAttrs
-            test.equal(expectedAttrs[key], val)
+    compareRecords = (actual, expected) ->
+        actual.length.should.equal(expected.length)
+        for i in [0..actual.length - 1]
+            actualAttrs = actual[i].attributes
+            if not actualAttrs
+                # This is the only way to  check for undefined
+                # with the 'should' style
+                should = require('chai').should()
+                should.not.exist(expected[i].attributes)
+                continue
+            actual[i].type.should.equal(expected[i].type)
+            actual[i].name.should.equal(expected[i].name)
+            expectedAttrs = expected[i].attributes
+            expectedAttrs.should.not.be.null
+            for own key, val of actualAttrs
+                expectedAttrs[key].should.equal(val)
 
-exports['test null'] = (test) ->
-    doc = createDoc()
-    records = serialize(null, null, doc)
-    test.notEqual(records, null)
-    test.ok(records instanceof Array)
-    test.equal(records.length, 0)
-    test.done()
+    it "should serialize an html fragment correctly", () ->
+        doc = createDoc("<html>" +
+                        "<head></head>" +
+                        "<body><div><input type='text'></input></div></body>" +
+                        "</html>")
+        expected = [
+            type   : 'element'
+            name   : 'html'
+            attributes : undefined
+        ,
+            type : 'element'
+            name : 'head'
+            attributes : undefined
+        ,
+            type : 'element'
+            name : 'body'
+            attributes : undefined
+        ,
+            type : 'element'
+            name : 'div'
+            attributes : undefined
+        ,
+            type : 'element'
+            name : 'input'
+            attributes :
+                type : 'text'
+        ]
 
-exports['elements'] = (test) ->
-    doc = createDoc("<html>" +
-                      "<head></head>" +
-                      "<body><div><input type='text'></input></div></body>" +
-                      "</html>")
-    expected = [
-        type   : 'element'
-        name   : 'HTML'
-        attributes : undefined
-    ,
-        type : 'element'
-        name : 'HEAD'
-        attributes : undefined
-    ,
-        type : 'element'
-        name : 'BODY'
-        attributes : undefined
-    ,
-        type : 'element'
-        name : 'DIV'
-        attributes : undefined
-    ,
-        type : 'element'
-        name : 'INPUT'
-        attributes :
+        actual = serialize(doc, null, doc, {})
+        compareRecords(actual, expected)
+
+    it "should serialize an html fragment containing a comment correctly", () ->
+        doc = createDoc("<html><body><!--Here's my comment!--></body></html>")
+        expected = [
+            type : 'element'
+            name : 'html'
+            attributes : undefined
+        ,
+            type : 'element'
+            name : 'body'
+            attributes : undefined
+        ,
+            type : 'comment'
+            name : undefined
+            value : "Here's my comment!"
+            attributes : undefined
+        ]
+        actual = serialize(doc, null, doc, {})
+        compareRecords(actual, expected)
+
+    it "should serialize an html fragment containing text correctly", () ->
+        doc = createDoc("<html><body>Here's my text!</body></html>")
+        expected = [
+            type : 'element'
+            name : 'html'
+            attribites : undefined
+        ,
+            type : 'element'
+            name : 'body'
+            attributes : undefined
+        ,
             type : 'text'
-    ]
-
-    actual = serialize(doc, null, doc)
-    compareRecords(actual, expected, test)
-    test.done()
-
-exports['comments'] = (test) ->
-    doc = createDoc("<html><body><!--Here's my comment!--></body></html>")
-    expected = [
-        type : 'element'
-        name : 'HTML'
-        attributes : undefined
-    ,
-        type : 'element'
-        name : 'BODY'
-        attributes : undefined
-    ,
-        type : 'comment'
-        name : undefined
-        value : "Here's my comment!"
-        attributes : undefined
-    ]
-    actual = serialize(doc, null, doc)
-    compareRecords(actual, expected, test)
-    test.done()
-
-exports['text'] = (test) ->
-    doc = createDoc("<html><body>Here's my text!</body></html>")
-    expected = [
-        type : 'element'
-        name : 'HTML'
-        attribites : undefined
-    ,
-        type : 'element'
-        name : 'BODY'
-        attributes : undefined
-    ,
-        type : 'text'
-        name : undefined
-        attributes : undefined
-        value : "Here's my text!"
-    ]
-    actual = serialize(doc, null, doc)
-    compareRecords(actual, expected, test)
-    test.done()
+            name : undefined
+            attributes : undefined
+            value : "Here's my text!"
+        ]
+        actual = serialize(doc, null, doc, {})
+        compareRecords(actual, expected)

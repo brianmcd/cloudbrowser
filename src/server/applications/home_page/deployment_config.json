@@ -1,0 +1,11 @@
+{
+    "mountOnStartup": true,
+    "name": "Home Page",
+    "mountPoint": "/",
+    "browserLimit": 0,
+    "description": "The home page that lists all the mounted, public applications currently running on the cloudbrowser server.",
+    "isPublic": true,
+    "authenticationInterface": false,
+    "collectionName": null,
+    "owner": "bd@ee.com"
+}

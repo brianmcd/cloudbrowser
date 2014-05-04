@@ -1,5 +1,7 @@
-# TODO: inheritance hierarchy here like client side.
-class Calendar
+# TODO : Inheritance hierarchy for YUI widgets like client side
+Component = require('./component')
+
+class Calendar extends Component
     constructor : (@options, @rpcMethod, @container) ->
         @attrs = {}
 
@@ -9,9 +11,6 @@ class Calendar
         @container.set = (name, val) =>
             @attrs[name] = val
             @rpcMethod('set', [name, val])
-
-    getRemoteOptions : () ->
-        @options
 
 module.exports = Calendar
 

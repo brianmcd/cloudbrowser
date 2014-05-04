@@ -1,0 +1,28 @@
+<table class="table table-striped">
+    <tr ng-show="selectedApp.isAuthEnabled">
+        <td>
+            <strong>
+                {{selectedApp.userMgr.items.length}}
+            </strong> Users
+        </td>
+    </tr>
+    <tr>
+        <td>
+            <strong>
+                {{selectedApp.browserMgr.items.length}}
+            </strong> Instances</td>
+    </tr>
+    <tr>
+        <td>
+            <strong>
+                {{selectedApp.instantiationStrategy}}
+            </strong> Instantiation Strategy
+            <span ng-show="selectedApp.browserLimit">
+                with a browser limit of 
+                <strong>
+                    {{selectedApp.browserLimit}}
+                </strong>
+            </span>
+        </td>
+    </tr>
+</table>

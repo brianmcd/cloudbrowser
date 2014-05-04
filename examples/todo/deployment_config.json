@@ -1,0 +1,11 @@
+{
+    "isPublic": true,
+    "name": "Todo",
+    "owner": "ashimaathri@gmail.com",
+    "browserLimit": 0,
+    "description": "",
+    "mountOnStartup": true,
+    "authenticationInterface": false,
+    "mountPoint": "/todo",
+    "collectionName": null
+}

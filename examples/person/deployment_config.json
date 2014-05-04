@@ -1,0 +1,11 @@
+{
+    "isPublic": true,
+    "owner": "ashimaathri@gmail.com",
+    "name": "Person",
+    "browserLimit": 0,
+    "description": "",
+    "mountOnStartup": true,
+    "authenticationInterface": false,
+    "mountPoint": "/person",
+    "collectionName": "person.users"
+}

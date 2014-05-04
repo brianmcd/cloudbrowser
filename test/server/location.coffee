@@ -1,82 +1,169 @@
-URL               = require('url')
-{LocationBuilder} = require('../../src/server/browser/location')
+Async           = require('async')
+sinon           = require('sinon')
+{createBrowser} = require('../helpers')
 
-lastEvent = null
+describe "location", () ->
+    browser = null
 
-MockBrowser =
-    # TODO: Test that entrypoint changes appropriately.
-    app :
-        entryPoint : '/'
-    window :
-        location : {}
-        document :
-            createEvent : () ->
-                return {initEvent : () ->}
-        dispatchEvent : () ->
-            lastEvent = 'hashchange'
-    load : () ->
-        lastEvent = 'pagechange'
-    setLocation : (url) ->
-        @window.location = URL.parse(url)
-        self = this
-        for prop in ['protocol', 'host', 'hostname',
-                     'port', 'pathname', 'search', 'hash']
-             @window.location[prop] = @window.location[prop] || ''
+    before () ->
+        browser = createBrowser()
 
-Location = LocationBuilder(MockBrowser)
+    beforeEach () ->
+        browser.window.location = "http://www.example.com"
 
-exports['basic'] = (test) ->
-    loc = new Location('http://www.google.com/awesome/page.html')
-    test.equal(loc.protocol, 'http:')
-    test.equal(loc.host, 'www.google.com')
-    test.equal(loc.hostname, 'www.google.com')
-    test.equal(loc.port, '')
-    test.equal(loc.pathname, '/awesome/page.html')
-    test.equal(loc.search, '')
-    test.equal(loc.hash, '')
-    test.done()
+    it "should parse the url string and assign all the properties correctly",
+    () ->
 
-exports['test navigation'] = (test) ->
-    lastEvent = null
-    MockBrowser.setLocation('http://www.google.com')
-    loc = new Location('http://www.google.com/newpage.html')
-    test.equal(lastEvent, 'pagechange')
-    lastEvent = null
-    
-    MockBrowser.setLocation('http://www.site.com')
-    loc = new Location('http://www.site.com')
-    test.equal(lastEvent, null)
+        browser.window.location = "http://www.google.com:80/one/page.htm?q=hello#!hash"
 
-    MockBrowser.setLocation('http://www.google.com')
-    loc = new Location('http://www.google.com/#!update')
-    test.equal(lastEvent, 'hashchange')
-    lastEvent = null
-    
-    MockBrowser.setLocation('http://www.google.com')
-    loc = new Location('http://www.google.com')
-    test.equal(lastEvent, null)
+        loc = browser.window.location
+        loc.protocol.should.equal('http:')
+        loc.host.should.equal('www.google.com:80')
+        loc.hostname.should.equal('www.google.com')
+        loc.port.should.equal('80')
+        loc.pathname.should.equal('/one/page.htm')
+        loc.search.should.equal('?q=hello')
+        loc.hash.should.equal('#!hash')
 
-    loc.href = 'http://www.google.com/page2.html'
-    test.equal(lastEvent, 'pagechange')
-    test.done()
+    it "should load the application at the url into the browser when assigned" +
+    " with a new host", () ->
+        mockBrowser = sinon.mock(browser)
+        mockBrowser.expects("load").once().withExactArgs("http://www.google.com/")
 
-exports['test hashchange'] = (test) ->
-    lastEvent = null
-    # None of these tests should cause navigation, only hash changes.
-    MockBrowser.setLocation('http://www.google.com')
-    loc = new Location('http://www.google.com')
-    test.equal(lastEvent, null)
+        browser.window.location = "http://www.google.com"
 
-    loc.href = 'http://www.google.com/#!/more/stuff'
-    test.equal(lastEvent, 'hashchange')
-    lastEvent = null
+        mockBrowser.verify()
 
-    MockBrowser.setLocation('http://www.google.com/#!/more/stuff')
-    loc.href = 'http://www.google.com/#!/more/stuff'
-    test.equal(lastEvent, null)
+    it "should load the application at the url into the browser when assigned" +
+    " with a new page", () ->
+        mockBrowser = sinon.mock(browser)
+        mockBrowser.expects("load").once().withExactArgs("http://www.example.com/newpage")
 
-    loc.href = 'http://www.google.com/#!changedagain'
-    test.equal(lastEvent, 'hashchange')
-    test.done()
+        browser.window.location = "http://www.example.com/newpage"
 
-# TODO: test navigating by setting properties like pathname
+        mockBrowser.verify()
+
+    # Acc to http://nodejs.org/api/url.html#url_url_format_urlobj
+    # and the code of browser/location.coffee,
+    # when the host field is not empty, changes in port and hostname 
+    # will not cause a page load.
+    # In normal browsers, it does cause a page load.
+    it "should load the application at the url into the browser when one" +
+    " of its properties is assigned to", () ->
+        mockBrowser = sinon.mock(browser)
+        mockBrowser.expects("load").once()
+            .withExactArgs("file://www.example.com/")
+        mockBrowser.expects("load").once()
+            .withExactArgs("file://www.google.com:3078/")
+
+        browser.window.location['protocol'] = "file:"
+        browser.window.location['host'] = "www.google.com:3078"
+
+        mockBrowser.verify()
+
+    it "should cause a hash change when assigned a new hash mark on the" +
+    " same page", (done) ->
+        mockBrowser = sinon.mock(browser)
+        mockBrowser.expects("load").never()
+
+        dispatchEventStub = sinon.stub browser.window, "dispatchEvent", (event) ->
+            try
+                event._type.should.equal('hashchange')
+                event.newURL.should.equal("http://www.example.com/#!hash1")
+                mockBrowser.verify()
+                done()
+            catch e
+                done(e)
+            finally
+                browser.window.dispatchEvent.restore()
+
+        browser.window.location = "http://www.example.com/#!hash1"
+
+        mockBrowser.verify()
+
+    describe "hashchange testing", () ->
+        beforeEach (done) ->
+            dispatchEventStub = sinon.stub browser.window, "dispatchEvent", (event) ->
+                browser.window.dispatchEvent.restore()
+                done()
+            browser.window.location = "http://www.example.com/#!hash1"
+
+        it "should cause a hash change when assigned a different hash mark on" +
+        " the same page", (done) ->
+
+            mockBrowser = sinon.mock(browser)
+            mockBrowser.expects("load").never()
+            counter = 0
+
+            dispatchEventStub = sinon.stub browser.window, "dispatchEvent", (event) ->
+                try
+                    event._type.should.equal('hashchange')
+                    event.newURL.should.equal("http://www.example.com/#!hash4")
+                    browser.window.dispatchEvent.restore()
+                    done()
+                catch e
+                    done(e)
+
+            browser.window.location = "http://www.example.com/#!hash4"
+
+            mockBrowser.verify()
+
+        it "should cause a hash change when the hash mark is removed"
+        , (done) ->
+
+            mockBrowser = sinon.mock(browser)
+            mockBrowser.expects("load").never()
+            counter = 0
+
+            dispatchEventStub = sinon.stub browser.window, "dispatchEvent", (event) ->
+                try
+                    event._type.should.equal('hashchange')
+                    event.newURL.should.equal("http://www.example.com/")
+                    browser.window.dispatchEvent.restore()
+                    done()
+                catch e
+                    done(e)
+
+            browser.window.location = "http://www.example.com/"
+
+            mockBrowser.verify()
+
+    it "should not cause any change when assigned the same url", () ->
+        mockBrowser = sinon.mock(browser)
+        mockBrowser.expects("load").never()
+
+        browser.window.location = "http://www.example.com"
+
+        mockBrowser.verify()
+
+    it "should not cause a page load when assigned an empty string to any of its" +
+    " properties", () ->
+        mockBrowser = sinon.mock(browser)
+        mockBrowser.expects("load").never()
+
+        oldLocation = browser.window.location
+
+        browser.window.location['protocol'] = ""
+
+        browser.window.location.should.equal(oldLocation)
+
+        mockBrowser.verify()
+
+    describe "assign", () ->
+        it "should navigate to the given url", () ->
+            mockBrowser = sinon.mock(browser)
+            mockWindow  = sinon.mock(browser.window)
+            mockBrowser.expects("load").once()
+                .withExactArgs("http://www.example.com/newpage")
+
+            browser.window.location.assign("http://www.example.com/newpage")
+
+            mockBrowser.verify()
+            mockWindow.verify()
+
+    describe.skip "replace", () ->
+        it "should remove the current page from session history and navigate" +
+            " to the given page"
+
+    describe.skip "reload", () ->
+        it "should reload the current page"

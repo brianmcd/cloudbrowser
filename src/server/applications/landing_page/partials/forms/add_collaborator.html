@@ -1,0 +1,41 @@
+<!-- Add Collaborator Form -->
+<div class="row-fluid">
+    <div class="span10 modal fixed-modal"> 
+        <div class="modal-header">
+            <!-- Close button -->
+            <button type="button" class="close" ng-click="closeShareForm()">
+                ×
+            </button>
+            <!-- Close button -->
+            <h4>Add Collaborator to {{shareForm.entity.name}}</h4>
+        </div>
+
+        <div class="modal-body">
+        <!-- 
+            <input type="text" class="input" data-provide="typeahead"
+            cb-typeahead ng-model="shareForm.collaborator"
+            placeholder="Collaborator's Email ID">
+
+        -->
+            <!-- Form -->
+            <!-- cb -->
+            <input type="text" class="input" data-provide="typeahead"
+            ng-model="shareForm.collaborator"
+            placeholder="Collaborator's Email ID">
+
+            <select ng-model="shareForm.role" class="input-small"
+                ng-options="role.name for role in shareForm.entity.roles">
+            </select>
+            <!-- Form -->
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-primary"
+            ng-disabled="!shareForm.collaborator"
+            ng-click="addCollaborator()">
+                Add
+            </button>
+        </div>
+    </div>
+    <div class="span2"></div>
+</div>
+<!-- Add Collaborator Form -->

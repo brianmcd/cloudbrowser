@@ -8,7 +8,7 @@ Components           = require('./components')
 test_env = !!process?.env?.TESTS_RUNNING
 
 class ClientEngine
-    constructor : (@window, @document) ->
+    constructor : (@host, @window, @document) ->
         @config = {}
         @compressor = new Compressor()
         @socket = @connectSocket()
@@ -22,28 +22,76 @@ class ClientEngine
         @nodes = null
 
         @renderingPaused = false
+        
+        @customCssAttrHldrs = {}
+
+        #
+        # define a custom CSS attribute that, when set, uses jQuery to achieve
+        # a particular layout. In this test case, placing one element
+        # relative to another using $.css statements for direct placement,
+        # based on how the browser happened to have laid out those objects.
+        # 
+        @addCustomCssAttrHldr '-cloudbrowser-relative-position', (target, position) ->
+            prevSibling = $(target).prev()
+            pos = $.extend {}, prevSibling.position(), {height: prevSibling[0].offsetHeight}
+            positionComponents = position.split('-')
+            top  = 0; left = 0
+
+            switch positionComponents[0]
+                when "bottom"
+                    top = pos.top + pos.height
+                when "top"
+                    top = pos.top - $(target).outerHeight()
+            switch positionComponents[1]
+                when "left"
+                    left = pos.left
+                when "right"
+                    left = pos.left + prevSibling.outerWidth() - $(target).outerWidth()
+
+            $(target).insertAfter(prevSibling).css(
+                top  : top
+                left : left
+            ).show()
 
     connectSocket : () ->
         socket = null
+        encodedUrl = encodeURIComponent(@window.location.href)
+        # to let the master know how to route this request
+        console.log "referer #{encodedUrl}"
         if test_env
             # We need to clear out the require cache so that each TestClient
             # gets its own Socket.IO client
             io = noCacheRequire('socket.io-client', /socket\.io-client/)
-            socket = io.connect('http://localhost:3000')
+            # TODO : Create a user session corresponding to cookie in the db
+            # to test apps with authentication interface enabled.
+            # Patching XmlHttpRequest to send cookie as part of the header
+            io.util.request = (xdomain) ->
+                XMLHttpRequest = require('xmlhttprequest').XMLHttpRequest
+                xhr = new XMLHttpRequest()
+                xhr.setRequestHeader("cookie", "cb.id=testCookie;path=/")
+                return xhr
+            socket = io.connect(@host, { query: "referer=#{encodedUrl}" })
+            
             # socket.io-client for node doesn't seem to emit 'connect'
             process.nextTick () =>
-                @socket.emit('auth', @window.__appID, @window.__envSessionID)
+                @socket.emit('auth', @window.__appID, @window.__appInstanceID, @window.__envSessionID)
                 @eventMonitor = new EventMonitor(this)
             # If we're testing, expose a function to let the server signal when
             # a test is finished.
             socket.on 'TestDone', () =>
                 @window.testClient.emit('TestDone')
-        else
-            socket = @window.io.connect()
+        else 
+            socket = @window.io.connect(@host,
+                { query: "referer=#{encodedUrl}" }
+                )
+            socket.on 'error', (err) ->
+                console.log("Error:"+err)
             socket.on 'connect', () =>
-                console.log("Socket.IO connected...")
-                socket.emit('auth', @window.__appID, @window.__envSessionID)
+                console.log("Socket.IO connected")
+                socket.emit('auth', @window.__appID, @window.__appInstanceID, @window.__envSessionID)
                 @eventMonitor = new EventMonitor(this)
+            socket.on 'disconnect', () ->
+                console.log("Socket.IO disconnected")
         return socket
 
     disconnect : () ->
@@ -74,6 +122,12 @@ class ClientEngine
                         func.apply(this, arguments)
                         @window.testClient?.emit(name, arguments)
 
+    # Handler must take the target node and attribute value as arguments
+    addCustomCssAttrHldr : (attribute, handler) ->
+        if @customCssAttrHldrs[attribute]
+            throw new Error("Handler already exists for the custom css attribute #{attribute}")
+        @customCssAttrHldrs[attribute] = handler
+
 RPCMethods =
     SetConfig : (config) ->
         for own key, value of config
@@ -98,7 +152,9 @@ RPCMethods =
 
     DOMStyleChanged : (targetId, attribute, value) ->
         target = @nodes.get(targetId)
-        target.style[attribute] = value
+        if attribute of @customCssAttrHldrs
+            @customCssAttrHldrs[attribute](target, value)
+        else target.style[attribute] = value
 
     DOMPropertyModified : (targetId, property, value) ->
         target = @nodes.get(targetId)
@@ -174,6 +230,10 @@ RPCMethods =
 
     AddEventListener : (type) ->
         @eventMonitor.add(type)
+
+    Redirect : (URL) ->
+        console.log "redirect to #{URL}"
+        window.location = URL
        
     disconnect : () ->
         @socket.disconnect()

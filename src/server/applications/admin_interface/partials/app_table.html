@@ -1,0 +1,37 @@
+<table ng-show="apps.length" id="data-table" class="table table-bordered">
+    <thead>
+        <th class="align-left" ng-click="sortBy('mountPoint')">
+            MountPoint
+        </th>
+        <th ng-click="sortBy('userMgr.items.length')">
+            <i class="icon-group" title="Number of Users"></i>
+        </th>
+        <th ng-click="sortBy('browserMgr.items.length')">
+            <i class="icon-file" title="Number of Instances"></i>
+        </th>
+        <th ng-click="sortBy('isPublic')">
+            <i class="icon-eye-open" title="Privacy"></i>
+        </th>
+        <th ng-click="sortBy('mounted')">
+            <i class="icon-off" title="State"></i>
+        </th>
+        <th ng-click="sortBy('isAuthEnabled')">
+            <i class="icon-lock" title="Authentication"></i>
+        </th>
+    </thead>
+    <tbody>
+        <tr ng-repeat="app in apps|filter:search|orderBy:predicate:reverse"
+            ng-click="select(app)"
+            ng-class="getAppClass(app)">
+            <td class="align-left">{{app.name}}</td>
+            <td>{{app.userMgr.items.length}}</td>
+            <td>{{app.browserMgr.items.length}}</td>
+            <td ng-show='app.isPublic'>Public</td>
+            <td ng-hide='app.isPublic'>Private</td>
+            <td ng-show='app.mounted'>Mounted</td>
+            <td ng-hide='app.mounted'>Disabled</td>
+            <td ng-show='app.isAuthEnabled'>On</td>
+            <td ng-hide='app.isAuthEnabled'>Off</td>
+        </tr> 
+    </tbody>
+</table>

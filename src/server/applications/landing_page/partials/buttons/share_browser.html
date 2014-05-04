@@ -1,0 +1,21 @@
+<!-- Share VBs -->
+<div class="btn-group margin-bottom">
+    <a class="btn dropdown-toggle"
+    data-toggle="dropdown"
+    ng-class="{true:'disabled'}[isDisabled('share')]">
+        Share <i class="icon-group"></i>
+        <span class="caret" ></span>
+    </a>
+    <ul class="dropdown-menu" style="text-align:left">
+        <li><a tabindex="-1"
+        ng-click="openAddReaderWriterForm()">
+            Grant Read/Write Access
+        </a></li>
+
+        <li><a tabindex="-1"
+        ng-click="openAddOwnerForm()">
+            Share Ownership
+        </a></li>
+    </ul>
+</div>
+<!-- Share VBs -->

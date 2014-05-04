@@ -1,3 +1,5 @@
+Fs = require('fs')
+
 exports.dfs = dfs = (node, filter, visit) ->
     if filter(node)
         visit(node)
@@ -47,3 +49,57 @@ exports.noCacheRequire = (name, regExp) ->
     for entry in Object.keys(reqCache)
         delete reqCache[entry] if regExp.test(entry)
     return rv
+
+
+logConfigFileError = (path, content) ->
+    console.log "Parse error in file #{path}"
+    console.log "The file's content is:"
+    console.log fileContent
+
+# Parsing the json file into opts
+exports.getConfigFromFile = (path) ->
+    try
+        fileContent = Fs.readFileSync(path, {encoding:"utf8"})
+        content = JSON.parse(fileContent)
+    catch e
+        logConfigFileError path, fileContent
+        throw e
+    return content
+
+# json file to object, the callback is defined in async.waterfall style
+exports.readJsonFromFileAsync = (path,callback) ->
+    readJsonError = (err, fileContent) ->
+        logConfigFileError path, fileContent
+        callback err
+
+    readJsonDataHandler = (err, data) ->
+        if err
+            readJsonError err
+        else
+            try
+                obj = JSON.parse(data)
+                callback null, obj
+            catch e
+                readJsonError e, data
+
+    Fs.readFile path, {encoding : "utf8"}, readJsonDataHandler
+
+exports.parseAttributePath = (obj, attr) ->
+    attrPaths = attr.split('.')
+    lastAttrPath = attrPaths[attrPaths.length-1]
+    attrPaths = attrPaths[0...-1]
+    for attrPath in attrPaths
+        if not obj[attrPath]?
+            console.log "cannot find #{attr} in obj"
+            return null
+        obj = obj[attrPath]
+    return {
+        obj : obj
+        attr : lastAttrPath
+        dest : obj[lastAttrPath]
+    }
+
+exports.toCamelCase = (str)->
+    return str.charAt(0).toUpperCase() + str.slice(1)
+
+            

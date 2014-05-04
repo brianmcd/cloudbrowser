@@ -1,0 +1,5 @@
+{
+    "entryPoint": "/home/gback/cloudbrowser-deployment/examples/doodle/doodleko.html",
+    "applicationStateFile": "",
+    "instantiationStrategy": "singleUserInstance"
+}

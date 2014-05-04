@@ -1,0 +1,36 @@
+<button class="btn btn-mini btn-inverse"
+    ng-click="selectedApp.appInstanceMgr.visible = !selectedApp.appInstanceMgr.visible">
+    <i class="icon-chevron-up" ng-show="selectedApp.appInstanceMgr.visible"></i>
+    <i class="icon-chevron-down" ng-hide="selectedApp.appInstanceMgr.visible"></i>
+</button>
+<span><strong>Application Instances</strong></span>
+<table ng-show="selectedApp.appInstanceMgr.visible" class="table table-bordered">
+    <thead>
+        <th>ID</th>
+        <th>Name</th>
+        <th>Date Created</th>
+        <th>Owner</th>
+        <th>Reader-Writers</th>
+        <th>Browsers</th>
+    </thead>
+    <tbody>
+        <tr ng-repeat="appInstance in selectedApp.appInstanceMgr.items">
+            <td>{{appInstance.id}}</td>
+            <td>{{appInstance.name}}</td>
+            <td>{{appInstance.dateCreated}}</td>
+            <td>{{appInstance.owner}}</td>
+            <td>
+                <span ng-repeat="user in appInstance.readerwriters">
+                    {{user}}
+                    <br ng-show="!$last">
+                </span>
+            </td>
+            <td>
+                <span ng-repeat="browserID in appInstance.browserIDMgr.items">
+                    {{browserID}}
+                    <br ng-show="!$last">
+                </span>
+            </td>
+        </tr>
+    </tbody>
+</table>

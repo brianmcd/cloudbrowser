@@ -1,0 +1,52 @@
+<button class="btn btn-mini btn-inverse"
+    ng-click="selectedApp.browserMgr.visible = !selectedApp.browserMgr.visible">
+    <i class="icon-chevron-up" ng-show="selectedApp.browserMgr.visible"></i>
+    <i class="icon-chevron-down" ng-hide="selectedApp.browserMgr.visible"></i>
+</button>
+<span><strong>Browsers</strong></span>
+<table ng-show="selectedApp.browserMgr.visible" class="table table-bordered">
+    <thead>
+        <th>ID</th>
+        <th>Name</th>
+        <th>Creator</th>
+        <th>Owners</th>
+        <th>Readers</th>
+        <th>Reader-Writers</th>
+        <th>Connected</th>
+        <th>Date Created</th>
+        <th>Application Instance</th>
+    </thead>
+    <tbody>
+        <tr ng-repeat="browser in selectedApp.browserMgr.items">
+            <td>{{browser.id}}</td>
+            <td>{{browser.name}}</td>
+            <td>{{browser.creator}}</td>
+            <td>
+                <span ng-repeat="user in browser.owners">
+                    {{user}}
+                    <br ng-show="!$last">
+                </span>
+            </td>
+            <td>
+                <span ng-repeat="user in browser.readers">
+                    {{user}}
+                    <br ng-show="!$last">
+                </span>
+            </td>
+            <td>
+                <span ng-repeat="user in browser.readerwriters">
+                    {{user}}
+                    <br ng-show="!$last">
+                </span>
+            </td>
+            <td>
+                <span ng-repeat="user in browser.connectedClientMgr.items">
+                    {{user.email}} ({{user.address}})
+                    <br ng-show="!$last">
+                </span>
+            </td>
+            <td>{{browser.dateCreated}}</td>
+            <td>{{browser.appInstanceID}}</td>
+        </tr>
+    </tbody>
+</table>

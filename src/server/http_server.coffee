@@ -1,101 +1,104 @@
+Fs             = require('fs')
 express        = require('express')
 {EventEmitter} = require('events')
 ZLib           = require('zlib')
 Path           = require('path')
 Uglify         = require('uglify-js')
-Browserify     = require('browserify')
+Passport       = require('passport')
+lodash = require('lodash')
 
+###
+browserify will include a lower version of coffee-script wich will register it
+to handle .coffee files, we do not want that 
+###
+Browserify    = require('browserify')
+require('coffee-script')
+
+
+# Dependency for digest based authentication
+#Auth = require('http-auth')
 class HTTPServer extends EventEmitter
-    constructor : (@config, callback) ->
-        server = @server = express.createServer()
-        @clientEngineModified = new Date().toString()
-        @clientEngineJS = null
-        @mountedBrowserManagers = {}
+    __r_skip : ['server']
+    constructor : (dependencies, callback) ->
+        @config = dependencies.config.serverConfig
+        {@sessionManager, @database, @permissionManager} = dependencies
+        @server = express.createServer()
 
-        server.configure () =>
+        oldget = @server.get
+        @server.get = () =>
+            args = arguments
+            console.log "setting route to #{args[0]}"
+            oldget.apply @server, args
+
+        @server.configure () =>
             if !process.env.TESTS_RUNNING
-                server.use(express.logger())
-            server.use(express.bodyParser())
-            server.use(express.cookieParser())
-            server.use(express.session({secret: 'change me please'}))
-            server.set('views', Path.join(__dirname, '..', '..', 'views'))
-            server.set('view options', {layout: false})
+                @server.use(express.logger())
+            @server.use(express.bodyParser())
+            # Note : Cookie parser must come before session middleware
+            # TODO : Change these secrets
+            @server.use(express.cookieParser('secret'))
+            # TODO : move this logic to session manager
+            @server.use express.session
+                store  : @database.mongoStore
+                secret : 'change me please'
+                key    : @config.cookieName
+            @server.set('views', Path.join(__dirname, '..', '..', 'views'))
+            @server.set('view options', {layout: false})
+            @server.use(Passport.initialize())
+            @server.on 'error', (e) ->
+                console.log "CloudBrowser: #{e.message}"
+                process.exit(1)
 
-        server.get '/clientEngine.js', (req, res) =>
-            res.statusCode = 200
-            res.setHeader('Last-Modified', @clientEngineModified)
-            res.setHeader('Content-Type', 'text/javascript')
-            if @config.compressJS
-                res.setHeader('Content-Encoding', 'gzip')
-            res.end(@clientEngineJS)
+        
+        @setupClientEngineRoutes()
+        
+        @server.listen(@config.port, (err) =>
+            callback err, this
+        )
 
-        if @config.compressJS
-            @gzipJS @bundleJS(), (js) =>
-                @clientEngineJS = js
-                server.listen(@config.port, callback)
+    setupClientEngineRoutes : () ->
+        @clientEngineModified = new Date().toString()
+        if @config.compressJS then @_gzipJS @_bundleJS(), (js) =>
+            @_clientEngineJS = js
         else
-            @clientEngineJS = @bundleJS()
-            server.listen(@config.port, callback)
-    
+            @_clientEngineJS = @_bundleJS()
+        @clientEngineHandler = lodash.bind(@_clientEngineHandler, this)
+        @mount('/clientEngine.js', @clientEngineHandler)
+
+    #should move it to a utility class
+    _gzipJS : (js, callback) ->
+        ZLib.gzip js, (err, data) ->
+            throw err if err
+            callback(data)
+
+    _bundleJS : () ->
+        b = Browserify
+            require : [Path.resolve(__dirname, '../client', 'client_engine')]
+            ignore : ['socket.io-client', 'weak', 'xmlhttprequest']
+            filter : (src) =>
+                if @config.compressJS then return Uglify(src)
+                else return src
+        return b.bundle()
+
+
+    _clientEngineHandler : (req, res, next) ->
+        res.statusCode = 200
+        res.setHeader('Last-Modified', @clientEngineModified)
+        res.setHeader('Content-Type', 'text/javascript')
+        if @config.compressJS then res.setHeader('Content-Encoding', 'gzip')
+        res.end(@_clientEngineJS)
+
+
     close : (callback) ->
         @server.close(callback)
         @emit('close')
 
-    # Sets up a server endpoint at mountpoint that serves browsers from the
-    # browsers BrowserManager.
-    setupMountPoint : (browsers, app) ->
-        {mountPoint} = browsers
-        @mountedBrowserManagers[mountPoint] = browsers
-        # Remove trailing slash if it exists
-        mountPointNoSlash = if mountPoint.indexOf('/') == mountPoint.length - 1
-            mountPoint.substring(0, mountPoint.length - 1)
-        else mountPoint
+    # mount (mountPoint, handlers...)
+    mount : (mountPoint, handlers...) ->
+        @server.get(mountPoint,handlers)
 
-        # Route to reserve a virtual browser.
-        # TODO: It would be nice to extract this, since it's useful just to
-        # provide endpoints for serving browsers without providing routes for
-        # creating them (e.g. browsers created by code).  Also, different
-        # strategies for creating browsers should be pluggable (e.g. creating
-        # a browser from a URL sent via POST).
-        @server.get mountPoint, (req, res) =>
-            id = req.session.browserID
-            if !id? || !browsers.find(id)
-                bserver = browsers.create(app)
-                id = req.session.browserID = bserver.id
-            res.writeHead 301,
-                {'Location' : "#{mountPointNoSlash}/browsers/#{id}/index.html",'Cache-Control' : "max-age=0, must-revalidate"}
-            res.end()
+    use : (middleware) ->
+        @server.use(middleware)
 
-        # Route to connect to a virtual browser.
-        @server.get "#{mountPointNoSlash}/browsers/:browserid/index.html", (req, res) ->
-            id = decodeURIComponent(req.params.browserid)
-            console.log "Joining: #{id}"
-            res.render 'base.jade',
-                browserid : id
-                appid : app.mountPoint
-
-        # Route for ResourceProxy
-        @server.get "#{mountPointNoSlash}/browsers/:browserid/:resourceid", (req, res) =>
-            resourceid = req.params.resourceid
-            decoded = decodeURIComponent(req.params.browserid)
-            bserver = browsers.find(decoded)
-            # Note: fetch calls res.end()
-            bserver?.resources.fetch(resourceid, res)
-
-    bundleJS : () ->
-        b = Browserify
-            require : [Path.resolve(__dirname, '..', 'client', 'client_engine')]
-            ignore : ['socket.io-client', 'weak']
-            filter : (src) =>
-                if @config.compressJS
-                    ugly = Uglify(src)
-                else
-                    src
-        return b.bundle()
-
-    gzipJS : (js, callback) ->
-        ZLib.gzip js, (err, data) ->
-            throw err if err
-            callback(data)
 
 module.exports = HTTPServer

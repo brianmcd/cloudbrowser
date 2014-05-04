@@ -1,0 +1,11 @@
+{
+    "isPublic": true,
+    "name": "MoveJS",
+    "owner": "ashimaathri@gmail.com",
+    "mountOnStartup": true,
+    "browserLimit": 0,
+    "description": "",
+    "mountPoint": "/movejs",
+    "authenticationInterface": false,
+    "collectionName": null
+}

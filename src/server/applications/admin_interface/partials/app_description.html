@@ -1,0 +1,12 @@
+<!-- Text Description -->
+<span ng-hide="selectedApp.editing">
+    {{selectedApp.description}}
+    <a ng-click="editDescription()">Edit</a>
+</span>
+<!-- Text Description -->
+
+<!-- Edit box for the description-->
+<textarea  type="text" class="span11" ng-show="selectedApp.editing"
+    cb-hasfocus="selectedApp.editing" ng-model="selectedApp.description">
+</textarea>
+<!-- Edit box for the description-->

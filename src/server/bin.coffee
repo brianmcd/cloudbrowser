@@ -97,6 +97,10 @@ opts = require('nomnom')
         full    : 'admin-interface'
         default : false
         help    : "Enable the admin interface."
+    .option 'authenticationInterface',
+        full    : 'authentication-interface'
+        default : false
+        help    : "Enable the authentication interface."
     .option 'simulateLatency',
         full    : 'simulate-latency'
         default : false

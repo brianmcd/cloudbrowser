@@ -68,15 +68,6 @@
      } else {
        return false;
      }
-@@ -1005,7 +999,7 @@
-     if (attribute) {
-       return attribute.value;
-     }
--    return "";
-+    return null;
-   },
- 
-   /* returns string */
 --- lib/jsdom/level2/events.js	2012-10-12 09:28:48.083147218 -0400
 +++ cloudbrowser-jsdom/lib/jsdom/level2/events.js	2012-10-11 15:47:59.959533215 -0400
 @@ -196,10 +196,9 @@
@@ -105,15 +96,6 @@
        if (url.hostname) {
          this.download(url, this.baseUrl(element._ownerDocument), this.enqueue(element, callback, full));
        }
-@@ -70,7 +67,7 @@
-         baseUrl      = document.URL;
- 
-     if (baseElements.length > 0) {
--      baseUrl = baseElements.item(0).href || baseUrl;
-+      baseUrl = baseElements.item(0).href;
-     }
- 
-     return baseUrl;
 @@ -143,7 +140,7 @@
      request.end();
    },

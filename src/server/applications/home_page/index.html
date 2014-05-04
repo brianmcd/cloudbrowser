@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html ng-app="CBHomePage">
+    <head>
+        <title>CloudBrowser - Home</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link rel="stylesheet" href="css/bootstrap.css">
+        <link rel="stylesheet" href="css/bootstrap-responsive.css">
+        <script src='js/angular.js'></script>
+        <script src='js/controller.js'></script>
+    </head>
+    <body>
+        <div class="container-fluid">
+            <div class="row-fluid">
+                <h2 class="page-header pagination-centered">
+                    CloudBrowser Applications
+                </h2>
+                <div class="span8 offset2" ng-controller="MainCtrl">
+                    <div class="well" ng-repeat="app in apps">
+                        <h4>
+                            <a ng-click="leftClick(app.url)">
+                                <u>{{app.name}}</u>
+                            </a>
+                        </h4> 
+                        <div>{{app.description}}</div>
+                        <br>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </body>
+</html>

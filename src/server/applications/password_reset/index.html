@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html ng-app="CBPasswordReset">
+    <head>
+        <title>CloudBrowser - Reset Password</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link rel="stylesheet" href="css/style.css">
+        <link rel="stylesheet" href="css/bootstrap.css">
+        <link rel="stylesheet" href="css/bootstrap-responsive.css">
+        <script type="text/javascript" src='js/angular.js'></script>
+        <script type="text/javascript" src='js/controller.js'></script>
+    </head>
+    <body>
+        <div class="container-fluid">
+            <div class="row-fluid">
+                <div class="span4 offset4" id="box" ng-controller="ResetCtrl">
+                    <h3 class="page-header pagination-centered">
+                        CloudBrowser Password Reset
+                    </h3>
+                    <form ng-submit="reset()">
+                        <div class="pagination-centered well well-small">
+                            Hi {{email}}. Enter your new password below.
+                        </div>
+                        <div class="control-group pagination-centered"
+                        ng-class="{true:'error'}[!!passwordError]">
+                            <div class="controls">
+                                <input class="span8" type="password"
+                                placeholder="New Password" ng-model="password">
+                                <span class="help-inline"
+                                ng-show="passwordError">
+                                    {{passwordError}}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="control-group pagination-centered"
+                        ng-class="{true:'error'}[password != vpassword]">
+                            <div class="controls">
+                                <input class="span8" type="password"
+                                placeholder="Retype New Password" ng-model="vpassword">
+                                <span class="help-inline"
+                                ng-show="password != vpassword">
+                                    Password's don't match!
+                                </span>
+                            </div>
+                        </div>
+                        <div class="control-group pagination-centered">
+                            <div class="controls">
+                                <button class="btn btn-primary" type="submit"
+                                ng-disabled="isDisabled || (password != vpassword)">
+                                    Reset
+                                </button>
+                                <br>
+                                <span class="text-success"
+                                ng-show="resetSuccess">
+                                    {{resetSuccess}}
+                                </span>
+                                <span class="text-error"
+                                ng-show="resetError">
+                                    {{resetError}}
+                                </span>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </body>
+</html>

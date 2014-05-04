@@ -1,0 +1,11 @@
+{
+    "isPublic": true,
+    "owner": "ashimaathri@gmail.com",
+    "browserLimit": 0,
+    "name": "Small Calendar",
+    "description": "",
+    "mountOnStartup": true,
+    "authenticationInterface": true,
+    "mountPoint": "/smallCalendar",
+    "collectionName": "smallCalendar.users"
+}

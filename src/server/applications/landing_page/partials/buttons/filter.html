@@ -1,0 +1,78 @@
+<div class="btn-group margin-bottom">
+    <a class="btn dropdown-toggle" data-toggle="dropdown">
+        Filter
+        <i class="icon-filter"></i>
+        <span class="caret"></span>
+    </a>
+    <ul class="dropdown-menu" style="text-align:left">
+        <li class="margin-left:3px">
+            <strong>Browsers</strong>
+        </li>
+        <li>
+            <a tabindex="-1" ng-click="filter.browsers = 'shared'">
+                Shared
+                <i class="icon icon-ok" ng-show="filter.browsers == 'shared'"></i>
+            </a>
+        </li>
+        <li>
+            <a tabindex="-1" ng-click="filter.browsers = 'notShared'">
+                Not shared 
+                <i class="icon icon-ok" ng-show="filter.browsers == 'notShared'"></i>
+            </a>
+        </li>
+        <li>
+            <a tabindex="-1" ng-click="filter.browsers = 'owned'">
+                Owned by me
+                <i class="icon icon-ok" ng-show="filter.browsers == 'owned'"></i>
+            </a>
+        </li>
+        <li>
+            <a tabindex="-1" ng-click="filter.browsers = 'notOwned'">
+                Not owned by me
+                <i class="icon icon-ok" ng-show="filter.browsers == 'notOwned'"></i>
+            </a>
+        </li>
+        <li>
+            <a tabindex="-1" ng-click="filter.browsers = 'all'">
+                All 
+                <i class="icon icon-ok" ng-show="filter.browsers == 'all'"></i>
+            </a>
+        </li>
+
+        <li class="divider"></li>
+        
+        <li class="margin-left:3px">
+            <strong>Application Instances</strong>
+        </li>
+        <li>
+            <a tabindex="-1" ng-click="filter.appInstances = 'shared'">
+                Shared
+                <i class="icon icon-ok" ng-show="filter.appInstances == 'shared'"></i>
+            </a>
+        </li>
+        <li>
+            <a tabindex="-1" ng-click="filter.appInstances = 'notShared'">
+                Not shared 
+                <i class="icon icon-ok" ng-show="filter.appInstances == 'notShared'"></i>
+            </a>
+        </li>
+        <li>
+            <a tabindex="-1" ng-click="filter.appInstances = 'owned'">
+                Owned by me
+                <i class="icon icon-ok" ng-show="filter.appInstances == 'owned'"></i>
+            </a>
+        </li>
+        <li>
+            <a tabindex="-1" ng-click="filter.appInstances = 'notOwned'">
+                Not owned by me
+                <i class="icon icon-ok" ng-show="filter.appInstances == 'notOwned'"></i>
+            </a>
+        </li>
+        <li>
+            <a tabindex="-1" ng-click="filter.appInstances = 'all'">
+                All 
+                <i class="icon icon-ok" ng-show="filter.appInstances == 'all'"></i>
+            </a>
+        </li>
+    </ul>
+</div>

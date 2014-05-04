@@ -1,5 +1,5 @@
 (function () {
-  var user = vt.local.user;
+  var user = cloudbrowser.app.local.user;
   var viewModel = {
     myChats        : user.joinedRooms,
     activeRoom     : user.activeRoom,

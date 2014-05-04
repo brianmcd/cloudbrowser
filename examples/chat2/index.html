@@ -4,16 +4,16 @@
     <link rel="stylesheet" href="css/chat.css">
     <script>
         $(function () {
-            vt.pageMan = new vt.PageManager(document.getElementById('main'));
+            cloudbrowser.pageMan = new cloudbrowser.app.PageManager(document.getElementById('main'));
             var vm = {
-                pageMan : vt.pageMan,
+                pageMan : cloudbrowser.pageMan,
                 activePage : ko.observable()
             };
-            vt.pageMan.on('change', function (name) {
+            cloudbrowser.pageMan.on('change', function (name) {
                 vm.activePage(name);
             });
-            vt.pageMan.once('load', function () {
-                vt.pageMan.swap('home');
+            cloudbrowser.pageMan.once('load', function () {
+                cloudbrowser.pageMan.swap('home');
                 ko.applyBindings(vm, document.getElementById('navbar'));
             });
         });

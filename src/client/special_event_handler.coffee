@@ -8,6 +8,9 @@ class SpecialEventHandler
         @_queuedKeyEvents = []
 
     click : (remoteEvent, clientEvent, id) ->
+        # Allow the default action for input type file
+        if clientEvent.target.getAttribute('type') is 'file' then return
+
         clientEvent.preventDefault()
         @socket.emit('processEvent',
                      remoteEvent,

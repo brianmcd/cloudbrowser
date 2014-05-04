@@ -1,5 +1,8 @@
-class Slider
+Component = require('./component')
+
+class Slider extends Component
     constructor : (@options, @rpcMethod, @container) ->
+        super
         @attrs = {}
 
         @container.get = (attr) =>
@@ -15,8 +18,5 @@ class Slider
         @container.setValue = (val) =>
             @attrs.value = val
             @rpcMethod('setValue', [val])
-
-    getRemoteOptions : () ->
-        @options
 
 module.exports = Slider

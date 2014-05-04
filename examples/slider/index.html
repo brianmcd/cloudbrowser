@@ -1,0 +1,40 @@
+<html>
+    <head>
+        <script>
+            window.addEventListener('load', function () {
+                var currentVB = cloudbrowser.currentBrowser
+                var vm = {
+                    xSliderVal : ko.observable(),
+                    ySliderVal : ko.observable()
+                };
+                ko.applyBindings(vm);
+                var xSliderDiv = document.getElementById('xSlider');
+                var xSlider = currentVB.createComponent('slider', xSliderDiv)
+                xSlider.addEventListener('slider:valueChange', function (e) {
+                    vm.xSliderVal(e.info.newVal);
+                });
+                var ySliderDiv = document.getElementById('ySlider');
+                var ySlider = currentVB.createComponent('slider', ySliderDiv, {
+                    axis : 'y'
+                });
+                ySlider.addEventListener('slider:valueChange', function (e) {
+                    vm.ySliderVal(e.info.newVal);
+                });
+                setTimeout(function () {
+                    xSlider.setValue(50);
+                    ySlider.setValue(75);
+                }, 1000);
+
+                setInterval(function () {
+                    console.log("xSlider.get('value'): " + xSlider.get('value'));
+                }, 100);
+            });
+        </script>
+    </head>
+    <body>
+        <input data-bind='value: xSliderVal'></input>
+        <div id='xSlider'></div>
+        <input data-bind='value: ySliderVal'></input>
+        <div id='ySlider'></div>
+    </body>
+</html>

@@ -1,14 +1,27 @@
+# Must include this file in all test suite files
 Browser          = require('../src/server/browser')
 Lists            = require('../src/shared/event_lists')
 {noCacheRequire} = require('../src/shared/utils')
-{InProcessBrowserManager} = require('../src/server/browser_manager')
+Path             = require('path')
+Async            = require('async')
 
+# Using 'should' style BDD assertions
+# It adds the 'should' method to Object.prototype
+chai      = require('chai')
+sinonChai = require('sinon-chai')
+should    = chai.should()
+chai.use(sinonChai)
 
-remoteBrowsers = new InProcessBrowserManager('/remote_browsers')
-global.server.httpServer.setupMountPoint(remoteBrowsers)
-
-exports.createRemoteBrowserServer = (url) ->
-    return remoteBrowsers.create(url)
+exports.createBrowser = (fileName) ->
+    if not fileName then fileName = "index.html"
+    path = Path.resolve(__dirname, 'files', fileName)
+    browser = new Browser(1, {}, {})
+    app =
+        entryURL : () -> return path
+        getMountPoint : () -> return "index"
+    
+    browser.load(app)
+    return browser
     
 exports.createEmptyWindow = (callback) ->
     browser = new Browser('browser1', global.defaultApp)
@@ -28,4 +41,4 @@ exports.fireEvent = (browser, type, node) ->
     node.dispatchEvent(ev)
 
 exports.getFreshJSDOM = () ->
-    return noCacheRequire('jsdom-nocache')
+    return noCacheRequire('jsdom')

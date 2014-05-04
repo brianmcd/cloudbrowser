@@ -1,0 +1,108 @@
+<table class="table table-bordered table-hover">
+    <!-- Browser Table Headings -->
+    <thead>
+        <!-- Browser Name -->
+        <th>
+            <span ng-click="sortBy('name')" class="pointer">
+                View Name
+            </span>
+            <!-- Sort Arrows -->
+            <span class="icon-large">
+                <i class="icon-caret-down" ng-show="showDownArrow('name')"></i>
+                <i class="icon-caret-up" ng-show="showUpArrow('name')"></i>
+            </span>
+            <!-- Sort Arrows -->
+        </th>
+        <!-- Browser Name -->
+
+        <!-- Browser Date Created -->
+        <th>
+            <span ng-click="sortBy('dateCreated')" class="pointer">
+                Created
+            </span>
+            <!-- Sort Arrows -->
+            <span class="icon-large">
+                <i class="icon-caret-down" ng-show="showDownArrow('name')"></i>
+                <i class="icon-caret-up" ng-show="showUpArrow('name')"></i>
+            </span>
+            <!-- Sort Arrows -->
+        </th>
+        <!-- Browser Date Created -->
+
+        <!-- Sharing Details -->
+        <th>Sharing Details</th>
+        <!-- Sharing Details -->
+    </thead>
+    <!-- Browser Table Headings -->
+
+    <!-- Browser Table Body -->
+    <tbody>
+        <!-- Browser -->
+        <tr ng-repeat="browser in browsers | permissionFilter:{type:filter.browsers, user:user} | orderBy:predicate:reverse"
+        ng-controller="BrowserCtrl">
+            <!-- Name -->
+            <td>
+                <span ng-hide="isEditing()" ng-click="rename()"
+                class="pointer">
+                    {{browser.name}}
+                </span>
+
+                <!-- Rename input -->
+                <input ng-show="isEditing()" cb-hasfocus="browser.editing"
+                type="text" class="span11" ng-model="browser.name">
+                <!-- Rename input -->
+
+                <!-- Browser Actions -->
+                <span class="icon icon-large">
+                    <i class="icon-pencil text-warning visibleOnHover enlargeOnHover pointer"
+                        ng-click="rename()"></i>
+                    <i class="icon-trash text-error visibleOnHover enlargeOnHover pointer"
+                        ng-click="tryToRemove(browser, 'removeBrowser')"></i>
+                    <i class="icon-group text-success visibleOnHover enlargeOnHover pointer"
+                        ng-click="openShareForm(browser)"></i>
+                    <i class="icon-link text-info visibleOnHover enlargeOnHover pointer"
+                        ng-click="showLink(browser)"></i>
+                </span>
+                <!-- Browser Actions -->
+
+                <!-- Link to browser -->
+                <a ng-click="redirect()" class="pull-right">
+                    <i class="icon icon-external-link"></i>
+                </a>
+                <!-- Link to browser -->
+            </td>
+            <!-- Name -->
+
+            <!-- Date Created -->
+            <td> {{browser.dateCreated}} </td>
+            <!-- Date Created -->
+
+            <!-- Shared with -->
+            <td>
+                <!-- Owners -->
+                <div ng-repeat="owner in browser.owners">
+                    {{owner}} 
+                    <small class="muted"> owner </small>
+                </div>
+                <!-- Owners -->
+
+                <!-- Collaborators -->
+                <div ng-repeat="collab in browser.readerwriters">
+                    {{collab}}
+                    <small class="muted"> readerwriter </small>
+                </div>
+                <!-- Collaborators -->
+
+                <!-- Readers -->
+                <div ng-repeat="reader in browser.readers">
+                    {{reader}}
+                    <small class="muted"> reader </small>
+                </div>
+                <!-- Collaborators -->
+            </td>
+            <!-- Shared with -->
+        </tr> 
+        <!-- Browser -->
+    </tbody>
+    <!-- Browser Table Body -->
+</table>

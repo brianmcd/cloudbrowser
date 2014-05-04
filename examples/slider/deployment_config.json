@@ -1,0 +1,11 @@
+{
+    "isPublic": true,
+    "owner": "ashimaathri@gmail.com",
+    "name": "Slider",
+    "browserLimit": 0,
+    "description": "",
+    "mountOnStartup": false,
+    "mountPoint": "/slider",
+    "authenticationInterface": false,
+    "collectionName": null
+}

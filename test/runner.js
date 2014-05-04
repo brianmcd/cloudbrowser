@@ -1,30 +1,21 @@
 #!/usr/bin/env node
-require('coffee-script');
+require('coffee-script-mapped');
 
 process.env.TESTS_RUNNING = true;
 
 var Path        = require('path'),
-    Application = require('../src/server/application'),
     Server      = require('../src/server'),
     NodeUnit    = require('nodeunit'),
-    Reporter    = NodeUnit.reporters.default;
+    Reporter    = NodeUnit.reporters.default,
 
 // Whether or not to close the server after tests are done.
 dontClose = (process.argv[3] == 'dontclose')
 
-global.defaultApp = new Application({
-    // Basically an empty HTML doc
-    entryPoint : Path.resolve(__dirname, 'files', 'index.html'),
-    mountPoint : '/',
-    staticDir  : Path.resolve(__dirname, 'files')
-});
+var projectRoot = process.argv[1].split('/');
+projectRoot.pop();projectRoot.pop()
+projectRoot = projectRoot.join("/");
 
-console.log("Starting server...");
-var s = global.server = new Server({
-    defaultApp : global.defaultApp,
-    test_env: true,
-    debugServer : false
-});
+var s = global.server = new Server({test_env:true, compression:false, port:4000}, [], projectRoot)
 
 NodeUnit.once('done', function () {
     console.log("Done running tests.");
@@ -39,13 +30,12 @@ NodeUnit.once('done', function () {
 var tests = [ 
     'shared/tagged_node_collection.coffee',
     'integration.coffee',
-    'knockout.coffee',
-    'server/serializer.coffee',
     'server/advice.coffee',
+    'server/serializer.coffee',
     'server/browser.coffee',
-    'server/location.coffee',
     'server/resource_proxy.coffee',
-    'server/XMLHttpRequest.coffee'
+    'server/location.coffee'
+    /*'server/XMLHttpRequest.coffee'*/
 ];
 
 var cwd = process.cwd();

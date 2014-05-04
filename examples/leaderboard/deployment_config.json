@@ -1,0 +1,11 @@
+{
+    "isPublic": true,
+    "owner": "ashimaathri@gmail.com",
+    "name": "LeaderBoard",
+    "browserLimit": 0,
+    "description": "A simple leaderboard app",
+    "mountOnStartup": true,
+    "mountPoint": "/leaderboard",
+    "authenticationInterface": false,
+    "collectionName": "leaderboard.users"
+}

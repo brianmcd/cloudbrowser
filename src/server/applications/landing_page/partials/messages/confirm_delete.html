@@ -1,0 +1,12 @@
+<!-- Delete Confirmation -->
+<div class="alert alert-warn">
+    <button type="button" class="close" ng-click="confirmDelete.entityName=null">
+        &times;
+    </button>
+    <strong>Warning!</strong>
+    This will permanently remove {{confirmDelete.entityName}}.
+    <button class="btn btn-danger" ng-click="confirmDelete.remove()">
+        Continue
+    </button>
+</div>
+<!-- Delete Confirmation -->

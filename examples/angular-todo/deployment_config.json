@@ -1,0 +1,11 @@
+{
+    "authenticationInterface": true,
+    "name": "Another ToDo App",
+    "description": "A To Do application written in AngularJS",
+    "browserLimit": 0,
+    "isPublic": true,
+    "owner": "godmar@gmail.com",
+    "mountOnStartup": true,
+    "collectionName": "angular-todo.users",
+    "mountPoint": "/angular-todo"
+}
