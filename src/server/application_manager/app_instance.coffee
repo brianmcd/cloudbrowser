@@ -25,6 +25,7 @@ class AppInstance extends EventEmitter
         , @dateCreated,
         @server } = options
         {@uuidService} = @server
+        @workerId = @server.config.id
         if not @dateCreated then @dateCreated = new Date()
         if owner?
             @owner = if owner instanceof User then owner else new User(owner._email)

@@ -242,8 +242,14 @@ class BaseApplication extends EventEmitter
         return routes.redirect(res, 
                 routes.buildBrowserPath(@mountPoint, appInstance.id, bserver.id))
 
-    mount : () ->
+    mount : (callback) ->
         @mounted = true
+        @_masterApp.mount(callback)
+        
+
+    disable : (callback) ->
+        @mounted = false
+        @_masterApp.disable(callback)
 
     # this method query the master for all the browsers
     getAllBrowsers : (callback) ->
@@ -300,7 +306,19 @@ class BaseApplication extends EventEmitter
         return [@getOwner()]
     
     closeBrowser : (vbrowser) ->
-        vbrowser.close()       
+        vbrowser.close()
+
+    makePublic: (callback)->
+        @_masterApp.setAppPublic(true, callback)
+
+    makePrivate: (callback)->
+        @_masterApp.setAppPublic(false, callback)  
+
+    enableAuthentication : (callback)->
+        @_masterApp.setAuthenticationInterface(true, callback)
+
+    disableAuthentication : (callback)->
+        @_masterApp.setAuthenticationInterface(false, callback)        
 
     # for single instance
     createAppInstance : (callback) ->

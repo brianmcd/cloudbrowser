@@ -34,6 +34,16 @@ routers = {
             return 0 - element._mountPoint.length
         )
 
+    removeRoute : (appInfo)->
+        {mountPoint} = appInfo
+        if @routersMap[mountPoint]?
+            delete @routersMap[mountPoint]?
+            arr = []
+            for i in @array
+                if i._mountPoint isnt mountPoint
+                    arr.push(i)
+            @array = arr
+
     getRequestAppInfo: (path) ->
         matchResult = null
         for r in @array
@@ -100,6 +110,9 @@ class WokerManager
 
     setupRoute : (application) ->
         routers.addRoute(application)
+
+    removeRoute : (application) ->
+        routers.removeRoute(application)
    
     getWorkerByAppInstanceId : (appInstanceId) ->
         appInstance = @appInstanceMap[appInstanceId]

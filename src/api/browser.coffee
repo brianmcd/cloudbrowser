@@ -64,12 +64,15 @@ class Browser
     ###*
         Gets the ID of the instance.
         @method getID
-        @return {Number}
+        @return {String}
         @instance
         @memberOf Browser
     ###
     getID : () ->
         return _pvts[@_idx].bserver.id
+
+    getWorkerID : () ->
+        return _pvts[@_idx].bserver.workerId
 
     ###*
         Gets the url of the instance.

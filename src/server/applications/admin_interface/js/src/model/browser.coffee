@@ -4,6 +4,7 @@
 class Browser
     constructor : (browserConfig, format) ->
         @id            = browserConfig.getID()
+        @workerId      = browserConfig.getWorkerID()
         @api           = browserConfig
         @name          = browserConfig.getName()
         @dateCreated   = format.date(browserConfig.getDateCreated())

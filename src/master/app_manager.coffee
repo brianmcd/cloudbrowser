@@ -50,6 +50,13 @@ class Application extends EventEmitter
         
         @attrMaps = [
             {
+                attr : 'config.deploymentConfig.authenticationInterface'
+                getter : 'isAuthConfigured'
+            },
+            {
+                attr : 'config.deploymentConfig.mountOnStartup'
+            },
+            {
                 attr : 'config.deploymentConfig.description'
             },
             {
@@ -112,8 +119,7 @@ class Application extends EventEmitter
             return false
         parseResult.obj[parseResult.attr] = newVal
         return true
-
-            
+           
 
     _addAppInstance: (appInstance) ->
         @_appInstanceMap[appInstance.id] = appInstance
@@ -133,25 +139,21 @@ class Application extends EventEmitter
         console.log "#{__filename}: app #{@mountPoint} listen #{eventObj.name}"
         @on(eventObj.name, eventObj.callback)
         callback?(null)
+
+    mount : (callback)->
+        @mounted = true
+        @setMountOnStartup(true)
+
+    disable : (callback)->
+        @mounted = false
+        @setMountOnStartup(false)
+        
    
     isOwner: (user, callback) ->
         eamil = if user._email? then user._email else user
         result = email is @config.deploymentConfig.owner
         callback null, result
         
-    isAppPublic : (callback) ->
-        callback null, @isPublic 
-
-    makePublic : (callback) ->
-        @isPublic = true
-        callback null
-
-    makePrivate : (callback) ->
-        @isPublic = false
-        callback null
-
-    isAuthConfigured : (callback) ->
-        callback null, @authenticationInterface
 
     getAppInstance : (callback) ->
         # get the only app instance, for single instance apps
@@ -405,6 +407,7 @@ class AppManager
     getAllApps : (callback)->
         callback null, @_applications
 
+    # end point for workers to register itself and get app configs
     registerWorker : (worker, callback) ->
         @_workerManager.registerWorker(worker, (err)=>
             return callback(err) if err

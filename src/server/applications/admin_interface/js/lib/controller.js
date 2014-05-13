@@ -119,6 +119,7 @@
             addBrowser(app, browserConfig);
           }
         }
+        $scope.safeApply(function() {});
         if (callback != null) {
           return callback(null);
         }
@@ -167,6 +168,9 @@
       removeBrowser = function(app, browserID) {
         var appInstance, browser, list, listName, role, user, _results;
         browser = app.browserMgr.remove(browserID);
+        if (!browser) {
+          return;
+        }
         if (browser.appInstanceID) {
           appInstance = app.appInstanceMgr.find(browser.appInstanceID);
           appInstance.browserIDMgr.remove(browser.id);
@@ -197,6 +201,7 @@
           appInstanceConfig = appInstanceConfigs[_i];
           addAppInstance(app, appInstanceConfig);
         }
+        $scope.safeApply(function() {});
         return callback(null);
       };
       addAppInstance = function(app, appInstanceConfig) {
@@ -328,7 +333,7 @@
         });
       };
       serverConfig.addEventListener("addApp", function(appConfig) {
-        if (appConfig.isOwner()) {
+        if (appConfig.isOwner() && appConfig.isStandalone()) {
           return addApp(appConfig);
         }
       });
@@ -370,7 +375,9 @@
           } else {
             for (_i = 0, _len = appConfigs.length; _i < _len; _i++) {
               appConfig = appConfigs[_i];
-              addApp(appConfig);
+              if (appConfig.isStandalone()) {
+                addApp(appConfig);
+              }
             }
             return $scope.safeApply(function() {
               var _ref1;
@@ -419,19 +426,23 @@
         onMethod = toggleMethods[property].on;
         offMethod = toggleMethods[property].off;
         if ($scope.selectedApp[property]) {
-          err = $scope.selectedApp.api[offMethod]();
-          if (err) {
-            return console.log("" + offMethod + " - " + err);
-          } else {
-            return $scope.selectedApp[property] = false;
-          }
+          return $scope.selectedApp.api[offMethod](function(err) {
+            if (err) {
+              return console.log("" + offMethod + " - " + err);
+            }
+            return $scope.safeApply(function() {
+              return $scope.selectedApp[property] = false;
+            });
+          });
         } else {
-          err = $scope.selectedApp.api[onMethod]();
-          if (err) {
-            return console.log("" + onMethod + " - " + err);
-          } else {
-            return $scope.selectedApp[property] = true;
-          }
+          return err = $scope.selectedApp.api[onMethod](function(err) {
+            if (err) {
+              return console.log("" + onMethod + " - " + err);
+            }
+            return $scope.safeApply(function() {
+              return $scope.selectedApp[property] = true;
+            });
+          });
         }
       };
       $scope.sortBy = function(predicate) {

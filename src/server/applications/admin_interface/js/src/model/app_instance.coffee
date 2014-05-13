@@ -1,6 +1,7 @@
 class AppInstance
     constructor : (appInstanceConfig, @format) ->
         @id            = appInstanceConfig.getID()
+        @workerId      = appInstanceConfig.getWorkerID()
         @api           = appInstanceConfig
         @url           = appInstanceConfig.getURL()
         @name          = appInstanceConfig.getName()

@@ -57,12 +57,22 @@ class AppInstance
     ###*
         Gets the ID of the application state.
         @method getID
-        @return {Number}
+        @return {String}
         @instance
         @memberOf AppInstance
     ###
     getID : () ->
         return _pvts[@_idx].appInstance.id
+
+    ###*
+        Gets the worker id of the application state.
+        @method getID
+        @return {String}
+        @instance
+        @memberOf AppInstance
+    ###
+    getWorkerID : () ->
+        return _pvts[@_idx].appInstance.workerId
 
     ###*
         Gets the name of the application state.

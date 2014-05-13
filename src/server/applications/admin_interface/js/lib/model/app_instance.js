@@ -6,6 +6,7 @@
     function AppInstance(appInstanceConfig, format) {
       this.format = format;
       this.id = appInstanceConfig.getID();
+      this.workerId = appInstanceConfig.getWorkerID();
       this.api = appInstanceConfig;
       this.url = appInstanceConfig.getURL();
       this.name = appInstanceConfig.getName();

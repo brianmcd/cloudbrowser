@@ -204,6 +204,9 @@ class AppConfig
     isAppPublic : () ->
         return _pvts[@_idx].app.isAppPublic()
 
+    isStandalone : ()->
+        return not _pvts[@_idx].app.parentApp?
+
     ###*
         Sets the privacy of the application to public.
         @method makePublic

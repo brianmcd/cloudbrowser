@@ -242,7 +242,8 @@ CBAdminInterface.controller "AppCtrl", [
 
         # Application related events
         serverConfig.addEventListener "addApp", (appConfig) ->
-            if appConfig.isOwner() then addApp(appConfig)
+            if appConfig.isOwner() and appConfig.isStandalone()
+                addApp(appConfig)
 
         serverConfig.addEventListener "removeApp", (mountPoint) ->
             appManager.remove(mountPoint)
@@ -271,7 +272,9 @@ CBAdminInterface.controller "AppCtrl", [
             serverConfig.listApps ['perUser'], (err, appConfigs) ->
                 if err then console.log err
                 else
-                    addApp(appConfig) for appConfig in appConfigs
+                    for appConfig in appConfigs
+                        addApp(appConfig) if appConfig.isStandalone()
+                    
                     # Select the first app initially
                     $scope.safeApply -> $scope.selectedApp = $scope.apps?[0]
 
@@ -309,13 +312,20 @@ CBAdminInterface.controller "AppCtrl", [
             offMethod = toggleMethods[property].off
 
             if $scope.selectedApp[property]
-                err = $scope.selectedApp.api[offMethod]()
-                if err then console.log("#{offMethod} - #{err}")
-                else $scope.selectedApp[property] = false
+                $scope.selectedApp.api[offMethod]((err)->
+                    if err
+                        return console.log("#{offMethod} - #{err}")
+                    $scope.safeApply -> 
+                        $scope.selectedApp[property] = false
+                )
             else
-                err = $scope.selectedApp.api[onMethod]()
-                if err then console.log("#{onMethod} - #{err}")
-                else $scope.selectedApp[property] = true
+                err = $scope.selectedApp.api[onMethod]((err)->
+                    if err 
+                        return console.log("#{onMethod} - #{err}")
+                    $scope.safeApply -> 
+                        $scope.selectedApp[property] = true
+                )
+                
 
         $scope.sortBy = (predicate) ->
             $scope.predicate = predicate
