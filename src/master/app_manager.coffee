@@ -196,24 +196,28 @@ class Application extends EventEmitter
             else
                 appInstance._waitForCreate(callback)
         else
-            worker = @_workerManager.getMostFreeWorker()
-            appInstance = new AppInstance(@_workerManager, null, worker.id)
-            @_userToAppInstance[user] = appInstance
-            @_workerManager._getWorkerStub(worker, (err, stub)=>
+            @createUserAppInstance(user, callback)
+
+    createUserAppInstance : (user, callback) ->
+        worker = @_workerManager.getMostFreeWorker()
+        appInstance = new AppInstance(@_workerManager, null, worker.id)
+        @_userToAppInstance[user] = appInstance
+        @_workerManager._getWorkerStub(worker, (err, stub)=>
+            if err?
+                appInstance._notifyWaiting(err)
+                delete @_userToAppInstance[user]
+                return callback err
+            stub.appManager.createAppInstanceForUser(@mountPoint, user, (err, result)=>
                 if err?
                     appInstance._notifyWaiting(err)
                     delete @_userToAppInstance[user]
                     return callback err
-                stub.appManager.createAppInstanceForUser(@mountPoint, user, (err, result)=>
-                    if err?
-                        appInstance._notifyWaiting(err)
-                        delete @_userToAppInstance[user]
-                        return callback err
-                    appInstance._setRemoteInstance(result)
-                    @_addAppInstance(appInstance)
-                    callback null, result
-                )
+                appInstance._setRemoteInstance(result)
+                @_addAppInstance(appInstance)
+                callback null, result
             )
+        )
+
 
     getNewAppInstance : (callback) ->
         worker = @_workerManager.getMostFreeWorker()
