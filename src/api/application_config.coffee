@@ -140,7 +140,7 @@ class AppConfig
     _call : (method, args...) ->
 
         validMethods = [
-              'mount'
+              'enable'
             , 'disable'
             , 'setName'
             , 'makePublic'
@@ -213,8 +213,8 @@ class AppConfig
         @instance
         @memberOf AppConfig
     ###
-    makePublic : () ->
-        @_call('makePublic')
+    makePublic : (callback) ->
+        @_call('makePublic', callback)
 
     ###*
         Sets the privacy of the application to private.
@@ -222,8 +222,8 @@ class AppConfig
         @instance
         @memberOf AppConfig
     ###
-    makePrivate : () ->
-        @_call('makePrivate')
+    makePrivate : (callback) ->
+        @_call('makePrivate', callback)
 
     ###*
         Checks if the authentication interface has been enabled.
@@ -251,8 +251,8 @@ class AppConfig
         @instance
         @memberOf AppConfig
     ###
-    enableAuthentication : () ->
-        @_call('enableAuthentication')
+    enableAuthentication : (callback) ->
+        @_call('enableAuthentication', callback)
 
     ###*
         Disables the authentication interface.
@@ -260,8 +260,8 @@ class AppConfig
         @instance
         @memberOf AppConfig
     ###
-    disableAuthentication : () ->
-        @_call('disableAuthentication')
+    disableAuthentication : (callback) ->
+        @_call('disableAuthentication', callback)
         
     ###*
         Gets the instantiation strategy configured in the app_config.json file.
@@ -301,8 +301,8 @@ class AppConfig
         @instance
         @memberOf AppConfig
     ###
-    mount : () ->
-        @_call('mount')
+    mount : (callback) ->
+        @_call('enable', callback)
 
     ###*
         Unmounts the routes for the application
@@ -311,7 +311,7 @@ class AppConfig
         @memberOf AppConfig
     ###
     disable : (callback) ->
-        @_call('disable')
+        @_call('disable', callback)
         
     ###*
         Gets a list of all the registered users of the application. 

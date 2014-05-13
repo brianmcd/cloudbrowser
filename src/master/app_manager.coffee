@@ -95,7 +95,6 @@ class Application extends EventEmitter
                                 callback null
                             else
                                 callback new Error('cannot find #{attrPath}')
-                            return
                         if setted
                             console.log "app #{thisArg.mountPoint} change #{attrPath} to #{newVal}"
                             thisArg.emit('change',{
@@ -140,13 +139,13 @@ class Application extends EventEmitter
         @on(eventObj.name, eventObj.callback)
         callback?(null)
 
-    mount : (callback)->
+    enable : (callback)->
         @mounted = true
-        @setMountOnStartup(true)
+        @setMountOnStartup(true, callback)
 
     disable : (callback)->
         @mounted = false
-        @setMountOnStartup(false)
+        @setMountOnStartup(false, callback)
         
    
     isOwner: (user, callback) ->

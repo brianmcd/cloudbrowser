@@ -242,10 +242,12 @@ class BaseApplication extends EventEmitter
         return routes.redirect(res, 
                 routes.buildBrowserPath(@mountPoint, appInstance.id, bserver.id))
 
-    mount : (callback) ->
+    mount : () ->
         @mounted = true
-        @_masterApp.mount(callback)
         
+    enable : (callback)->
+        @mounted = true
+        @_masterApp.enable(callback)
 
     disable : (callback) ->
         @mounted = false
