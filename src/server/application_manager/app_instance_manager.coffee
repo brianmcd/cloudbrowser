@@ -27,11 +27,9 @@ class AppInstanceManager extends EventEmitter
 
 
     # actual create a new instance in local
-    # user is always string
     createAppInstance : (user, callback) ->
-        if user? and typeof user isnt 'string'
-            throw new Error("User #{user} should be string")
-
+        user = User.getEmail(user)
+        
         if @app.isSingleInstance()
             # check if we had it
             if not @appInstance?
@@ -106,15 +104,7 @@ class AppInstanceManager extends EventEmitter
         
     # called by api, need to register the new appInstance to master
     create :(user, callback) ->
-        @_createAppInstance(user, (err, instance)=>
-            return callback(err) if err?
-            @_masterApp.regsiterAppInstance(@server.config.id, instance, (err)=>
-                if err?
-                    @_removeAppInstance(instance)
-                    return callback err
-                callback err, instance
-            )
-        )
+        @_masterApp.createUserAppInstance(user, callback)
         
         
     _removeAppInstance : (appInstance) ->

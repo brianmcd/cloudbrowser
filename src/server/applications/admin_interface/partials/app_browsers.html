@@ -7,6 +7,7 @@
 <table ng-show="selectedApp.browserMgr.visible" class="table table-bordered">
     <thead>
         <th>ID</th>
+        <th>Worker</th>
         <th>Name</th>
         <th>Creator</th>
         <th>Owners</th>
@@ -19,6 +20,7 @@
     <tbody>
         <tr ng-repeat="browser in selectedApp.browserMgr.items">
             <td>{{browser.id}}</td>
+            <td>{{browser.workerId}}</td>
             <td>{{browser.name}}</td>
             <td>{{browser.creator}}</td>
             <td>

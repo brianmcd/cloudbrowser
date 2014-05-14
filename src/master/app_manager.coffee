@@ -50,6 +50,13 @@ class Application extends EventEmitter
         
         @attrMaps = [
             {
+                attr : 'config.deploymentConfig.authenticationInterface'
+                getter : 'isAuthConfigured'
+            },
+            {
+                attr : 'config.deploymentConfig.mountOnStartup'
+            },
+            {
                 attr : 'config.deploymentConfig.description'
             },
             {
@@ -88,7 +95,6 @@ class Application extends EventEmitter
                                 callback null
                             else
                                 callback new Error('cannot find #{attrPath}')
-                            return
                         if setted
                             console.log "app #{thisArg.mountPoint} change #{attrPath} to #{newVal}"
                             thisArg.emit('change',{
@@ -112,8 +118,7 @@ class Application extends EventEmitter
             return false
         parseResult.obj[parseResult.attr] = newVal
         return true
-
-            
+           
 
     _addAppInstance: (appInstance) ->
         @_appInstanceMap[appInstance.id] = appInstance
@@ -133,25 +138,21 @@ class Application extends EventEmitter
         console.log "#{__filename}: app #{@mountPoint} listen #{eventObj.name}"
         @on(eventObj.name, eventObj.callback)
         callback?(null)
+
+    enable : (callback)->
+        @mounted = true
+        @setMountOnStartup(true, callback)
+
+    disable : (callback)->
+        @mounted = false
+        @setMountOnStartup(false, callback)
+        
    
     isOwner: (user, callback) ->
         eamil = if user._email? then user._email else user
         result = email is @config.deploymentConfig.owner
         callback null, result
         
-    isAppPublic : (callback) ->
-        callback null, @isPublic 
-
-    makePublic : (callback) ->
-        @isPublic = true
-        callback null
-
-    makePrivate : (callback) ->
-        @isPublic = false
-        callback null
-
-    isAuthConfigured : (callback) ->
-        callback null, @authenticationInterface
 
     getAppInstance : (callback) ->
         # get the only app instance, for single instance apps
@@ -194,24 +195,28 @@ class Application extends EventEmitter
             else
                 appInstance._waitForCreate(callback)
         else
-            worker = @_workerManager.getMostFreeWorker()
-            appInstance = new AppInstance(@_workerManager, null, worker.id)
-            @_userToAppInstance[user] = appInstance
-            @_workerManager._getWorkerStub(worker, (err, stub)=>
+            @createUserAppInstance(user, callback)
+
+    createUserAppInstance : (user, callback) ->
+        worker = @_workerManager.getMostFreeWorker()
+        appInstance = new AppInstance(@_workerManager, null, worker.id)
+        @_userToAppInstance[user] = appInstance
+        @_workerManager._getWorkerStub(worker, (err, stub)=>
+            if err?
+                appInstance._notifyWaiting(err)
+                delete @_userToAppInstance[user]
+                return callback err
+            stub.appManager.createAppInstanceForUser(@mountPoint, user, (err, result)=>
                 if err?
                     appInstance._notifyWaiting(err)
                     delete @_userToAppInstance[user]
                     return callback err
-                stub.appManager.createAppInstanceForUser(@mountPoint, user, (err, result)=>
-                    if err?
-                        appInstance._notifyWaiting(err)
-                        delete @_userToAppInstance[user]
-                        return callback err
-                    appInstance._setRemoteInstance(result)
-                    @_addAppInstance(appInstance)
-                    callback null, result
-                )
+                appInstance._setRemoteInstance(result)
+                @_addAppInstance(appInstance)
+                callback null, result
             )
+        )
+
 
     getNewAppInstance : (callback) ->
         worker = @_workerManager.getMostFreeWorker()
@@ -405,6 +410,7 @@ class AppManager
     getAllApps : (callback)->
         callback null, @_applications
 
+    # end point for workers to register itself and get app configs
     registerWorker : (worker, callback) ->
         @_workerManager.registerWorker(worker, (err)=>
             return callback(err) if err

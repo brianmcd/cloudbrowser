@@ -6,6 +6,7 @@
     function Browser(browserConfig, format) {
       var client, clients, _i, _len;
       this.id = browserConfig.getID();
+      this.workerId = browserConfig.getWorkerID();
       this.api = browserConfig;
       this.name = browserConfig.getName();
       this.dateCreated = format.date(browserConfig.getDateCreated());

@@ -244,6 +244,14 @@ class BaseApplication extends EventEmitter
 
     mount : () ->
         @mounted = true
+        
+    enable : (callback)->
+        @mounted = true
+        @_masterApp.enable(callback)
+
+    disable : (callback) ->
+        @mounted = false
+        @_masterApp.disable(callback)
 
     # this method query the master for all the browsers
     getAllBrowsers : (callback) ->
@@ -300,7 +308,19 @@ class BaseApplication extends EventEmitter
         return [@getOwner()]
     
     closeBrowser : (vbrowser) ->
-        vbrowser.close()       
+        vbrowser.close()
+
+    makePublic: (callback)->
+        @_masterApp.setAppPublic(true, callback)
+
+    makePrivate: (callback)->
+        @_masterApp.setAppPublic(false, callback)  
+
+    enableAuthentication : (callback)->
+        @_masterApp.setAuthenticationInterface(true, callback)
+
+    disableAuthentication : (callback)->
+        @_masterApp.setAuthenticationInterface(false, callback)        
 
     # for single instance
     createAppInstance : (callback) ->

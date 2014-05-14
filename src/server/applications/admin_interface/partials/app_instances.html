@@ -7,6 +7,7 @@
 <table ng-show="selectedApp.appInstanceMgr.visible" class="table table-bordered">
     <thead>
         <th>ID</th>
+        <th>Worker</th>
         <th>Name</th>
         <th>Date Created</th>
         <th>Owner</th>
@@ -16,6 +17,7 @@
     <tbody>
         <tr ng-repeat="appInstance in selectedApp.appInstanceMgr.items">
             <td>{{appInstance.id}}</td>
+            <td>{{appInstance.workerId}}</td>
             <td>{{appInstance.name}}</td>
             <td>{{appInstance.dateCreated}}</td>
             <td>{{appInstance.owner}}</td>
