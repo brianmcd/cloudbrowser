@@ -6,6 +6,8 @@ class User
 
 
 User.getEmail = (user) ->
+    if not user?
+        return null
     if user._email?
         return user._email
     if user instanceof User
