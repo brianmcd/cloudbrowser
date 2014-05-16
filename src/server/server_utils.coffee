@@ -1,6 +1,8 @@
 os = require('os')
 dns = require('dns')
 
+async = require('async')
+
 
 exports.getLocalHostName = (callback)->
     try
