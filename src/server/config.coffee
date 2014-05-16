@@ -61,7 +61,7 @@ class Config
                 if err?
                     console.log "error #{err}"
                 return setTimeout(()=>
-                    getServerConfig(rmiService,callback)
+                    @getServerConfig(rmiService,callback)
                 , 3000)
 
             proxyConfig = stub.config.proxyConfig
