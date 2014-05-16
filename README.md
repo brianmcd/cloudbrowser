@@ -32,6 +32,7 @@ You can start master by the following script, if you omit the configPath option,
 ```sh
 bin/run_master.sh --configPath [config directory] [application direcoties...]
 ```
+
 You can start serveral worker script by the following script, you need to specify different configPath for these workers.
 ```sh
 bin/run_worker.sh --configPath [config directory]
@@ -47,7 +48,7 @@ This will start a cluster with one master and two workers in a single process.
 It is like typing the following commands. 
 
 ```sh
-bin/run_master.sh --configPath config &
+bin/run_master.sh --configPath config examples src/server/applications&
 bin/run_worker.sh --configPath config/worker1 &
 bin/run_worker.sh --configPath config/worker2 &
 ```
