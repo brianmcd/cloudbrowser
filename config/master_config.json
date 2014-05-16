@@ -1,35 +1,11 @@
 {
-    "enableProxy": true,
     "proxyConfig": {
-        "host": "localhost",
         "httpPort": 3000
     },
     "databaseConfig": {
         "dbName": "cloudbrowser",
-        "host": "localhost",
         "port": 27017,
         "type": "mongoDB"
-    },
-    "workerConfig": {
-        "admins": [
-            "panxiaozhong@gmail.com"
-        ],
-        "defaultOwner": null,
-        "deployment": true,
-        "debug": true,
-        "noLogs": true,
-        "debugServer": true,
-        "compression": true,
-        "compressJS": false,
-        "cookieName": "cb.id",
-        "knockout": false,
-        "strict": false,
-        "resourceProxy": true,
-        "monitorTraffic": false,
-        "traceProtocol": false,
-        "traceMem": false,
-        "simulateLatency": false,
-        "defaultUser": "blade@msn.cn"
     },
     "rmiPort": 3040
 }

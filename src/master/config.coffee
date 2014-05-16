@@ -130,7 +130,7 @@ class ProxyConfig
 class WorkerConfig
     constructor: () ->
         @admins = []
-        @defaultOwner = null
+        @defaultUser = null
 
 
 
