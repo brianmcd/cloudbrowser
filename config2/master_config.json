@@ -3,9 +3,7 @@
         "httpPort": 3000
     },
     "databaseConfig": {
-        "dbName": "cloudbrowser",
-        "port": 27017,
-        "type": "mongoDB"
+        "port": 27017
     },
     "rmiPort": 3040
 }

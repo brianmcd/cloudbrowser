@@ -13,34 +13,110 @@ External Dependencies
 
 * Mongodb Server.
 
-Installation and Use
+Installation 
 --------------------
 1. Install [node.js](http://nodejs.org/).
 2. Clone the repository to your machine. `git clone https://github.com/brianmcd/cloudbrowser.git`
 3. `cd` into the cloned CloudBrowser directory.
-4. Switch to the current production branch **deployment**. `git checkout deployment`.
+4. Switch to the current production branch **deployment2**. `git checkout deployment2`.
 5. Install all the necessary npm modules. `npm install -d`
 6. Install the [mongodb](http://www.mongodb.org/downloads) server on your machine. The default configuration, which binds the mongodb server to localhost, should work. 
-5. Configure the server settings by creating a file server\_config.json in the CloudBrowser directory or supply the configuration parameters on the command line.
-See the section on [server configuration](#server-configuration) for more details. 
+5. See the section on [server configuration](#server-configuration) for more details. 
 6. [Optional, see below on how to try out provided examples] Create a web application using HTML/CSS/JavaScript. In the directory containing the web application, create a configuration file app\_config.json and add in
 suitable configuation details. See the section on [application configuration](#web-application-configuration) for more details.
-7. Run the CloudBrowser server using `./bin/server <name of the directory that contains the web application(s)>`.
-This will start the server, recursively search for all applications in the given directory and mount them.
-Only those applications whose source directory has an app\_config.json file will be mounted.
-The mount point of the web application(s) will be displayed by the server on startup.
-Multiple paths can be provided for mounting at the time of startup.
-8. Visit `domain:port/<mount point of application>` in your browser.
 
-To mount the provided examples, run `./bin/server examples`.
-To view all the mounted applications visit `domain:port/`
+Start up
+----------
+you can start cloudbrowser in cluster mode by starting a master and serveral workers.
+You can start master by the following script, if you omit the configPath option, it will load config file from ProjectRoot/config.
+```sh
+bin/run_master.sh --configPath [config directory] [application direcoties...]
+```
+You can start serveral worker script by the following script, you need to specify different configPath for these workers.
+```sh
+bin/run_worker.sh --configPath [config directory]
+```
+
+You can also try out cloudbrowser in single process mode using :
+
+```sh
+bin/single_machine_runner.sh
+```
+
+This will start a cluster with one master and two workers in a single process. 
+It is like typing the following commands. 
+
+```sh
+bin/run_master.sh --configPath config &
+bin/run_worker.sh --configPath config/worker1 &
+bin/run_worker.sh --configPath config/worker2 &
+```
+
+Verify
+-----------
+Visit `domain:port/<mount point of application>` in your browser.
 
 
 Configuration
 -------------
 
 ###Server Configuration###
-These options can be set in the JSON configuration file server\_config.json or through the command line while starting the CloudBrowser server.
+In a cloudbrowser cluster there is one master server and several worker servers. The folder config2 contains sample configurations for a cluster of one master and two workers.
+
+#### Master Configuration
+Master configuration file should be named as master\_config.json. By default, the run\_master.sh script will try to look for configuration file in ProjectRoot/config directory. You could use change that by setting configPath flag in command line.
+
+```json
+{
+    "proxyConfig": {
+        "httpPort": 3000
+    },
+    "databaseConfig": {
+        "port": 27017
+    },
+    "rmiPort": 3040
+}
+```
+
+
+* proxyConfig : HTTP host and port for the users
+    - httpPort : Port.
+    - host : If you omit this field, cloudbrowser will try to query your domain by query the DNS server.
+    
+* databaseConfig : configuration for data base connection
+    - host : If you deploy cloudbrowser on multiple machines, do not put localhost here
+    - port
+* rmiPort : the port for internal communication
+* workerConfig :  service settings for worker, you can overwrite the settings in this section by specify corresponding flags in command line. Please refer [Master command line options] for available fields.
+
+#### Worker Configuration
+Worker configuration should be saved in the file name server\_config.json. You should setting configPath flag to the directory contains the worker configuration file when start the worker by run\_worker.sh script.
+
+```json
+{
+    "httpPort": 4000,
+    "id": "worker1",
+    "rmiPort": 5700,
+    "masterConfig": {
+        "host": "localhost",
+        "rmiPort": 3040
+    }
+}
+```
+
+* httpPort : the port worker serves requests from the master
+* id : worker's id, should be different among workers
+* rmiPort : port for internal communication
+* masterConfig : information of the master 
+    - host : the host name or IP address where the master is deployed
+    - rmiPort : master's rmiPort, should be the same as the rmiPort in master\_config.json
+
+#### Deploy on a single machine
+Please allocate different httpPort and rmiPort for each server. 
+
+#### Master command line options
+
+These options can be set in the JSON configuration file master\_config.json under the workerConfig object or through the command line while starting the CloudBrowser master server.
 
 * **adminInterface**      - bool - Enable the admin interface. Defaults to false.
 * **compression**         - bool - Enable protocol compression. Defaults to true.
@@ -52,24 +128,13 @@ These options can be set in the JSON configuration file server\_config.json or t
 * **knockout**            - bool - Enable server-side knockout.js bindings. Defaults to false.
 * **monitorTraffic**      - bool - Monitor/log traffic to/from socket.io clients. Defaults to false.
 * **noLogs**              - bool - Disable all logging to files. Defaults to true.
-* **port**                - num  - Port to use for the server. Defaults to 3000.
 * **resourceProxy**       - bool - Enable the resource proxy. Defaults to true.
 * **simulateLatency**     - bool | num - Simulate latency for clients in ms. Defaults to false.
 * **strict**              - bool - Enable strict mode - uncaught exceptions exit the program. Defaults to false.
 * **traceMem**            - bool - Trace memory usage. Defaults to false.
 * **traceProtocol**       - bool - Log protocol messages to #{browserid}-rpc.log. Defaults to false.
 
-Unless you wish to change any options, a server configuration file is not necessary.
-To use Google's OpenID authentication, you'll need to set 'domain' to your machine's FQDN
-or IP.
 
-###Emailer Configuration###
-To be able to send emails (such as to send 'signup' confirmation emails to new users),
-you must specify a Google account username and password in the file emailer\_config.json as follows.
-* **email**     - str
-* **password**  - str
-
-This file is required only if you wish to have applications with the authentication interface enabled.
 
 ###Web Application Configuration###
 These configuration details are specific to a web application and need to be placed in the JSON file app\_config.json inside the directory
