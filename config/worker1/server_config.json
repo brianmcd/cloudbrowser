@@ -1,0 +1,9 @@
+{
+    "httpPort": 4000,
+    "id": "worker1",
+    "rmiPort": 5700,
+    "masterConfig": {
+        "host": "localhost",
+        "rmiPort": 3040
+    }
+}
