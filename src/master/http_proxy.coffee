@@ -11,8 +11,20 @@ class HttpProxy
             @proxyWebSocketRequest req, socket, head
         )        
         console.log "starting proxy server listening on #{@config.httpPort}"
-        server.listen(@config.httpPort)
-        callback null, this
+        server.listen(@config.httpPort, ()=>
+            callback null, this
+        )
+    
+    proxyWebSocketRequest : (req, socket, head) ->
+        console.log "proxy ws request #{req.url}"
+        {worker} = @workerManager.getWorker(req)
+        @proxy.ws(req, socket, head, {
+            target:
+                {
+                    host : worker.host,
+                    port : worker.httpPort
+                } 
+        })
 
     proxyRequest : (req, res) ->
         {worker, redirect} = @workerManager.getWorker(req)
@@ -28,18 +40,9 @@ class HttpProxy
                     port : worker.httpPort
                 } 
          })
-    
-    proxyWebSocketRequest : (req, socket, head) ->
-        console.log "proxy ws request #{req.url}"
-        {worker} = @workerManager.getWorker(req)
 
-        @proxy.ws(req, socket, head, {
-            target:
-                {
-                    host : worker.host,
-                    port : worker.httpPort
-                    } 
-         })
+    
+
 
 module.exports = (dependencies,callback) ->
     new HttpProxy(dependencies,callback)

@@ -11,7 +11,9 @@ class ChatRoom extends EventEmitter
         return @name
 
     add : (user) ->
-        @users.push(user)
+        idx = @users.indexOf(user)
+        if idx is -1
+            @users.push(user)
 
     remove : (user) ->
         idx = @users.indexOf(user)

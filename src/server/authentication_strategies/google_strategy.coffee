@@ -11,6 +11,7 @@ class GoogleStrategy
         Passport.use new Strategy
             returnURL : "#{config.getHttpAddr()}/checkauth"
             realm     : "#{config.getHttpAddr()}"
+            stateless: true
         , (identifier, profile, done) ->
             done(null, {email : profile.emails[0].value})
 

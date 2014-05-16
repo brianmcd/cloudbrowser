@@ -18,6 +18,9 @@ class RmiService
             port: @rmiPort
             }, (err, rmiServer)=>
                 if err?
+                    console.log "Starting rmi service failed"
+                    if err.code is 'EADDRINUSE'
+                        console.log "Maybe the rmiport #{@rmiPort} is occupied by other apps, please change your configration"
                     return callback err
                 @server = rmiServer
                 callback null, this

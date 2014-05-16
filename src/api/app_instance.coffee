@@ -275,7 +275,7 @@ class AppInstance
         @memberof AppInstance
     ###
     addReaderWriter : (emailID, callback) ->
-        {cbServer, appInstance, userCtx} = _pvts[@_idx]
+        {cbServer, appInstance, userCtx, appConfig} = _pvts[@_idx]
         
         permissionManager = cbServer.permissionManager
 
@@ -292,7 +292,7 @@ class AppInstance
                     next(cloudbrowserError("IS_OWNER"))
                 else permissionManager.addAppInstancePermRec
                     user          : user
-                    mountPoint    : appInstance.app.mountPoint
+                    mountPoint    : appConfig.getMountPoint()
                     permission    : 'readwrite'
                     appInstanceID : appInstance.id
                     callback      : (err) -> next(err)

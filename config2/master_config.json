@@ -1,0 +1,9 @@
+{
+    "proxyConfig": {
+        "httpPort": 3000
+    },
+    "databaseConfig": {
+        "port": 27017
+    },
+    "rmiPort": 3040
+}

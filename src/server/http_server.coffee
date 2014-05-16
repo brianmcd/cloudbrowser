@@ -24,12 +24,6 @@ class HTTPServer extends EventEmitter
         {@sessionManager, @database, @permissionManager} = dependencies
         @server = express.createServer()
 
-        oldget = @server.get
-        @server.get = () =>
-            args = arguments
-            console.log "setting route to #{args[0]}"
-            oldget.apply @server, args
-
         @server.configure () =>
             if !process.env.TESTS_RUNNING
                 @server.use(express.logger())
@@ -45,15 +39,19 @@ class HTTPServer extends EventEmitter
             @server.set('views', Path.join(__dirname, '..', '..', 'views'))
             @server.set('view options', {layout: false})
             @server.use(Passport.initialize())
-            @server.on 'error', (e) ->
-                console.log "CloudBrowser: #{e.message}"
+            # this nice error handler will not work on newer version of express
+            @server.on 'error', (e) =>
+                console.log "CloudBrowser: http service start failed #{e.message}"
+                if e.code is 'EADDRINUSE'
+                    console.log "the port #{@config.httpPort} is occupied, please check your configuration"
+                
                 process.exit(1)
 
         
         @setupClientEngineRoutes()
-        
-        @server.listen(@config.port, (err) =>
-            callback err, this
+        # apprently the callback for listen only fires when the server start successfully
+        @server.listen(@config.httpPort, () =>
+            callback null, this
         )
 
     setupClientEngineRoutes : () ->
@@ -95,6 +93,7 @@ class HTTPServer extends EventEmitter
 
     # mount (mountPoint, handlers...)
     mount : (mountPoint, handlers...) ->
+        console.log "#{@config.id} : mount #{@config.getHttpAddr()}#{mountPoint}"
         @server.get(mountPoint,handlers)
 
     use : (middleware) ->
