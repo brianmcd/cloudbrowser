@@ -118,7 +118,6 @@ class MasterConfig
 parseOptionsFromCmd = (argv) ->
     options =
         configPath :
-            flag : true
             help : 'configuration path, default [ProjectRoot]'
     #parse the command line arguments 
     if not argv?

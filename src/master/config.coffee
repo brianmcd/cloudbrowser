@@ -176,7 +176,6 @@ class DeploymentConfig
 #   visible in console.log
 options= {
     configPath :
-        flag : true
         default : path.resolve(__dirname, '../..','config')
         help : 'configuration path, default [ProjectRoot/config]'
         masterConfig : true
