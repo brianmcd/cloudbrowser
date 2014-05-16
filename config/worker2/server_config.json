@@ -1,38 +1,9 @@
 {
-    "adminInterface": true,
-    "compression": true,
-    "compressJS": true,
-    "debug": false,
-    "cookieName": "cb.id",
-    "debugServer": false,
-    "domain": "localhost",
-    "homePage": true,
-    "knockout": false,
-    "monitorTraffic": false,
-    "noLogs": true,
-    "port": 4500,
-    "resourceProxy": true,
-    "simulateLatency": false,
-    "strict": false,
-    "traceMem": false,
-    "traceProtocol": false,
-    "useRouter": false,
-    "admins": [
-        "panxiaozhong@gmail.com"
-    ],
-    "defaultUser": "blade@msn.cn",
+    "httpPort": 4500,
     "id": "worker2",
     "rmiPort": 5800,
     "masterConfig": {
         "host": "localhost",
         "rmiPort": 3040
-    },
-    "databaseConfig": {
-        "dbName": "cloudbrowser",
-        "host": "localhost",
-        "port": 27017,
-        "type": "mongoDB"
-    },
-    "proxyHost": "localhost",
-    "proxyPort": 3000
+    }
 }

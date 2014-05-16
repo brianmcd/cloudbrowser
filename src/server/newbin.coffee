@@ -33,6 +33,7 @@ class EventTracker
 
 
 
+
 class Runner
     # argv, arguments, by default it is process.argv
     constructor: (argv, postConstruct) ->
@@ -45,18 +46,12 @@ class Runner
                 new RmiService(results.config.serverConfig, callback)
             ]
             'masterStub' : ['rmiService', (callback, results) =>
-                masterConfig = results.config.serverConfig.masterConfig
-                console.log "connecting to master #{JSON.stringify(masterConfig)}"
-                results.rmiService.createStub({
-                    host : masterConfig.host
-                    port : masterConfig.rmiPort
-                    }, callback)
+                # connect to the master and get configs
+                results.config.getServerConfig(results.rmiService, callback)
             ]
             'appConfigs' : ['masterStub', (callback, results) =>
                 # retrive proxy config and app configurations from master
                 masterStub = results.masterStub
-                results.config.setProxyConfig(masterStub.config.proxyConfig)
-
                 serverConfig = results.config.serverConfig
                 appManager = masterStub.appManager
                 appManager.registerWorker(serverConfig.getWorkerConfig(),callback)
@@ -64,7 +59,7 @@ class Runner
             'eventTracker' : ['appConfigs', (callback,results) =>
                 callback(null, new EventTracker(results.config.serverConfig))
             ],
-            'database' : ['config',
+            'database' : ['masterStub',
                     (callback,results) =>
                         new DatabaseInterface(results.config.serverConfig.databaseConfig, 
                             callback)
@@ -73,19 +68,11 @@ class Runner
                     (callback, results) ->
                         new UuidService(results, callback)
             ],
-            # the user config need to be loaded from database
-            'loadUserConfig' : ['database',
-                                (callback,results) =>
-                                    config = results.config
-                                    db=results.database
-                                    config.setDatabase(db)
-                                    config.loadUserConfig(callback)
-                            ],
             'sessionManager' : ['database',
                                 (callback,results) ->
                                     new SessionManager(results.database,callback)
             ],
-            'permissionManager' : ['loadUserConfig',
+            'permissionManager' : ['database', 'masterStub',
                                     (callback,results) ->
                                         new PermissionManager(results.database,callback)
                                 ],

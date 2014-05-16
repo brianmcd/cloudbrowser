@@ -4,7 +4,7 @@ enter script of master module
 
 path           = require('path')
 async          = require('async')
-{MasterConfig} = require('./config')
+config = require('./config')
 
 process.on 'uncaughtException', (err) ->
     console.log("Uncaught Exception:")
@@ -15,17 +15,20 @@ class Runner
     constructor: (argv, postConstruct) ->
         async.auto({
             'config' : (callback) ->
-                new MasterConfig(argv, callback)
+                config.newMasterConfig(argv, callback)
             ,
             'database' : ['config', (callback, results)->
                 DBInterface = require('../server/database_interface')
                 new DBInterface(results.config.databaseConfig, callback)
             ],
-            'uuidService' : ['database', (callback, results)->
+            'loadUserConfig' : ['database', (callback, results)->
+                results.config.loadUserConfig(results.database, callback)
+            ],
+            'uuidService' : ['loadUserConfig', (callback, results)->
                 UuidService = require('../server/uuid_service')
                 new UuidService(results, callback)
             ],
-            'workerManager' : ['config', 'rmiService',
+            'workerManager' : ['loadUserConfig', 'rmiService',
                                 (callback,results) ->
                                     require('./worker_manager')(results,callback)
 
@@ -35,7 +38,7 @@ class Runner
                                 require('./app_manager')(results,callback)
 
             ],
-            'proxyServer' : ['config','workerManager',
+            'proxyServer' : ['loadUserConfig','workerManager',
                             (callback, results) ->
                                 if results.config.enableProxy
                                     console.log 'Proxy enabled.'
@@ -44,7 +47,7 @@ class Runner
                                     callback null,null
                                 
             ],
-            'rmiService' : ['config',
+            'rmiService' : ['loadUserConfig',
                             (callback, results) =>
                                 RmiService = require('../server/rmi_service')
                                 new RmiService(results.config, callback)

@@ -1,5 +1,8 @@
 Fs = require('fs')
 
+async = require('async')
+lodash = require('lodash')
+
 exports.dfs = dfs = (node, filter, visit) ->
     if filter(node)
         visit(node)
@@ -54,7 +57,7 @@ exports.noCacheRequire = (name, regExp) ->
 logConfigFileError = (path, content) ->
     console.log "Parse error in file #{path}"
     console.log "The file's content is:"
-    console.log fileContent
+    console.log content
 
 # Parsing the json file into opts
 exports.getConfigFromFile = (path) ->
@@ -102,4 +105,38 @@ exports.parseAttributePath = (obj, attr) ->
 exports.toCamelCase = (str)->
     return str.charAt(0).toUpperCase() + str.slice(1)
 
+
+exports.isEmail = (str) ->
+    return /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}$/.test(str.toUpperCase())
+
+# apparently the lodash's merge can only support plain objects!
+merge = (object, source, depth=5) ->
+    if not object? or depth <= 0
+        return source
+    if lodash.isDate(object)
+        return source
+    
+    
+    if lodash.isObject(object)
+        for k, v of source
+            object[k] = merge(object[k], v, depth - 1)
+        return object
+
+    if lodash.isArray(object)
+        for v in source
+            if object.indexOf(v) <0
+                object.push(v)
+        return object
+    return source
+
+exports.merge = merge
             
+        
+    
+
+
+                
+            
+        
+    
+

@@ -26,7 +26,7 @@
     "socket.io-client": "0.9.2",
     "express": "2.5.6",
     "jade": "0.27.2",
-    "coffee-script": "1.6.3",
+    "coffee-script": "1.7.1",
     "request": "2.26.0",
     "eco": "*",
     "mime": "1.2.5",
