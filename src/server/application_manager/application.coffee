@@ -121,10 +121,15 @@ class Application extends BaseApplication
                 if user then @addAppPermRecs(new User(user._email), next)
                 else next(cloudbrowserError("INVALID_TOKEN"))
             (appPerms, next) =>
-                mongoInterface.unsetUser {token: token}, @getCollectionName(),
-                    token  : ""
-                    status : ""
-                , next
+                mongoInterface.unsetUser(
+                    {token: token}, 
+                    @getCollectionName(),
+                    {
+                        token  : ""
+                        status : ""
+                    }, 
+                    next
+                )
         ], callback
 
     deactivateUser : (token, callback) ->

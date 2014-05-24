@@ -3,6 +3,7 @@ Async  = require('async')
 User   = require('../server/user')
 {getParentMountPoint, hashPassword} = require('./utils')
 cloudbrowserError = require('../shared/cloudbrowser_error')
+utils = require('../shared/utils')
 
 ###*
     @class LocalStrategy
@@ -13,7 +14,7 @@ class LocalStrategy
     # Private Properties inside class closure
     _pvts = []
 
-    constructor : (bserver, cbCtx) ->
+    constructor : (app, bserver, cbCtx) ->
         # Defining @_idx as a read-only property
         # so as to prevent access of the instance variables of  
         # one instance from another.
@@ -21,6 +22,7 @@ class LocalStrategy
         # Setting private properties
         _pvts.push
             bserver : bserver
+            app     : app
             cbCtx   : cbCtx
         Object.freeze(this.__proto__)
         Object.freeze(this)
@@ -36,23 +38,21 @@ class LocalStrategy
     ###
     login : (options) ->
         {emailID, password, callback} = options
-        EMAIL_RE = /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}$/
+        
 
         if typeof callback isnt "function" then return
         if typeof password isnt "string"
             return callback?(cloudbrowserError("PARAM_INVALID", "- password"))
         if typeof emailID isnt "string" or
-        not EMAIL_RE.test(emailID.toUpperCase())
+        not utils.isEmail(emailID)
             return callback?(cloudbrowserError("PARAM_INVALID", "- emailID"))
             
-        {bserver} = _pvts[@_idx]
+        {bserver, app} = _pvts[@_idx]
         
         user = new User(emailID)
 
-        mountPoint = getParentMountPoint(bserver.mountPoint)
-        appManager = bserver.server.applicationManager
+        mountPoint = app.mountPoint
         sessionManager = bserver.server.sessionManager
-        app        = appManager.find(mountPoint)
         appUrl     = app.getAppUrl()
         dbKey      = null
         redirectto = null
@@ -92,7 +92,6 @@ class LocalStrategy
             if redirectto then bserver.redirect(redirectto)
             else bserver.redirect(appUrl)
             bserver.once 'NoClients', () ->
-                app = appManager.find(bserver.mountPoint)
                 app.closeBrowser(bserver)
 
     ###*
@@ -114,13 +113,10 @@ class LocalStrategy
         if typeof emailID isnt "string"
             return callback(cloudbrowserError("PARAM_INVALID", "- emailID"))
         
-        {bserver, cbCtx} = _pvts[@_idx]
+        {app, bserver, cbCtx} = _pvts[@_idx]
         {util}     = cbCtx
         
         user       = new User(emailID)
-        mountPoint = getParentMountPoint(bserver.mountPoint)
-        appManager = bserver.server.applicationManager
-        app        = appManager.find(mountPoint)
         appUrl     = app.getAppUrl()
         token      = null
 
@@ -167,9 +163,12 @@ class LocalStrategy
 class GoogleStrategy
     # Private Properties inside class closure
     _pvts = []
-    constructor : (bserver) ->
+    constructor : (app, bserver) ->
         Object.defineProperty(this, "_idx", {value : _pvts.length})
-        _pvts.push({bserver : bserver})
+        _pvts.push({
+            bserver : bserver
+            app     : app
+            })
         Object.freeze(this.__proto__)
         Object.freeze(this)
     ###*
@@ -179,20 +178,18 @@ class GoogleStrategy
         @memberof GoogleStrategy
     ###
     login : () ->
-        {bserver} = _pvts[@_idx]
+        {bserver, app} = _pvts[@_idx]
 
         bserver.getFirstSession (err, session) ->
             # The mountPoint attached to the user session is used by the google
             # authentication route to identify the application from which the
             # google redirect has originated
-            mountPoint = getParentMountPoint(bserver.mountPoint)
+            mountPoint = app.mountPoint
             sessionManager = bserver.server.sessionManager
             sessionManager.setPropOnSession(session, 'mountPoint', mountPoint)
             bserver.redirect "/googleAuth"
             # Kill the browser once client has been authenticated
             bserver.once 'NoClients', () ->
-                appManager = bserver.server.applicationManager
-                app = appManager.find(bserver.mountPoint)
                 app.closeBrowser(bserver)
 
 module.exports =
