@@ -98,9 +98,9 @@ class AuthApp extends BaseApplication
             res.end()
 
     _activateHandler: (req, res, next) ->
-        @parentApp.activateUser req.params.token, (err) ->
+        @parentApp.activateUser req.params.token, (err) =>
             if err then res.send(400, err.message)
-            else res.render('activate.jade', {url : mountPoint})
+            else res.render('activate.jade', {url : @mountPoint})
 
     _deactivateHandler: (req, res, next) ->
         @parentApp.deactivateUser(req.params.token, () -> 

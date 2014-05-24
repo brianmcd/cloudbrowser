@@ -15,12 +15,13 @@ class Authentication
         # This is not enumerable, not configurable, not writable
         Object.defineProperty(this, "_idx", {value : _pvts.length})
 
-        {bserver, cbCtx} = options
+        {bserver, cbCtx, app} = options
 
         _pvts.push
+            app            : app
             bserver        : bserver
-            localStrategy  : new LocalStrategy(bserver, cbCtx)
-            googleStrategy : new GoogleStrategy(bserver)
+            localStrategy  : new LocalStrategy(app, bserver, cbCtx)
+            googleStrategy : new GoogleStrategy(app, bserver)
             cbCtx          : cbCtx
 
         # Freezing the prototype and the auth object itself to protect
@@ -41,11 +42,8 @@ class Authentication
         if typeof user isnt "string"
             return callback?(cloudbrowserError('PARAM_MISSING', '- user'))
 
-        {bserver, cbCtx} = _pvts[@_idx]
+        {app, bserver, cbCtx} = _pvts[@_idx]
 
-        mountPoint = getParentMountPoint(bserver.mountPoint)
-        appManager = bserver.server.applicationManager
-        app    = appManager.find(mountPoint)
         appUrl = app.getAppUrl()
         token  = null
 
@@ -63,11 +61,13 @@ class Authentication
                     callback : next
             (next) ->
                 esc_email = encodeURIComponent(user)
+                pwdResetLink = app.pwdRestApp.getAppUrl()+"?resettoken=#{token}&resetuser=#{esc_email}"
+
                 subject   = "Link to reset your CloudBrowser password"
                 message   = "You have requested to change your password."      +
                             " If you want to continue click <a href="          +
-                            "'#{appUrl}/password_reset?resettoken=#{token}"    +
-                            "&resetuser=#{esc_email}'>reset</a>. If you have"  +
+                            "\"#{pwdResetLink}\""    +
+                            ">reset</a>. If you have"  +
                             " not requested a change in password then take no" +
                             " action."
                 cbCtx.util.sendEmail
@@ -89,11 +89,8 @@ class Authentication
         @memberOf Authentication
     ###
     resetPassword : (password, callback) ->
-        {bserver}  = _pvts[@_idx]
-        mountPoint = getParentMountPoint(bserver.mountPoint)
+        {app, bserver}  = _pvts[@_idx]
         sessionManager = bserver.server.sessionManager
-        appManager = bserver.server.applicationManager
-        app     = appManager.find(mountPoint)
         session = null
 
         Async.waterfall [
@@ -119,8 +116,8 @@ class Authentication
         @memberOf Authentication
     ###
     logout : () ->
-        {bserver} = _pvts[@_idx]
-        bserver.redirect("#{getParentMountPoint(bserver.mountPoint)}/logout")
+        {app, bserver} = _pvts[@_idx]
+        bserver.redirect("#{app.mountPoint}/logout")
 
     ###*
         Returns an instance of local strategy for authentication

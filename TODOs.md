@@ -101,7 +101,7 @@ Would like to chizzle away at jsdom patch to reduce it to zero.
 
 - permission checking for create browser -- should put this in appinstance
 
-- addBrowserPermRec, should persist to DB
+- addBrowserPermRec, should persist to DB : as the browser can only live on one machine, this can wait
 
 - a lot of implementation in permission manager are deviced on top of cache, need to change that
 
@@ -124,3 +124,10 @@ Plan
 - the object has been called synchronously as a local object, it would be hard to remove the sync behavior entirely
 
 # refresh for virtual browser
+
+
+# about the emailer config and postfix
+
+using postfix and sendmail command is not a good solution because that would limit us on one physical machine.
+
+setting a SMTP is essentially the same as using a third party mail provider

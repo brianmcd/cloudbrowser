@@ -75,7 +75,17 @@ Master configuration file should be named as master\_config.json. By default, th
     "databaseConfig": {
         "port": 27017
     },
-    "rmiPort": 3040
+    "rmiPort": 3040,
+    "workerConfig": {
+        "admins": [
+            "admin@cloudbrowser.com"
+        ],
+        "defaultUser": "user@cloudbrowser.com"
+        "emailerConfig":{
+            "email" : "cloudbrowseradmin@gmail.com",
+            "password" : "mariokart"
+        }
+    }
 }
 ```
 
@@ -89,6 +99,9 @@ Master configuration file should be named as master\_config.json. By default, th
     - port
 * rmiPort : the port for internal communication
 * workerConfig :  service settings for worker, you can overwrite the settings in this section by specify corresponding flags in command line. Please refer [Master command line options] for available fields.
+    - emailerConfig : the email account for the system to send emails, you need to configure this section to enable user registration.
+        + email : the email address to send emails. Right now only gmail account is supported.
+        + password : the password of the email account
 
 #### Worker Configuration
 Worker configuration should be saved in the file name server\_config.json. You should setting configPath flag to the directory contains the worker configuration file when start the worker by run\_worker.sh script.

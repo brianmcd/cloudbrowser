@@ -81,10 +81,12 @@ class CloudBrowser
             appInstanceConfig : @currentAppInstanceConfig
 
         
-        # TODO 
+        # we only use Authentication object in subsidiary apps like landing page and login page.
+        # this object only cares the information from the 'real' app
         if app.isAuthConfigured() or app.isAuthApp()
             @auth = new Authentication
                 bserver : bserver
+                app     : app.parentApp
                 cbCtx   : this
 
         @serverConfig = new ServerConfig
