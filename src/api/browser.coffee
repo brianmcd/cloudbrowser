@@ -252,8 +252,9 @@ class Browser
                     bserver.on event, (userInfo) ->
                         newUserInfo = {}
                         newUserInfo.role = userInfo.role
-                        newUserInfo.user = userInfo.user.getEmail()
+                        newUserInfo.user = User.getEmail(userInfo.user)
                         callback(newUserInfo)
+                        # this is really nasty, now the browser object is stale
                 else
                     bserver.on(event, callback)
 
@@ -601,6 +602,8 @@ class Browser
             for k, v of users
                 if lodash.isArray(v)
                     result[k]= lodash.pluck(v, '_email')
+                else
+                    result[k]=User.getEmail(v)
             callback null, result        
         )
 

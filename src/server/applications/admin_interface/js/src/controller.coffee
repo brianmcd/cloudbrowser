@@ -130,7 +130,7 @@ CBAdminInterface.controller "AppCtrl", [
             browser.api.addEventListener 'share', (userInfo) ->
                 {user, role} = userInfo
                 $scope.safeApply ->
-                    browser.updateUsers()
+                    browser.addUser(user, role)
                     addToUserList(app, user, 'browserIDMgr', browser.id, role)
             # Setup event listeners for new user, rename
             
