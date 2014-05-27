@@ -172,7 +172,7 @@ CBAdminInterface.controller "AppCtrl", [
 
             appInstance.api.addEventListener 'share', (user) ->
                 $scope.safeApply ->
-                    appInstance.updateUsers()
+                    appInstance.addUser(user)
                     addToUserList(app, user, 'appInstanceIDMgr', appInstance.id, 'readwriter')
 
             appInstance.api.addEventListener "addBrowser", (browserConfig) ->

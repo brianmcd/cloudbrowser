@@ -225,7 +225,7 @@
         }
         appInstance.api.addEventListener('share', function(user) {
           return $scope.safeApply(function() {
-            appInstance.updateUsers();
+            appInstance.addUser(user);
             return addToUserList(app, user, 'appInstanceIDMgr', appInstance.id, 'readwriter');
           });
         });

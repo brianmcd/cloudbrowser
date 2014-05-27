@@ -20,6 +20,10 @@
       return this.readerwriters = this.api.getReaderWriters();
     };
 
+    AppInstance.prototype.addUser = function(user) {
+      return this.readerwriters.push(user);
+    };
+
     return AppInstance;
 
   })();

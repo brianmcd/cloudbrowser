@@ -147,7 +147,7 @@ class AppInstance
         # the owner of an app instance when they are associated
         # with a browser of the app instance but not with the 
         # app instance itself
-        return appInstance.owner
+        return appInstance.owner._email
 
     ###*
         Registers a listener for an event on the appInstance.
