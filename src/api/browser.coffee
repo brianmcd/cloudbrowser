@@ -227,7 +227,7 @@ class Browser
     ###
     getCreator : () ->
         {bserver} = _pvts[@_idx]
-        return bserver.getCreator()?.getEmail()
+        return bserver.creator?._email
 
     ###*
         Registers a listener for an event on the  browser instance.
