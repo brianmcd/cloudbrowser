@@ -15,7 +15,7 @@ errorTypes =
     INVALID_STORE   : "The store method of the appInstanceProvider must return an
                        object"
     NO_EMAIL_CONFIG : "Please provide an email ID and the corresponding" +
-                      " password in emailer_config.json to enable sending" +
+                      " password in workerConfig/emailerConfig master_config.json to enable sending" +
                       " confirmation emails."
 
 cloudbrowserError = (type, strings...) ->
