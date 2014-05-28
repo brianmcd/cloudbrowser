@@ -177,18 +177,10 @@ class Browser
     ###
     close : (callback) ->
         {cbServer, bserver, userCtx} = _pvts[@_idx]
+        # get appInstance by direct property reference. both bserver and appInstance could be remote object
+        appInstance = bserver.appInstance
+        appInstance.removeBrowser(bserver.id, userCtx, callback)
         
-        appManager = cbServer.applicationManager
-        app = appManager.find(bserver.getMountPoint())
-
-        if userCtx.getEmail() is "public"
-            app.browsers.close(bserver)
-        else
-            appInstance = bserver.getAppInstance()
-            if appInstance
-                appInstance.removeBrowser(bserver, userCtx, callback)
-            else
-                app.browsers.close(bserver, userCtx, callback)
 
     ###*
         Redirects all clients that are connected to the current

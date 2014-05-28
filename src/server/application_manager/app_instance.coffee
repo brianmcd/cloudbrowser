@@ -168,11 +168,27 @@ class AppInstance extends EventEmitter
             return result      
         
 
-    removeBrowser : (bserver, user, callback) ->
-        console.log "removeBrowser not implemented #{bserver.id}"
+    removeBrowser : (browserId, user, callback) ->
+        console.log "appInstance #{@id} : removeBrowser #{browserId}"
+        browser = @findBrowser(browserId)
+        if browser
+            if browser.isOwner and not browser.isOwner(user)
+                return callback(new Error("Permission denied : delete browser #{browserId}"))
+            @__deleteBrowserReferences(browserId)
+            @emit('removeBrowser', browserId)
+            callback null
+            browser.close()
+        else
+            console.log "appInstance #{@id} : cannot find #{browserId}"
+            callback(new Error("Cannot find browser #{browserId}"))
 
-    removeAllBrowsers : (user, callback) ->
-        console.log "removeAllBrowsers not implemented"
+    __deleteBrowserReferences : (browserId)->
+        if @browser and @browser.id is browserId
+            @browser = null
+            @weakrefToBrowser = null
+        delete @browsers[browserId]
+        delete @weakrefsToBrowsers[browserId]
+                        
 
     close : (user, callback) ->
         console.log "close not implemented"
