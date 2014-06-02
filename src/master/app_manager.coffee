@@ -241,6 +241,13 @@ class Application extends EventEmitter
         @_addAppInstance(localAppInstance)
         callback null
 
+    unregisterAppInstance : (appInstanceId, callback) ->
+        delete @_appInstanceMap[appInstanceId]
+        @_workerManager.unregisterAppInstance(appInstanceId)
+        console.log "#{__filename}: emit removeAppInstance #{appInstanceId} for #{@mountPoint}"
+        @emit('removeAppInstance', appInstanceId)
+        callback null
+
     findInstance : (id, callback) ->
         result = null
         appInstance = @_appInstanceMap[id]

@@ -24,6 +24,7 @@ class AppInstance extends EventEmitter
         , readerwriters
         , @dateCreated,
         @server } = options
+        @name = @id
         {@uuidService} = @server
         @workerId = @server.config.id
         if not @dateCreated then @dateCreated = new Date()
@@ -124,7 +125,7 @@ class AppInstance extends EventEmitter
 
     getID : () -> return @id
 
-    getName : () -> return @id
+    getName : () -> return @name
 
     getDateCreated : () -> return @dateCreated
 
@@ -191,8 +192,19 @@ class AppInstance extends EventEmitter
                         
 
     close : (user, callback) ->
-        console.log "close not implemented"
-        callback null
+        # the user could be a remote object
+        user = User.toUser(user)
+        if not @isOwner(user)
+            return callback(new Error('Permission denied: only owner has the permission to close a appInstance'))
+        @app.unregisterAppInstance(@id, (err)=>
+            return callback(err) if err?
+            @removeAllListeners()
+            callback null
+            for browserId, browser of @browsers
+                browser.close()    
+            )
+        
+        
 
     store : (getStorableObj, callback) ->
         console.log "store not implemented"
@@ -216,10 +228,5 @@ class AppInstance extends EventEmitter
             if @browsers[id]?
                 result.push(@browsers[id])
         callback null, result
-
-        
-    
-
-
 
 module.exports = AppInstance
