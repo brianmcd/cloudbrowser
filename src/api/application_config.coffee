@@ -549,8 +549,8 @@ class AppConfig
                         # the userInfo could be a remote obj
                         if not (userCtx.getEmail() is userInfo._email) then return
                     if action is 'remove'
-                        # in this case, appInstance is in fact appInstanceId
-                        return callback(null, appInstance)
+                        # in this case, the parameter of callback is in fact appInstanceId
+                        return callback(appInstance)
                     
                     #maybe we could omit the check here
                     appInstance.getUserPrevilege(userCtx, (err, result)=>

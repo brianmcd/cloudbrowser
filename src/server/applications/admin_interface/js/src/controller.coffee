@@ -195,9 +195,9 @@ CBAdminInterface.controller "AppCtrl", [
                 # Remove appInstance from user list
                 list = appInstance[listName]
                 if typeof list is "string"
-                    removeFromUserList(app, list, 'appInstanceIDMgr', appInstance.id)
+                    removeFromUserList(app, list, 'appInstanceIDMgr', appInstanceID)
                 else if list instanceof NwGlobal.Array then for user in list
-                    removeFromUserList(app, user, 'appInstanceIDMgr', appInstance.id)
+                    removeFromUserList(app, user, 'appInstanceIDMgr', appInstanceID)
 
         setupEventListeners = (app) ->
             app.api.addEventListener "addAppInstance", (appInstanceConfig) ->
