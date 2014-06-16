@@ -107,17 +107,19 @@ class AppInstanceManager extends EventEmitter
         @_masterApp.createUserAppInstance(user, callback)
         
         
-    _removeAppInstance : (appInstance) ->
-        delete @appInstances[appInstance.id]
-        delete @weakRefsToAppInstances[appInstance.id]
-        if @appInstance? and @appInstance.id is appInstance.id
+    _removeAppInstance : (appInstanceId) ->
+        appInstance = @appInstances[appInstanceId]
+        return if not appInstance?
+        delete @appInstances[appInstanceId]
+        delete @weakRefsToAppInstances[appInstanceId]
+        if @appInstance? and @appInstanceId is @appInstance.id
             @appInstance = null
-        if @appInstance.owner?
-            email = @appInstance.owner._email
+        if appInstance.owner?
+            email = appInstance.owner._email
             ref = @userToAppInstances[email]
-            if ref? and ref.id is appInstance.id
+            if ref? and ref.id is appInstanceId
                 delete @userToAppInstances[email]
-        appInstance.close()
+
             
     # find in local
     find : (id) ->

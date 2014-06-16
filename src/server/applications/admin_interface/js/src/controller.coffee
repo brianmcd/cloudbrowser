@@ -130,7 +130,7 @@ CBAdminInterface.controller "AppCtrl", [
             browser.api.addEventListener 'share', (userInfo) ->
                 {user, role} = userInfo
                 $scope.safeApply ->
-                    browser.updateUsers()
+                    browser.addUser(user, role)
                     addToUserList(app, user, 'browserIDMgr', browser.id, role)
             # Setup event listeners for new user, rename
             
@@ -172,7 +172,7 @@ CBAdminInterface.controller "AppCtrl", [
 
             appInstance.api.addEventListener 'share', (user) ->
                 $scope.safeApply ->
-                    appInstance.updateUsers()
+                    appInstance.addUser(user)
                     addToUserList(app, user, 'appInstanceIDMgr', appInstance.id, 'readwriter')
 
             appInstance.api.addEventListener "addBrowser", (browserConfig) ->
@@ -195,9 +195,9 @@ CBAdminInterface.controller "AppCtrl", [
                 # Remove appInstance from user list
                 list = appInstance[listName]
                 if typeof list is "string"
-                    removeFromUserList(app, list, 'appInstanceIDMgr', appInstance.id)
+                    removeFromUserList(app, list, 'appInstanceIDMgr', appInstanceID)
                 else if list instanceof NwGlobal.Array then for user in list
-                    removeFromUserList(app, user, 'appInstanceIDMgr', appInstance.id)
+                    removeFromUserList(app, user, 'appInstanceIDMgr', appInstanceID)
 
         setupEventListeners = (app) ->
             app.api.addEventListener "addAppInstance", (appInstanceConfig) ->

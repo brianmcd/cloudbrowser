@@ -123,6 +123,9 @@ class WokerManager
     registerAppInstance : (appInstance) ->
         console.log "register appInstance #{appInstance.id} from #{appInstance.workerId}"
         @appInstanceMap[appInstance.id] = appInstance
+
+    unregisterAppInstance : (appInstanceId) ->
+        delete @appInstanceMap[appInstanceId]
         
     
     ###

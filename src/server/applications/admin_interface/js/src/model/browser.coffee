@@ -22,5 +22,14 @@ class Browser
         @readers       = @api.getReaders()
         @readerwriters = @api.getReaderWriters()
 
+    addUser :(user, role)->
+        switch role
+            when 'own' then @owners.push(user)
+            when 'readonly' then @readers.push(user)
+            when 'readwrite' then @readerwriters.push(user)
+            
+        
+
+
 # Exporting
 this.Browser = Browser

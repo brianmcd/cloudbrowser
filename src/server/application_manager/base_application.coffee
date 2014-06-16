@@ -337,6 +337,14 @@ class BaseApplication extends EventEmitter
 
     emitAppEvent :(eventObj)->
         @_masterApp.emitEvent(eventObj)
+
+    unregisterAppInstance : (appInstanceId, callback)->
+        @_masterApp.unregisterAppInstance(appInstanceId, (err)=>
+            return callback(err) if err?
+            callback null
+            @appInstanceManager._removeAppInstance(appInstanceId)
+            )
+
                    
 
 module.exports = BaseApplication

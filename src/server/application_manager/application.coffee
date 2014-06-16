@@ -81,7 +81,11 @@ class Application extends BaseApplication
             (usr, next) =>
                 # New user
                 if not usr
-                    @emit("addUser", userRec._email)
+                    @emitAppEvent({
+                        name : 'addUser'
+                        id : userRec._email
+                        args : 'userRec._email'
+                    })
                     mongoInterface.addUser(userRec, @getCollectionName(), next)
                 # User has already logged in once as a google user
                 # but is now signing up as a local user

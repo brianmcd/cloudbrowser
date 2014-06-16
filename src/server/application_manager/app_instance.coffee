@@ -24,6 +24,7 @@ class AppInstance extends EventEmitter
         , readerwriters
         , @dateCreated,
         @server } = options
+        @name = @id
         {@uuidService} = @server
         @workerId = @server.config.id
         if not @dateCreated then @dateCreated = new Date()
@@ -124,7 +125,7 @@ class AppInstance extends EventEmitter
 
     getID : () -> return @id
 
-    getName : () -> return @id
+    getName : () -> return @name
 
     getDateCreated : () -> return @dateCreated
 
@@ -168,15 +169,42 @@ class AppInstance extends EventEmitter
             return result      
         
 
-    removeBrowser : (bserver, user, callback) ->
-        console.log "removeBrowser not implemented #{bserver.id}"
+    removeBrowser : (browserId, user, callback) ->
+        console.log "appInstance #{@id} : removeBrowser #{browserId}"
+        browser = @findBrowser(browserId)
+        if browser
+            if browser.isOwner and not browser.isOwner(user)
+                return callback(new Error("Permission denied : delete browser #{browserId}"))
+            @__deleteBrowserReferences(browserId)
+            @emit('removeBrowser', browserId)
+            callback null
+            browser.close()
+        else
+            console.log "appInstance #{@id} : cannot find #{browserId}"
+            callback(new Error("Cannot find browser #{browserId}"))
 
-    removeAllBrowsers : (user, callback) ->
-        console.log "removeAllBrowsers not implemented"
+    __deleteBrowserReferences : (browserId)->
+        if @browser and @browser.id is browserId
+            @browser = null
+            @weakrefToBrowser = null
+        delete @browsers[browserId]
+        delete @weakrefsToBrowsers[browserId]
+                        
 
     close : (user, callback) ->
-        console.log "close not implemented"
-        callback null
+        # the user could be a remote object
+        user = User.toUser(user)
+        if not @isOwner(user)
+            return callback(new Error('Permission denied: only owner has the permission to close a appInstance'))
+        @app.unregisterAppInstance(@id, (err)=>
+            return callback(err) if err?
+            @removeAllListeners()
+            callback null
+            for browserId, browser of @browsers
+                browser.close()    
+            )
+        
+        
 
     store : (getStorableObj, callback) ->
         console.log "store not implemented"
@@ -200,10 +228,5 @@ class AppInstance extends EventEmitter
             if @browsers[id]?
                 result.push(@browsers[id])
         callback null, result
-
-        
-    
-
-
 
 module.exports = AppInstance

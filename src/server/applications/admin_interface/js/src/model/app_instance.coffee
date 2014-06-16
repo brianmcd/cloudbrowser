@@ -13,6 +13,9 @@ class AppInstance
     updateUsers : () ->
         @readerwriters = @api.getReaderWriters()
 
+    addUser : (user) ->
+        @readerwriters.push(user)
+
 
 # Exporting
 this.AppInstance = AppInstance

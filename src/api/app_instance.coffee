@@ -130,9 +130,7 @@ class AppInstance
         @memberof AppInstance
     ###
     close : (callback) ->
-        {cbServer, appInstance, userCtx} = _pvts[@_idx]
-        {appInstances} = appInstance.app
-        
+        {appInstance, userCtx} = _pvts[@_idx]
         appInstance.close(userCtx, callback)
 
     ###*
@@ -147,7 +145,7 @@ class AppInstance
         # the owner of an app instance when they are associated
         # with a browser of the app instance but not with the 
         # app instance itself
-        return appInstance.owner
+        return appInstance.owner._email
 
     ###*
         Registers a listener for an event on the appInstance.
@@ -328,8 +326,8 @@ class AppInstance
         {currentBrowser} = _pvts[@_idx].cbCtx
         appConfig = currentBrowser.getAppConfig()
         appURL    = appConfig.getUrl()
-
-        return "#{appURL}/application_instance/#{@getID()}"
+        # TODO should not hard code here, should not call method from appInstance either
+        return "#{appURL}/a/#{@getID()}"
 
     getAllBrowsers : (callback) ->
         {cbServer, appInstance, cbCtx, userCtx, appConfig} = _pvts[@_idx]
