@@ -39,7 +39,11 @@ class BaseApplication extends EventEmitter
         {@mountPoint, @isPublic, @name,
          @description, @browserLimit, @authenticationInterface
         } = @deploymentConfig
-
+        # automatically generate getters and setters. see the corresponding code in 
+        # Application's constructor in master/app_manager.coffee.
+        # getter : if callback provided, get value from master object and use callback to
+        # pass the result; otherwise, return the local property
+        # setter : update local property, call the setter of the master object with callback provided(could be null).
         attrMaps = @_masterApp.attrMaps
         for attrMap in attrMaps
             attrPaths = attrMap.attr.split('.')
@@ -73,7 +77,7 @@ class BaseApplication extends EventEmitter
                             parseResult.obj[parseResult.attr] = newVal
                             thisArg._masterApp[setter](newVal, callback)
         
-
+        # listen on change event of master object and update local property accordingly
         @_masterApp.on('change', (changeObj)=>
             @_handleChange(changeObj)
             )

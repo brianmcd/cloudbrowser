@@ -47,7 +47,10 @@ class Application extends EventEmitter
         #@workers = {}
         @_appInstanceMap = {}
         @_userToAppInstance = {}
-        
+        # descripors of attibutes that need automactical getter/setter generation.
+        # attr : path of the attribute
+        # getter : the name of the getter function. default get[att name]
+        # setter : the name of the setter function. default set[att name]
         @attrMaps = [
             {
                 attr : 'config.deploymentConfig.authenticationInterface'
@@ -71,7 +74,9 @@ class Application extends EventEmitter
                 setter : 'setAppPublic'
             }
         ]
-
+        # generate getters and setters
+        # getter : if callback provided, pass the attribute value to callback; otherwise, return the value
+        # setter : set the value, invoke callback if provided, emmit change event.
         for attrMap in @attrMaps
             attrPaths = attrMap.attr.split('.')
             name = if attrMap['name']? then attrMap['name'] else attrPaths[attrPaths.length-1]
