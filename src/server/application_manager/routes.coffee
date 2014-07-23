@@ -24,5 +24,4 @@ module.exports = {
         res.end()
     notFound : (res, message) ->
         res.send(message, 404)
-        res.end()
 }

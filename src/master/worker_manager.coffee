@@ -5,6 +5,7 @@ lodash = require('lodash')
 router = require('express').router
 routes = require('../server/application_manager/routes')
 
+# TODO should use a better way to extract appInstance id
 routers = {
     routersMap : {}
     array : []
@@ -29,7 +30,7 @@ routers = {
         r._mountPoint = mountPoint
         @routersMap[mountPoint] = r
         @array.push(r)
-        # put the most specific path in the first
+        # put the most specific paths on top
         @array = lodash.sortBy(@array, (element)->
             return 0 - element._mountPoint.length
         )

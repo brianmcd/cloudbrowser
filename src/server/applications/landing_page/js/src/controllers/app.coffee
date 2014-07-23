@@ -18,6 +18,7 @@ app.run ($rootScope) ->
 
     $rootScope.setError = (error) ->
         this.error.message = error.message
+        this.error.stack = error.stack
 
 app.controller 'AppCtrl', [
     '$scope'

@@ -9,12 +9,13 @@ async  = require('async')
 config = require('./config')
 routes = require('../server/application_manager/routes')
 utils = require('../shared/utils')
+User = require('../server/user')
 ###
 the master side counterpart of application manager
 ###
 
 class AppInstance
-    constructor: (@_workerManager, @id, @workerId) ->
+    constructor: (@id, @workerId) ->
         
 
     _waitForCreate : (func) ->
@@ -39,11 +40,12 @@ class AppInstance
     
 
 class Application extends EventEmitter
-    constructor: (@_masterConfig, @_workerManager,@_uuidService, @config) ->
+    constructor: (@_appManager, @config) ->
+        {@_workerManager} = @_appManager
         {@mountPoint} = @config.deploymentConfig
         #mounted by default
         @mounted = true
-        @url = "#{@_masterConfig.getHttpAddr()}#{@mountPoint}"
+        @url = "#{@_appManager._config.getHttpAddr()}#{@mountPoint}"
         #@workers = {}
         @_appInstanceMap = {}
         @_userToAppInstance = {}
@@ -92,6 +94,7 @@ class Application extends EventEmitter
                         else
                             return thisArg._getAttr(attrPath)
             if not @[setter]?
+                # TODO seraialize the change
                 @[setter] = do (attrPath, thisArg)->
                     (newVal, callback)->
                         setted = thisArg._setAttr(attrPath,newVal)
@@ -157,14 +160,19 @@ class Application extends EventEmitter
         eamil = if user._email? then user._email else user
         result = email is @config.deploymentConfig.owner
         callback null, result
-        
+
+    # get the owner of the standalone app
+    _getOwner:() ->
+        if @parentApp?
+            return @parentApp._getOwner()
+        return User.toUser(@config.deploymentConfig.owner)
 
     getAppInstance : (callback) ->
         # get the only app instance, for single instance apps
         if not @_appInstance?
             # create a new one
             worker = @_workerManager.getMostFreeWorker()
-            appInstance = new AppInstance(@_workerManager, null, worker.id)
+            appInstance = new AppInstance(null, worker.id)
             # avoid initiating appInstance on two workers
             # TODO : if the master has send a create request, all others shall wait. listen to 'created' event of the appInstance?
             # it won't be a big issue for single instance apps, if they have no states
@@ -204,17 +212,20 @@ class Application extends EventEmitter
 
     createUserAppInstance : (user, callback) ->
         worker = @_workerManager.getMostFreeWorker()
-        appInstance = new AppInstance(@_workerManager, null, worker.id)
-        @_userToAppInstance[user] = appInstance
+        appInstance = new AppInstance(null, worker.id)
+        if(user)
+            @_userToAppInstance[user] = appInstance
         @_workerManager._getWorkerStub(worker, (err, stub)=>
             if err?
                 appInstance._notifyWaiting(err)
-                delete @_userToAppInstance[user]
+                if(user)
+                    delete @_userToAppInstance[user]
                 return callback err
             stub.appManager.createAppInstanceForUser(@mountPoint, user, (err, result)=>
                 if err?
                     appInstance._notifyWaiting(err)
-                    delete @_userToAppInstance[user]
+                    if(user)
+                        delete @_userToAppInstance[user]
                     return callback err
                 appInstance._setRemoteInstance(result)
                 @_addAppInstance(appInstance)
@@ -225,7 +236,7 @@ class Application extends EventEmitter
 
     getNewAppInstance : (callback) ->
         worker = @_workerManager.getMostFreeWorker()
-        appInstance = new AppInstance(@_workerManager, null, worker.id)
+        appInstance = new AppInstance(null, worker.id)
         @_workerManager._getWorkerStub(worker, (err, stub)=>
             if err?
                 return callback err
@@ -241,7 +252,7 @@ class Application extends EventEmitter
     
     regsiterAppInstance : (workerId, appInstance, callback) ->
         console.log "#{workerId} register #{appInstance.id} for #{@mountPoint}"
-        localAppInstance = new AppInstance(@_workerManager, null, workerId)
+        localAppInstance = new AppInstance(null, workerId)
         localAppInstance._setRemoteInstance(appInstance)
         @_addAppInstance(localAppInstance)
         callback null
@@ -273,17 +284,61 @@ class Application extends EventEmitter
             @subApps = {}
         @subApps[subApp.mountPoint]=subApp
 
+    _hasAuthApp : ()->
+        if @subApps
+            for k, subApp of @subApps
+                if subApp.config.appType is 'auth'
+                    return true
+        return false            
+
     _setParent : (parentApp)->
         @parentApp=parentApp
 
-        
+    enableAuthentication : (callback)->
+        @setAuthenticationInterface(true)
+        if not @_hasAuthApp()
+            # create auth app
+            appConfig = @config
+            subAppConfigs = []
+            authAppConfig = @_appManager._getAuthAppConfig(appConfig)
+            subAppConfigs.push(authAppConfig)
+            pwdRestAppConfig = @_appManager._getPwdRestAppConfig(appConfig)
+            subAppConfigs.push(pwdRestAppConfig)
+            instantiationStrategy = {@config}
+            if instantiationStrategy is 'multiInstance'
+                landingPageAppConfig = @_appManager._getLandingAppConfig(appConfig)
+                subAppConfigs.push(landingPageAppConfig)
+            subApps = []
+            for subAppConfig in subAppConfigs
+                subApp = new Application(@_appManager, subAppConfig)
+                subApp._setParent(@)
+                @_addSubApp(subApp)
+                subApps.push(subApp)
 
+            async.each(subApps,(subApp,subAppCallback)=>
+                @_appManager._addApp(subApp, subAppCallback)
+            ,(err)->
+                if err
+                    console.log "__filename : error #{err.message}, \n #{err.stack}"
+            )
+            # tell the workers about the change
+            @emitEvent({
+                name : 'subAppsChange',
+                args : @
+                })
+
+        callback null
+
+    disableAuthentication : (callback)->
+        @setAuthenticationInterface(false)
+        callback null
+        
 
 
 class AppManager
     constructor: (dependencies, callback) ->
         @_workerManager = dependencies.workerManager
-        @_uuidService = dependencies.uuidService
+        @_permissionManager = dependencies.permissionManager
         @_config = dependencies.config
         @_workerAppMap = {}
         # a map of mountPoint to applications
@@ -304,6 +359,7 @@ class AppManager
                 for i in fromDir
                     appDescriptors.push(i)
 
+        appConfigs = []
         for appDescriptor in appDescriptors
             if appDescriptor.type is 'file'
                 appConfig = config.newAppConfig()
@@ -313,11 +369,13 @@ class AppManager
                 appConfig.deploymentConfig.setOwner(@_config.defaultUser)
             else
                 appConfig = config.newAppConfig(appDescriptor)
-            @_loadApp(appConfig)
-        callback null
-
-
-
+            appConfigs.push(appConfig)
+        async.each(appConfigs,(appConfig, eachCallback)=>
+            @_loadApp(appConfig, eachCallback)
+        ,(err)->
+            callback err
+        )
+        
     _getAppDescriptorsFromDir : (dir) ->
         result = []
         appConfigFile = path.resolve(dir,'app_config.json')
@@ -344,24 +402,45 @@ class AppManager
                         result.push(i)
         return result
                     
-                
-    _loadApp : (appConfig) ->
+    # load standalone apps  
+    _loadApp : (appConfig, callback) ->
         mountPoint = appConfig.deploymentConfig.mountPoint
         if @_applications[mountPoint]?
             console.log "#{mountPoint} has already been registered. Skipping app #{appConfig.path}"
+            callback null
         else
             console.log "load #{mountPoint}"
-            app = new Application(@_config, @_workerManager,@_uuidService, appConfig)
-            @_applications[mountPoint] = app
-            @_workerManager.setupRoute(app)
+            app = new Application(@, appConfig)
             subAppConfigs = @_getSubAppConfigs(appConfig)
             for subAppConfig in subAppConfigs
-                subApp = new Application(@_config, @_workerManager,@_uuidService, subAppConfig)
+                subApp = new Application(@, subAppConfig)
                 subApp._setParent(app)
                 app._addSubApp(subApp)
-                @_applications[subApp.mountPoint] = subApp
-                @_workerManager.setupRoute(subApp)
+            @_addApp(app, callback)
+    
             
+    _addApp : (app, callback) ->
+        # Add the permission record for this application's owner 
+        @_permissionManager.addAppPermRec
+            user        : app._getOwner()
+            mountPoint  : app.mountPoint
+            permission  : 'own'
+            callback    : (err)=>
+                return callback(err) if err?
+                mountPoint = app.mountPoint
+                @_applications[mountPoint] = app
+                @_workerManager.setupRoute(app)
+                if app.subApps?
+                    # subApps is a map
+                    subApps = lodash.values(app.subApps)
+                    async.each(subApps,(subApp,subAppCallback)=>
+                        @_addApp(subApp, subAppCallback)
+                    ,(err)->
+                        callback err
+                    )
+                else
+                    callback null
+        
 
 
     _getSubAppConfigs : (appConfig) ->
@@ -369,7 +448,7 @@ class AppManager
         if appConfig.standalone
             instantiationStrategy = appConfig.appConfig.instantiationStrategy
             authenticationInterface = appConfig.deploymentConfig.authenticationInterface
-            if instantiationStrategy is 'multiInstance' or instantiationStrategy is 'singleUserInstance' or authenticationInterface
+            if authenticationInterface
                 authAppConfig = @_getAuthAppConfig(appConfig)
                 result.push(authAppConfig)
                 pwdRestAppConfig = @_getPwdRestAppConfig(appConfig)

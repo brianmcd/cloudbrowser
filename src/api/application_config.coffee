@@ -618,22 +618,7 @@ class AppConfig
         permissionManager = cbServer.permissionManager
         AppInstance = require('./app_instance')
 
-        Async.waterfall [
-            (next) ->
-                # Checking for createBrowsers permissions as
-                # browser_manager is going to be merged with
-                # app_instance_manager in the future
-                permissionManager.checkPermissions
-                    user        : userCtx
-                    callback    : next
-                    mountPoint  : app.getMountPoint()
-                    permissions : ['own', 'createBrowsers']
-            (canCreate, next) ->
-                if not canCreate then next(cloudbrowserError("PERM_DENIED"))
-                app.appInstanceManager.create(userCtx, next)
-                # TODO : appInstances is not set if appInstanceProvider is not provides.
-                # leading a crash
-        ], (err, appInstance) =>
+        app.appInstanceManager.create(userCtx, (err, appInstance)=>
             if err then callback(err)
             else callback null, new AppInstance
                 cbCtx       : cbCtx
@@ -641,6 +626,7 @@ class AppConfig
                 userCtx     : userCtx
                 appInstance : appInstance
                 appConfig : this
+            )
                 
     ###*
         Gets the registered name of the application instance template

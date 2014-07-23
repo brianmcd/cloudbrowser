@@ -73,7 +73,7 @@ class AppInstance extends EventEmitter
             ,
             (cb)=>
                 vbrowser = null
-                if @app.isAuthConfigured()
+                if user
                     vbrowser = @_createVirtualBrowser
                         type        : SecureVirtualBrowser
                         id          : @uuidService.getId()
@@ -158,11 +158,13 @@ class AppInstance extends EventEmitter
     getUserPrevilege : (user, callback) ->
         result = null
         # deal with remote objs or strings
-        user=User.toUser(user)
-        if @isOwner(user)
-            result = 'own'
-        else if @isReaderWriter(user)
-            result = 'readwrite'
+        user = User.toUser(user)
+        if user?
+            if @isOwner(user)
+                result = 'own'
+            else if @isReaderWriter(user)
+                result = 'readwrite'
+                
         if callback?
             callback null, result
         else

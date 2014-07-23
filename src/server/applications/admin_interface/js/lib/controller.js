@@ -250,19 +250,23 @@
       removeAppInstance = function(app, appInstanceID) {
         var appInstance, list, listName, role, user, _results;
         appInstance = app.appInstanceMgr.remove(appInstanceID);
+        if (appInstance == null) {
+          console.log("appInstance " + appInstanceId + " not found");
+          return;
+        }
         _results = [];
         for (listName in listsToRoles) {
           role = listsToRoles[listName];
           list = appInstance[listName];
           if (typeof list === "string") {
-            _results.push(removeFromUserList(app, list, 'appInstanceIDMgr', appInstance.id));
+            _results.push(removeFromUserList(app, list, 'appInstanceIDMgr', appInstanceID));
           } else if (list instanceof NwGlobal.Array) {
             _results.push((function() {
               var _i, _len, _results1;
               _results1 = [];
               for (_i = 0, _len = list.length; _i < _len; _i++) {
                 user = list[_i];
-                _results1.push(removeFromUserList(app, user, 'appInstanceIDMgr', appInstance.id));
+                _results1.push(removeFromUserList(app, user, 'appInstanceIDMgr', appInstanceID));
               }
               return _results1;
             })());

@@ -191,6 +191,10 @@ CBAdminInterface.controller "AppCtrl", [
             
         removeAppInstance = (app, appInstanceID) ->
             appInstance = app.appInstanceMgr.remove(appInstanceID)
+            if not appInstance?
+                console.log "appInstance #{appInstanceId} not found"
+                return
+            
             for listName, role of listsToRoles
                 # Remove appInstance from user list
                 list = appInstance[listName]

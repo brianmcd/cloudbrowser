@@ -10,7 +10,6 @@ class AuthApp extends BaseApplication
     constructor: (masterApp, @parentApp) ->
         @baseMountPoint = @parentApp.mountPoint
         super(masterApp, @parentApp.server)
-
         @checkNotAuth = lodash.bind(@_checkNotAuth, this)
         @checkAuth = lodash.bind(@_checkAuth, this)
         @isAuthorized = lodash.bind(@_isAuthorized, this)
@@ -56,13 +55,28 @@ class AuthApp extends BaseApplication
         @httpServer.mount(routes.concatRoute(@baseMountPoint,'/a/:appInstanceID'),
             @parentApp.serveAppInstanceHandler)
 
+    unmount : () ->
+        super()
+        @httpServer.unmount(routes.concatRoute(@baseMountPoint, '/logout'))
+        @httpServer.unmount(routes.concatRoute(@baseMountPoint,'/activate/:token'))
+        @httpServer.unmount(routes.concatRoute(@baseMountPoint, '/deactivate/:token'))
+        # handle appInstance requests
+        @httpServer.unmount(routes.concatRoute(@baseMountPoint,'/a/:appInstanceID'))
+        
+
+
 
     _logoutHandler : (req, res, next) ->
         @sessionManager.terminateAppSession(req.session, @baseMountPoint)
         routes.redirect(res, @baseMountPoint)
 
+    _setDefaultUser : (req)->
+        # authentication disabled
+        if not @parentApp.isAuthConfigured() and not @sessionManager.findAppUserID(req.session, @baseMountPoint)
+            @sessionManager.addAppUserID(req.session, @baseMountPoint, @server.config.defaultUser)
 
     _checkAuth : (req, res, next) ->
+        @_setDefaultUser(req)
         if @sessionManager.findAppUserID(req.session, @baseMountPoint)
             next()
         else
@@ -75,6 +89,7 @@ class AuthApp extends BaseApplication
     # Middleware to reroute authenticated users when they request for
     # the authentication_interface
     _checkNotAuth : (req, res, next) ->
+        @_setDefaultUser(req)
         # If user is already logged in then redirect to application
         if not @sessionManager.findAppUserID(req.session, @baseMountPoint)
             next()
@@ -82,6 +97,7 @@ class AuthApp extends BaseApplication
 
     # Middleware that authorizes access to browsers
     _isAuthorized : (req, res, next) ->
+        @_setDefaultUser(req)
         user = @sessionManager.findAppUserID(req.session, @baseMountPoint)
         appInstanceID = req.params.appInstanceID
         appInstance = @parentApp.appInstanceManager.find(appInstanceID)
@@ -94,12 +110,11 @@ class AuthApp extends BaseApplication
         if appInstance?.getUserPrevilege(user)?
             return next()
         else
-            res.send(403, 'Permission Denied')
-            res.end()
+            res.send('Permission Denied', 403)
 
     _activateHandler: (req, res, next) ->
         @parentApp.activateUser req.params.token, (err) =>
-            if err then res.send(400, err.message)
+            if err then res.send(err.message, 400)
             else res.render('activate.jade', {url : @mountPoint})
 
     _deactivateHandler: (req, res, next) ->

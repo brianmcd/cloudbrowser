@@ -151,9 +151,6 @@ class BaseApplication extends EventEmitter
     getInstantiationStrategy : () ->
         return @appConfig.instantiationStrategy
 
-    isAuthConfigured : () ->
-        return @deploymentConfig.authenticationInterface
-
     getOwner : () ->
         if @parentApp?
             return @parentApp.getOwner()
@@ -191,13 +188,14 @@ class BaseApplication extends EventEmitter
     _mountPointHandler : (req, res, next) ->
         # "multiInstance" 
         # authenticationInterface must be set to true 
-        if @isMultiInstance()
+        if @isMultiInstance() and @landingPageApp
             # redirect to landing page app
             return @landingPageApp._mountPointHandler(req, res, next)
+
         if @isSingleInstance()
             # get or create the only instance
             @appInstanceManager.getAppInstance((err, appInstance)=>
-                return next(err) if err?
+                return res.send(err.message, 500) if err?
                 # a browser will be created for the appinstance before worker return appInstance to master,
                 # the browserId of the first appinstance will be put in filed browserId of appinstance
                 routes.redirect(res,
@@ -206,7 +204,7 @@ class BaseApplication extends EventEmitter
             return
             
                 
-        if @isSingleInstancePerUser()    
+        if @isSingleInstancePerUser() and @authApp    
             # get or create instance for user
             mountPoint = if this.isStandalone() then @mountPoint else @parentApp.mountPoint
             user = @sessionManager.findAppUserID(req.session, mountPoint)
@@ -215,7 +213,7 @@ class BaseApplication extends EventEmitter
             # if the user has logged in, create appInstance and browsers
             @appInstanceManager.getUserAppInstance(user, (err, appInstance)=>
                 if err?
-                    return next err
+                    return res.send(err.message, 500)
                 
                 routes.redirect(res, 
                     routes.buildBrowserPath(@mountPoint, appInstance.id, appInstance.browserId))    
@@ -225,7 +223,7 @@ class BaseApplication extends EventEmitter
         # we fall to default initiation strategy, create a new instance for every new request
         @appInstanceManager.create(null, (err, appInstance)=>
             if err?
-                return next err
+                return res.send(err.message, 500)
             routes.redirect(res, 
                 routes.buildBrowserPath(@mountPoint, appInstance.id, appInstance.browserId))
         )
@@ -247,7 +245,18 @@ class BaseApplication extends EventEmitter
                 routes.buildBrowserPath(@mountPoint, appInstance.id, bserver.id))
 
     mount : () ->
+        @httpServer.mount(@mountPoint, @mountPointHandler)
+        @httpServer.mount(routes.concatRoute(@mountPoint,routes.browserRoute),
+                @serveVirtualBrowserHandler)
+        @httpServer.mount(routes.concatRoute(@mountPoint, routes.resourceRoute),
+                @serveResourceHandler)
         @mounted = true
+
+    unmount : () ->
+        @httpServer.unmount(@mountPoint)
+        @httpServer.unmount(routes.concatRoute(@mountPoint,routes.browserRoute))
+        @httpServer.unmount(routes.concatRoute(@mountPoint, routes.resourceRoute))
+        @mounted = false
         
     enable : (callback)->
         @mounted = true
@@ -321,7 +330,7 @@ class BaseApplication extends EventEmitter
         @_masterApp.setAppPublic(false, callback)  
 
     enableAuthentication : (callback)->
-        @_masterApp.setAuthenticationInterface(true, callback)
+        @_masterApp.enableAuthentication(callback)
 
     disableAuthentication : (callback)->
         @_masterApp.setAuthenticationInterface(false, callback)        

@@ -96,6 +96,12 @@ class HTTPServer extends EventEmitter
         console.log "#{@config.id} : mount #{@config.getHttpAddr()}#{mountPoint}"
         @server.get(mountPoint,handlers)
 
+    # need unmount old handler before register new handler.
+    # this method is not documented on the new version of expressjs
+    unmount : (path) ->
+        @server.routes.routes.get =
+            r for r in @server.routes.routes.get when r.path isnt path
+
     use : (middleware) ->
         @server.use(middleware)
 
