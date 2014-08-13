@@ -99,7 +99,7 @@ app.controller 'AppInstanceCtrl', [
 
         grantPermissions = (form) ->
             {entity, role, collaborator} = form
-            Async.series NwGlobal.Array(
+            Async.series [
                 (next) ->
                     appInstance.processing = true
                     entity.api[role.grantMethod](collaborator, next)
@@ -112,7 +112,7 @@ app.controller 'AppInstanceCtrl', [
                         callback   : next
                         sharedObj  : entity.name
                         mountPoint : appConfig.getMountPoint()
-            ), (err) ->
+            ], (err) ->
                 $scope.safeApply ->
                     appInstance.processing = false
                     appInstance.showOptions = true
