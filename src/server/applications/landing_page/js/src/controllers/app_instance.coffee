@@ -107,7 +107,7 @@ app.controller 'AppInstanceCtrl', [
                 (next) ->
                     mail.send
                         to   : collaborator
-                        url  : appConfig.getUrl()
+                        url  : entity.api.getURL()
                         from : $scope.user
                         callback   : next
                         sharedObj  : entity.name

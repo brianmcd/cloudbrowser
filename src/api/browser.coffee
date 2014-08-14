@@ -520,7 +520,7 @@ class Browser
                     permission : permission
                     }, next)
             ],(err)->
-                return callback(err) if err?
+                callback err
         )
 
     ###*
