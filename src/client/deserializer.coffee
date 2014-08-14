@@ -59,6 +59,10 @@ exports.deserialize = (nodes, sibling, client) ->
                     parent.insertBefore(node, sibling)
                 else
                     parent.appendChild(node)
+                # textarea is magical
+                if not sibling and parent.tagName?.toUpperCase() is 'TEXTAREA' and record.type is 'text'
+                    parent.value = record.value
+                
 
     if process?.env?.TESTS_RUNNING
         client.window.testClient?.emit('loadFromSnapshot', nodes)

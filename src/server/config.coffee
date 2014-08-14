@@ -60,6 +60,7 @@ class Config
                 console.log "Failed to get config from master, retry later..."
                 if err?
                     console.log "error #{err}"
+                # retry
                 return setTimeout(()=>
                     @getServerConfig(rmiService,callback)
                 , 3000)
@@ -74,7 +75,7 @@ class Config
             databaseConfig = stub.config.databaseConfig
 
             @serverConfig.databaseConfig = utils.merge({}, databaseConfig)
-
+            # return master stub
             callback null, stub
     )
 

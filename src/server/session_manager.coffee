@@ -30,11 +30,11 @@ class SessionManager
         @_save(session)
 
     addAppUserID : (session, mountPoint, user) ->
-        session[mountPoint] = user
+        session[mountPoint] = User.toUser(user)
 
     findAppUserID : (session, mountPoint) ->
         if not session or not session[mountPoint] then return null
-        else return new User(session[mountPoint]._email)
+        else return User.toUser(session[mountPoint])
 
     findPropOnSession : (session, key) ->
         return session[key]

@@ -88,7 +88,14 @@ class EventMonitor
             remoteEvent.charCode = clientEvent.charCode
             remoteEvent.ctrlKey = clientEvent.ctrlKey
             remoteEvent.keyCode = clientEvent.keyCode
-            remoteEvent.keyLocation = clientEvent.keyLocation
+            # keyboardEvent.keyLocation is deprecated, use location instead
+            if clientEvent.location?
+                remoteEvent.location = clientEvent.location
+            else
+                remoteEvent.location = clientEvent.keyLocation        
+            remoteEvent.keyLocation = remoteEvent.location
+
+
             remoteEvent.shiftKey = clientEvent.shiftKey
             remoteEvent.repeat = clientEvent.repeat
             remoteEvent.which = clientEvent.which

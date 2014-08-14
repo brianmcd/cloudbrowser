@@ -169,7 +169,11 @@ RPCMethods =
     DOMNodeRemovedFromDocument : (parentId, childId) ->
         parent = @nodes.get(parentId)
         child  = @nodes.get(childId)
+        # remove text node from textArea
+        if parent.tagName?.toUpperCase() is 'TEXTAREA' and child.nodeType is 3
+            parent.value = ''
         parent.removeChild(child)
+
 
     ResetFrame : (frameID, newDocID) ->
         frame = @nodes.get(frameID)

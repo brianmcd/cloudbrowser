@@ -32,6 +32,7 @@ class ResourceProxy
             throw new Error("Tried to fetch invalid id: #{id}")
         type = MIME.lookup(path)
         sendResponse = (data) =>
+            # apprently this method cannot process data types like image/*
             res.writeHead(200, {'Content-Type' : type})
             if type == 'text/css'
                 data = (new Buffer data).toString()
@@ -40,7 +41,12 @@ class ResourceProxy
                     return "url(\"#{newURL}\")"
             res.write(data)
             res.end()
+            
         if /^http/.test(path) || !@useFS
+            if type? and type.indexOf('text/') isnt 0
+                # for non text type of data, just pipe it
+                Request(path).pipe(res)
+                return
             Request {uri: path}, (err, response, data) ->
                 throw err if err
                 sendResponse(data)

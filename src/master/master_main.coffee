@@ -21,6 +21,10 @@ class Runner
                 DBInterface = require('../server/database_interface')
                 new DBInterface(results.config.databaseConfig, callback)
             ],
+            'permissionManager' :['database', (callback, results)->
+                PermissionManager  = require('../server/permission_manager')
+                new PermissionManager(results.database,callback)
+            ],
             'loadUserConfig' : ['database', (callback, results)->
                 results.config.loadUserConfig(results.database, callback)
             ],
@@ -33,7 +37,7 @@ class Runner
                                     require('./worker_manager')(results,callback)
 
             ],
-            'appManager' : [ 'workerManager', 'uuidService', 
+            'appManager' : [ 'permissionManager','workerManager', 'uuidService', 
                             (callback, results) ->
                                 require('./app_manager')(results,callback)
 
@@ -44,8 +48,7 @@ class Runner
                                     console.log 'Proxy enabled.'
                                     require('./http_proxy')(results, callback)
                                 else
-                                    callback null,null
-                                
+                                    callback null,null                                
             ],
             'rmiService' : ['loadUserConfig',
                             (callback, results) =>

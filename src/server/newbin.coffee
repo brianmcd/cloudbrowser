@@ -46,7 +46,10 @@ class Runner
                 new RmiService(results.config.serverConfig, callback)
             ]
             'masterStub' : ['rmiService', (callback, results) =>
-                # connect to the master and get configs
+                # 1. connect to the master and get config object from master
+                # 2. return master stub in callback
+                # after this point, the worker got all the config options needed to
+                # bootstrap all the components
                 results.config.getServerConfig(results.rmiService, callback)
             ]
             'appConfigs' : ['masterStub', (callback, results) =>
@@ -54,9 +57,10 @@ class Runner
                 masterStub = results.masterStub
                 serverConfig = results.config.serverConfig
                 appManager = masterStub.appManager
+                # the master app manager returns appConfig upon worker registeration
                 appManager.registerWorker(serverConfig.getWorkerConfig(),callback)
             ],
-            'eventTracker' : ['appConfigs', (callback,results) =>
+            'eventTracker' : ['masterStub', (callback,results) =>
                 callback(null, new EventTracker(results.config.serverConfig))
             ],
             'database' : ['masterStub',

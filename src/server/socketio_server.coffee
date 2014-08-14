@@ -61,10 +61,14 @@ class SocketIOServer
         # and cannot be trusted
         browserID = decodeURIComponent(browserID)
         app = @applicationManager.find(mountPoint)
-        appInstance = app.findAppInstance(appInstanceID)
+        appInstance = app?.findAppInstance(appInstanceID)
         bserver = appInstance?.findBrowser(browserID)
         
-        if not bserver or not session then return socket.disconnect()
+        if not bserver or not session
+            message =  "Could not found browser by #{mountPoint} #{appInstanceID} #{browserID}"
+            console.log message
+            socket.emit 'error', message
+            return socket.disconnect()
 
         async.waterfall [
             (next) =>
@@ -80,6 +84,7 @@ class SocketIOServer
         ], (err, session) =>
             if err?
                 console.log "error in connection #{err}, #{err.stack}"
+                socket.emit 'error', "error in connection #{err.message}"
                 return socket.disconnect()
             
             user = @sessionManager.findAppUserID(session, mountPoint)

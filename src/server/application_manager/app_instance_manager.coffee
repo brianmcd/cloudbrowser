@@ -41,7 +41,10 @@ class AppInstanceManager extends EventEmitter
             return callback null, @appInstance
         else if @app.isSingleInstancePerUser()
             if not user?
-                return callback(new Error('should specify user for getAppInstanceForUser'))
+                # the application is configured wrong, create a new instance anyway
+                console.log "__filename: App #{@app.mountPoint} is SingleInstancePerUser but 
+                        did not provide user when calling createAppInstance"
+                return @_createAppInstance(user, callback)
             if not @userToAppInstances[user]?
                 return @_createAppInstance(user, (err, instance)=>
                         @userToAppInstances[user] = instance

@@ -62,7 +62,7 @@ class LocalStrategy
             (next) ->
                 app.findUser(user, next)
             (userRec, next) ->
-                if userRec and userRec.status isnt 'unverified'
+                if userRec and userRec.key and userRec.salt and userRec.status isnt 'unverified'
                     dbKey = userRec.key
                     hashPassword
                         password : password

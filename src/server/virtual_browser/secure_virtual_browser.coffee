@@ -58,12 +58,14 @@ class SecureVirtualBrowser extends VirtualBrowser
     getUserPrevilege : (user, callback) ->
         result = null
         user=User.toUser(user)
-        if @isOwner(user)
-            result = 'own'
-        else if @isReader(user)
-            result = 'readonly'
-        else if @isReaderWriter(user)
-            result = 'readwrite'
+        if user?
+            if @isOwner(user)
+                result = 'own'
+            else if @isReader(user)
+                result = 'readonly'
+            else if @isReaderWriter(user)
+                result = 'readwrite'
+                
         if callback?
             callback null, result
         else

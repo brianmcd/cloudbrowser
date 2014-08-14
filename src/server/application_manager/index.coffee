@@ -57,34 +57,18 @@ class ApplicationManager extends EventEmitter
     loadApplications : (callback)->
         for mountPoint, masterApp of @_appConfigs
             app = new Application(masterApp, @server)
-            addAppCallBack = do(app)->
-                (err)->
-                    return callback(err) if err?
-                    app.mount()
-                    callback null    
-
-            @addApplication(app,addAppCallBack)
+            @addApplication(app)
+            app.mount()
+            callback null
             
 
-    addApplication : (app, callback) ->
-        # Add the permission record for this application's owner 
-        @permissionManager.addAppPermRec
-            user        : app.getOwner()
-            mountPoint  : app.mountPoint
-            permission  : 'own'
-            callback    : (err)=>
-                return callback(err) if err?
-                mountPoint = app.mountPoint
-                @applications[mountPoint] = app
-                @weakRefsToApps[mountPoint] = Weak(@applications[mountPoint], cleanupApp(mountPoint))
-                if app.subApps?
-                    Async.each(app.subApps,(subApp,subAppCallback)=>
-                        @addApplication(subApp, subAppCallback)
-                    ,(err)->
-                        callback err
-                    )
-                else
-                    callback null
+    addApplication : (app) ->
+        mountPoint = app.mountPoint
+        @applications[mountPoint] = app
+        @weakRefsToApps[mountPoint] = Weak(@applications[mountPoint], cleanupApp(mountPoint))
+        if app.subApps
+            for subApp in app.subApps
+                @addApplication(subApp)
                     
     remove : (mountPoint) ->
         delete @applications[mountPoint]
@@ -116,10 +100,10 @@ class ApplicationManager extends EventEmitter
         if not req.user then redirect(res, mountPoint)
 
         mountPoint = @sessionManager.findPropOnSession(req.session, 'mountPoint')
-        if not mountPoint then return res.send(403,'cannot find application')
+        if not mountPoint then return res.send('cannot find application', 403)
 
         app = @find(mountPoint)
-        if not app then return res.send(403, 'cannot find application')
+        if not app then return res.send('cannot find application', 403)
 
         app.addNewUser new User(req.user.email), (err, user) =>
             mountPoint = @sessionManager.findPropOnSession(req.session, 'mountPoint')

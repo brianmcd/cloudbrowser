@@ -33,6 +33,16 @@ class Application extends BaseApplication
 
     constructor : (masterApp, @server) ->
         super(masterApp, @server)
+        @_loadSubApps(masterApp)
+        masterApp.on('subAppsChange',(newMasterApp)=>
+            @_loadSubApps(newMasterApp)
+            # re-add itself with the new subapps
+            @server.applicationManager.addApplication(@)
+            @unmount()
+            @mount()
+            )
+
+    _loadSubApps : (masterApp)->
         if masterApp.subApps?
             for k, masterSubApp of masterApp.subApps
                 if masterSubApp.config.appType is 'auth'
@@ -44,8 +54,8 @@ class Application extends BaseApplication
                     @addSubApp(@landingPageApp)
                 if masterSubApp.config.appType is 'pwdReset'
                     pwdRestApp = new PasswordRestApplication(masterSubApp, this)
-                    @addSubApp(pwdRestApp)   
-        
+                    @addSubApp(pwdRestApp)
+
     mount : () ->
         if @subApps?
             for subApp in @subApps
@@ -53,13 +63,14 @@ class Application extends BaseApplication
         if @authApp?
             @authApp.mountAuthForParent()
         else
-            @httpServer.mount(@mountPoint, @mountPointHandler)
-            @httpServer.mount(routes.concatRoute(@mountPoint,routes.browserRoute),
-                @serveVirtualBrowserHandler)
-            @httpServer.mount(routes.concatRoute(@mountPoint, routes.resourceRoute),
-                @serveResourceHandler)
+            super();
         @mounted = true
-                    
+
+    unmount : () ->
+        if @subApps?
+            for subApp in @subApps
+                subApp.unmount()
+        super()                   
 
 
     addSubApp : (subApp) ->

@@ -22,7 +22,8 @@
     };
     $rootScope.error = {};
     return $rootScope.setError = function(error) {
-      return this.error.message = error.message;
+      this.error.message = error.message;
+      return this.error.stack = error.stack;
     };
   });
 
