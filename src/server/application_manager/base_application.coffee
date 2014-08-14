@@ -137,7 +137,7 @@ class BaseApplication extends EventEmitter
 
         resourceID = req.params.resourceID
         # Note: fetch calls res.end()
-        bserver?.resources.fetch(resourceID, res)
+        bserver.resources.fetch(resourceID, res)
 
     isMultiInstance : () ->
         return @appConfig.instantiationStrategy is "multiInstance"
@@ -235,14 +235,21 @@ class BaseApplication extends EventEmitter
         id = req.params.appInstanceID
        
         appInstance = @appInstanceManager.find(id)
-        if not appInstance then return routes.notFound(res, "The application instance #{appInstanceID} was not found")
+        if not appInstance then return routes.notFound(res, "The application instance #{appInstanceID} was not found.")
 
-        user = @sessionManager.findAppUserID(req.session, @baseMountPoint)
-        if not (appInstance and user) then return res.send('Bad Request', 400)
+        if @isMultiInstance() and @landingPageApp
+            # redirect to landing page app
+            return @landingPageApp._mountPointHandler(req, res, next)
 
-        bserver = appInstance.createBrowser({user: user})
-        return routes.redirect(res, 
-                routes.buildBrowserPath(@mountPoint, appInstance.id, bserver.id))
+        if @authApp
+            user = @sessionManager.findAppUserID(req.session, @baseMountPoint)
+            if not user?
+                return @authApp._mountPointHandler(req, res, next)
+            previlege = appInstance.getUserPrevilege(user)
+            if not previlege
+                return res.send('You do not have the previlege for this page.', 403)
+        routes.redirect(res, 
+                routes.buildBrowserPath(@mountPoint, appInstance.id, appInstance.browserId))
 
     mount : () ->
         @httpServer.mount(@mountPoint, @mountPointHandler)
@@ -250,6 +257,7 @@ class BaseApplication extends EventEmitter
                 @serveVirtualBrowserHandler)
         @httpServer.mount(routes.concatRoute(@mountPoint, routes.resourceRoute),
                 @serveResourceHandler)
+        @httpServer.mount(routes.concatRoute(@mountPoint, routes.appInstanceRoute), @serveAppInstanceHandler)
         @mounted = true
 
     unmount : () ->

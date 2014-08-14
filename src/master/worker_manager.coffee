@@ -18,6 +18,8 @@ routers = {
 
         r = new router((app)->
             # the second argument will be passed in the matched result
+            app.get(routes.concatRoute(mountPoint, routes.appInstanceRoute), 
+                {pathType: 'appInstance', mountPoint: mountPoint})
             app.get(routes.concatRoute(mountPoint, routes.browserRoute), 
                 {pathType: 'browser', mountPoint: mountPoint})
             app.get(routes.concatRoute(mountPoint, routes.resourceRoute), 

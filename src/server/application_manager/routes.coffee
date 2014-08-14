@@ -1,4 +1,5 @@
 module.exports = {
+    appInstanceRoute : '/a/:appInstanceID'
     browserRoute : '/a/:appInstanceID/browsers/:browserID/index'
     resourceRoute : '/a/:appInstanceID/browsers/:browserID/:resourceID'
     landingPath : '/landing_path'
