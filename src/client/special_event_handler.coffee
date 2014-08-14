@@ -74,4 +74,8 @@ class SpecialEventHandler
             @monitor.document.addEventListener('keyup', @keyup, true)
         @_queuedKeyEvents.push([remoteEvent, id])
 
+    focusin : (remoteEvent, clientEvent, id) ->
+        # do nothing for now
+
+
 module.exports = SpecialEventHandler

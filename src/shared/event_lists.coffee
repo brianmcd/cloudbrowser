@@ -74,6 +74,7 @@ groups =
         'focus'
         'submit'
         'select'
+        'focusin'
     ]
 
 # Maps an event type (like 'click') to an event group (like 'MouseEvents')
