@@ -50,6 +50,7 @@ exports.spawnClientsInProcess = (opts) ->
     return resultEE
 
 exports.spawnClientsMultiProcess = (opts) ->
+    console.log "spawnClientsMultiProcess ..."
     {numClients,
      serverAddress,
      sharedBrowser,

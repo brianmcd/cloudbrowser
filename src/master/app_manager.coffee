@@ -366,7 +366,7 @@ class AppManager
                 appConfig.path = appDescriptor.path
                 appConfig.appConfig.entryPoint = appDescriptor.path
                 appConfig.deploymentConfig.mountPoint = path.basename(appDescriptor.path)
-                appConfig.deploymentConfig.setOwner(@_config.defaultUser)
+                appConfig.deploymentConfig.setOwner(@_config.workerConfig.defaultUser)
             else
                 appConfig = config.newAppConfig(appDescriptor)
             appConfigs.push(appConfig)

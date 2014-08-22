@@ -16,7 +16,7 @@ class DatabaseInterface
         dbName = "UID#{process.getuid()}-#{dbConfig.dbName}"
         # TODO should be configurable
         @dbClient = new Mongo.Db(dbName,
-            new Mongo.Server(dbConfig.host, dbConfig.port, options:{auto_reconnect:true}))
+            new Mongo.Server(dbConfig.host, dbConfig.port, options:{auto_reconnect:true}),{w:'majority'})
         Async.series([
                         (next) =>
                             @dbClient.open (err, pClient) ->

@@ -1,7 +1,9 @@
+###
+benchmark script for measuring latency
+###
 FS        = require('fs')
 Path      = require('path')
 Assert    = require('assert')
-Fork      = require('child_process').fork
 Framework = require('../framework')
 
 # TODO: make latency configurable.
@@ -23,6 +25,7 @@ Opts = require('nomnom')
     .option 'serverAddress',
         full: 'server-address'
         help: 'The address to reach the web server (e.g. http://localhost:3000).'
+        default : 'http://localhost:3000'
     .option 'sshHost',
         full: 'ssh-host'
         help: "The address of the host to connect to."
@@ -36,6 +39,10 @@ Opts = require('nomnom')
         full: 'step-size'
         required: true
         help: 'The step size of the number of clients between each iteration'
+    .option 'workerCount',
+        full: 'worker-count'
+        default : '2'
+        help : 'the number of worker nodes'
 Opts = Opts.parse()
 
 if Opts.startNumClients == 0
@@ -69,7 +76,7 @@ runSim = (numClients) ->
             require(Path.resolve(clientDir, 'lockstep_client'))
         resultEE = Framework.spawnClientsMultiProcess
             numClients: numClients
-            serverAddress: Opts.serverAddress || 'http://localhost:3000'
+            serverAddress: Opts.serverAddress
             sharedBrowser: false
             clientClass: clientClass
             clientData:

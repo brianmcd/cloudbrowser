@@ -4,7 +4,7 @@ enter script of master module
 
 path           = require('path')
 async          = require('async')
-config = require('./config')
+config         = require('./config')
 
 process.on 'uncaughtException', (err) ->
     console.log("Uncaught Exception:")
@@ -71,7 +71,9 @@ class Runner
                     rmiService.createSkeleton('appManager', results.appManager)
                     console.log 'Master started......'
                     if postConstruct?
-                        postConstruct null                
+                        postConstruct null
+                    # notify parent process if it is a child process
+                    process.send?({type : 'ready'})                
                 )
             
 if require.main is module

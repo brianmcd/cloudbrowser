@@ -18,18 +18,31 @@ class Server extends EventEmitter
         if app == 'chat2' || app == 'doodle'
             serverArgs = serverArgs.concat(['--knockout'])
 
-        serverCwd = Path.resolve(__dirname, '..', '..')
+        rootDir = Path.resolve(__dirname, '..', '..')
 
-        appPath = Path.resolve(serverCwd, 'benchmarks', 'framework', 'apps', app, 'app.js')
+        appPath = Path.resolve(rootDir, 'benchmarks', 'framework', 'apps', app, 'app.js')
         if FS.existsSync(appPath)
             serverArgs.push(appPath)
         else
-            serverArgs.push(Path.resolve(serverCwd, app))
+            serverArgs.push(Path.resolve(rootDir, app))
 
         nodeOpts =
-            cwd : serverCwd
+            cwd : rootDir
             env : process.env
-        serverPath = Path.resolve(serverCwd, 'bin', 'server')
+        masterScriptPath = Path.resolve(rootDir, 'src/master/master_main.coffee' )
+        serverPath = Path.resolve(rootDir, 'bin', 'server')
+
+        masterProcess = Fork(masterScriptPath, serverArgs)
+        masterProcess.on('message', (msg)->
+            switch msg.type
+                when 'ready'
+                    console.log "master is ready"
+                else
+                    console.log "error from master"
+        )
+        masterProcess.on('exit',()->
+            console.log "master exited"
+            )
 
         if nodeArgs
             serverArgs = nodeArgs.concat(serverArgs)
@@ -67,7 +80,10 @@ class Server extends EventEmitter
                 else
                     @emit('message', msg)
 
-        process.on('exit', () => @server?.kill())
+        process.on('exit', () => 
+            console.log "server exit"
+            @server?.kill()
+        )
 
     send: (msg) ->
         @server.send(msg)

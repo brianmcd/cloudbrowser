@@ -151,6 +151,8 @@ class DeploymentConfig
         @mountOnStartup = true
         @collectionName = ''
         @authenticationInterface = false
+    setOwner: (owner)->
+        @owner = User.toUser(owner)
 
 
 # command options:

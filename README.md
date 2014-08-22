@@ -11,7 +11,12 @@ See [http://cloudbrowser.cs.vt.edu/](http://cloudbrowser.cs.vt.edu/) for a detai
 External Dependencies
 ---------------------
 
-* Mongodb Server.
+* Mongodb Server (>=2.6.0).
+Download and install mongodb. Start mongodb using a data folder you choose like this:
+```sh
+mongod --dbpath=~/var/data/db
+```
+
 
 Installation 
 --------------------
@@ -27,7 +32,7 @@ suitable configuation details. See the section on [application configuration](#w
 
 Start up
 ----------
-you can start cloudbrowser in cluster mode by starting a master and serveral workers.
+you can start cloudbrowser in cluster mode by starting a master and serveral workers. **Do remember to start mongodb first.**
 You can start master by the following script, if you omit the configPath option, it will load config file from ProjectRoot/config.
 ```sh
 bin/run_master.sh --configPath [config directory] [application direcoties...]
@@ -169,3 +174,26 @@ authenticationInterface must be set to true and the browserLimit must be set to 
 available to the user. 
 
 A simple configuration file need only contain the entryPoint.
+
+
+Internals
+-------------
+
+TBC
+
+###DB Tables Explained
+You can fire up a mongodb shell using the command **mongo**.
+
+####data bases
+
+Display all the databases using 'show dbs'. You will see something like this :
+```
+> show dbs
+UID501-cloudbrowser           0.078GB
+UID501-cloudbrowser_sessions  0.078GB
+admin                         (empty)
+local                         0.078GB
+```
+UID***-cloudbrowser is used to store data from cloudbrowser framework and user applications.
+UID***-cloudbrowser_sessions is for http sessions.
+

@@ -98,11 +98,14 @@ class Runner
                     @handlerInitializeError(err)
                     if postConstruct?
                         postConstruct(err)
+                    # notify parent process
+                    process.send?({type:'error'})
                 else
                     rmiService = results.rmiService
                     rmiService.createSkeleton('appManager', results.applicationManager)
                     if postConstruct?
                         postConstruct null
+                    process.send?({type:'ready'})
             )
 
     handlerInitializeError : (err) ->

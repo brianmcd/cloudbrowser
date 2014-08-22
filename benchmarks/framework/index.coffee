@@ -8,6 +8,7 @@ Client = require('./client')
 for own prop of Client
     exports[prop] = Client[prop]
 
+# start server based on opts
 exports.createServer = (opts, callback) ->
     server = new Server(opts)
     if callback?
