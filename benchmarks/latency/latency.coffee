@@ -41,7 +41,8 @@ Opts = require('nomnom')
         help: 'The step size of the number of clients between each iteration'
     .option 'workerCount',
         full: 'worker-count'
-        default : '2'
+        default : 2
+        type : 'number'
         help : 'the number of worker nodes'
 Opts = Opts.parse()
 
@@ -117,6 +118,7 @@ runSim = (numClients) ->
     else
         server = Framework.createServer
             app: Opts.app
+            workerCount : Opts.workerCount 
             serverArgs: ['--compression=false',
                          '--resource-proxy=false',
                          #'--simulate-latency=500',

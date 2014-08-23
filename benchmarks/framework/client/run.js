@@ -1,4 +1,4 @@
-require('coffee-script')
+require('coffee-script/register')
 
 var clientCtors = {
     'LockstepClient'          : require('./lockstep_client'),

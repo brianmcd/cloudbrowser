@@ -193,6 +193,20 @@ UID501-cloudbrowser           0.078GB
 UID501-cloudbrowser_sessions  0.078GB
 admin                         (empty)
 local                         0.078GB
+
+> use UID501-cloudbrowser
+switched to db UID501-cloudbrowser
+
+> show collections
+Permissions
+admin_interface.users
+chat3.users
+counters
+helloworld.users
+system.indexes
+
+> db.Permissions.find()
+{ "_id" : ObjectId("53cf37f4d1dc5a9d49000001"), "_email" : "godmar@gmail.com", "apps" : { "/calendar" : { "permission" : "own" }, "/frames" : { "permission" : "own" }, "/angularjs-basic" : { "permission" : "own" }, "/chat2" : { "permission" : "own" }, "/angular-todo" : { "permission" : "own" }, "/chess" : { "permission" : "own" }, "/frames/authenticate" : { "permission" : "own" }, "/frames/password_reset" : { "permission" : "own" }, "/angularjs-basic/authenticate" : { "permission" : "own" }, "/angularjs-basic/password_reset" : { "permission" : "own" }, "/chat2/authenticate" : { "permission" : "own" }, "/chat2/password_reset" : { "permission" : "own" }, "/chat2/landing_page" : { "permission" : "own" }, "/angular-todo/authenticate" : { "permission" : "own" }, "/angular-todo/password_reset" : { "permission" : "own" }, "/chess/authenticate" : { "permission" : "own" }, "/chess/password_reset" : { "permission" : "own" } } }
 ```
 UID***-cloudbrowser is used to store data from cloudbrowser framework and user applications.
 UID***-cloudbrowser_sessions is for http sessions.

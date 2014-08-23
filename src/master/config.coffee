@@ -297,6 +297,9 @@ exports.newAppConfig = (descriptor)->
         if descriptor.deploymentConfigFile
             configFileContent = utils.getConfigFromFile(descriptor.deploymentConfigFile)
             lodash.merge(result.deploymentConfig, configFileContent)
+    # mountPoint should always starts with /
+    if result.deploymentConfig.mountPoint?.indexOf('/') isnt 0 
+        result.deploymentConfig.mountPoint += '/'
     return result
 
     
