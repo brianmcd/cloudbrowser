@@ -71,7 +71,6 @@ class StaticPathElement
 class ParamPathElement
     type : 'param'
     constructor: (@value) ->
-        console.log "param #{@value}"
 
     match : (path, pathIndex, result)->
         if not path
@@ -219,7 +218,6 @@ routers = {
                 }
         console.log "cannot match #{path} to any app, defaulting to root"
         return {mountPoint:'/'}
-
 }
 
 # answers query from proxy, receive reports
@@ -303,7 +301,6 @@ class WokerManager
         urlObj = urlModule.parse url
         {path} = urlObj
 
-        # the static file requests should be handled by proxy
         if @isStaticFileRequest(path) or @isSocketIoRequest(path)
             referer = request.headers.referer
             # todo /favicon.ico do not have referer

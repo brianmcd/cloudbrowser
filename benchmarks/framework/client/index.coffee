@@ -26,14 +26,14 @@ exports.spawnClientsInProcess = (opts) ->
 
     clients = []
 
-    createClient = (id, appid, browserid) ->
+    createClient = (id, appid, appInstanceId, browserid) ->
         if id < numClients + startId
-            client = new clientClass(id, appid, browserid, serverAddress, clientData)
+            client = new clientClass(id, appid, appInstanceId, browserid, serverAddress, clientData)
             client.on 'Result', (info) ->
                 resultEE.emit('Result', id, info)
             client.once 'Ready', () ->
                 clientCallback client, () ->
-                    createClient(id + 1, appid, browserid, clientData)
+                    createClient(id + 1, appid, appInstanceId, browserid, clientData)
             clients.push(client)
         else
             doneCallback(clients)
@@ -41,9 +41,10 @@ exports.spawnClientsInProcess = (opts) ->
     if sharedBrowser
         Request serverAddress, (err, response, body) ->
             throw err if err
-            appid = /window.__appID\ =\ '(.*)'/.exec(body)[1]
-            browserid = /window.__envSessionID\ =\ '(.*)'/.exec(body)[1]
-            createClient(1, appid, browserid)
+            browserid = response.headers['x-cb-browserid']
+            appid = response.headers['x-cb-appid']
+            appInstanceId = response.headers['x-cb-appinstanceid']
+            createClient(1, appid, appInstanceId, browserid)
     else
         createClient(startId)
 

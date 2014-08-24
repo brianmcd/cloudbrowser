@@ -25,7 +25,7 @@ Opts = require('nomnom')
     .option 'serverAddress',
         full: 'server-address'
         help: 'The address to reach the web server (e.g. http://localhost:3000).'
-        default : 'http://localhost:3000'
+        default : 'http://localhost:3000/index.html'
     .option 'sshHost',
         full: 'ssh-host'
         help: "The address of the host to connect to."

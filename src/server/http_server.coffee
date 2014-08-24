@@ -39,6 +39,11 @@ class HTTPServer extends EventEmitter
         @server.set('views', Path.join(__dirname, '..', '..', 'views'))
         @server.set('view options', {layout: false})
         @server.use(Passport.initialize())
+        
+        @server.use((err, req, res, next)->
+            console.error(err.stack)
+            res.status(500).send("Something wrong when handling this request. #{err.message}")
+        )
 
         @httpServer = http.createServer(@server)
 
@@ -91,8 +96,12 @@ class HTTPServer extends EventEmitter
         @server.get(mountPoint,handlers)
 
     # need unmount old handler before register new handler.
-    # this method is not documented on the new version of expressjs
+    # this method is not documented on the expressjs 4.0.
+    # you cannot even mount a new handler to override the old one.
+    # TODO handle unmoung on master node or wrap handlers in a local
+    # registry
     unmount : (path) ->
+        console.log "unmount #{path}"
         @server.routes.routes.get =
             r for r in @server.routes.routes.get when r.path isnt path
 

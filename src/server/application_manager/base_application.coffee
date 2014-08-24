@@ -118,6 +118,16 @@ class BaseApplication extends EventEmitter
         if not bserver then return routes.notFound(res, "The browser #{vBrowserID} was not found")
 
         console.log "Joining: #{appInstanceID} - #{vBrowserID}"
+
+        # for benchmark tools
+        url = req.url
+        if url.indexOf('http:') isnt 0
+            url = @server.config.getHttpAddr() + url
+        res.setHeader('x-cb-url', url)
+        res.setHeader('x-cb-appid', @mountPoint)
+        res.setHeader('x-cb-appinstanceid', appInstanceID)
+        res.setHeader('x-cb-browserid', vBrowserID)
+
         # the naming is horrible here
         res.render 'base.jade',
             appid     : @mountPoint
