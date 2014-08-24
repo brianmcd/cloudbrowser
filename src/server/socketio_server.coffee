@@ -1,7 +1,7 @@
 sio  = require('socket.io')
 async = require('async')
-ParseCookie  = require('cookie').parse
-
+cookieParser = require('cookie-parser')
+ParseCookie = require('cookie').parse
 
 # dependes on serverConfig, httpServer, database, applicationManager
 class SocketIOServer
@@ -11,7 +11,7 @@ class SocketIOServer
 
         {@applicationManager, @permissionManager, @sessionManager} = dependencies
 
-        io = sio.listen(dependencies.httpServer.server)
+        io = sio.listen(dependencies.httpServer.httpServer)
 
         io.configure () =>
             if @config.compressJS
@@ -33,12 +33,16 @@ class SocketIOServer
     socketIOAuthHandler : (handshakeData, callback) ->
         if not handshakeData.headers or not handshakeData.headers.cookie
             return callback(null, false)
-        cookies = ParseCookie(handshakeData.headers.cookie)    
 
+        cookies = ParseCookie(handshakeData.headers.cookie)    
         sessionID = cookies[@config.cookieName]
+        # FIXME duplicate constant string with httpServer class
+        sessionID = cookieParser.signedCookie(sessionID, 'change me please')
+        
         @mongoInterface.getSession sessionID, (err, session) =>
-            if err or not session then console.log "#{err} #{session}"
-            if err or not session then return callback(null, false)
+            if err or not session 
+                console.log "socketIOAuthHandlerError #{err} #{session} #{sessionID}"
+                return callback(null, false)
             # Saving the session id on the session.
             # There is no other way to access it later
             @sessionManager.addObjToSession(session, {_id : sessionID})

@@ -1,7 +1,7 @@
 Mongo      = require('mongodb')
-Express    = require('express')
 Async      = require('async')
-MongoStore = require('connect-mongo')(Express)
+session    = require('express-session')
+MongoStore = require('connect-mongo')(session)
 
 # TODO : Use Mongoose
 
@@ -14,28 +14,29 @@ class DatabaseInterface
         # but will use the same database for multiple instances
         # of cloudbrowser run by the same user
         dbName = "UID#{process.getuid()}-#{dbConfig.dbName}"
-        # TODO should be configurable
+        # TODO should be configurable.
+        # this is the session store
         @dbClient = new Mongo.Db(dbName,
             new Mongo.Server(dbConfig.host, dbConfig.port, options:{auto_reconnect:true}),{w:'majority'})
-        Async.series([
-                        (next) =>
-                            @dbClient.open (err, pClient) ->
-                                next(err)
-                        ,
-                        (next) =>
-                            @mongoStore = new MongoStore(
-                                {
-                                    host: dbConfig.host
-                                    port: dbConfig.port
-                                    db:"#{dbName}_sessions"
-                                }, 
-                                (collection) ->
-                                    next(null)
-                                )
+        Async.series([            
+            (next) =>
+                @dbClient.open (err, pClient) ->
+                    next(err)
+            ,
+            (next) =>
+                @mongoStore = new MongoStore(
+                    {
+                        host: dbConfig.host
+                        port: dbConfig.port
+                        db:"#{dbName}_sessions"
+                    }, 
+                    (collection) ->
+                        next(null)
+                    )
 
-                    ], 
-                    (err, results) =>
-                        callback(err, this)
+        ], 
+        (err, results) =>
+            callback(err, this)
         )
         
     findAdminUser : (searchKey,callback) ->
