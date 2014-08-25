@@ -1,5 +1,6 @@
 path   = require('path')
 fs = require('fs')
+child_process = require('child_process')
 read    = require 'read'
 
 async = require('async')
@@ -109,18 +110,12 @@ class MasterConfig
             callback(err)
         )
 
-        
-
-        
-
 class DatabaseConfig
     constructor: () ->
         @dbName = 'cloudbrowser'
         @host = 'localhost'
         @port = 27017
         @type = 'mongoDB'
- 
-
 
 class ProxyConfig
     constructor: () ->
@@ -300,6 +295,82 @@ exports.newAppConfig = (descriptor)->
     # mountPoint should always starts with /
     if result.deploymentConfig.mountPoint?.indexOf('/') isnt 0 
         result.deploymentConfig.mountPoint += '/'
-    return result
+    return result    
 
-    
+class WorkerConfigGenerator
+    constructor: (opts, callback) ->
+        {@workerCount, @configPath} = opts
+        @currentPort = 4000
+        @portStep = 10
+        @portsTaken = []
+        new MasterConfig(['--configPath', @configPath], (err, masterConfig)=>
+            # if there is error , @masterConfig would be null
+            @masterConfig = masterConfig
+            callback null, this
+        )
+
+    generate:()->
+        if @masterConfig?
+            @masterRmiPort = @masterConfig.rmiPort
+            @portsTaken.push(@masterRmiPort)
+            @host = @masterConfig.proxyConfig.host
+            @portsTaken.push(@masterConfig.databaseConfig.port)
+            @portsTaken.push(@masterConfig.proxyConfig.httpPort)
+            @_doGenerate()
+        else
+            serverUtils.getLocalHostName((err, hostName)=>
+                @host = hostName
+                _readOtherOptions()
+            )
+
+
+    _readOtherOptions : () ->
+        async.waterfall([
+            (next) =>
+                if @host?
+                    next null, @host, true
+                else
+                    read({prompt : "Master's host[default localhost]: ", default: 'localhost'}, next)
+            (host, isDefault, next)=>
+                @host = host
+                read({prompt : "Master's rmi port[default 3040]: ", default: 3040}, next)
+            (port, isDefault, next) =>
+                @masterRmiPort = port
+                @portsTaken.push(port)
+                read({promt: "Master's http port [default 3000]", default: 3000}, next)
+            (port, isDefault, next) =>
+                @portsTaken.push(port)
+                next null
+            ],(err)=>
+                @_doGenerate()
+        )
+
+
+    _nextPort : ()->
+        while @portsTaken.indexOf(@currentPort) isnt -1
+            @currentPort += @portStep
+        @portsTaken.push(@currentPort)
+        return @currentPort
+
+    _doGenerate : ()->
+        masterConfig = {
+            host : @host
+            rmiPort : @masterRmiPort
+        }
+        for i in [1..@workerCount] by 1
+            workerConfig = {
+                id : 'worker' + i
+                masterConfig : masterConfig
+            }
+            configDir = path.resolve(@configPath, workerConfig.id)
+            configFile = path.resolve(configDir, 'server_config.json')
+            workerConfig.httpPort = @_nextPort()
+            workerConfig.rmiPort = @_nextPort()              
+            do (configFile, workerConfig)->            
+                child_process.exec("mkdir -p #{configDir}; touch #{configFile}", (err, stdout, stderr)->
+                    console.log "after exec #{configFile}"
+                    fs.writeFileSync(configFile, JSON.stringify(workerConfig))
+                )
+            
+
+exports.WorkerConfigGenerator = WorkerConfigGenerator 

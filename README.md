@@ -69,6 +69,13 @@ Configuration
 ###Server Configuration###
 In a cloudbrowser cluster there is one master server and several worker servers. The folder config2 contains sample configurations for a cluster of one master and two workers.
 
+You can copy files from config2 to config folder and modify the config files based on your needs. If you are planning to deploy more than 2 worker nodes, you can run generate_worker_config.sh to generate worker configuration files.
+
+```sh
+# bin/generate_worker_config.sh [config directory] [number of workers]
+bin/generate_worker_config.sh config 15
+```
+
 #### Master Configuration
 Master configuration file should be named as master\_config.json. By default, the run\_master.sh script will try to look for configuration file in ProjectRoot/config directory. You could use change that by setting configPath flag in command line.
 
