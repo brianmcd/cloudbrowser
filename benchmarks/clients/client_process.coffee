@@ -38,7 +38,8 @@ class Stat
 class Client extends EventEmitter
     constructor : (options) ->
         # id is a unique client identifier in all client processes
-        {@eventCount, @createBrowser, @appAddress, @delay, @browserConfig, @id} = options
+        {@eventCount, @createBrowser, @appAddress, @cbhost, @delay, @browserConfig, @id} = options
+        @_event = options['event']
         @eventLeft = @eventCount
         @stat= new Stat()
         @otherStat = {}
@@ -90,45 +91,62 @@ class Client extends EventEmitter
             @_createSocket()
             @eventLeft--
             if @eventLeft > 0
-                setTimeout(()=>
-                    @_initialSocketIo()
-                , 500
-                )
+                @_initialSocketIo()
 
     _initialSocketIo : ()->
-        console.log "listen on connect event"
         @_initStartTs()
-        @socket.emit('auth', @appid, @appInstanceId, @browserid)
-        @socket.once 'PageLoaded', () =>
+        @socket.on('connect', ()=>
+            @otherStat.connectTime = @_timpeElapsed()
+            @socket.emit('auth', @browserConfig.appid, @browserConfig.appInstanceId, 
+                @browserConfig.browserid)
+            @_initStartTs()
+            @socket.on('SetConfig',()->
+                # do nothing
+            )
+        )
+        @socket.once 'PageLoaded', (nodes, registeredEventTypes, clientComponents, compressionTable) =>
             @otherStat.pageLoadedTime = @_timpeElapsed()
+            @compressionTable = if compressionTable? then compressionTable else {}
+            @socket.on('resumeRendering', (id)=>
+                @_resumeRenderingHandler(id)
+            )
+            for k, v of @compressionTable
+                if k is 'resumeRendering'
+                    @socket.on(v, (id)=>
+                        @_resumeRenderingHandler(id)
+                    )
+            @socket.on('newSymbol', (original, compressed)=>
+                if original is 'resumeRendering' and @compressionTable[original] isnt compressed
+                    @compressionTable['resumeRendering'] = compressed
+                    @socket.on(compressed, (id)=>
+                        @_resumeRenderingHandler(id)
+                    )
+            )
+                
         @timeoutObj = setTimeout(()=>
             @_sendRegularEvent()
         , @delay)
-        @socket.on('resumeRendering', (id)=>
-            # ignore events that is not triggered by me
-            if id isnt @id
-                return
-            @stat.add(@_timpeElapsed())
-            if eventLeft > 0
-                @timeoutObj = setTimeout(()=>
-                    @_sendRegularEvent()
-                , @delay)
-            else
-                @stop()
-        )
-        @socket.on('connect', ()=>
-            console.log "connected....."
-            @otherStat.connectTime = @_timpeElapsed()
-        )
+        
         @socket.on('disconnect', ()=>
             @stop()
         )
-        
        
+    _resumeRenderingHandler:(id)->
+        # ignore events that is not triggered by me
+        if id isnt @id
+            return
+        @stat.add(@_timpeElapsed())
+        if @eventLeft > 0
+            @timeoutObj = setTimeout(()=>
+                @_sendRegularEvent()
+            , @delay)
+        else
+            @stop()
+        
 
     _createSocket : ()->
         @_initStartTs()
-        socketio = noCacheRequire('socket.io-client')
+        socketio = require('socket.io-client')
         # pass the session id through url, there is a way to pass through cookie
         # https://gist.github.com/jfromaniello/4087861 
         # but it only works for one client instance.
@@ -136,15 +154,18 @@ class Client extends EventEmitter
         queryString = "referer=#{encodeURIComponent(@browserConfig.url)}&cb.id=#{@sessionId}"
         # this is a synchronized call, seems no actual connection established 
         # at this point
-        @socket = socketio.connect(@appAddress, { query: queryString })
+        @socket = socketio(@cbhost, { query: queryString })
         @otherStat.socketioClientCreateTime = @_timpeElapsed()
         @socket.on('error',(err)=>
+            @_fatalErrorHandler(err)
+        )
+        @socket.on('cberror',(err)=>
             @_fatalErrorHandler(err)
         )
 
     _sendRegularEvent : () ->
         @_initStartTs()
-        @socket.emit('processEvent', @event, @id)
+        @socket.emit('processEvent', @_event, @id)
         @eventLeft--
         
 
@@ -165,22 +186,27 @@ class Client extends EventEmitter
         return result
             
         
-        
+dumbEvent = {
+    type: 'click', target: 'node13', bubbles: true, cancelable: true,
+    view: null, detail: 1, screenX: 2315, screenY: 307, clientX: 635,
+    clientY: 166, ctrlKey: false, shiftKey: false, altKey: false,
+    metaKey: false, button: 0
+}
         
 client = new Client({
     eventCount : 200
     createBrowser : true
     appAddress : 'http://localhost:3000/index.html'
+    cbhost  : 'http://localhost:3000'
     delay : 200
     id : 'client1'
+    'event' : dumbEvent
     })
 client.start()
 client.on('stopped', ()->
     console.log "stopped"
-    
-    )
+)
 setInterval(()->
-    console.log "alive"
     console.log JSON.stringify(client)
 , 3000
 )

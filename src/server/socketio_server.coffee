@@ -7,23 +7,34 @@ cookieParser = require('cookie-parser')
 ParseCookie = require('cookie').parse
 
 # dependes on serverConfig, httpServer, database, applicationManager
+# error event is blacklist by socket.io, see socket.io/lib/socket.js line 18
+###
+Blacklisted events.
+exports.events = [
+  'error',
+  'connect',
+  'disconnect',
+  'newListener',
+  'removeListener'
+];
+###
 class SocketIOServer
     constructor: (dependencies, callback) ->
         @config = dependencies.config.serverConfig
         @mongoInterface = dependencies.database
 
         {@applicationManager, @permissionManager, @sessionManager} = dependencies
-
-        io = sio.listen(dependencies.httpServer.httpServer)
-
-        io.configure () =>
-            if @config.compressJS
-                io.set('browser client minification', true)
-                io.set('browser client gzip', true)
-            io.set('log level', 1)
-            io.set('authorization', (handshakeData, callback) =>
-                @socketIOAuthHandler(handshakeData,callback))
-
+        options = {}
+        if @config.compressJS
+            options['browser client minification'] = true
+            options['browser client gzip'] = true
+        # log options are gone
+        
+        io = require('socket.io')(dependencies.httpServer.httpServer, options)
+        io.use((socket, next)=>
+            @socketIOAuthHandler(socket.request, next)
+        )
+        
         io.sockets.on 'connection', (socket) =>
             @addLatencyToClient(socket) if @config.simulateLatency
             # Custom event emitted by socket on the client side
@@ -35,8 +46,7 @@ class SocketIOServer
 
     socketIOAuthHandler : (handshakeData, callback) ->
         if not handshakeData.headers
-            return callback(null, false)
-        console.log "get url from heandshake #{handshakeData.url}"
+            return callback(new Error("Cannot get headers from request."))
         sessionID = null
         # try to get session id from cookie
         if handshakeData.headers.cookie?
@@ -50,15 +60,14 @@ class SocketIOServer
         if sessionID?
             # FIXME duplicate constant string with httpServer class
             sessionID = cookieParser.signedCookie(sessionID, 'change me please')
-        console.log "sessionID #{sessionID}"
 
         if not sessionID?
-            return callback(null, false)
+            return callback(new Error("Cannot retrive session."))
 
         @mongoInterface.getSession sessionID, (err, session) =>
             if err or not session
                 console.log "socketIOAuthHandlerError #{err} #{session} #{sessionID}"
-                return callback(null, false)
+                return callback(new Error("Error in getting session."))
             # Saving the session id on the session.
             # There is no other way to access it later
             @sessionManager.addObjToSession(session, {_id : sessionID})
@@ -67,13 +76,13 @@ class SocketIOServer
             # following customAuthHandler
             handshakeData.session = session
             handshakeData.sessionID = sessionID
-            callback(null, true)
+            callback()
 
     # Connects the client to the requested browser if the user
     # on the client side is authorized to use that browser
     # TODO : should put all authrize code to application or appInstance
     customAuthHandler : (mountPoint, appInstanceID, browserID, socket) ->
-        {headers, session, sessionID} = socket.handshake
+        {headers, session, sessionID} = socket.request
 
         # NOTE : app, browserID are provided by the client
         # and cannot be trusted
@@ -85,7 +94,7 @@ class SocketIOServer
         if not bserver or not session
             message =  "Could not found browser by #{mountPoint} #{appInstanceID} #{browserID}"
             console.log message
-            socket.emit 'error', message
+            socket.emit 'cberror', message
             return socket.disconnect()
 
         async.waterfall [
@@ -102,10 +111,10 @@ class SocketIOServer
         ], (err, session) =>
             if err?
                 console.log "error in connection #{err}, #{err.stack}"
-                socket.emit 'error', "error in connection #{err.message}"
+                socket.emit 'cberror', "error in connection #{err.message}"
                 return socket.disconnect()
             user = @sessionManager.findAppUserID(session, mountPoint)
-            if user then socket.handshake.user = user.getEmail()
+            if user then socket.request.user = user.getEmail()
             bserver.addSocket(socket)
 
 
