@@ -297,6 +297,9 @@ exports.newAppConfig = (descriptor)->
         result.deploymentConfig.mountPoint += '/'
     return result    
 
+# generate worker config by 
+# 1. master's config 
+# 2. if master's config is absent, prompt for user input
 class WorkerConfigGenerator
     constructor: (opts, callback) ->
         {@workerCount, @configPath} = opts

@@ -453,9 +453,9 @@ class AppManager
                 result.push(authAppConfig)
                 pwdRestAppConfig = @_getPwdRestAppConfig(appConfig)
                 result.push(pwdRestAppConfig)
-            if instantiationStrategy is 'multiInstance'
-                landingPageAppConfig = @_getLandingAppConfig(appConfig)
-                result.push(landingPageAppConfig)
+                if instantiationStrategy is 'multiInstance'
+                    landingPageAppConfig = @_getLandingAppConfig(appConfig)
+                    result.push(landingPageAppConfig)
         return result
         
     _getLandingAppConfig : (appConfig) ->
