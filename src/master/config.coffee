@@ -366,7 +366,8 @@ class WorkerConfigGenerator
             configFile = path.resolve(configDir, 'server_config.json')
             workerConfig.httpPort = @_nextPort()
             workerConfig.rmiPort = @_nextPort()              
-            do (configFile, workerConfig)->            
+            do (configFile, workerConfig)->
+                # create folder and files if necessary in a awkward way            
                 child_process.exec("mkdir -p #{configDir}; touch #{configFile}", (err, stdout, stderr)->
                     console.log "after exec #{configFile}"
                     fs.writeFileSync(configFile, JSON.stringify(workerConfig))

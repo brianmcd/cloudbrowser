@@ -363,8 +363,8 @@ class AppManager
         for appDescriptor in appDescriptors
             if appDescriptor.type is 'file'
                 appConfig = config.newAppConfig()
-                appConfig.path = appDescriptor.path
-                appConfig.appConfig.entryPoint = appDescriptor.path
+                appConfig.path = path.dirname(appDescriptor.path)
+                appConfig.appConfig.entryPoint = path.basename(appDescriptor.path)
                 appConfig.deploymentConfig.mountPoint = '/' + path.basename(appDescriptor.path)
                 appConfig.deploymentConfig.setOwner(@_config.workerConfig.defaultUser)
             else

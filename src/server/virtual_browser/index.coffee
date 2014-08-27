@@ -449,7 +449,8 @@ RPCMethods =
             else target.setAttribute(attribute, value)
             @setByClient = null
 
-    # TODO: what is this id for?
+    # pan : to my knowledge, this id is used in benchmark tools to track which client instance
+    # triggered 'processEvent', a better naming would be clientId
     processEvent : (event, id) ->
         if !@browserLoading
             # TODO

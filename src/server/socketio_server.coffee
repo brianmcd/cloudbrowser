@@ -1,3 +1,6 @@
+urlModule = require('url')
+querystring = require('querystring')
+
 sio  = require('socket.io')
 async = require('async')
 cookieParser = require('cookie-parser')
@@ -31,16 +34,29 @@ class SocketIOServer
 
 
     socketIOAuthHandler : (handshakeData, callback) ->
-        if not handshakeData.headers or not handshakeData.headers.cookie
+        if not handshakeData.headers
+            return callback(null, false)
+        console.log "get url from heandshake #{handshakeData.url}"
+        sessionID = null
+        # try to get session id from cookie
+        if handshakeData.headers.cookie?
+            cookies = ParseCookie(handshakeData.headers.cookie)
+            sessionID = cookies[@config.cookieName]
+            
+        if not sessionID? and handshakeData.url?
+            urlQueries = querystring.parse(urlModule.parse(handshakeData.url).query)
+            sessionID = urlQueries[@config.cookieName]
+
+        if sessionID?
+            # FIXME duplicate constant string with httpServer class
+            sessionID = cookieParser.signedCookie(sessionID, 'change me please')
+        console.log "sessionID #{sessionID}"
+
+        if not sessionID?
             return callback(null, false)
 
-        cookies = ParseCookie(handshakeData.headers.cookie)    
-        sessionID = cookies[@config.cookieName]
-        # FIXME duplicate constant string with httpServer class
-        sessionID = cookieParser.signedCookie(sessionID, 'change me please')
-        
         @mongoInterface.getSession sessionID, (err, session) =>
-            if err or not session 
+            if err or not session
                 console.log "socketIOAuthHandlerError #{err} #{session} #{sessionID}"
                 return callback(null, false)
             # Saving the session id on the session.
@@ -57,17 +73,15 @@ class SocketIOServer
     # on the client side is authorized to use that browser
     # TODO : should put all authrize code to application or appInstance
     customAuthHandler : (mountPoint, appInstanceID, browserID, socket) ->
-        {headers, session} = socket.handshake
-        cookies = ParseCookie(headers.cookie)
-        sessionID = cookies[@config.cookieName]
-   
+        {headers, session, sessionID} = socket.handshake
+
         # NOTE : app, browserID are provided by the client
         # and cannot be trusted
         browserID = decodeURIComponent(browserID)
         app = @applicationManager.find(mountPoint)
         appInstance = app?.findAppInstance(appInstanceID)
         bserver = appInstance?.findBrowser(browserID)
-        
+
         if not bserver or not session
             message =  "Could not found browser by #{mountPoint} #{appInstanceID} #{browserID}"
             console.log message
@@ -90,7 +104,6 @@ class SocketIOServer
                 console.log "error in connection #{err}, #{err.stack}"
                 socket.emit 'error', "error in connection #{err.message}"
                 return socket.disconnect()
-            
             user = @sessionManager.findAppUserID(session, mountPoint)
             if user then socket.handshake.user = user.getEmail()
             bserver.addSocket(socket)
@@ -104,7 +117,7 @@ class SocketIOServer
         mountPoint = app.mountPoint
         if not app.isStandalone()
             mountPoint = app.parentApp.mountPoint
-        
+
         user = @sessionManager.findAppUserID(session, mountPoint)
         if bserver.getUserPrevilege?(user)?
             return callback null, true
