@@ -48,6 +48,16 @@ class ClientProcess
         @stopped = true
         return true
 
+    computeStat:()->
+        @stat = new Stat()
+        @otherStat = {}
+        for clientGroup in @clientGroups
+            for client in clientGroup.clients
+                @stat.mergeStat(client.stat)
+                for k, v of client.otherStat
+                    if not @otherStat[k]
+                        @otherStat[k] = new Stat()
+                    @otherStat[k].add(v)
 
 
 # clients that share 1 browser
@@ -113,6 +123,11 @@ class Stat
     addError : () ->
         @errorCount++
 
+    mergeStat : (stat) ->
+        @count += stat.count
+        @total += stat.total
+        @errorCount += stat.errorCount
+        return this
 
 
 # eventCount contains the event to create browser
@@ -301,20 +316,63 @@ setInterval(()->
 , 3000
 )
 ###
+options = {
+    browserCount : {
+        full : 'browser-count'
+        default : 50
+        type : 'number'
+        help : 'count of virtual browsers created on server side.'
+    },
+    clientCount : {
+        full : 'client-count'
+        default : 50*5
+        type : 'number'
+        help : 'number of clients connected to server'
+    },
+    eventCount : {
+        full : 'event-count'
+        default : 250*50
+        type : 'number'
+        help : 'number of events triggered'
+    },
+    appAddress : {
+        full : 'app-address'
+        default : 'http://localhost:3000/benchmark'
+        help : 'benchmark application address'
+    },
+    cbhost : {
+        full : 'cb-host'
+        default : 'http://localhost:3000'
+        help : 'cloudbrowser host'
+    },
+    delay : {
+        full : 'delay'
+        default : 1500
+        type : 'number'
+        help : 'delay[ms] between a response and a request'
+    },
+    processId : {
+        full : 'process-id'
+        default : 'p0'
+    }
+}
 
-clientProcess = new ClientProcess({
-    browserCount : 2
-    clientCount : 4
-    eventCount : 500*500
-    appAddress : 'http://localhost:3000/benchmark'
-    cbhost : 'http://localhost:3000'
-    delay : 1500
-    processId : 'p01'
-    clientEvent : dumbEvent
-    })
+opts = require('nomnom').options(options).script(process.argv[1]).parse()
 
+opts.clientEvent = dumbEvent
 
+clientProcess = new ClientProcess(opts)
 
+intervalObj = setInterval(()->
+    clientProcess.computeStat()
+    console.log JSON.stringify(clientProcess.stat)
+    console.log JSON.stringify(clientProcess.otherStat)
+    if clientProcess.isStopped()
+        console.log "stopped"
+        clearInterval(intervalObj)
+    
+, 3000
+)
 
 
 
