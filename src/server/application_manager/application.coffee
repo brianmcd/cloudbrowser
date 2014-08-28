@@ -1,6 +1,8 @@
 Path                    = require('path')
 Fs                      = require('fs')
+
 Async                   = require('async')
+debug                   = require('debug')
 
 User                    = require('../user')
 {hashPassword}          = require('../../api/utils')
@@ -29,12 +31,15 @@ _validAppConfig :
     applicationStateFile    : str  - "Location of the file that contains app state"
 ###
 
+applogger = debug('cloudbrowser:worker:app')
+
 class Application extends BaseApplication
 
     constructor : (masterApp, @server) ->
         super(masterApp, @server)
         @_loadSubApps(masterApp)
         masterApp.on('subAppsChange',(newMasterApp)=>
+            applogger("subAppsChange for #{@mountPoint}")
             @_loadSubApps(newMasterApp)
             # re-add itself with the new subapps
             @server.applicationManager.addApplication(@)

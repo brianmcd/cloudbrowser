@@ -1,7 +1,12 @@
 urlModule = require('url')
 querystring = require('querystring')
+
 lodash = require('lodash')
+debug  = require('debug')
+
 routes = require('../server/application_manager/routes')
+
+logger = debug('cloudbrowser:master:proxy')
 
 # return the index of next char that is not skipChar
 strSkip = (str, startIndex, skipChar) ->
@@ -314,6 +319,7 @@ class WokerManager
 
             result = @_getWorkerByUrlPath(urlModule.parse(referer).pathname)
             if result.redirect?
+                # TODO send 404 instead
                 throw new Error("should have worker mapped for #{referer}, request is #{url}")
             else
                 return result
@@ -328,7 +334,7 @@ class WokerManager
             if worker?
                 return {worker: worker}
             else
-                console.log "cannot find instance for request #{path}"
+                logger "cannot find instance for request #{path}"
                 return {worker : @getMostFreeWorker() , redirect : requestAppInfo.mountPoint}
         else
             #if no appInstanceId in the url, map to any worker, using the original url

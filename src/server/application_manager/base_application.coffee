@@ -17,7 +17,7 @@ class BaseApplication extends EventEmitter
                 'authApp','landingPageApp'
                 ]
     constructor: (@_masterApp, @server) ->
-        {@httpServer, @sessionManager, 
+        {@httpServer, @sessionManager,
         @permissionManager, @mongoInterface,
         @uuidService} = @server
         # copy configurations
@@ -39,7 +39,7 @@ class BaseApplication extends EventEmitter
         {@mountPoint, @isPublic, @name,
          @description, @browserLimit, @authenticationInterface
         } = @deploymentConfig
-        # automatically generate getters and setters. see the corresponding code in 
+        # automatically generate getters and setters. see the corresponding code in
         # Application's constructor in master/app_manager.coffee.
         # getter : if callback provided, get value from master object and use callback to
         # pass the result; otherwise, return the local property
@@ -63,7 +63,7 @@ class BaseApplication extends EventEmitter
                                 console.trace("cannot find #{attrPath} in app #{thisArg.mountPoint}")
                                 return null
                             return parseResult.dest
-                            
+
             if not @[setter]?
                 @[setter] = do (attrPath, thisArg)->
                     (newVal, callback)->
@@ -72,26 +72,26 @@ class BaseApplication extends EventEmitter
                             console.trace("cannot find #{attrPath} in app #{thisArg.mountPoint}")
                             if callback
                                 return callback(new Error("cannot find #{attrPath}"))
-                            throw new Error("cannot find #{attrPath}") 
+                            throw new Error("cannot find #{attrPath}")
                         else
                             parseResult.obj[parseResult.attr] = newVal
                             thisArg._masterApp[setter](newVal, callback)
-        
+
         # listen on change event of master object and update local property accordingly
         @_masterApp.on('change', (changeObj)=>
             @_handleChange(changeObj)
             )
-        
+
         @remoteBrowsing = /^http/.test(@appConfig.entryPoint)
-        @counter = 0 
+        @counter = 0
         @appInstanceManager = new AppInstanceManager(@appInstanceProvider, @server, this)
-        
+
         @serveVirtualBrowserHandler = lodash.bind(@_serveVirtualBrowserHandler, this)
         @serveResourceHandler = lodash.bind(@_serveResourceHandler, this)
         @mountPointHandler = lodash.bind(@_mountPointHandler, this)
         @serveAppInstanceHandler = lodash.bind(@_serveAppInstanceHandler,this)
 
-        
+
 
     _handleChange : (changeObj)->
         {attr, newVal} = changeObj
@@ -102,8 +102,8 @@ class BaseApplication extends EventEmitter
             parseResult.obj[parseResult.attr] = newVal
             @emit('change',changeObj)
 
-                
- 
+
+
     _serveVirtualBrowserHandler : (req, res, next) ->
         appInstanceID = req.params.appInstanceID
         vBrowserID = req.params.browserID
@@ -134,7 +134,7 @@ class BaseApplication extends EventEmitter
             browserID : vBrowserID
             appInstanceID : appInstanceID
             host : @server.config.getHttpAddr()
-    
+
     _serveResourceHandler : (req, res, next) ->
         appInstanceID = req.params.appInstanceID
         vBrowserID = req.params.browserID
@@ -184,20 +184,20 @@ class BaseApplication extends EventEmitter
         appUrl = "#{@server.config.getHttpAddr()}#{@mountPoint}"
         console.log appUrl
         return appUrl
-     
+
 
     isMounted : () ->
         return @mounted
 
 
     getAppInstanceName : () ->
-        if @appInstanceProvider then return @appInstanceProvider.name       
+        if @appInstanceProvider then return @appInstanceProvider.name
 
 
     # handle for case that user request the mount point url
     _mountPointHandler : (req, res, next) ->
-        # "multiInstance" 
-        # authenticationInterface must be set to true 
+        # "multiInstance"
+        # authenticationInterface must be set to true
         if @isMultiInstance() and @landingPageApp
             # redirect to landing page app
             return @landingPageApp._mountPointHandler(req, res, next)
@@ -212,9 +212,9 @@ class BaseApplication extends EventEmitter
                     routes.buildBrowserPath(@mountPoint, appInstance.id, appInstance.browserId))
             )
             return
-            
-                
-        if @isSingleInstancePerUser() and @authApp    
+
+
+        if @isSingleInstancePerUser() and @authApp
             # get or create instance for user
             mountPoint = if this.isStandalone() then @mountPoint else @parentApp.mountPoint
             user = @sessionManager.findAppUserID(req.session, mountPoint)
@@ -224,9 +224,9 @@ class BaseApplication extends EventEmitter
             @appInstanceManager.getUserAppInstance(user, (err, appInstance)=>
                 if err?
                     return res.send(err.message, 500)
-                
-                routes.redirect(res, 
-                    routes.buildBrowserPath(@mountPoint, appInstance.id, appInstance.browserId))    
+
+                routes.redirect(res,
+                    routes.buildBrowserPath(@mountPoint, appInstance.id, appInstance.browserId))
             )
             return
 
@@ -234,16 +234,16 @@ class BaseApplication extends EventEmitter
         @appInstanceManager.create(null, (err, appInstance)=>
             if err?
                 return res.send(err.message, 500)
-            routes.redirect(res, 
+            routes.redirect(res,
                 routes.buildBrowserPath(@mountPoint, appInstance.id, appInstance.browserId))
         )
-        
+
     _serveAppInstanceHandler : (req, res, next) ->
         # if isSingleInstancePerUser, check authentication, and return the only vbrowser inside
         # if isSingleInstance, check if this instance exist
         # if isMultiInstance, check authentication, and return or create a vbrowser
         id = req.params.appInstanceID
-       
+
         appInstance = @appInstanceManager.find(id)
         if not appInstance then return routes.notFound(res, "The application instance #{appInstanceID} was not found.")
 
@@ -258,7 +258,7 @@ class BaseApplication extends EventEmitter
             previlege = appInstance.getUserPrevilege(user)
             if not previlege
                 return res.send('You do not have the previlege for this page.', 403)
-        routes.redirect(res, 
+        routes.redirect(res,
                 routes.buildBrowserPath(@mountPoint, appInstance.id, appInstance.browserId))
 
     mount : () ->
@@ -275,7 +275,7 @@ class BaseApplication extends EventEmitter
         @httpServer.unmount(routes.concatRoute(@mountPoint,routes.browserRoute))
         @httpServer.unmount(routes.concatRoute(@mountPoint, routes.resourceRoute))
         @mounted = false
-        
+
     enable : (callback)->
         @mounted = true
         @_masterApp.enable(callback)
@@ -290,7 +290,7 @@ class BaseApplication extends EventEmitter
             return callback(err) if err?
             result = []
             async.each(
-                instances, 
+                instances,
                 (instance, instanceCb)->
                     instance.getAllBrowsers((err, browsers)->
                         return instanceCb(err) if err?
@@ -337,7 +337,7 @@ class BaseApplication extends EventEmitter
 
     getUsers : () ->
         return [@getOwner()]
-    
+
     closeBrowser : (vbrowser) ->
         vbrowser.close()
 
@@ -345,13 +345,13 @@ class BaseApplication extends EventEmitter
         @_masterApp.setAppPublic(true, callback)
 
     makePrivate: (callback)->
-        @_masterApp.setAppPublic(false, callback)  
+        @_masterApp.setAppPublic(false, callback)
 
     enableAuthentication : (callback)->
         @_masterApp.enableAuthentication(callback)
 
     disableAuthentication : (callback)->
-        @_masterApp.setAuthenticationInterface(false, callback)        
+        @_masterApp.setAuthenticationInterface(false, callback)
 
     # for single instance
     createAppInstance : (callback) ->
@@ -376,6 +376,6 @@ class BaseApplication extends EventEmitter
             @appInstanceManager._removeAppInstance(appInstanceId)
             )
 
-                   
+
 
 module.exports = BaseApplication

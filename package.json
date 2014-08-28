@@ -57,7 +57,8 @@
     "nwglobal": "0.0.1",
     "lodash" : "2.4.1",
     "http-proxy" : "1.0.2",
-    "nodermi" : "git://github.com/bladepan/nodermi.git"
+    "nodermi" : "git://github.com/bladepan/nodermi.git",
+    "debug" : "1.0.4"
   },
   "devDependencies": {
     "nodeunit": "0.8.6",

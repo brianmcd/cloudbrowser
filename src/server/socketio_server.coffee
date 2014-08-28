@@ -5,6 +5,7 @@ sio  = require('socket.io')
 async = require('async')
 cookieParser = require('cookie-parser')
 ParseCookie = require('cookie').parse
+debug          = require('debug')
 
 # dependes on serverConfig, httpServer, database, applicationManager
 # error event is blacklist by socket.io, see socket.io/lib/socket.js line 18
@@ -18,6 +19,9 @@ exports.events = [
   'removeListener'
 ];
 ###
+
+socketlogger = debug('cloudbrowser:worker:socket')
+
 class SocketIOServer
     constructor: (dependencies, callback) ->
         @config = dependencies.config.serverConfig
@@ -92,8 +96,8 @@ class SocketIOServer
         bserver = appInstance?.findBrowser(browserID)
 
         if not bserver or not session
-            message =  "Could not found browser by #{mountPoint} #{appInstanceID} #{browserID}"
-            console.log message
+            message =  "#{@config.id} : #{mountPoint} appinstance #{appInstanceID} browser #{browserID} does not exist"
+            socketlogger(message)
             socket.emit 'cberror', message
             return socket.disconnect()
 

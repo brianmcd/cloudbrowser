@@ -1,13 +1,19 @@
+{EventEmitter} = require('events')
+
 Weak           = require('weak')
 Hat            = require('hat')
-User           = require('../user')
 Async          = require('async')
+debug          = require('debug')
+
+User           = require('../user')
 AppInstance    = require('./app_instance')
-{EventEmitter} = require('events')
+
 
 cleanupStates = (id) ->
     return () ->
         console.log "[Application Instance Manager] - Garbage collected appliation instance #{id}"
+
+applogger = debug('cloudbrowser:worker:app')
 
 class AppInstanceManager extends EventEmitter
     constructor : (@appInstanceProvider, @server, @app) ->
@@ -100,8 +106,8 @@ class AppInstanceManager extends EventEmitter
                 @appInstances[id] = appInstance
                 weakRefToAppInstance = Weak(appInstance, cleanupStates(id))
                 @weakRefsToAppInstances[id] = weakRefToAppInstance                
+                applogger("#{@server.config.id} createAppInstance #{id}")
                 callback(null, weakRefToAppInstance)
-
             )
 
         

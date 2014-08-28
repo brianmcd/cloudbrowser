@@ -1,3 +1,7 @@
+debug = require('debug')
+
+logger = debug('cloudbrowser:master:proxy')
+
 class HttpProxy
     constructor: (dependencies, callback) ->
         @config = dependencies.config.proxyConfig
@@ -16,8 +20,8 @@ class HttpProxy
         )
     
     proxyWebSocketRequest : (req, socket, head) ->
-        console.log "proxy ws request #{req.url}"
         {worker} = @workerManager.getWorker(req)
+        logger "proxy ws request #{req.url} to #{worker.id}"
         @proxy.ws(req, socket, head, {
             target:
                 {
@@ -29,10 +33,11 @@ class HttpProxy
     proxyRequest : (req, res) ->
         {worker, redirect} = @workerManager.getWorker(req)
         if redirect?
-            console.log "Redirect #{req.url} to #{redirect}"
+            logger "Redirect #{req.url} to #{redirect}"
             req.url = redirect
         if not worker?
-            console.log 'cannot find a worker'
+            logger 'cannot find a worker'
+        logger("proxy reqeust #{req.url} to #{worker.id}")
         @proxy.web(req, res, {
             target:
                 {
