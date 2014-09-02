@@ -6,6 +6,9 @@ HTML5                  = require('html5')
 {applyPatches}         = require('./jsdom_patches')
 
 jsdom = require('jsdom')
+debug = require('debug')
+
+logger = debug("cloudbrowser:worker:browser")
 #
 # This seems to be ineffective.
 #
@@ -95,6 +98,7 @@ class DOMWindowFactory
             old = window[timer]
             window[timer] = (fn, interval, args...) ->
                 old () ->
+                    logger("trigger #{timer}")
                     self.browser.emit('EnteredTimer')
                     fn.apply(this, args)
                     self.browser.emit('ExitedTimer')

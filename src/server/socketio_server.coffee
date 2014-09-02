@@ -1,3 +1,4 @@
+fs = require('fs')
 urlModule = require('url')
 querystring = require('querystring')
 
@@ -32,20 +33,63 @@ class SocketIOServer
         if @config.compressJS
             options['browser client minification'] = true
             options['browser client gzip'] = true
-        # log options are gone
+            # log options are gone
         
         io = require('socket.io')(dependencies.httpServer.httpServer, options)
         io.use((socket, next)=>
             @socketIOAuthHandler(socket.request, next)
         )
-        
+        # TODO logging based on cookie or header
         io.sockets.on 'connection', (socket) =>
             @addLatencyToClient(socket) if @config.simulateLatency
+            if not @config.noLogs
+                socketlogger("#{@config.id} : turn on socket io logging")
+                @_logFileName = "#{@config.id}_socket.log"
+                oldSocketEmit = socket.emit
+                socket.emit = ()=>
+                    @_logEvent.apply(@, arguments)
+                    oldSocketEmit.apply(socket, arguments)
+                oldSocketOn = socket.on
+                socket.on = (eventName, handler)=>
+                    newHandler = ()=>
+                        socketlogger("Intercept #{eventName} : #{arguments}")
+                        @_logIncomingEvent(eventName, arguments)
+                        handler.apply(null, arguments)
+                    newArgs = [eventName, newHandler]
+                    oldSocketOn.apply(socket, newArgs)
+
             # Custom event emitted by socket on the client side
             socket.on 'auth', (mountPoint, appInstanceID, browserID) =>
                 @customAuthHandler(mountPoint, appInstanceID, browserID, socket)
 
         callback(null, this)
+
+    _log : (content)->
+        data = null
+        if typeof content is 'object'
+            data = JSON.stringify(content) + '\n'
+        else if typeof content is 'string'
+            data = content
+        if data
+            fs.appendFile(@_logFileName,data,(err)->
+                socketlogger("logging error " + err) if err
+            )
+
+    _logEvent : (eventName, args...)->
+        obj = {
+            'event' : eventName
+            args : args
+            source : 'server'
+        }
+        @_log(obj)
+
+    _logIncomingEvent : (eventName, args)->
+        obj = {
+            'event' : eventName
+            args : args
+            source : 'client'
+        }
+        @_log(obj)
 
 
     socketIOAuthHandler : (handshakeData, callback) ->

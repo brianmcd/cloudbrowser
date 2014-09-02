@@ -5,16 +5,19 @@ read    = require 'read'
 
 async = require('async')
 lodash = require 'lodash'
+debug = require('debug')
 
 utils  = require '../shared/utils'
 User = require('../server/user')
 {hashPassword} = require('../api/utils')
 serverUtils = require('../server/server_utils')
 
+logger = debug("cloudbrowser:master:config")
 
 class MasterConfig
     constructor: (argv, callback) ->
         @_cmdOptions = parseCommandLineOptions(argv)
+        logger(@_cmdOptions)
         # array of all the unmatched positional args (the path names)
         @_appPaths = (pathFromCmd for pathFromCmd in @_cmdOptions._)
         if @_appPaths.length is 0
@@ -46,8 +49,9 @@ class MasterConfig
             
             # merge obj with defaults
             utils.merge(this, obj)
-            # Domain name of server
-
+            logger("workerConfig is #{JSON.stringify(obj.workerConfig)}")
+            
+            #get Domain name of server
             serverUtils.getLocalHostName((err, hostName)=>
                 if err?
                     console.log "Get localhost dns name failed, setting hosts using defaults"
