@@ -1,9 +1,12 @@
 hat = require('hat')
-
+###
+generate uniq id.
+###
 class UuidService
     constructor: (dependencies, callback) ->
         @db = dependencies.database
         @id = 0
+        # version is incremented everytime this constructor is called
         @db.getSequence('idprefix', 42 ,(err, obj)=>
             if err?
                 return callback err, null
@@ -15,6 +18,7 @@ class UuidService
             )
         
     getId : ()->
+        # [random id]z[version]z[counter]
         @id++ 
         hatid = hat(16,35) + 'z'
         return hatid + @versionStr + @id.toString(35)

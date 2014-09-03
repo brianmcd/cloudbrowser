@@ -119,22 +119,24 @@
       grantPermissions = function(form) {
         var collaborator, entity, role;
         entity = form.entity, role = form.role, collaborator = form.collaborator;
-        return Async.series(NwGlobal.Array(function(next) {
-          appInstance.processing = true;
-          entity.api[role.grantMethod](collaborator, next);
-          return $scope.safeApply(function() {
-            return $scope.closeShareForm();
-          });
-        }, function(next) {
-          return mail.send({
-            to: collaborator,
-            url: appConfig.getUrl(),
-            from: $scope.user,
-            callback: next,
-            sharedObj: entity.name,
-            mountPoint: appConfig.getMountPoint()
-          });
-        }), function(err) {
+        return Async.series([
+          function(next) {
+            appInstance.processing = true;
+            entity.api[role.grantMethod](collaborator, next);
+            return $scope.safeApply(function() {
+              return $scope.closeShareForm();
+            });
+          }, function(next) {
+            return mail.send({
+              to: collaborator,
+              url: entity.api.getURL(),
+              from: $scope.user,
+              callback: next,
+              sharedObj: entity.name,
+              mountPoint: appConfig.getMountPoint()
+            });
+          }
+        ], function(err) {
           return $scope.safeApply(function() {
             appInstance.processing = false;
             appInstance.showOptions = true;

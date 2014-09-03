@@ -81,10 +81,10 @@ class ClientEngine
             socket.on 'TestDone', () =>
                 @window.testClient.emit('TestDone')
         else 
-            socket = @window.io.connect(@host,
-                { query: "referer=#{encodedUrl}" }
-                )
+            socket = @window.io(@host, { query: "referer=#{encodedUrl}" })
             socket.on 'error', (err) ->
+                console.log("Error:"+err)
+            socket.on 'cberror', (err) ->
                 console.log("Error:"+err)
             socket.on 'connect', () =>
                 console.log("Socket.IO connected")
@@ -149,6 +149,9 @@ RPCMethods =
                     args : arguments
             else
                 RPCMethods[original].apply(this, arguments)
+
+    ConsoleLog : (msg)->
+        console.log msg.msg
 
     DOMStyleChanged : (targetId, attribute, value) ->
         target = @nodes.get(targetId)

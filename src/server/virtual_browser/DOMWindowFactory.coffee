@@ -6,6 +6,8 @@ HTML5                  = require('html5')
 {applyPatches}         = require('./jsdom_patches')
 
 jsdom = require('jsdom')
+debug = require('debug')
+
 #
 # This seems to be ineffective.
 #
@@ -24,6 +26,7 @@ class DOMWindowFactory
         # This gives us a Location class that is aware of our
         # DOMWindow and Browser.
         @Location = LocationBuilder(@browser)
+        @logger = debug("cloudbrowser:worker:browser:#{@browser.id}")
 
     create : (url) ->
         window = @jsdom.createWindow(@jsdom.dom.level3.html)
@@ -95,6 +98,7 @@ class DOMWindowFactory
             old = window[timer]
             window[timer] = (fn, interval, args...) ->
                 old () ->
+                    self.logger("trigger #{timer}")
                     self.browser.emit('EnteredTimer')
                     fn.apply(this, args)
                     self.browser.emit('ExitedTimer')
@@ -108,15 +112,14 @@ class DOMWindowFactory
                 for a in arguments
                     console.log a
                     if a.stack
-                        console.log a.stack
-                    
-                
+                        self.logger a.stack
+
                 args = Array.prototype.slice.call(arguments)
                 args.push('\n')
+                msg = args.join(' ')
                 self.browser.emit 'ConsoleLog',
-                    msg : args.join(' ')
-                if process.env.TESTS_RUNNING
-                    console.log(args.join(' '))
+                    msg : msg
+                self.logger(msg)
 
     patchWindowMethods : (window) ->
         self = this

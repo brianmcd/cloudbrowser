@@ -323,8 +323,7 @@ class AppInstance
         @memberOf AppInstance
     ###
     getURL : () ->
-        {currentBrowser} = _pvts[@_idx].cbCtx
-        appConfig = currentBrowser.getAppConfig()
+        {appConfig} = _pvts[@_idx]
         appURL    = appConfig.getUrl()
         # TODO should not hard code here, should not call method from appInstance either
         return "#{appURL}/a/#{@getID()}"

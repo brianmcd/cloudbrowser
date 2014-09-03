@@ -5,7 +5,7 @@ EVENT_BUFFER_SIZE = 1000
 
 # TODO: rename to UpdatesPerSecondClient
 class RequestsPerSecondClient extends Client
-    constructor: (@id, @appid, @browserid, @serverAddress, @clientData) ->
+    constructor: (@id, @appid, @appInstanceId, @browserid, @serverAddress, @clientData) ->
         {@rate, @event} = @clientData
         @events = Array(EVENT_BUFFER_SIZE)
         @latencySum = 0

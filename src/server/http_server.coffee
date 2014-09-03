@@ -1,8 +1,9 @@
 Fs             = require('fs')
-express        = require('express')
 {EventEmitter} = require('events')
 ZLib           = require('zlib')
 Path           = require('path')
+http           = require('http')
+
 Uglify         = require('uglify-js')
 Passport       = require('passport')
 lodash = require('lodash')
@@ -18,39 +19,37 @@ require('coffee-script')
 # Dependency for digest based authentication
 #Auth = require('http-auth')
 class HTTPServer extends EventEmitter
-    __r_skip : ['server']
+    __r_skip : ['server', 'httpServer']
     constructor : (dependencies, callback) ->
         @config = dependencies.config.serverConfig
         {@sessionManager, @database, @permissionManager} = dependencies
-        @server = express.createServer()
-
-        @server.configure () =>
-            if !process.env.TESTS_RUNNING
-                @server.use(express.logger())
-            @server.use(express.bodyParser())
-            # Note : Cookie parser must come before session middleware
-            # TODO : Change these secrets
-            @server.use(express.cookieParser('secret'))
-            # TODO : move this logic to session manager
-            @server.use express.session
-                store  : @database.mongoStore
-                secret : 'change me please'
-                key    : @config.cookieName
-            @server.set('views', Path.join(__dirname, '..', '..', 'views'))
-            @server.set('view options', {layout: false})
-            @server.use(Passport.initialize())
-            # this nice error handler will not work on newer version of express
-            @server.on 'error', (e) =>
-                console.log "CloudBrowser: http service start failed #{e.message}"
-                if e.code is 'EADDRINUSE'
-                    console.log "the port #{@config.httpPort} is occupied, please check your configuration"
-                
-                process.exit(1)
-
+        express = require('express')
+        @server = express()
+        @server.use(require('body-parser').urlencoded({extended:true}))
+        @server.use(require('cookie-parser')('secret'))
+        session = require('express-session')
+        @server.use(session(
+            store  : @database.mongoStore
+            secret : 'change me please'
+            name    : @config.cookieName
+            resave : true
+            saveUninitialized : true
+        ))
+        @server.set('view engine', 'jade') 
+        @server.set('views', Path.join(__dirname, '..', '..', 'views'))
+        @server.set('view options', {layout: false})
+        @server.use(Passport.initialize())
         
+        @server.use((err, req, res, next)->
+            console.error(err.stack)
+            res.status(500).send("Something wrong when handling this request. #{err.message}")
+        )
+
+        @httpServer = http.createServer(@server)
+
         @setupClientEngineRoutes()
         # apprently the callback for listen only fires when the server start successfully
-        @server.listen(@config.httpPort, () =>
+        @httpServer.listen(@config.httpPort, () =>
             callback null, this
         )
 
@@ -97,8 +96,12 @@ class HTTPServer extends EventEmitter
         @server.get(mountPoint,handlers)
 
     # need unmount old handler before register new handler.
-    # this method is not documented on the new version of expressjs
+    # this method is not documented on the expressjs 4.0.
+    # you cannot even mount a new handler to override the old one.
+    # TODO handle unmoung on master node or wrap handlers in a local
+    # registry
     unmount : (path) ->
+        console.log "unmount #{path}"
         @server.routes.routes.get =
             r for r in @server.routes.routes.get when r.path isnt path
 

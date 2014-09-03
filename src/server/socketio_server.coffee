@@ -1,44 +1,121 @@
+fs = require('fs')
+urlModule = require('url')
+querystring = require('querystring')
+
 sio  = require('socket.io')
 async = require('async')
-ParseCookie  = require('cookie').parse
-
+cookieParser = require('cookie-parser')
+ParseCookie = require('cookie').parse
+debug          = require('debug')
 
 # dependes on serverConfig, httpServer, database, applicationManager
+# error event is blacklist by socket.io, see socket.io/lib/socket.js line 18
+###
+Blacklisted events.
+exports.events = [
+  'error',
+  'connect',
+  'disconnect',
+  'newListener',
+  'removeListener'
+];
+###
+
+socketlogger = debug('cloudbrowser:worker:socket')
+
 class SocketIOServer
     constructor: (dependencies, callback) ->
         @config = dependencies.config.serverConfig
         @mongoInterface = dependencies.database
 
         {@applicationManager, @permissionManager, @sessionManager} = dependencies
-
-        io = sio.listen(dependencies.httpServer.server)
-
-        io.configure () =>
-            if @config.compressJS
-                io.set('browser client minification', true)
-                io.set('browser client gzip', true)
-            io.set('log level', 1)
-            io.set('authorization', (handshakeData, callback) =>
-                @socketIOAuthHandler(handshakeData,callback))
-
+        options = {}
+        if @config.compressJS
+            options['browser client minification'] = true
+            options['browser client gzip'] = true
+            # log options are gone
+        
+        io = require('socket.io')(dependencies.httpServer.httpServer, options)
+        io.use((socket, next)=>
+            @socketIOAuthHandler(socket.request, next)
+        )
+        # TODO logging based on cookie or header
         io.sockets.on 'connection', (socket) =>
             @addLatencyToClient(socket) if @config.simulateLatency
+            if not @config.noLogs
+                socketlogger("#{@config.id} : turn on socket io logging")
+                @_logFileName = "#{@config.id}_socket.log"
+                oldSocketEmit = socket.emit
+                socket.emit = ()=>
+                    @_logEvent.apply(@, arguments)
+                    oldSocketEmit.apply(socket, arguments)
+                oldSocketOn = socket.on
+                socket.on = (eventName, handler)=>
+                    newHandler = ()=>
+                        socketlogger("Intercept #{eventName} : #{arguments}")
+                        @_logIncomingEvent(eventName, arguments)
+                        handler.apply(null, arguments)
+                    newArgs = [eventName, newHandler]
+                    oldSocketOn.apply(socket, newArgs)
+
             # Custom event emitted by socket on the client side
             socket.on 'auth', (mountPoint, appInstanceID, browserID) =>
                 @customAuthHandler(mountPoint, appInstanceID, browserID, socket)
 
         callback(null, this)
 
+    _log : (content)->
+        data = null
+        if typeof content is 'object'
+            data = JSON.stringify(content) + '\n'
+        else if typeof content is 'string'
+            data = content
+        if data
+            fs.appendFile(@_logFileName,data,(err)->
+                socketlogger("logging error " + err) if err
+            )
+
+    _logEvent : (eventName, args...)->
+        obj = {
+            'event' : eventName
+            args : args
+            source : 'server'
+        }
+        @_log(obj)
+
+    _logIncomingEvent : (eventName, args)->
+        obj = {
+            'event' : eventName
+            args : args
+            source : 'client'
+        }
+        @_log(obj)
+
 
     socketIOAuthHandler : (handshakeData, callback) ->
-        if not handshakeData.headers or not handshakeData.headers.cookie
-            return callback(null, false)
-        cookies = ParseCookie(handshakeData.headers.cookie)    
+        if not handshakeData.headers
+            return callback(new Error("Cannot get headers from request."))
+        sessionID = null
+        # try to get session id from cookie
+        if handshakeData.headers.cookie?
+            cookies = ParseCookie(handshakeData.headers.cookie)
+            sessionID = cookies[@config.cookieName]
+            
+        if not sessionID? and handshakeData.url?
+            urlQueries = querystring.parse(urlModule.parse(handshakeData.url).query)
+            sessionID = urlQueries[@config.cookieName]
 
-        sessionID = cookies[@config.cookieName]
+        if sessionID?
+            # FIXME duplicate constant string with httpServer class
+            sessionID = cookieParser.signedCookie(sessionID, 'change me please')
+
+        if not sessionID?
+            return callback(new Error("Cannot retrive session."))
+
         @mongoInterface.getSession sessionID, (err, session) =>
-            if err or not session then console.log "#{err} #{session}"
-            if err or not session then return callback(null, false)
+            if err or not session
+                console.log "socketIOAuthHandlerError #{err} #{session} #{sessionID}"
+                return callback(new Error("Error in getting session."))
             # Saving the session id on the session.
             # There is no other way to access it later
             @sessionManager.addObjToSession(session, {_id : sessionID})
@@ -47,27 +124,25 @@ class SocketIOServer
             # following customAuthHandler
             handshakeData.session = session
             handshakeData.sessionID = sessionID
-            callback(null, true)
+            callback()
 
     # Connects the client to the requested browser if the user
     # on the client side is authorized to use that browser
     # TODO : should put all authrize code to application or appInstance
     customAuthHandler : (mountPoint, appInstanceID, browserID, socket) ->
-        {headers, session} = socket.handshake
-        cookies = ParseCookie(headers.cookie)
-        sessionID = cookies[@config.cookieName]
-   
+        {headers, session, sessionID} = socket.request
+
         # NOTE : app, browserID are provided by the client
         # and cannot be trusted
         browserID = decodeURIComponent(browserID)
         app = @applicationManager.find(mountPoint)
         appInstance = app?.findAppInstance(appInstanceID)
         bserver = appInstance?.findBrowser(browserID)
-        
+
         if not bserver or not session
-            message =  "Could not found browser by #{mountPoint} #{appInstanceID} #{browserID}"
-            console.log message
-            socket.emit 'error', message
+            message =  "#{@config.id} : #{mountPoint} appinstance #{appInstanceID} browser #{browserID} does not exist"
+            socketlogger(message)
+            socket.emit 'cberror', message
             return socket.disconnect()
 
         async.waterfall [
@@ -84,11 +159,10 @@ class SocketIOServer
         ], (err, session) =>
             if err?
                 console.log "error in connection #{err}, #{err.stack}"
-                socket.emit 'error', "error in connection #{err.message}"
+                socket.emit 'cberror', "error in connection #{err.message}"
                 return socket.disconnect()
-            
             user = @sessionManager.findAppUserID(session, mountPoint)
-            if user then socket.handshake.user = user.getEmail()
+            if user then socket.request.user = user.getEmail()
             bserver.addSocket(socket)
 
 
@@ -100,7 +174,7 @@ class SocketIOServer
         mountPoint = app.mountPoint
         if not app.isStandalone()
             mountPoint = app.parentApp.mountPoint
-        
+
         user = @sessionManager.findAppUserID(session, mountPoint)
         if bserver.getUserPrevilege?(user)?
             return callback null, true

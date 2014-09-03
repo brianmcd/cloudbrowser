@@ -3,7 +3,7 @@ Client = require('./client')
 EMIT_INTERVAL = 100
 
 class LockstepClient extends Client
-    constructor: (@id, @appid, @browserid, @serverAddress, @clientData) ->
+    constructor: (@id, @appid, @appInstanceId, @browserid, @serverAddress, @clientData) ->
         {@event} = @clientData
         @latencies = Array(EMIT_INTERVAL)
         @latencySum = 0

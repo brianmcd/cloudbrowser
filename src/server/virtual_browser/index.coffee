@@ -33,13 +33,21 @@ class VirtualBrowser extends EventEmitter
                 'localState','consoleLog','rpcLog', 'nodes', 'resources']
 
     constructor : (vbInfo) ->
-
         {@server, @id, @mountPoint, @appInstance} = vbInfo
         {@workerId} = @appInstance
         @appInstanceId = @appInstance.id
         weakRefToThis = Weak(this, cleanupBserver(@id))
 
         @browser = new Browser(@id, weakRefToThis, @server.config)
+
+        # we definetly don't want to send everything in config to client,
+        # like database, emailer settings
+        configToInclude = ['compression']
+        @_clientEngineConfig = {}
+        for k, v of @server.config
+            if configToInclude.indexOf(k) isnt -1
+                @_clientEngineConfig[k] = v
+
         @dateCreated = new Date()
         @localState = {}
 
@@ -48,7 +56,7 @@ class VirtualBrowser extends EventEmitter
             @browser.window.addEventListener 'hashchange', (event) =>
                 @broadcastEvent('UpdateLocationHash',
                                 @browser.window.location.hash)
-            
+
         @sockets = []
         @compressor = new Compressor()
         @compressor.on 'newSymbol', (args) =>
@@ -63,7 +71,7 @@ class VirtualBrowser extends EventEmitter
 
         # Sockets that have connected before the browser has loaded its first page.
         @queuedSockets = []
-        
+
         # Indicates whether the browser has loaded its first page.
         @browserInitialized = false
 
@@ -94,7 +102,7 @@ class VirtualBrowser extends EventEmitter
     getConnectedClients : () ->
         clients = []
         for socket in @sockets
-            {address, user} = socket.handshake
+            {address, user} = socket.request
             clients.push
                 address : "#{address.address}:#{address.port}"
                 email : user
@@ -108,17 +116,17 @@ class VirtualBrowser extends EventEmitter
 
     redirect : (URL) ->
         @broadcastEvent('Redirect', URL)
-       
+
     getSessions : (callback) ->
         mongoInterface = @server.mongoInterface
         getFromDB = (socket, callback) ->
-            sessionID = socket.handshake.sessionID
+            sessionID = socket.request.sessionID
             mongoInterface.getSession(sessionID, callback)
         Async.map(@sockets, getFromDB, callback)
 
     getFirstSession : (callback) ->
         mongoInterface = @server.mongoInterface
-        sessionID = @sockets[0].handshake.sessionID
+        sessionID = @sockets[0].request.sessionID
         mongoInterface.getSession(sessionID, callback)
 
     # arg can be an Application or URL string.
@@ -199,8 +207,11 @@ class VirtualBrowser extends EventEmitter
                 socket.emit.apply(socket, args)
 
     addSocket : (socket) ->
-        {address, user} = socket.handshake
-        address = "#{address.address}:#{address.port}"
+        address = socket.request.connection.remoteAddress
+        {user} = socket.request
+        # if it is not issued from web browser, address is empty 
+        if address
+            address = "#{address.address}:#{address.port}"
         userInfo =
             address : address
             email : user
@@ -219,8 +230,8 @@ class VirtualBrowser extends EventEmitter
                         func.apply(this, args)
                     catch e
                         console.log e
-                    
-                    
+
+
         socket.on 'disconnect', () =>
             @sockets       = (s for s in @sockets       when s != socket)
             @queuedSockets = (s for s in @queuedSockets when s != socket)
@@ -228,11 +239,7 @@ class VirtualBrowser extends EventEmitter
             if not (@sockets.length or @queuedSockets.length)
                 @emit 'NoClients'
 
-        # TODO: don't do this workaround
-        oldApps = @server.config.apps
-        @server.config.apps = null
-        socket.emit('SetConfig', @server.config)
-        @server.config.apps = oldApps
+        socket.emit('SetConfig', @_clientEngineConfig)
 
         if !@browserInitialized
             return @queuedSockets.push(socket)
@@ -389,7 +396,7 @@ DOMEventHandlers =
     ConsoleLog : (event) ->
         @consoleLog?.write(event.msg + '\n')
         # TODO: debug flag to enable line below.
-        console.log("[[[#{@browser.id}]]] #{event.msg}")
+        @broadcastEvent('ConsoleLog', event)
 
     DOMStyleChanged : (event) ->
         return if @browserLoading
@@ -449,12 +456,13 @@ RPCMethods =
             else target.setAttribute(attribute, value)
             @setByClient = null
 
-    # TODO: what is this id for?
+    # pan : to my knowledge, this id is used in benchmark tools to track which client instance
+    # triggered 'processEvent', a better naming would be clientId
     processEvent : (event, id) ->
         if !@browserLoading
             # TODO
-            # This bail out happens when an event fires on a component, which 
-            # only really exists client side and doesn't have a nodeID (and we 
+            # This bail out happens when an event fires on a component, which
+            # only really exists client side and doesn't have a nodeID (and we
             # can't handle clicks on the server anyway).
             # Need something more elegant.
             return if !event.target
@@ -541,5 +549,5 @@ RPCMethods =
         event.info = params.event
         node.dispatchEvent(event)
         @broadcastEvent('resumeRendering')
-            
+
 module.exports = VirtualBrowser

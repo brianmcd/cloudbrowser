@@ -11,7 +11,12 @@ See [http://cloudbrowser.cs.vt.edu/](http://cloudbrowser.cs.vt.edu/) for a detai
 External Dependencies
 ---------------------
 
-* Mongodb Server.
+* Mongodb Server (>=2.6.0).
+Download and install mongodb. Start mongodb using a data folder you choose like this:
+```sh
+mongod --dbpath=~/var/data/db
+```
+
 
 Installation 
 --------------------
@@ -27,7 +32,7 @@ suitable configuation details. See the section on [application configuration](#w
 
 Start up
 ----------
-you can start cloudbrowser in cluster mode by starting a master and serveral workers.
+you can start cloudbrowser in cluster mode by starting a master and serveral workers. **Do remember to start mongodb first.**
 You can start master by the following script, if you omit the configPath option, it will load config file from ProjectRoot/config.
 ```sh
 bin/run_master.sh --configPath [config directory] [application direcoties...]
@@ -63,6 +68,13 @@ Configuration
 
 ###Server Configuration###
 In a cloudbrowser cluster there is one master server and several worker servers. The folder config2 contains sample configurations for a cluster of one master and two workers.
+
+You can copy files from config2 to config folder and modify the config files based on your needs. If you are planning to deploy more than 2 worker nodes, you can run generate_worker_config.sh to generate worker configuration files.
+
+```sh
+# bin/generate_worker_config.sh [config directory] [number of workers]
+bin/generate_worker_config.sh config 15
+```
 
 #### Master Configuration
 Master configuration file should be named as master\_config.json. By default, the run\_master.sh script will try to look for configuration file in ProjectRoot/config directory. You could use change that by setting configPath flag in command line.
@@ -169,3 +181,40 @@ authenticationInterface must be set to true and the browserLimit must be set to 
 available to the user. 
 
 A simple configuration file need only contain the entryPoint.
+
+
+Internals
+-------------
+
+TBC
+
+###DB Tables Explained
+You can fire up a mongodb shell using the command **mongo**.
+
+####data bases
+
+Display all the databases using 'show dbs'. You will see something like this :
+```
+> show dbs
+UID501-cloudbrowser           0.078GB
+UID501-cloudbrowser_sessions  0.078GB
+admin                         (empty)
+local                         0.078GB
+
+> use UID501-cloudbrowser
+switched to db UID501-cloudbrowser
+
+> show collections
+Permissions
+admin_interface.users
+chat3.users
+counters
+helloworld.users
+system.indexes
+
+> db.Permissions.find()
+{ "_id" : ObjectId("53cf37f4d1dc5a9d49000001"), "_email" : "godmar@gmail.com", "apps" : { "/calendar" : { "permission" : "own" }, "/frames" : { "permission" : "own" }, "/angularjs-basic" : { "permission" : "own" }, "/chat2" : { "permission" : "own" }, "/angular-todo" : { "permission" : "own" }, "/chess" : { "permission" : "own" }, "/frames/authenticate" : { "permission" : "own" }, "/frames/password_reset" : { "permission" : "own" }, "/angularjs-basic/authenticate" : { "permission" : "own" }, "/angularjs-basic/password_reset" : { "permission" : "own" }, "/chat2/authenticate" : { "permission" : "own" }, "/chat2/password_reset" : { "permission" : "own" }, "/chat2/landing_page" : { "permission" : "own" }, "/angular-todo/authenticate" : { "permission" : "own" }, "/angular-todo/password_reset" : { "permission" : "own" }, "/chess/authenticate" : { "permission" : "own" }, "/chess/password_reset" : { "permission" : "own" } } }
+```
+UID***-cloudbrowser is used to store data from cloudbrowser framework and user applications.
+UID***-cloudbrowser_sessions is for http sessions.
+

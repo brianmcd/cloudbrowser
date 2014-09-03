@@ -2,6 +2,7 @@ FS             = require('fs')
 Path           = require('path')
 Fork           = require('child_process').fork
 {EventEmitter} = require('events')
+timers         = require('timers')
 
 process.env.NODE_ENV = 'production'
 class Server extends EventEmitter
@@ -18,56 +19,64 @@ class Server extends EventEmitter
         if app == 'chat2' || app == 'doodle'
             serverArgs = serverArgs.concat(['--knockout'])
 
-        serverCwd = Path.resolve(__dirname, '..', '..')
-
-        appPath = Path.resolve(serverCwd, 'benchmarks', 'framework', 'apps', app, 'app.js')
+        rootDir = Path.resolve(__dirname, '..', '..')
+        # default application
+        appPath = Path.resolve(rootDir, 'benchmarks', 'framework', 'apps', app, 'index.html')
         if FS.existsSync(appPath)
             serverArgs.push(appPath)
         else
-            serverArgs.push(Path.resolve(serverCwd, app))
+            serverArgs.push(Path.resolve(rootDir, app))
 
         nodeOpts =
-            cwd : serverCwd
+            cwd : rootDir
             env : process.env
-        serverPath = Path.resolve(serverCwd, 'bin', 'server')
+        masterScriptPath = Path.resolve(rootDir, 'src/master/master_main.coffee' )
+        serverPath = Path.resolve(rootDir, 'src/server/newbin.coffee')
 
-        if nodeArgs
-            serverArgs = nodeArgs.concat(serverArgs)
-            # HACK HACK HACK
-            # See node's fork implementation (node/lib/child_process.js).
-            # This is the only way to allow us to pass startup options to node
-            # itself, since these need to come before the module name.
-            # This works on node 0.7.6.
-            #
-            # TODO: patch this in node and send a PR.
-            oldUnshift = Array.prototype.unshift
-            Array.prototype.unshift = (elem) ->
-                # Instead of putting it at position 0, put it at the position
-                # after the node/v8 options.
-                if elem == serverPath
-                    @splice(nodeArgs.length, 0, elem)
-                else
-                    oldUnshift.apply(this, arguments)
+        timeOutObj = timers.setTimeout(()=>
+            @emit('initError', 'timeOut')
+        , 5000)
 
-        @server = Fork(serverPath, serverArgs, nodeOpts)
+        eventQueue = new EventEmitter()
+        dependencyCount = 1 + opts.workerCount
+        readyCount = 0
+        eventQueue.on('ready', ()=>
+            readyCount++
+            if readyCount is dependencyCount
+                @emit('ready')
+                timers.clearTimeout timeOutObj
+        )
 
-        if nodeArgs
-            Array.prototype.unshift = oldUnshift
-
-        @server.on 'message', (msg) =>
+        masterProcess = Fork(masterScriptPath, serverArgs)
+        masterProcess.on('message', (msg)=>
             switch msg.type
-                when 'log'
-                    data = msg.data
-                    if printEverything
-                        process.stdout.write(data)
-                    else if printEventsPerSec && /^Processing/.test(data)
-                        process.stdout.write(data)
-                    if /^All\sservices\srunning/.test(data)
-                        @emit('ready')
+                when 'ready'
+                    console.log "master is ready"
+                    eventQueue.emit('ready')
+                when 'initError'
+                    @emit('initError')
                 else
-                    @emit('message', msg)
+                    console.log "other msg from master"
+        )
 
-        process.on('exit', () => @server?.kill())
+        console.log "start #{opts.workerCount} workers"
+
+        workerProcesses = []
+        for i in [0...opts.workerCount] by 1
+            workerConfig = Path.resolve(rootDir, "config/worker#{i+1}")
+            workerArgs = [process.argv[0], process.argv[1], "--configPath=#{workerConfig}"]
+            workerProcesses[i] = Fork(serverPath, workerArgs)
+            workerProcesses[i].on('message',(msg)->
+                switch msg.type
+                    when 'ready'
+                        console.log "worker is ready"
+                        eventQueue.emit('ready')
+                    when 'initError'
+                        @emit('initError')
+                    else
+                        console.log "other msg from master"
+            )
+
 
     send: (msg) ->
         @server.send(msg)

@@ -119,6 +119,9 @@ class UserPermissionManager
 
     addAppPermRec : (options) ->
         {user, mountPoint, permission, callback} = options
+        if not user
+            return callback(new Error("user is mandatory for addAppPermRec"))
+        
         setPerm = (callback) =>
             @setAppPerm
                 user        : user

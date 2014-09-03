@@ -1,4 +1,5 @@
 module.exports = {
+    appInstanceRoute : '/a/:appInstanceID'
     browserRoute : '/a/:appInstanceID/browsers/:browserID/index'
     resourceRoute : '/a/:appInstanceID/browsers/:browserID/:resourceID'
     landingPath : '/landing_path'
@@ -15,6 +16,8 @@ module.exports = {
             path = path.slice(0,-1)
         return base + path
 
+    redirectToBrowser : (res, mountPoint, appInstanceId, browserID) ->
+        @redirect(res, @buildBrowserPath(mountPoint, appInstanceId, browserID))
         
     redirect : (res, route) ->
         if not route then res.send(500)
@@ -23,5 +26,8 @@ module.exports = {
             'Cache-Control' : "max-age=0, must-revalidate"
         res.end()
     notFound : (res, message) ->
-        res.send(message, 404)
+        res.status(404).send(message)
+
+    internalError : (res, message) ->
+        res.status(500).send(message)
 }

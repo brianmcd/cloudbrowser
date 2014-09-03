@@ -14,3 +14,9 @@ npm-debug.log
 
 *.log
 config
+
+config/*
+
+config/worker1/server_config.json
+
+config/worker2/server_config.json

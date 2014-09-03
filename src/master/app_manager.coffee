@@ -4,7 +4,7 @@ lodash = require('lodash')
 {EventEmitter} = require('events')
 
 async  = require('async')
-
+debug  = require('debug')
 
 config = require('./config')
 routes = require('../server/application_manager/routes')
@@ -13,6 +13,8 @@ User = require('../server/user')
 ###
 the master side counterpart of application manager
 ###
+
+applogger = debug('cloudbrowser:master:app')
 
 class AppInstance
     constructor: (@id, @workerId) ->
@@ -178,7 +180,7 @@ class Application extends EventEmitter
             # it won't be a big issue for single instance apps, if they have no states
             @_appInstance = appInstance
             # now tell the worker to initiate a appInstance
-            
+            applogger("create appinstance on #{worker.id}")
             @_workerManager._getWorkerStub(worker, (err, stub)=>
                 if err?
                     @_appInstance._notifyWaiting(err)
@@ -191,6 +193,7 @@ class Application extends EventEmitter
                         return callback err
                     appInstance._setRemoteInstance(result)
                     @_addAppInstance(appInstance)
+                    applogger("get appInstance #{result.id} from #{worker.id}")
                     callback null, result
                 )
             )
@@ -215,6 +218,7 @@ class Application extends EventEmitter
         appInstance = new AppInstance(null, worker.id)
         if(user)
             @_userToAppInstance[user] = appInstance
+        applogger("create appInstance on #{worker.id}")
         @_workerManager._getWorkerStub(worker, (err, stub)=>
             if err?
                 appInstance._notifyWaiting(err)
@@ -229,6 +233,7 @@ class Application extends EventEmitter
                     return callback err
                 appInstance._setRemoteInstance(result)
                 @_addAppInstance(appInstance)
+                applogger("#{worker.id} return appinstance #{result.id}")
                 callback null, result
             )
         )
@@ -363,10 +368,10 @@ class AppManager
         for appDescriptor in appDescriptors
             if appDescriptor.type is 'file'
                 appConfig = config.newAppConfig()
-                appConfig.path = appDescriptor.path
-                appConfig.appConfig.entryPoint = appDescriptor.path
-                appConfig.deploymentConfig.mountPoint = path.basename(appDescriptor.path)
-                appConfig.deploymentConfig.setOwner(@_config.defaultUser)
+                appConfig.path = path.dirname(appDescriptor.path)
+                appConfig.appConfig.entryPoint = path.basename(appDescriptor.path)
+                appConfig.deploymentConfig.mountPoint = '/' + path.basename(appDescriptor.path)
+                appConfig.deploymentConfig.setOwner(@_config.workerConfig.defaultUser)
             else
                 appConfig = config.newAppConfig(appDescriptor)
             appConfigs.push(appConfig)
@@ -453,9 +458,9 @@ class AppManager
                 result.push(authAppConfig)
                 pwdRestAppConfig = @_getPwdRestAppConfig(appConfig)
                 result.push(pwdRestAppConfig)
-            if instantiationStrategy is 'multiInstance'
-                landingPageAppConfig = @_getLandingAppConfig(appConfig)
-                result.push(landingPageAppConfig)
+                if instantiationStrategy is 'multiInstance'
+                    landingPageAppConfig = @_getLandingAppConfig(appConfig)
+                    result.push(landingPageAppConfig)
         return result
         
     _getLandingAppConfig : (appConfig) ->
