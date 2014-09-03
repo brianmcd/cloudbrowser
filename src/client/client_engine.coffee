@@ -150,6 +150,9 @@ RPCMethods =
             else
                 RPCMethods[original].apply(this, arguments)
 
+    ConsoleLog : (msg)->
+        console.log msg.msg
+
     DOMStyleChanged : (targetId, attribute, value) ->
         target = @nodes.get(targetId)
         if attribute of @customCssAttrHldrs

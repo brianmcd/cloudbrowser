@@ -139,7 +139,9 @@ class PathElements
             params : {},
             data : @data
         }
+        # the index of pathElement
         index = 0
+        # the index of the input parameter path
         pathIndex = 0
         while index < @pathElements.length
             pathElement = @pathElements[index]
@@ -156,8 +158,8 @@ class PathElements
         
         if not path?
             return result
-        # if the full path is matched
-        if pathIndex is path.length 
+        # if the full path is matched or the remaining are all '\'s
+        if pathIndex is path.length or strSkip(path, pathIndex, '/') is path.length
             return result
         return false
 
@@ -182,7 +184,6 @@ class AppPathMather
             if matchResult
                 break
         return matchResult
-
 
 # TODO should use a better way to extract appInstance id
 routers = {

@@ -18,7 +18,7 @@ class UuidService
             )
         
     getId : ()->
-        # append the local id with version
+        # [random id]z[version]z[counter]
         @id++ 
         hatid = hat(16,35) + 'z'
         return hatid + @versionStr + @id.toString(35)

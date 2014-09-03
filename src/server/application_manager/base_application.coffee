@@ -3,12 +3,14 @@ Path                     = require('path')
 
 lodash = require('lodash')
 async  = require('async')
+debug  = require('debug')
 
 User               = require('../user')
 routes             = require('./routes')
 AppInstanceManager = require('./app_instance_manager')
 utils = require('../../shared/utils')
 
+logger = debug("cloudbrowser:worker:app")
 
 class BaseApplication extends EventEmitter
     __r_skip : ['server','httpServer','sessionManager','mongoInterface',
@@ -223,6 +225,7 @@ class BaseApplication extends EventEmitter
             # if the user has logged in, create appInstance and browsers
             @appInstanceManager.getUserAppInstance(user, (err, appInstance)=>
                 if err?
+
                     return res.send(err.message, 500)
 
                 routes.redirect(res,
@@ -245,7 +248,7 @@ class BaseApplication extends EventEmitter
         id = req.params.appInstanceID
 
         appInstance = @appInstanceManager.find(id)
-        if not appInstance then return routes.notFound(res, "The application instance #{appInstanceID} was not found.")
+        if not appInstance then return routes.notFound(res, "The application instance #{id} was not found.")
 
         if @isMultiInstance() and @landingPageApp
             # redirect to landing page app
@@ -258,8 +261,17 @@ class BaseApplication extends EventEmitter
             previlege = appInstance.getUserPrevilege(user)
             if not previlege
                 return res.send('You do not have the previlege for this page.', 403)
-        routes.redirect(res,
-                routes.buildBrowserPath(@mountPoint, appInstance.id, appInstance.browserId))
+
+        if @isMultiInstance()
+            # if it is multiple instance, create a new browser
+            appInstance.createBrowser(null, (err, browser)=>
+                if err
+                    logger("Error creating a browser #{err}")
+                    return routes.internalError(res, "")
+                routes.redirectToBrowser(res, @mountPoint, id, browser.id)
+            )
+        else
+            routes.redirectToBrowser(res, @mountPoint, id, appInstance.browserId)
 
     mount : () ->
         @httpServer.mount(@mountPoint, @mountPointHandler)

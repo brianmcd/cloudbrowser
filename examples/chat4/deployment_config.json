@@ -1,0 +1,10 @@
+{
+    "authenticationInterface": false,
+    "name": "Chat4",
+    "isPublic": true,
+    "owner": "panxiaozhong@gmail.com",
+    "description": "A multi user chat application written using AngularJS",
+    "mountOnStartup": true,
+    "mountPoint": "/chat4",
+    "collectionName": "chat4.users"
+}

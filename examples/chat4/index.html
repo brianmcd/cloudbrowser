@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Open Chat Application</title>
+    <link href="css/bootstrap.min.css" rel="stylesheet" />
+    <script type="text/javascript" src="js/angular.js"></script>
+    <script type="text/javascript" src="js/lib/application.js"></script>
+</head>
+<body ng-app="Chat4" ng-controller="ChatCtrl">
+<!--main div -->
+<div>
+    <div>
+        <div class="alert alert-warning alert-dismissible" role="alert" ng-repeat="alert in alertMessages">
+        <button type="button" class="close" data-dismiss="alert" ng-click="removeAlert(alert)">
+            <span aria-hidden="true">&times;</span><span class="sr-only">Close</span>
+        </button>
+        {{alert.msg}}
+        </div>        
+    </div>
+
+    <div>
+        <div ng-show="editingUserName">
+            <label for="userNameInput">User Name : </label>
+            <input type="text" placeholder="Plese input a user name" id="userNameInput" ng-model="draftUserName" enter-submit="changeName()"/>
+        </div>
+        <div ng-hide="editingUserName" ng-dblclick="editingUserName=true">
+            {{userName}}
+        </div>
+    </div>
+    <!-- chat window-->
+    <div>
+        <div>
+            <div ng-repeat="message in chatManager.messages" ng-class="getMsgClass(message)">
+                {{message.userName}} : {{message.msg}} {{message.time | date: 'medium'}}
+            </div>
+        </div>
+        <div>
+            <textarea ng-model="currentMessage" id="chat-text" enter-submit="postMessage()">
+            </textarea>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>

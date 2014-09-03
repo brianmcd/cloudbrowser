@@ -396,7 +396,7 @@ DOMEventHandlers =
     ConsoleLog : (event) ->
         @consoleLog?.write(event.msg + '\n')
         # TODO: debug flag to enable line below.
-        console.log("[[[#{@browser.id}]]] #{event.msg}")
+        @broadcastEvent('ConsoleLog', event)
 
     DOMStyleChanged : (event) ->
         return if @browserLoading
