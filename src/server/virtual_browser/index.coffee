@@ -3,6 +3,9 @@ Path                 = require('path')
 FS                   = require('fs')
 Weak                 = require('weak')
 {EventEmitter}       = require('events')
+
+debug                = require('debug')
+
 Browser              = require('./browser')
 ResourceProxy        = require('./resource_proxy')
 
@@ -79,7 +82,9 @@ class VirtualBrowser extends EventEmitter
             do (event, handler) =>
                 @browser.on event, () ->
                     handler.apply(weakRefToThis, arguments)
-        @initLogs() if !@server.config.noLogs
+
+        @_logger = debug("cloudbrowser:worker:browser:#{@id}")
+        #@initLogs() if !@server.config.noLogs
 
     getID : () -> return @id
 

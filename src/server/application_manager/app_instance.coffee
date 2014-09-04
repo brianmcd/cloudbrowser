@@ -1,6 +1,9 @@
+{EventEmitter}       = require('events')
+
 Async                = require('async')
 Weak                 = require('weak')
-{EventEmitter}       = require('events')
+debug                = require('debug')
+
 VirtualBrowser       = require('../virtual_browser')
 SecureVirtualBrowser = require('../virtual_browser/secure_virtual_browser')
 User                 = require('../user')
@@ -35,6 +38,10 @@ class AppInstance extends EventEmitter
             @addReaderWriter(new User(readerwriter._email))
         @browsers = {}
         @weakrefsToBrowsers = {}
+
+        # TODO we need to remove listners from a browser when the browser is
+        # closed
+        @_eventbus = new EventEmitter()
 
 
     findBrowser : (id) ->
