@@ -22,15 +22,20 @@
   });
 
   app.controller("ChatCtrl", function($scope, $timeout) {
-    var addMessage, browserId, chatManager, currentBrowser;
+    var addMessage, browserId, chatManager, currentBrowser, scrollDown;
     currentBrowser = cloudbrowser.currentBrowser;
     browserId = currentBrowser.getID();
     chatManager = cloudbrowser.currentAppInstanceConfig.getObj();
     $scope.userName = "Goose_" + browserId;
-    $scope.editingUserName = true;
+    $scope.editingUserName = false;
     $scope.alertMessages = [];
     chatManager.users[browserId] = $scope.userName;
     $scope.chatManager = chatManager;
+    scrollDown = function() {
+      var messageBox;
+      messageBox = document.getElementById("chatMessageBox");
+      return messageBox.scrollTop = messageBox.scrollHeight;
+    };
     $scope.alert = function(msg) {
       var alert;
       console.log("whoops");
@@ -62,8 +67,9 @@
       }
       chatManager.messages.push(msgObj);
       if (chatManager.messages.length > 1000) {
-        return chatManager.messages = chatManager.messages.slice(500);
+        chatManager.messages = chatManager.messages.slice(500);
       }
+      return setTimeout(scrollDown, 0);
     };
     $scope.changeName = function() {
       var k, name, v, _ref;
@@ -74,11 +80,15 @@
       if (name === '') {
         return $scope.alert("The user name must not be empty.");
       }
+      if (name === $scope.userName) {
+        $scope.editingUserName = false;
+        return;
+      }
       _ref = chatManager.users;
       for (k in _ref) {
         v = _ref[k];
         if (k !== browserId && v.toLowerCase() === name.toLowerCase()) {
-          return $scope.alert("Duplicate user name.");
+          return $scope.alert("There is already a user called " + name);
         }
       }
       addMessage("" + $scope.userName + " is now " + name, "sys");

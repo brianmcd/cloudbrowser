@@ -17,11 +17,15 @@ app.controller "ChatCtrl", ($scope, $timeout) ->
     browserId = currentBrowser.getID()
     chatManager = cloudbrowser.currentAppInstanceConfig.getObj()
     $scope.userName = "Goose_#{browserId}"
-    $scope.editingUserName = true
+    $scope.editingUserName = false
     $scope.alertMessages = []
 
     chatManager.users[browserId] = $scope.userName
     $scope.chatManager = chatManager
+
+    scrollDown=()->
+        messageBox = document.getElementById("chatMessageBox")
+        messageBox.scrollTop = messageBox.scrollHeight
 
     $scope.alert = (msg)->
         console.log "whoops"
@@ -51,6 +55,8 @@ app.controller "ChatCtrl", ($scope, $timeout) ->
         chatManager.messages.push(msgObj)
         if chatManager.messages.length > 1000
             chatManager.messages = chatManager.messages.slice(500)
+        # scroll down to the last message. It does not work
+        setTimeout(scrollDown, 0)
         
 
     $scope.changeName = ()->
@@ -59,9 +65,12 @@ app.controller "ChatCtrl", ($scope, $timeout) ->
         name = $scope.draftUserName.trim()
         if name is ''
             return $scope.alert("The user name must not be empty.")
+        if name is $scope.userName
+            $scope.editingUserName = false
+            return
         for k, v of chatManager.users
             if k isnt browserId and v.toLowerCase() is name.toLowerCase()
-                return $scope.alert("Duplicate user name.")
+                return $scope.alert("There is already a user called #{name}")
         addMessage("#{$scope.userName} is now #{name}", "sys")
         $scope.userName = name
         chatManager.users[browserId] = $scope.userName
