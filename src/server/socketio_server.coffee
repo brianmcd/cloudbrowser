@@ -39,24 +39,28 @@ class SocketIOServer
         io.use((socket, next)=>
             @socketIOAuthHandler(socket.request, next)
         )
-        # TODO logging based on cookie or header
+        
         io.sockets.on 'connection', (socket) =>
             @addLatencyToClient(socket) if @config.simulateLatency
+            # logging if noLogs set to false and logging flag in url is set
             if not @config.noLogs
-                socketlogger("#{@config.id} : turn on socket io logging")
-                @_logFileName = "#{@config.id}_socket.log"
-                oldSocketEmit = socket.emit
-                socket.emit = ()=>
-                    @_logEvent.apply(@, arguments)
-                    oldSocketEmit.apply(socket, arguments)
-                oldSocketOn = socket.on
-                socket.on = (eventName, handler)=>
-                    newHandler = ()=>
-                        socketlogger("Intercept #{eventName} : #{arguments}")
-                        @_logIncomingEvent(eventName, arguments)
-                        handler.apply(null, arguments)
-                    newArgs = [eventName, newHandler]
-                    oldSocketOn.apply(socket, newArgs)
+                urlQuery = querystring.parse(urlModule.parse(socket.request.url).query)
+                if urlQuery?.logging
+                    browserId = urlQuery.browserId
+                    socketlogger("#{@config.id} : turn on socket io logging for #{browserId}")
+                    logFileName = "logs/socketlog_#{browserId}.log"
+                    oldSocketEmit = socket.emit
+                    socket.emit = (eventName, args...)=>
+                        @_logEvent(logFileName, eventName, args)
+                        oldSocketEmit.apply(socket, arguments)
+                    oldSocketOn = socket.on
+                    socket.on = (eventName, handler)=>
+                        newHandler = ()=>
+                            socketlogger("Intercept #{eventName} : #{arguments}")
+                            @_logIncomingEvent(logFileName, eventName, arguments)
+                            handler.apply(null, arguments)
+                        newArgs = [eventName, newHandler]
+                        oldSocketOn.apply(socket, newArgs)
 
             # Custom event emitted by socket on the client side
             socket.on 'auth', (mountPoint, appInstanceID, browserID) =>
@@ -64,32 +68,32 @@ class SocketIOServer
 
         callback(null, this)
 
-    _log : (content)->
+    _log : (logFileName, content)->
         data = null
         if typeof content is 'object'
             data = JSON.stringify(content) + '\n'
         else if typeof content is 'string'
             data = content
         if data
-            fs.appendFile(@_logFileName,data,(err)->
+            fs.appendFile(logFileName, data, (err)->
                 socketlogger("logging error " + err) if err
             )
 
-    _logEvent : (eventName, args...)->
+    _logEvent : (logFileName, eventName, args...)->
         obj = {
             'event' : eventName
             args : args
             source : 'server'
         }
-        @_log(obj)
+        @_log(logFileName, obj)
 
-    _logIncomingEvent : (eventName, args)->
+    _logIncomingEvent : (logFileName, eventName, args)->
         obj = {
             'event' : eventName
             args : args
             source : 'client'
         }
-        @_log(obj)
+        @_log(logFileName, obj)
 
 
     socketIOAuthHandler : (handshakeData, callback) ->
