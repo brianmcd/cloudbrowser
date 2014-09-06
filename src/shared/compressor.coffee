@@ -8,7 +8,7 @@ class Compressor extends EventEmitter
 
     compress : (text) ->
         compressed = @textToSymbol[text]
-        if !compressed
+        if not compressed?
             compressed = @textToSymbol[text] = @nextID++
             @symbolToText[compressed] = text
             @emit 'newSymbol',
@@ -18,11 +18,11 @@ class Compressor extends EventEmitter
 
     decompress : (symbol) ->
         decompressed = @symbolToText[symbol]
-        if !decompressed
+        if not decompressed?
             throw new Error("Can't decompress: #{symbol}")
 
     register : (text, compressed) ->
-        if @symbolToText[compressed] || @textToSymbol[text]
+        if not @symbolToText[compressed]? || not @textToSymbol[text]?
             throw new Error("Can't register: text=#{text} compressed=#{compressed}")
         @symbolToText[compressed] = text
         @textToSymbol[text] = compressed
