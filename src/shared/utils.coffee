@@ -130,6 +130,9 @@ merge = (object, source, depth=5) ->
     return source
 
 exports.merge = merge
+
+exports.isBlank = (str)->
+    return (!str || /^\s*$/.test(str))
             
         
     

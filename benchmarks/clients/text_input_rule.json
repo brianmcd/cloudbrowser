@@ -1,0 +1,23 @@
+{
+    "name" : "textInput",
+    "iterationType" : "forEachChar",
+    "eventGroup" : [
+        {"event":"setAttribute"},
+        {"event":"processEvent",
+        "args": {"0":{"type":"keydown","bubbles":true,"cancelable":true,"view":null,"detail":0,"altGraphKey":false,"altKey":false,
+        "charCode":0,"ctrlKey":false,"location":1,"keyLocation":1,"shiftKey":true,"repeat":false},"1":null}},
+        {"event":"processEvent",
+        "args":{"0":{"type":"keyup","bubbles":true,"cancelable":true,"view":null,"detail":0,"altGraphKey":false,"altKey":false,
+        "charCode":0,"ctrlKey":false,"location":1,"keyLocation":1,"shiftKey":false,"repeat":false},"1":null}}
+    ],
+    "endEvent" : {
+        "enterKey" : [
+        {"event":"processEvent",
+            "args":{"0":{"type":"keydown","bubbles":true,"cancelable":true,"view":null,"detail":0,"altGraphKey":false,"altKey":false,
+            "charCode":0,"ctrlKey":false, "keyCode":13, "location":0,"keyLocation":0,"shiftKey":false,"repeat":false,"which":13},"1":null}},
+        {"event":"processEvent",
+            "args":{"0":{"type":"keyup","bubbles":true,"cancelable":true,"view":null,"detail":0,"altGraphKey":false,"altKey":false,
+            "charCode":0,"ctrlKey":false,"keyCode":13,"location":0,"keyLocation":0,"shiftKey":false,"repeat":false,"which":13},"1":null}}
+        ]
+    }
+}
