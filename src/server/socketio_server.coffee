@@ -45,7 +45,7 @@ class SocketIOServer
             # logging if noLogs set to false and logging flag in url is set
             if not @config.noLogs
                 urlQuery = querystring.parse(urlModule.parse(socket.request.url).query)
-                if urlQuery?.logging
+                if urlQuery?.logging is 'true'
                     browserId = urlQuery.browserId
                     socketlogger("#{@config.id} : turn on socket io logging for #{browserId}")
                     logFileName = "logs/socketlog_#{browserId}.log"
@@ -56,7 +56,6 @@ class SocketIOServer
                     oldSocketOn = socket.on
                     socket.on = (eventName, handler)=>
                         newHandler = ()=>
-                            socketlogger("Intercept #{eventName} : #{arguments}")
                             @_logIncomingEvent(logFileName, eventName, arguments)
                             handler.apply(null, arguments)
                         newArgs = [eventName, newHandler]
@@ -71,7 +70,11 @@ class SocketIOServer
     _log : (logFileName, content)->
         data = null
         if typeof content is 'object'
-            data = JSON.stringify(content) + '\n'
+            try
+                data = JSON.stringify(content) + '\n'
+            catch e
+                data = {event : content.event, source : content.source, _error : e.message}
+                socketlogger("serialize error for event #{content.event} source #{content.source}")
         else if typeof content is 'string'
             data = content
         if data
@@ -79,11 +82,12 @@ class SocketIOServer
                 socketlogger("logging error " + err) if err
             )
 
-    _logEvent : (logFileName, eventName, args...)->
+    _logEvent : (logFileName, eventName, args)->
         obj = {
             'event' : eventName
             args : args
             source : 'server'
+            time : new Date()
         }
         @_log(logFileName, obj)
 
@@ -92,6 +96,7 @@ class SocketIOServer
             'event' : eventName
             args : args
             source : 'client'
+            time : new Date()
         }
         @_log(logFileName, obj)
 

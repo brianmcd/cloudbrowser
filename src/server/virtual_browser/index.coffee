@@ -236,7 +236,6 @@ class VirtualBrowser extends EventEmitter
                     catch e
                         console.log e
 
-
         socket.on 'disconnect', () =>
             @sockets       = (s for s in @sockets       when s != socket)
             @queuedSockets = (s for s in @queuedSockets when s != socket)
@@ -401,7 +400,7 @@ DOMEventHandlers =
     ConsoleLog : (event) ->
         @consoleLog?.write(event.msg + '\n')
         # TODO: debug flag to enable line below.
-        @broadcastEvent('ConsoleLog', event)
+        # @broadcastEvent('ConsoleLog', event)
 
     DOMStyleChanged : (event) ->
         return if @browserLoading

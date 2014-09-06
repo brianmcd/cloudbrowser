@@ -133,11 +133,11 @@ class Application extends EventEmitter
     _addAppInstance: (appInstance) ->
         @_appInstanceMap[appInstance.id] = appInstance
         @_workerManager.registerAppInstance(appInstance)
-        console.log "#{__filename}: emit addAppInstance #{appInstance.id} for #{@mountPoint}"
+        applogger "emit addAppInstance #{appInstance.id} for #{@mountPoint}"
         @emit('addAppInstance', appInstance._remote)
 
     emitEvent: (eventObj, callback)->
-        console.log "#{__filename}: app #{@mountPoint} emitEvent #{eventObj.name} : #{eventObj.id}"
+        applogger "app #{@mountPoint} emitEvent #{eventObj.name} : #{eventObj.id}"
         if lodash.isArray(eventObj.args)
             @emit.apply(@, [eventObj.name].concat(eventObj.args))
         else
@@ -145,7 +145,7 @@ class Application extends EventEmitter
         callback?(null)
 
     addEvent: (eventObj, callback)->
-        console.log "#{__filename}: app #{@mountPoint} listen #{eventObj.name}"
+        applogger "app #{@mountPoint} listen #{eventObj.name}"
         @on(eventObj.name, eventObj.callback)
         callback?(null)
 
@@ -256,7 +256,7 @@ class Application extends EventEmitter
 
     
     regsiterAppInstance : (workerId, appInstance, callback) ->
-        console.log "#{workerId} register #{appInstance.id} for #{@mountPoint}"
+        applogger "#{workerId} register #{appInstance.id} for #{@mountPoint}"
         localAppInstance = new AppInstance(null, workerId)
         localAppInstance._setRemoteInstance(appInstance)
         @_addAppInstance(localAppInstance)
@@ -265,7 +265,7 @@ class Application extends EventEmitter
     unregisterAppInstance : (appInstanceId, callback) ->
         delete @_appInstanceMap[appInstanceId]
         @_workerManager.unregisterAppInstance(appInstanceId)
-        console.log "#{__filename}: emit removeAppInstance #{appInstanceId} for #{@mountPoint}"
+        applogger "emit removeAppInstance #{appInstanceId} for #{@mountPoint}"
         @emit('removeAppInstance', appInstanceId)
         callback null
 
