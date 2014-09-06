@@ -22,7 +22,7 @@ class Compressor extends EventEmitter
             throw new Error("Can't decompress: #{symbol}")
 
     register : (text, compressed) ->
-        if not @symbolToText[compressed]? || not @textToSymbol[text]?
+        if @symbolToText[compressed]? or @textToSymbol[text]?
             throw new Error("Can't register: text=#{text} compressed=#{compressed}")
         @symbolToText[compressed] = text
         @textToSymbol[text] = compressed
