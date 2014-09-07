@@ -599,4 +599,9 @@ class Browser
             callback null, result        
         )
 
+    # only make sence when it is the currentBrowser
+    getLogger : ()->
+        {bserver} = _pvts[@_idx]
+        return bserver._logger
+
 module.exports = Browser

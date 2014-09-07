@@ -110,7 +110,6 @@ class BaseApplication extends EventEmitter
         appInstanceID = req.params.appInstanceID
         vBrowserID = req.params.browserID
 
-
         #should check by user and permission
         #check in local object is suffice because the master has routed this appInstance here
         appInstance = @appInstanceManager.find(appInstanceID)
@@ -119,7 +118,7 @@ class BaseApplication extends EventEmitter
         bserver = appInstance.findBrowser(vBrowserID)
         if not bserver then return routes.notFound(res, "The browser #{vBrowserID} was not found")
 
-        console.log "Joining: #{appInstanceID} - #{vBrowserID}"
+        logger "Joining: #{appInstanceID} - #{vBrowserID}"
 
         # for benchmark tools
         url = req.url

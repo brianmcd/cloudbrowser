@@ -85,9 +85,7 @@ class EventMonitor
             @UIEvents(remoteEvent, clientEvent)
             remoteEvent.altGraphKey = clientEvent.altGraphKey
             remoteEvent.altKey = clientEvent.altKey
-            remoteEvent.charCode = clientEvent.charCode
             remoteEvent.ctrlKey = clientEvent.ctrlKey
-            remoteEvent.keyCode = clientEvent.keyCode
             # keyboardEvent.keyLocation is deprecated, use location instead
             if clientEvent.location?
                 remoteEvent.location = clientEvent.location
@@ -98,6 +96,12 @@ class EventMonitor
 
             remoteEvent.shiftKey = clientEvent.shiftKey
             remoteEvent.repeat = clientEvent.repeat
+            # charCode, keyCode, which are going to be deprecated
+            # https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent
+            remoteEvent.key = clientEvent.key
+            remoteEvent.charCode = clientEvent.charCode
+            remoteEvent.keyCode = clientEvent.keyCode
             remoteEvent.which = clientEvent.which
+            
 
 module.exports = EventMonitor

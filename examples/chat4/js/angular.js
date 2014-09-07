@@ -458,6 +458,41 @@ function inherit(parent, extra) {
 function noop() {}
 noop.$inject = [];
 
+var cbAngularDigest = noop;
+var cbAngularObj = {
+  log : noop
+};
+if (cloudbrowser) {
+  var cbAppInsEventBus = cloudbrowser.currentAppInstanceConfig.getEventBus();
+  var currentBrowser = cloudbrowser.currentBrowser;
+  var browserLogger = currentBrowser.getLogger();
+  var cbBrowserId = currentBrowser.getID();
+  cbAngularObj.log = browserLogger;
+  cbAngularDigest = function(){
+      browserLogger("emit angularDigest event");
+      cbAppInsEventBus.emit('angularDigest', {
+        browserId : cbBrowserId
+      });
+  };
+  cbAppInsEventBus.on('angularDigest', function(obj){
+    if (obj.browserId != cbBrowserId) {
+      browserLogger("receive angularDigest event");
+      if (cbAngularObj.$rootScope.$$phase == '$apply' || cbAngularObj.$rootScope.$$phase == '$digest') {
+        return;
+      }
+      // if the digest is triggered by some other browser, 
+      // no need to emit angularDigest event
+      cbAngularObj.passive = true;
+      try{
+        cbAngularObj.$rootScope.$digest();
+        cbAngularObj.passive = false;
+      }catch(e){
+        cbAngularObj.passive = false;
+        browserLogger("Error in triggered digest " + e);
+      }
+    }
+  });
+}
 
 /**
  * @ngdoc function
@@ -13003,6 +13038,7 @@ function $RootScopeProvider(){
         }
 
         lastDirtyWatch = null;
+        hadDirtySet = false;
 
         do { // "while dirty" loop
           dirty = false;
@@ -13035,6 +13071,7 @@ function $RootScopeProvider(){
                             : (typeof value === 'number' && typeof last === 'number'
                                && isNaN(value) && isNaN(last)))) {
                       dirty = true;
+                      hadDirtySet = true;
                       lastDirtyWatch = watch;
                       watch.last = watch.eq ? copy(value, null) : value;
                       watch.fn(value, ((last === initWatchVal) ? value : last), current);
@@ -13082,6 +13119,12 @@ function $RootScopeProvider(){
           }
 
         } while (dirty || asyncQueue.length);
+
+        //check lastDirtyWatch will miss events triggered by enter key, it works fine
+        // in web browser though
+        if (hadDirtySet && !cbAngularObj.passive) {
+          cbAngularDigest();
+        }
 
         clearPhase();
 
@@ -13538,7 +13581,7 @@ function $RootScopeProvider(){
     };
 
     var $rootScope = new Scope();
-
+    cbAngularObj.$rootScope = $rootScope;
     return $rootScope;
 
 

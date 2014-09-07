@@ -320,10 +320,10 @@ class WokerManager
 
             result = @_getWorkerByUrlPath(urlModule.parse(referer).pathname)
             if result.redirect?
-                # TODO send 404 instead
-                throw new Error("should have worker mapped for #{referer}, request is #{url}")
-            else
-                return result
+                # we do not find an appinstance for this request
+                logger("should have worker mapped for #{referer}, request is #{url}")
+                result.worker = null
+            return result
         else
             # this is a page request
             return @_getWorkerByUrlPath(urlObj.pathname)

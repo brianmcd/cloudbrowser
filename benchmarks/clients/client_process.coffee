@@ -1,43 +1,40 @@
 {EventEmitter}   = require('events')
 querystring      = require('querystring')
 
-{noCacheRequire} = require('../../src/shared/utils')
 request          = require('request')
 lodash           = require('lodash')
 debug            = require('debug')
 
+benchmarkConfig = require('./benchmark_config')
+
 logger = debug('cloudbrowser:benchmark')
-
-dumbEvent = {
-    type: 'click', target: 'node13', bubbles: true, cancelable: true,
-    view: null, detail: 1, screenX: 2315, screenY: 307, clientX: 635,
-    clientY: 166, ctrlKey: false, shiftKey: false, altKey: false,
-    metaKey: false, button: 0
-}
-
 
 class ClientProcess
     constructor: (options) ->
-        {@browserCount, @clientCount, @eventCount, @appAddress, @cbhost, delay, @processId, clientEvent} = options
+        {@browserCount, @clientCount, @processId} = options
         if @browserCount > @clientCount
             msg = "invalid parameter browserCount > clientCount"
-            logger(msg)
+            console.log(msg)
             throw new Error(msg)
         @clientGroups = []
         clientsPerGroup = @clientCount/@browserCount
-        eventsPerGroup = @eventCount/@browserCount
-        logger("clientsPerGroup #{clientsPerGroup} eventsPerGroup #{eventsPerGroup}")
+        logger("clientsPerGroup #{clientsPerGroup}")
         for i in [0...@browserCount] by 1
-            clientGroup = new ClientGroup({
-                eventCount : eventsPerGroup
-                clientCount : clientsPerGroup
-                groupName : @processId + "_g" + i
-                appAddress : @appAddress
-                cbhost     : @cbhost
-                delay      : delay
-                clientEvent : clientEvent
-            })
+            clientGroupOptions = lodash.clone(options)
+            clientGroupOptions.clientCount = clientsPerGroup
+            clientGroupOptions.groupName = @processId + "_g" + i
+            clientGroup = new ClientGroup(clientGroupOptions)
             @clientGroups.push(clientGroup)
+        # set up a timeout checker per process
+        @timeOutCheckerInterval = setInterval(()=>
+            @_timeOutCheck()
+        , 5000)
+
+    _timeOutCheck : ()->
+        return clearTimeout(@timeOutCheckerInterval) if @stopped
+        time = (new Date()).getTime()
+        for clientGroup in @clientGroups
+            clientGroup.timeOutCheck(time)       
 
     isStopped:()->
         if @stopped
@@ -63,30 +60,24 @@ class ClientProcess
 # clients that share 1 browser
 class ClientGroup
     constructor: (options) ->
-        {@eventCount, @clientCount, @groupName,  @appAddress, @cbhost, @delay, clientEvent} = options
+        {@clientCount, @groupName} = options
         @clients = []
-        eventPerClient = @eventCount/@clientCount
-        bootstrapClient = new Client({
-                eventCount : eventPerClient
-                createBrowser : true
-                appAddress : @appAddress
-                cbhost  : @cbhost
-                delay : @delay
-                id : @groupName+'_0'
-                clientEvent : clientEvent
-            })
+        clientOptions = lodash.clone(options)
+        clientOptions.createBrowser = true
+        # append 'c' to client id to make each client id 
+        # not a substring of another, so we can just use 
+        # serverResponse.substring(clientId) to see if the
+        # client's events has taken effect the server DOM 
+        clientOptions.id = @groupName+'_0c'
+        bootstrapClient = new Client(clientOptions)
         @clients.push(bootstrapClient)
         if @clientCount > 1
             bootstrapClient.once('browserconfig', ()=>
                 for i in [1...@clientCount] by 1
-                    client = new Client({
-                        eventCount : eventPerClient
-                        cbhost  : @cbhost
-                        delay : @delay
-                        id : @groupName+'_' + i
-                        clientEvent : clientEvent
-                        browserConfig : bootstrapClient.browserConfig
-                    })
+                    clientOptions = lodash.clone(options)
+                    clientOptions.id = @groupName+'_' + i + 'c'
+                    clientOptions.browserConfig = bootstrapClient.browserConfig
+                    client = new Client(clientOptions)
                     @clients.push(client)
                     client.start()
             )
@@ -100,6 +91,12 @@ class ClientGroup
                 return false
         @stopped = true
         return true
+
+    timeOutCheck : (time)->
+        for client in @clients
+            client.timeOutCheck(time)
+        
+
 
 class Stat
     constructor: () ->
@@ -134,9 +131,14 @@ class Stat
 class Client extends EventEmitter
     constructor : (options) ->
         # id is a unique client identifier in all client processes
-        {@eventCount, @createBrowser, @appAddress, @cbhost, @delay, @browserConfig, @id} = options
-        @_event = options['clientEvent']
-        @eventLeft = @eventCount
+        {@eventDescriptors, @createBrowser, 
+        @appAddress, @cbhost, @browserConfig, 
+        @id, @serverLogging} = options
+        @eventContext = new benchmarkConfig.EventContext({clientId:@id})
+        @eventQueue = new benchmarkConfig.EventQueue({
+            descriptors : @eventDescriptors
+            context : @eventContext
+            })
         @stat= new Stat()
         @otherStat = {}
 
@@ -173,21 +175,19 @@ class Client extends EventEmitter
 
             if @createBrowser
                 @browserConfig = {}
-                @browserConfig.browserid = response.headers['x-cb-browserid']
-                @browserConfig.appid = response.headers['x-cb-appid']
+                @browserConfig.browserId = response.headers['x-cb-browserid']
+                @browserConfig.appId = response.headers['x-cb-appid']
                 @browserConfig.appInstanceId = response.headers['x-cb-appinstanceid']
                 # for clients that would share this browser instance
                 @browserConfig.url = response.headers['x-cb-url']
-                logger("#{@id} emit browserConfig")
+                logger("#{@id} emit browserConfig 
+                    #{@browserConfig.url}")
                 @emit('browserconfig')
 
-            if not @browserConfig.appid? or not @browserConfig.browserid?
+            if not @browserConfig.appId? or not @browserConfig.browserId?
                 @_fatalErrorHandler(new Error("Something is wrong, no browserid detected."))
 
             @otherStat.initialConnectTime = @_timpeElapsed()
-
-            logger("#{@id} open #{opts.url} with #{@otherStat.initialConnectTime} ms, sessionId #{@sessionId}")
-
             @_createSocket()
             @_initialSocketIo()
 
@@ -195,9 +195,8 @@ class Client extends EventEmitter
         @_initStartTs()
         @socket.on('connect', ()=>
             @otherStat.connectTime = @_timpeElapsed()
-            logger("#{@id} emit auth #{@browserConfig.appInstanceId}")
-            @socket.emit('auth', @browserConfig.appid, @browserConfig.appInstanceId,
-                @browserConfig.browserid)
+            @socket.emit('auth', @browserConfig.appId, @browserConfig.appInstanceId,
+                @browserConfig.browserId)
             @_initStartTs()
             @socket.on('SetConfig',()->
                 # do nothing
@@ -206,42 +205,51 @@ class Client extends EventEmitter
         @socket.once 'PageLoaded', (nodes, registeredEventTypes, clientComponents, compressionTable) =>
             @otherStat.pageLoadedTime = @_timpeElapsed()
             @compressionTable = if compressionTable? then compressionTable else {}
-            @socket.on('resumeRendering', (id)=>
-                @_resumeRenderingHandler(id)
-            )
             for k, v of @compressionTable
-                if k is 'resumeRendering'
-                    @socket.on(v, (id)=>
-                        @_resumeRenderingHandler(id)
+                do (k, v)=>
+                    @socket.on(v, ()=>
+                        @_serverEventHandler(k, arguments)
                     )
             @socket.on('newSymbol', (original, compressed)=>
-                if original is 'resumeRendering' and @compressionTable[original] isnt compressed
-                    @compressionTable['resumeRendering'] = compressed
-                    @socket.on(compressed, (id)=>
-                        @_resumeRenderingHandler(id)
+                @compressionTable[original] = compressed
+                do (original, compressed) =>                
+                    @socket.on(compressed, ()=>
+                        @_serverEventHandler(original, arguments)
                     )
             )
+            @_nextEvent()
+
         @socket.on('disconnect', ()=>
             @stop()
         )
-        if @eventCount > 0
-            @timeoutObj = setTimeout(()=>
-                @_sendRegularEvent()
-            , @delay)
-        else
-            @stop()
 
-    _resumeRenderingHandler:(id)->
-        # ignore events that is not triggered by me
-        if id isnt @id
+    _nextEvent : ()->
+        if @stopped
             return
-        @stat.add(@_timpeElapsed())
-        if @eventLeft > 0
-            @timeoutObj = setTimeout(()=>
-                @_sendRegularEvent()
-            , @delay)
+        
+        @expect = null
+        @expectStartTime = null
+        nextEvent = @eventQueue.poll()
+        if not nextEvent
+            return @stop()
+        # stop and expect
+        if nextEvent.type is 'expect'
+            @expect = nextEvent
+            @expectStartTime = (new Date()).getTime()
         else
-            @stop()
+            nextEvent.emitEvent(@socket)
+            @_nextEvent()
+
+    _serverEventHandler : (eventName, args)->
+        if @expect?
+            expectResult = @expect.expect(eventName, args)
+            if expectResult is 2
+                @_nextEvent()
+
+    timeOutCheck : (time)->
+        if @expectStartTime? and time - @expectStartTime > 100*1000
+            @_fatalErrorHandler("Timeout while expecting #{@expect.descriptor}")
+        
 
 
     _createSocket : ()->
@@ -252,6 +260,9 @@ class Client extends EventEmitter
         # but it only works for one client instance.
         # session id from cookie is already urlencoded, so no need to encode here
         queryString = "referer=#{encodeURIComponent(@browserConfig.url)}&cb.id=#{@sessionId}"
+        if @serverLogging
+            queryString += "&logging=#{@serverLogging}&browserId=#{@browserConfig.browserId}"
+        
         # this is a synchronized call, seems no actual connection established
         # at this point.
         # forceNew is mandatory or socket-io will reuse a connection!!!!
@@ -264,11 +275,6 @@ class Client extends EventEmitter
             @_fatalErrorHandler(err)
         )
 
-    _sendRegularEvent : () ->
-        @_initStartTs()
-        @socket.emit('processEvent', @_event, @id)
-        @eventLeft--
-
 
     _fatalErrorHandler : (@error)->
         @stop()
@@ -277,6 +283,7 @@ class Client extends EventEmitter
         clearTimeout(@timeoutObj) if @timeoutObj?
         @stopped = true
         @socket?.disconnect()
+        @socket?.removeAllListeners()
         @emit('stopped')
 
     toJSON : ()->
@@ -329,12 +336,6 @@ options = {
         type : 'number'
         help : 'number of clients connected to server'
     },
-    eventCount : {
-        full : 'event-count'
-        default : 250*50
-        type : 'number'
-        help : 'number of events triggered'
-    },
     appAddress : {
         full : 'app-address'
         default : 'http://localhost:3000/benchmark'
@@ -345,34 +346,43 @@ options = {
         default : 'http://localhost:3000'
         help : 'cloudbrowser host'
     },
-    delay : {
-        full : 'delay'
-        default : 1500
-        type : 'number'
-        help : 'delay[ms] between a response and a request'
-    },
     processId : {
         full : 'process-id'
         default : 'p0'
+    },
+    serverLogging : {
+        full : 'server-logging'
+        default : false
+        type : 'boolean'
+    },
+    configFile : {
+        full : 'configFile'
+        default : '#{__dirname}/chat_benchmark.conf'
     }
 }
 
 opts = require('nomnom').options(options).script(process.argv[1]).parse()
 
-opts.clientEvent = dumbEvent
+eventDescriptorReader = new benchmarkConfig.EventDescriptorsReader({fileName:opts.configFile})
+eventDescriptorReader.read((err, eventDescriptors)->
+    return console.log(err) if err
 
-clientProcess = new ClientProcess(opts)
+    opts.eventDescriptors = eventDescriptors
+    clientProcess = new ClientProcess(opts)    
+    intervalObj = setInterval(()->
+        clientProcess.computeStat()
+        console.log JSON.stringify(clientProcess.stat)
+        console.log JSON.stringify(clientProcess.otherStat)
+        if clientProcess.isStopped()
+            console.log "stopped"
+            clearInterval(intervalObj)
 
-intervalObj = setInterval(()->
-    clientProcess.computeStat()
-    console.log JSON.stringify(clientProcess.stat)
-    console.log JSON.stringify(clientProcess.otherStat)
-    if clientProcess.isStopped()
-        console.log "stopped"
-        clearInterval(intervalObj)
-    
-, 3000
+    , 3000
+    )
 )
+
+
+
 
 
 

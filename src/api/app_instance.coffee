@@ -357,5 +357,9 @@ class AppInstance
             
         )
 
+    getEventBus : ()->
+        {appInstance} = _pvts[@_idx]
+        return appInstance._eventbus
+
 
 module.exports = AppInstance

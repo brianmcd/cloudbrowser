@@ -58,6 +58,10 @@ class ClientEngine
         encodedUrl = encodeURIComponent(@window.location.href)
         # to let the master know how to route this request
         console.log "referer #{encodedUrl}"
+        queryString = "referer=#{encodedUrl}"
+        if localStorage?.cblogging is "true"
+            queryString += "&logging=true&browserId=#{@window.__envSessionID}"
+        
         if test_env
             # We need to clear out the require cache so that each TestClient
             # gets its own Socket.IO client
@@ -70,7 +74,7 @@ class ClientEngine
                 xhr = new XMLHttpRequest()
                 xhr.setRequestHeader("cookie", "cb.id=testCookie;path=/")
                 return xhr
-            socket = io.connect(@host, { query: "referer=#{encodedUrl}" })
+            socket = io.connect(@host, { query: queryString })
             
             # socket.io-client for node doesn't seem to emit 'connect'
             process.nextTick () =>
@@ -81,7 +85,7 @@ class ClientEngine
             socket.on 'TestDone', () =>
                 @window.testClient.emit('TestDone')
         else 
-            socket = @window.io(@host, { query: "referer=#{encodedUrl}" })
+            socket = @window.io(@host, { query: queryString })
             socket.on 'error', (err) ->
                 console.log("Error:"+err)
             socket.on 'cberror', (err) ->
