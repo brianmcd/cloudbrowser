@@ -16,6 +16,7 @@ app.controller "ChatCtrl", ($scope, $timeout) ->
     {currentBrowser} = cloudbrowser
     browserId = currentBrowser.getID()
     chatManager = cloudbrowser.currentAppInstanceConfig.getObj()
+    messageId = 0
     $scope.userName = "Goose_#{browserId}"
     $scope.editingUserName = false
     $scope.alertMessages = []
@@ -45,14 +46,18 @@ app.controller "ChatCtrl", ($scope, $timeout) ->
 
 
     addMessage = (msg, type)->
+        # set hash key, or Error: ngRepeat:dupes
+        # Duplicate Key in Repeater.
         msgObj = {
             browserId : browserId
             msg : msg
             userName : $scope.userName
             time : (new Date().getTime())
+            $$hashKey : "#{browserId}_#{messageId++}"
         }
         msgObj.type = type if type?
         chatManager.messages.push(msgObj)
+        #console.log(chatManager.messages)
         if chatManager.messages.length > 1000
             chatManager.messages = chatManager.messages.slice(500)
         # scroll down to the last message. It does not work

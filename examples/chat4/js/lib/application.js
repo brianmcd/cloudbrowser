@@ -22,10 +22,11 @@
   });
 
   app.controller("ChatCtrl", function($scope, $timeout) {
-    var addMessage, browserId, chatManager, currentBrowser, scrollDown;
+    var addMessage, browserId, chatManager, currentBrowser, messageId, scrollDown;
     currentBrowser = cloudbrowser.currentBrowser;
     browserId = currentBrowser.getID();
     chatManager = cloudbrowser.currentAppInstanceConfig.getObj();
+    messageId = 0;
     $scope.userName = "Goose_" + browserId;
     $scope.editingUserName = false;
     $scope.alertMessages = [];
@@ -60,7 +61,8 @@
         browserId: browserId,
         msg: msg,
         userName: $scope.userName,
-        time: new Date().getTime()
+        time: new Date().getTime(),
+        $$hashKey: "" + browserId + "_" + (messageId++)
       };
       if (type != null) {
         msgObj.type = type;

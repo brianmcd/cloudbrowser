@@ -6,6 +6,9 @@ module.exports = {
     buildBrowserPath : (mountPoint, appInstanceID, browserID) ->
         @concatRoute(mountPoint, "/a/#{appInstanceID}/browsers/#{browserID}/index")
 
+    buildAppInstancePath : (mountPoint, appInstanceID) ->
+        @concatRoute(mountPoint, "/a/#{appInstanceID}")
+
     concatRoute : (base, path) ->
         if base is '/'
             base = ''
@@ -18,7 +21,7 @@ module.exports = {
 
     redirectToBrowser : (res, mountPoint, appInstanceId, browserID) ->
         @redirect(res, @buildBrowserPath(mountPoint, appInstanceId, browserID))
-        
+
     redirect : (res, route) ->
         if not route then res.send(500)
         res.writeHead 302,

@@ -6,23 +6,26 @@ lodash           = require('lodash')
 debug            = require('debug')
 
 benchmarkConfig = require('./benchmark_config')
+routes = require('../../src/server/application_manager/routes')
 
 logger = debug('cloudbrowser:benchmark')
 
 class ClientProcess
     constructor: (options) ->
-        {@browserCount, @clientCount, @processId} = options
-        if @browserCount > @clientCount
-            msg = "invalid parameter browserCount > clientCount"
+        {@appInstanceCount, @browserCount, @clientCount, @processId} = options
+        if @browserCount > @clientCount or @appInstanceCount > @browserCount or @appInstanceCount > @clientCount or @appInstanceCount <= 0
+            msg = "invalid parameter appInstanceCount #{appInstanceCount} browserCount #{browserCount} clientCount #{clientCount}"
             console.log(msg)
             throw new Error(msg)
         @clientGroups = []
-        clientsPerGroup = @clientCount/@browserCount
+        clientsPerGroup = @clientCount/@appInstanceCount
+        browsersPerGroup = @browserCount/@appInstanceCount
         logger("clientsPerGroup #{clientsPerGroup}")
-        for i in [0...@browserCount] by 1
+        for i in [0...@appInstanceCount] by 1
             clientGroupOptions = lodash.clone(options)
             clientGroupOptions.clientCount = clientsPerGroup
-            clientGroupOptions.groupName = @processId + "_g" + i
+            clientGroupOptions.browserCount = browsersPerGroup
+            clientGroupOptions.groupName = "#{@processId}_g#{i}"
             clientGroup = new ClientGroup(clientGroupOptions)
             @clientGroups.push(clientGroup)
         # set up a timeout checker per process
@@ -54,34 +57,43 @@ class ClientProcess
                 for k, v of client.otherStat
                     if not @otherStat[k]
                         @otherStat[k] = new Stat()
-                    @otherStat[k].add(v)
+                    @otherStat[k].add(v) 
 
 
-# clients that share 1 browser
-class ClientGroup
+# clients that share 1 appinstance
+class ClientGroup extends EventEmitter
     constructor: (options) ->
-        {@clientCount, @groupName} = options
-        @clients = []
-        clientOptions = lodash.clone(options)
-        clientOptions.createBrowser = true
         # append 'c' to client id to make each client id 
         # not a substring of another, so we can just use 
         # serverResponse.substring(clientId) to see if the
         # client's events has taken effect the server DOM 
-        clientOptions.id = @groupName+'_0c'
-        bootstrapClient = new Client(clientOptions)
-        @clients.push(bootstrapClient)
-        if @clientCount > 1
-            bootstrapClient.once('browserconfig', ()=>
-                for i in [1...@clientCount] by 1
-                    clientOptions = lodash.clone(options)
-                    clientOptions.id = @groupName+'_' + i + 'c'
-                    clientOptions.browserConfig = bootstrapClient.browserConfig
-                    client = new Client(clientOptions)
-                    @clients.push(client)
-                    client.start()
-            )
-        bootstrapClient.start()
+        {@browserCount, @clientCount, @groupName} = options
+        @clients = []
+        clientsPerBrowser = @clientCount/@browserCount
+        clientIndex = 0
+        for browserIndex in [0...@browserCount] by 1
+            # the first client in every clientsPerBrowser clients will
+            # create the browser. the very first one will create app instance
+            clientOptions = lodash.clone(options)
+            clientOptions.createBrowser = true
+            clientOptions.id = "#{@groupName}_#{clientIndex}c"
+            bootstrapClient = new Client(clientOptions)
+            if browserIndex > 0
+                # this client should wait til app instance is created
+                @clients[0].addChild(bootstrapClient)
+            @clients.push(bootstrapClient)
+            clientIndex++
+            # regular clients
+            for i in [0...clientsPerBrowser-1] by 1
+                clientOptions = lodash.clone(options)
+                clientOptions.id = "#{@groupName}_#{clientIndex}c"
+                client = new Client(clientOptions)
+                bootstrapClient.addChild(client)
+                @clients.push(client)
+                clientIndex++
+        # the one that starts all
+        @clients[0].start()
+        
 
     isStopped : ()->
         if @stopped
@@ -132,7 +144,7 @@ class Client extends EventEmitter
     constructor : (options) ->
         # id is a unique client identifier in all client processes
         {@eventDescriptors, @createBrowser, 
-        @appAddress, @cbhost, @browserConfig, 
+        @appAddress, @cbhost,
         @id, @serverLogging} = options
         @eventContext = new benchmarkConfig.EventContext({clientId:@id})
         @eventQueue = new benchmarkConfig.EventQueue({
@@ -141,6 +153,14 @@ class Client extends EventEmitter
             })
         @stat= new Stat()
         @otherStat = {}
+
+    addChild : (child) ->
+        @once('browserconfig', (browserConfig)->
+            logger("#{child.id} starting")
+            child.browserConfig = browserConfig
+            child.start()
+        )
+
 
     start : ()->
         @_initialConnect()
@@ -156,8 +176,12 @@ class Client extends EventEmitter
         # cookie jar to get session cookie
         j = request.jar()
         opts = {url: @appAddress, jar: j}
-        if not @createBrowser
+        if @createBrowser
+            if @browserConfig?.appInstanceId?
+                opts.url = routes.buildAppInstancePath(@appAddress, @browserConfig.appInstanceId)
+        else
             opts.url = @browserConfig.url
+
         logger("#{@id} open #{opts.url}")
         request opts, (err, response, body) =>
             return @_fatalErrorHandler(err) if err?
@@ -180,9 +204,8 @@ class Client extends EventEmitter
                 @browserConfig.appInstanceId = response.headers['x-cb-appinstanceid']
                 # for clients that would share this browser instance
                 @browserConfig.url = response.headers['x-cb-url']
-                logger("#{@id} emit browserConfig 
-                    #{@browserConfig.url}")
-                @emit('browserconfig')
+                logger("#{@id} emit browserConfig  #{@browserConfig.url}")
+                @emit('browserconfig', @browserConfig)
 
             if not @browserConfig.appId? or not @browserConfig.browserId?
                 @_fatalErrorHandler(new Error("Something is wrong, no browserid detected."))
@@ -324,6 +347,12 @@ setInterval(()->
 )
 ###
 options = {
+    appInstanceCount : {
+        full : 'appinstance-count'
+        default : 10
+        type : 'number'
+        help : 'count of appinstances created on server side.'
+    },
     browserCount : {
         full : 'browser-count'
         default : 50
