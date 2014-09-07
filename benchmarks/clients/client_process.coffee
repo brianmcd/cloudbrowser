@@ -64,14 +64,18 @@ class ClientGroup
         @clients = []
         clientOptions = lodash.clone(options)
         clientOptions.createBrowser = true
-        clientOptions.id = @groupName+'_0'
+        # append 'c' to client id to make each client id 
+        # not a substring of another, so we can just use 
+        # serverResponse.substring(clientId) to see if the
+        # client's events has taken effect the server DOM 
+        clientOptions.id = @groupName+'_0c'
         bootstrapClient = new Client(clientOptions)
         @clients.push(bootstrapClient)
         if @clientCount > 1
             bootstrapClient.once('browserconfig', ()=>
                 for i in [1...@clientCount] by 1
                     clientOptions = lodash.clone(options)
-                    clientOptions.id = @groupName+'_' + i
+                    clientOptions.id = @groupName+'_' + i + 'c'
                     clientOptions.browserConfig = bootstrapClient.browserConfig
                     client = new Client(clientOptions)
                     @clients.push(client)
@@ -350,12 +354,16 @@ options = {
         full : 'server-logging'
         default : false
         type : 'boolean'
+    },
+    configFile : {
+        full : 'configFile'
+        default : '#{__dirname}/chat_benchmark.conf'
     }
 }
 
 opts = require('nomnom').options(options).script(process.argv[1]).parse()
 
-eventDescriptorReader = new benchmarkConfig.EventDescriptorsReader({fileName:"#{__dirname}/click_benchmark.conf"})
+eventDescriptorReader = new benchmarkConfig.EventDescriptorsReader({fileName:opts.configFile})
 eventDescriptorReader.read((err, eventDescriptors)->
     return console.log(err) if err
 

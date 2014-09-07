@@ -4,20 +4,27 @@
     "eventGroup" : [
         {"event":"setAttribute"},
         {"event":"processEvent",
-        "args": {"0":{"type":"keydown","bubbles":true,"cancelable":true,"view":null,"detail":0,"altGraphKey":false,"altKey":false,
-        "charCode":0,"ctrlKey":false,"location":1,"keyLocation":1,"shiftKey":true,"repeat":false},"1":null}},
+        "args": [{"type":"keydown","bubbles":true,"cancelable":true,"view":null,"detail":0,"altGraphKey":false,"altKey":false,
+        "charCode":0,"ctrlKey":false,"location":1,"keyLocation":1,"shiftKey":true,"repeat":false},{"_type":"clientId"}]},
         {"event":"processEvent",
-        "args":{"0":{"type":"keyup","bubbles":true,"cancelable":true,"view":null,"detail":0,"altGraphKey":false,"altKey":false,
-        "charCode":0,"ctrlKey":false,"location":1,"keyLocation":1,"shiftKey":false,"repeat":false},"1":null}}
+        "args":[{"type":"keyup","bubbles":true,"cancelable":true,"view":null,"detail":0,"altGraphKey":false,"altKey":false,
+        "charCode":0,"ctrlKey":false,"location":1,"keyLocation":1,"shiftKey":false,"repeat":false}, {"_type":"clientId"}]}
     ],
     "endEvent" : {
         "enterKey" : [
+        {"event":"setAttribute"},
         {"event":"processEvent",
-            "args":{"0":{"type":"keydown","bubbles":true,"cancelable":true,"view":null,"detail":0,"altGraphKey":false,"altKey":false,
-            "charCode":0,"ctrlKey":false, "keyCode":13, "location":0,"keyLocation":0,"shiftKey":false,"repeat":false,"which":13},"1":null}},
+            "args":[{"type":"change","bubbles":true,"cancelable":false},
+            {"_type":"clientId"}]},
+        {"event":"setAttribute"},
         {"event":"processEvent",
-            "args":{"0":{"type":"keyup","bubbles":true,"cancelable":true,"view":null,"detail":0,"altGraphKey":false,"altKey":false,
-            "charCode":0,"ctrlKey":false,"keyCode":13,"location":0,"keyLocation":0,"shiftKey":false,"repeat":false,"which":13},"1":null}}
+            "args":[{"type":"keydown","bubbles":true,"cancelable":true,"view":null,"detail":0,"altGraphKey":false,"altKey":false,
+            "charCode":0,"ctrlKey":false, "keyCode":13, "location":0,"keyLocation":0,"shiftKey":false,"repeat":false,"which":13, "key":"Enter"},
+            {"_type":"clientId"}]},
+        {"event":"processEvent",
+            "args":[{"type":"keyup","bubbles":true,"cancelable":true,"view":null,"detail":0,"altGraphKey":false,"altKey":false,
+            "charCode":0,"ctrlKey":false,"keyCode":13,"location":0,"keyLocation":0,"shiftKey":false,"repeat":false,"which":13, "key":"Enter"},
+            {"_type":"clientId"}]}
         ]
     }
 }

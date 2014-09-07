@@ -35,6 +35,8 @@ class TextInputEventGroup
             @context.counter++
         if @descriptor.textType is 'clientId'
             @text = "#{@context.clientId}"
+        # to obtain charCode and which
+        @upperCaseText = @text.toUpperCase()
         @textInputDefinition = getTextInputDefinition()
         @textIndex = 0
         @_initializeEventQueue()
@@ -47,25 +49,35 @@ class TextInputEventGroup
                 curString = @text.substring(0, @textIndex+1)
                 newEventDescriptor = {
                     "event":"setAttribute",
-                    "args":{"0":@descriptor.target,"1":"value","2": curString},
+                    "args":[@descriptor.target, "value" , curString],
                     previousInputValue : curString
                 }
             else
                 # deep clone the thing
                 newEventDescriptor = lodash.clone(eventDescriptor, true)
-                curCharCode = @text.charCodeAt(@textIndex)
-                keyEvent = newEventDescriptor.args["0"]
+                curChar = @text.charAt(@textIndex)
+                
+                keyEvent = newEventDescriptor.args[0]
                 keyEvent.target = @descriptor.target
+                keyEvent.key = curChar
+                # the keycode and which are not relevant for the test,
+                # keep them to make it same with a real browser
+                curCharCode = @upperCaseText.charCodeAt(@textIndex)
                 keyEvent.which = curCharCode
-                keyEvent.charCode = curCharCode
+                keyEvent.keyCode = curCharCode
             eventDescriptors.push(newEventDescriptor)
         if @textIndex == @text.length-1 and @descriptor.endEvent
             endEventDescriptors = @textInputDefinition.endEvent[@descriptor.endEvent]
             if endEventDescriptors
                 for eventDescriptor in endEventDescriptors
                     newEventDescriptor = lodash.clone(eventDescriptor, true)
-                    keyEvent = newEventDescriptor.args["0"]
-                    keyEvent.target = @descriptor.target
+                    if newEventDescriptor.event is 'setAttribute'
+                        newEventDescriptor.args = [@descriptor.target, "value", @text]
+                        newEventDescriptor.previousInputValue = @text
+                    else
+                        #for change event and keydown keyup of enter
+                        keyEvent = newEventDescriptor.args[0]
+                        keyEvent.target = @descriptor.target
                     eventDescriptors.push(newEventDescriptor)
 
         @eventQueue = new EventQueue({
@@ -149,6 +161,9 @@ class RegularEvent
 
     emitEvent : (emitter)->
         emitArgs = [@descriptor.event]
+        if @descriptor.previousInputValue?
+            @context.previousInputValue = @descriptor.previousInputValue
+        
         for i in @descriptor.args
             if i._type is 'clientId'
                 emitArgs.push(@context.clientId)
