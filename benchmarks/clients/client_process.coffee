@@ -18,6 +18,7 @@ class ClientProcess
             console.log(msg)
             throw new Error(msg)
         @clientGroups = []
+        @stats = new StatProvider()
         clientsPerGroup = @clientCount/@appInstanceCount
         browsersPerGroup = @browserCount/@appInstanceCount
         logger("clientsPerGroup #{clientsPerGroup}")
@@ -26,6 +27,7 @@ class ClientProcess
             clientGroupOptions.clientCount = clientsPerGroup
             clientGroupOptions.browserCount = browsersPerGroup
             clientGroupOptions.groupName = "#{@processId}_g#{i}"
+            clientGroupOptions.stats = @stats
             clientGroup = new ClientGroup(clientGroupOptions)
             @clientGroups.push(clientGroup)
         # set up a timeout checker per process
@@ -47,17 +49,7 @@ class ClientProcess
                 return false
         @stopped = true
         return true
-
-    computeStat:()->
-        @stat = new Stat()
-        @otherStat = {}
-        for clientGroup in @clientGroups
-            for client in clientGroup.clients
-                @stat.mergeStat(client.stat)
-                for k, v of client.otherStat
-                    if not @otherStat[k]
-                        @otherStat[k] = new Stat()
-                    @otherStat[k].add(v) 
+        
 
 
 # clients that share 1 appinstance
@@ -138,21 +130,38 @@ class Stat
         @errorCount += stat.errorCount
         return this
 
+class StatProvider
+    constructor: () ->
+        @stats = {}
+
+    _getStat : (key)->
+        if not @stats[key]?
+            @stats[key] = new Stat()
+        return @stats[key]
+
+    add: (key, num)->
+        @_getStat(key).add(num)
+
+    addError : (key)->
+        @_getStat(key).addError()
+
+        
+    
+
+
 
 # eventCount contains the event to create browser
 class Client extends EventEmitter
     constructor : (options) ->
         # id is a unique client identifier in all client processes
         {@eventDescriptors, @createBrowser, 
-        @appAddress, @cbhost,
+        @appAddress, @cbhost, @stats,
         @id, @serverLogging} = options
         @eventContext = new benchmarkConfig.EventContext({clientId:@id})
         @eventQueue = new benchmarkConfig.EventQueue({
             descriptors : @eventDescriptors
             context : @eventContext
             })
-        @stat= new Stat()
-        @otherStat = {}
 
     addChild : (child) ->
         @once('browserconfig', (browserConfig)->
@@ -210,14 +219,14 @@ class Client extends EventEmitter
             if not @browserConfig.appId? or not @browserConfig.browserId?
                 @_fatalErrorHandler(new Error("Something is wrong, no browserid detected."))
 
-            @otherStat.initialConnectTime = @_timpeElapsed()
+            @stats.add('initialPage', @_timpeElapsed())
             @_createSocket()
             @_initialSocketIo()
 
     _initialSocketIo : ()->
         @_initStartTs()
         @socket.on('connect', ()=>
-            @otherStat.connectTime = @_timpeElapsed()
+            @stats.add('socketIoConnect', @_timpeElapsed())
             @socket.emit('auth', @browserConfig.appId, @browserConfig.appInstanceId,
                 @browserConfig.browserId)
             @_initStartTs()
@@ -226,7 +235,7 @@ class Client extends EventEmitter
             )
         )
         @socket.once 'PageLoaded', (nodes, registeredEventTypes, clientComponents, compressionTable) =>
-            @otherStat.pageLoadedTime = @_timpeElapsed()
+            @stats.add('pageLoaded', @_timpeElapsed())
             @compressionTable = if compressionTable? then compressionTable else {}
             for k, v of @compressionTable
                 do (k, v)=>
@@ -267,10 +276,11 @@ class Client extends EventEmitter
         if @expect?
             expectResult = @expect.expect(eventName, args)
             if expectResult is 2
+                @stats.add('eventProcess', (new Date()).getTime()- @expectStartTime)
                 @_nextEvent()
 
     timeOutCheck : (time)->
-        if @expectStartTime? and time - @expectStartTime > 100*1000
+        if @expectStartTime? and time - @expectStartTime > 10*1000
             @_fatalErrorHandler("Timeout while expecting #{@expect.descriptor}")
         
 
@@ -290,7 +300,8 @@ class Client extends EventEmitter
         # at this point.
         # forceNew is mandatory or socket-io will reuse a connection!!!!
         @socket = socketio(@cbhost, { query: queryString, forceNew:true })
-        @otherStat.socketioClientCreateTime = @_timpeElapsed()
+        @stats.add('socketioClientCreateTime', @_timpeElapsed())
+        
         @socket.on('error',(err)=>
             @_fatalErrorHandler(err)
         )
@@ -399,9 +410,7 @@ eventDescriptorReader.read((err, eventDescriptors)->
     opts.eventDescriptors = eventDescriptors
     clientProcess = new ClientProcess(opts)    
     intervalObj = setInterval(()->
-        clientProcess.computeStat()
-        console.log JSON.stringify(clientProcess.stat)
-        console.log JSON.stringify(clientProcess.otherStat)
+        console.log JSON.stringify(clientProcess.stats)
         if clientProcess.isStopped()
             console.log "stopped"
             clearInterval(intervalObj)
