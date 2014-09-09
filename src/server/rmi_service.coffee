@@ -5,7 +5,7 @@ class RmiService
     constructor: (config,callback) ->
         {@rmiPort}=config
         console.log "starting rmi service on #{@rmiPort}"
-        host = 'localhost'
+        host = null
         if config.domain?
             host = config.domain
         if config.host?

@@ -57,6 +57,7 @@ class MasterConfig
                     console.log "Get localhost dns name failed, setting hosts using defaults"
                     #console.log err
                 else
+                    this.host = hostName
                     # the user did not specify a host
                     if not obj.proxyConfig?.host?
                         this.proxyConfig.host = hostName
