@@ -135,6 +135,7 @@ class BaseApplication extends EventEmitter
             browserID : vBrowserID
             appInstanceID : appInstanceID
             host : @server.config.getHttpAddr()
+        res.end()
 
     _serveResourceHandler : (req, res, next) ->
         appInstanceID = req.params.appInstanceID

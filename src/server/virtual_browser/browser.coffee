@@ -83,7 +83,7 @@ class Browser extends EventEmitter
             @document.innerHTML = html
             @document.close()
 
-        if /^\//.test(url)
+        if url?.indexOf('/') is 0
             console.log("reading file: #{url}")
             FS.readFile url, 'utf8', (err, data) =>
                 throw err if err

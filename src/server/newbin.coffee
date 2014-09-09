@@ -32,8 +32,6 @@ class EventTracker
         @processedEvents++
 
 
-
-
 class Runner
     # argv, arguments, by default it is process.argv
     constructor: (argv, postConstruct) ->
@@ -65,7 +63,7 @@ class Runner
             ],
             'database' : ['masterStub',
                     (callback,results) =>
-                        new DatabaseInterface(results.config.serverConfig.databaseConfig, 
+                        new DatabaseInterface(results.config.serverConfig.databaseConfig,
                             callback)
                     ],
             'uuidService' : ['config', 'database',
@@ -106,6 +104,11 @@ class Runner
                     if postConstruct?
                         postConstruct null
                     process.send?({type:'ready'})
+                    id = results.config.serverConfig
+                    process.on 'uncaughtException', (err) ->
+                        console.log("Worker #{id} Uncaught Exception:")
+                        console.log(err)
+                        console.log(err.stack)
             )
 
     handlerInitializeError : (err) ->
@@ -114,11 +117,6 @@ class Runner
         console.log(err.stack)
         process.exit(1)
 
-
-process.on 'uncaughtException', (err) ->
-    console.log("Uncaught Exception:")
-    console.log(err)
-    console.log(err.stack)
 
 if require.main is module
     new Runner(null, (err)->

@@ -14,7 +14,7 @@ class ClientProcess
     constructor: (options) ->
         {@appInstanceCount, @browserCount, @clientCount, @processId} = options
         if @browserCount > @clientCount or @appInstanceCount > @browserCount or @appInstanceCount > @clientCount or @appInstanceCount <= 0
-            msg = "invalid parameter appInstanceCount #{appInstanceCount} browserCount #{browserCount} clientCount #{clientCount}"
+            msg = "invalid parameter appInstanceCount #{@appInstanceCount} browserCount #{browserCount} clientCount #{clientCount}"
             console.log(msg)
             throw new Error(msg)
         @clientGroups = []
@@ -30,13 +30,8 @@ class ClientProcess
             clientGroupOptions.stats = @stats
             clientGroup = new ClientGroup(clientGroupOptions)
             @clientGroups.push(clientGroup)
-        # set up a timeout checker per process
-        @timeOutCheckerInterval = setInterval(()=>
-            @_timeOutCheck()
-        , 5000)
 
-    _timeOutCheck : ()->
-        return clearTimeout(@timeOutCheckerInterval) if @stopped
+    timeOutCheck : ()->
         time = (new Date()).getTime()
         for clientGroup in @clientGroups
             clientGroup.timeOutCheck(time)       
@@ -104,7 +99,6 @@ class ClientGroup extends EventEmitter
 
 class Stat
     constructor: () ->
-        @startTime = new Date()
         @count = 0
         @total = 0
         @errorCount = 0
@@ -118,10 +112,10 @@ class Stat
         @total+=num
         if num > @max
             @max = num
-        if num > @min
+        if num < @min
             @min = num
 
-    addError : () ->
+    addError : (@error) ->
         @errorCount++
 
     mergeStat : (stat) ->
@@ -132,6 +126,7 @@ class Stat
 
 class StatProvider
     constructor: () ->
+        @startTime = new Date()
         @stats = {}
 
     _getStat : (key)->
@@ -142,8 +137,8 @@ class StatProvider
     add: (key, num)->
         @_getStat(key).add(num)
 
-    addError : (key)->
-        @_getStat(key).addError()
+    addError : (key, error)->
+        @_getStat(key).addError(error)
 
         
     
@@ -157,6 +152,7 @@ class Client extends EventEmitter
         {@eventDescriptors, @createBrowser, 
         @appAddress, @cbhost, @stats,
         @id, @serverLogging} = options
+        @stopped = false
         @eventContext = new benchmarkConfig.EventContext({clientId:@id})
         @eventQueue = new benchmarkConfig.EventQueue({
             descriptors : @eventDescriptors
@@ -281,7 +277,7 @@ class Client extends EventEmitter
 
     timeOutCheck : (time)->
         if @expectStartTime? and time - @expectStartTime > 10*1000
-            @_fatalErrorHandler("Timeout while expecting #{@expect.descriptor}")
+            @_fatalErrorHandler("Timeout while expecting #{@expect.getExpectingEvent()}")
         
 
 
@@ -311,10 +307,12 @@ class Client extends EventEmitter
 
 
     _fatalErrorHandler : (@error)->
+        @stats.addError('fatalError', @error)
         @stop()
 
     stop : () ->
         clearTimeout(@timeoutObj) if @timeoutObj?
+        @expectStartTime = null
         @stopped = true
         @socket?.disconnect()
         @socket?.removeAllListeners()
@@ -410,6 +408,8 @@ eventDescriptorReader.read((err, eventDescriptors)->
     opts.eventDescriptors = eventDescriptors
     clientProcess = new ClientProcess(opts)    
     intervalObj = setInterval(()->
+        console.log(new Date())
+        clientProcess.timeOutCheck()
         console.log JSON.stringify(clientProcess.stats)
         if clientProcess.isStopped()
             console.log "stopped"

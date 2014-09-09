@@ -7,7 +7,7 @@ async          = require('async')
 config         = require('./config')
 
 process.on 'uncaughtException', (err) ->
-    console.log("Uncaught Exception:")
+    console.log("Master Node Uncaught Exception")
     console.log(err)
     console.log(err.stack)
 

@@ -1,0 +1,8 @@
+{
+    "authenticationInterface": false,
+    "name": "Benchmark",
+    "isPublic": true,
+    "owner": "panxiaozhong@gmail.com",
+    "description": "A benchmark app",
+    "mountPoint": "/benchmark"
+}

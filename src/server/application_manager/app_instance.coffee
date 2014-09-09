@@ -16,6 +16,8 @@ cleanupBserver = (id) ->
     return () ->
         console.log "[Browser Manager] - Garbage collected vbrowser #{id}"
 
+logger = debug("cloudbrowser:worker:appins")
+
 class AppInstance extends EventEmitter
     __r_skip :['app','browsers','weakrefsToBrowsers', 'browser', 
                 'weakrefToBrowser', 'server', 'obj', 'uuidService']
@@ -60,7 +62,7 @@ class AppInstance extends EventEmitter
             @browser = vbrowser
         @weakrefsToBrowsers[id] = weakrefToBrowser
         @browsers[id] = vbrowser
-        console.log "#{__filename} : appInstance #{@id} emit addBrowser event #{vbrowser.id}"
+        logger "appInstance #{@id} emit addBrowser event #{vbrowser.id}"
         @emit('addBrowser', vbrowser)
         return weakrefToBrowser
 
@@ -91,7 +93,7 @@ class AppInstance extends EventEmitter
                         type : VirtualBrowser
                         id   : @uuidService.getId()
                 # retrun weak reference
-                console.log "createBrowser #{vbrowser.id} for #{@app.mountPoint} - #{@id}"
+                logger "createBrowser #{vbrowser.id} for #{@app.mountPoint} - #{@id}"
                 callback null, @addBrowser(vbrowser)       
             ],(err)->
                 callback(err) if err?
