@@ -29,7 +29,6 @@ app.controller "ChatCtrl", ($scope, $timeout) ->
         messageBox.scrollTop = messageBox.scrollHeight
 
     $scope.alert = (msg)->
-        console.log "whoops"
         alert = {
             msg : msg
         }

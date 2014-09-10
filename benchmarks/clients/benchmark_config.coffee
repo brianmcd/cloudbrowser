@@ -113,10 +113,10 @@ class RegularEvent
         @polled = true
         return @
 
-    getExpectingEvent : ()->
+    getExpectingEventName : ()->
         if @expectIndex >= @descriptor.expect.length
             return null
-        return @descriptor.expect[@expectIndex]
+        return @descriptor.expect[@expectIndex].event
 
     # 1 means waiting, 2 means fully matched
     # we are not reject anything, if the expected event

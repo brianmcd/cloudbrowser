@@ -165,9 +165,14 @@ class Client extends EventEmitter
             child.browserConfig = browserConfig
             child.start()
         )
+        @once('stopped', ()->
+            if not child.started
+                child.stop()
+        )
 
 
     start : ()->
+        @started = true
         @_initialConnect()
 
     _initStartTs : ()->
@@ -180,7 +185,7 @@ class Client extends EventEmitter
         @_initStartTs()
         # cookie jar to get session cookie
         j = request.jar()
-        opts = {url: @appAddress, jar: j}
+        opts = {url: @appAddress, jar: j, timeout: 10000}
         if @createBrowser
             if @browserConfig?.appInstanceId?
                 opts.url = routes.buildAppInstancePath(@appAddress, @browserConfig.appInstanceId)
@@ -277,7 +282,7 @@ class Client extends EventEmitter
 
     timeOutCheck : (time)->
         if @expectStartTime? and time - @expectStartTime > 10*1000
-            @_fatalErrorHandler("Timeout while expecting #{@expect.getExpectingEvent()}")
+            @_fatalErrorHandler("Timeout while expecting #{@expect.getExpectingEventName()}")
         
 
 
@@ -295,7 +300,7 @@ class Client extends EventEmitter
         # this is a synchronized call, seems no actual connection established
         # at this point.
         # forceNew is mandatory or socket-io will reuse a connection!!!!
-        @socket = socketio(@cbhost, { query: queryString, forceNew:true })
+        @socket = socketio(@cbhost, { query: queryString, forceNew:true, timeout: 10000 })
         @stats.add('socketioClientCreateTime', @_timpeElapsed())
         
         @socket.on('error',(err)=>
