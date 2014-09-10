@@ -1,4 +1,5 @@
 {EventEmitter}   = require('events')
+parseUrl         = require('url').parse
 querystring      = require('querystring')
 
 request          = require('request')
@@ -150,7 +151,7 @@ class Client extends EventEmitter
     constructor : (options) ->
         # id is a unique client identifier in all client processes
         {@eventDescriptors, @createBrowser, 
-        @appAddress, @cbhost, @stats,
+        @appAddress, @cbhost, @socketioUrl, @stats,
         @id, @serverLogging} = options
         @stopped = false
         @eventContext = new benchmarkConfig.EventContext({clientId:@id})
@@ -197,13 +198,13 @@ class Client extends EventEmitter
             return @_fatalErrorHandler(err) if err?
             cookies = j.getCookies(@cbhost)
             if not cookies or cookies.length is 0
-                return @_fatalErrorHandler(new Error("No cookies received."))
+                return @_fatalErrorHandler("No cookies received.")
             sessionIdCookie = lodash.find(cookies, (cookie)->
                 # session cookie's name as in workerConfig.cookieName
                 return cookie.key is 'cb.id'
             )
             if not sessionIdCookie
-                return @_fatalErrorHandler(new Error("No session cookie found."))
+                return @_fatalErrorHandler("No session cookie found.")
 
             @sessionId = sessionIdCookie.value
 
@@ -300,7 +301,7 @@ class Client extends EventEmitter
         # this is a synchronized call, seems no actual connection established
         # at this point.
         # forceNew is mandatory or socket-io will reuse a connection!!!!
-        @socket = socketio(@cbhost, { query: queryString, forceNew:true, timeout: 10000 })
+        @socket = socketio(@socketioUrl, { query: queryString, forceNew:true, timeout: 10000 })
         @stats.add('socketioClientCreateTime', @_timpeElapsed())
         
         @socket.on('error',(err)=>
@@ -331,35 +332,7 @@ class Client extends EventEmitter
             result[k] = v
         return result
 
-###
-client = new Client({
-    eventCount : 200
-    createBrowser : true
-    appAddress : 'http://localhost:3000/benchmark'
-    cbhost  : 'http://localhost:3000'
-    delay : 200
-    id : 'client1'
-    'clientEvent' : dumbEvent
-    })
 
-client1 = new Client({
-    eventCount : 200
-    cbhost  : 'http://localhost:3000'
-    delay : 200
-    id : 'client3'
-    'clientEvent' : dumbEvent
-    browserConfig : {"browserid":"139fz5elz6","appid":"/benchmark","appInstanceId":"0087z5elz4","url":"http://localhost:3000/benchmark/a/0087z5elz4/browsers/139fz5elz6/index"}
-})
-
-client.start()
-client.on('stopped', ()->
-    console.log "stopped"
-)
-setInterval(()->
-    console.log JSON.stringify(client)
-, 3000
-)
-###
 options = {
     appInstanceCount : {
         full : 'appinstance-count'
@@ -384,11 +357,6 @@ options = {
         default : 'http://localhost:3000/benchmark'
         help : 'benchmark application address'
     },
-    cbhost : {
-        full : 'cb-host'
-        default : 'http://localhost:3000'
-        help : 'cloudbrowser host'
-    },
     processId : {
         full : 'process-id'
         default : 'p0'
@@ -405,6 +373,14 @@ options = {
 }
 
 opts = require('nomnom').options(options).script(process.argv[1]).parse()
+
+if opts.appAddress?
+    parsedUrl = parseUrl(opts.appAddress)
+    opts.cbhost = "http://#{parsedUrl.hostname}"
+    # host contains port
+    opts.socketioUrl = "http://#{parsedUrl.host}"
+    logger("assign cbhost #{opts.cbhost} , socketio url #{opts.socketioUrl}")
+
 
 eventDescriptorReader = new benchmarkConfig.EventDescriptorsReader({fileName:opts.configFile})
 eventDescriptorReader.read((err, eventDescriptors)->
