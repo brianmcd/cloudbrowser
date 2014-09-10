@@ -26,7 +26,7 @@ class DOMWindowFactory
         # This gives us a Location class that is aware of our
         # DOMWindow and Browser.
         @Location = LocationBuilder(@browser)
-        @logger = debug("cloudbrowser:worker:browser:#{@browser.id}")
+        @logger = debug("cloudbrowser:worker:dom:#{@browser.id}")
 
     create : (url) ->
         window = @jsdom.createWindow(@jsdom.dom.level3.html)

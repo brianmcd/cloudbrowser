@@ -207,7 +207,7 @@ class BaseApplication extends EventEmitter
         if @isSingleInstance()
             # get or create the only instance
             @appInstanceManager.getAppInstance((err, appInstance)=>
-                return res.send(err.message, 500) if err?
+                return routes.internalError(res, err.message) if err?
                 # a browser will be created for the appinstance before worker return appInstance to master,
                 # the browserId of the first appinstance will be put in filed browserId of appinstance
                 routes.redirect(res,
@@ -224,9 +224,7 @@ class BaseApplication extends EventEmitter
                 return @authApp._mountPointHandler(req, res, next)
             # if the user has logged in, create appInstance and browsers
             @appInstanceManager.getUserAppInstance(user, (err, appInstance)=>
-                if err?
-
-                    return res.send(err.message, 500)
+                return routes.internalError(res, err.message) if err?
 
                 routes.redirect(res,
                     routes.buildBrowserPath(@mountPoint, appInstance.id, appInstance.browserId))
@@ -235,8 +233,7 @@ class BaseApplication extends EventEmitter
 
         # we fall to default initiation strategy, create a new instance for every new request
         @appInstanceManager.create(null, (err, appInstance)=>
-            if err?
-                return res.send(err.message, 500)
+            return routes.internalError(res, err.message) if err?
             routes.redirect(res,
                 routes.buildBrowserPath(@mountPoint, appInstance.id, appInstance.browserId))
         )
@@ -260,7 +257,7 @@ class BaseApplication extends EventEmitter
                 return @authApp._mountPointHandler(req, res, next)
             previlege = appInstance.getUserPrevilege(user)
             if not previlege
-                return res.send('You do not have the previlege for this page.', 403)
+                return routes.forbidden(res, 'You do not have the previlege for this page.')
 
         if @isMultiInstance()
             # if it is multiple instance, create a new browser

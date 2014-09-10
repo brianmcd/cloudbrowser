@@ -83,6 +83,7 @@ class VirtualBrowser extends EventEmitter
                 @browser.on event, () ->
                     handler.apply(weakRefToThis, arguments)
 
+        # referenced in api.getLogger, for client code only
         @_logger = debug("cloudbrowser:worker:browser:#{@id}")
         #@initLogs() if !@server.config.noLogs
 

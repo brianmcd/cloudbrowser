@@ -33,4 +33,7 @@ module.exports = {
 
     internalError : (res, message) ->
         res.status(500).send(message)
+
+    forbidden : (res, message)->
+        res.status(403).send(message)
 }

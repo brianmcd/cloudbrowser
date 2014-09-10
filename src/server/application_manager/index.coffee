@@ -5,6 +5,7 @@ Weak                = require('weak')
 Async               = require('async')
 lodash              = require('lodash')
 Passport            = require('passport')
+debug               = require('debug')
 
 Application         = require('./application')
 AppConfig           = require('./app_config')
@@ -23,6 +24,8 @@ routes              = require('./routes')
 cleanupApp = (mountPoint) ->
     return () ->
         console.log("Garbage collected application #{mountPoint}")
+
+logger = debug("cloudbrowser:worker:appmanager")
 
 class ApplicationManager extends EventEmitter
     constructor : (dependencies, callback) ->
@@ -49,6 +52,7 @@ class ApplicationManager extends EventEmitter
 
         @_setupGoogleAuthRoutes()
         @loadApplications((err)=>
+            logger("all apps loaded")
             callback err,this
         )
         
@@ -56,10 +60,11 @@ class ApplicationManager extends EventEmitter
     #load applications after the routes on http_server is ready
     loadApplications : (callback)->
         for mountPoint, masterApp of @_appConfigs
+            logger("load #{mountPoint}")
             app = new Application(masterApp, @server)
             @addApplication(app)
             app.mount()
-            callback null
+        callback null
             
 
     addApplication : (app) ->

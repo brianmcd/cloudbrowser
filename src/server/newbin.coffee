@@ -1,4 +1,6 @@
 async              = require('async')
+debug              = require('debug')
+
 Config             = require('./config').Config
 DatabaseInterface  = require('./database_interface')
 PermissionManager  = require('./permission_manager')
@@ -30,6 +32,8 @@ class EventTracker
 
     inc : () ->
         @processedEvents++
+
+logger = debug('cloudbrowser:worker:init')
 
 
 class Runner
@@ -81,17 +85,21 @@ class Runner
             'httpServer' :['database','sessionManager','permissionManager',
                             (callback,results) ->
                                 new HTTPServer(results, callback)
+                                logger("httpServer called")
             ],
-            'applicationManager' : ['eventTracker','permissionManager',
+            'applicationManager' : ['eventTracker','permissionManager', 'appConfigs',
                                     'database','httpServer', 'sessionManager','uuidService',
                                     (callback,results) ->
-                                        new ApplicationManager(results,callback);
+                                        new ApplicationManager(results,callback)
+                                        logger("applicationManager called")
             ],
             'socketIOServer':['httpServer','applicationManager','sessionManager', 'permissionManager',
                                 (callback,results) ->
                                     new SocketIoServer(results,callback)
+                                    logger("SocketIoServer called")
             ]
             },(err,results)=>
+                logger("final callback called")
                 if err?
                     @handlerInitializeError(err)
                     if postConstruct?

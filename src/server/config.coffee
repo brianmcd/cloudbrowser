@@ -56,7 +56,7 @@ class Config
             host : masterConfig.host
             port : masterConfig.rmiPort
         }, (err, stub)=>
-            if err? or not stub.config? or not stub.config.workerConfig? or not stub.config.proxyConfig
+            if err? or not stub.config? or not stub.config.workerConfig? or not stub.config.proxyConfig? or not stub.appManager?
                 console.log "Failed to get config from master, retry later..."
                 if err?
                     console.log "error #{err}"
