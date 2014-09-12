@@ -383,6 +383,8 @@ if opts.appAddress?
 
 
 eventDescriptorReader = new benchmarkConfig.EventDescriptorsReader({fileName:opts.configFile})
+SysMon = require('../../src/server/sys_mon')
+sysMon = new SysMon()
 eventDescriptorReader.read((err, eventDescriptors)->
     return console.log(err) if err
 
@@ -392,10 +394,11 @@ eventDescriptorReader.read((err, eventDescriptors)->
         console.log(new Date())
         clientProcess.timeOutCheck()
         console.log JSON.stringify(clientProcess.stats)
+        sysMon.logStats()
         if clientProcess.isStopped()
             console.log "stopped"
             clearInterval(intervalObj)
-
+            process.exit(1)
     , 3000
     )
 )

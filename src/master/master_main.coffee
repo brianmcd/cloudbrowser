@@ -73,7 +73,13 @@ class Runner
                     process.on 'uncaughtException', (err) ->
                         console.log("Master Node Uncaught Exception")
                         console.log(err)
-                        console.log(err.stack)              
+                        console.log(err.stack)
+                    # monitoring resource usage
+                    require('../server/sys_mon').createSysMon({
+                        id : 'master'
+                        interval : 5000
+                        printTime : true
+                    })
         )
             
 if require.main is module

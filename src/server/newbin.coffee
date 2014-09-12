@@ -112,11 +112,17 @@ class Runner
                     if postConstruct?
                         postConstruct null
                     process.send?({type:'ready'})
-                    id = results.config.serverConfig
+                    id = results.config.serverConfig.id
                     process.on 'uncaughtException', (err) ->
                         console.log("Worker #{id} Uncaught Exception:")
                         console.log(err)
                         console.log(err.stack)
+                    # monitoring
+                    require('../server/sys_mon').createSysMon({
+                        id : id
+                        interval : 5000
+                        printTime : true
+                    })
             )
 
     handlerInitializeError : (err) ->
@@ -128,7 +134,7 @@ class Runner
 
 if require.main is module
     new Runner(null, (err)->
-        console.log('Server started in local mode')
+        console.log('Server started in standalone mode.')
         )
 
 module.exports = Runner
