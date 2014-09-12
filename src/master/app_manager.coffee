@@ -300,6 +300,7 @@ class Application extends EventEmitter
         @parentApp=parentApp
 
     enableAuthentication : (callback)->
+        applogger("enableAuthentication #{@mountPoint}")
         @setAuthenticationInterface(true)
         if not @_hasAuthApp()
             # create auth app
@@ -335,6 +336,7 @@ class Application extends EventEmitter
         callback null
 
     disableAuthentication : (callback)->
+        applogger("disableAuthentication #{@mountPoint}")
         @setAuthenticationInterface(false)
         callback null
         

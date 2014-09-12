@@ -2,13 +2,20 @@ Path             = require('path')
 {EventEmitter}   = require('events')
 FS               = require('fs')
 URL              = require('url')
+
+
 Request          = require('request')
+debug            = require('debug')
+
 DOMWindowFactory = require('./DOMWindowFactory')
 Application      = require('../application_manager/application')
+utils            = require('../../shared/utils')
 
 TESTS_RUNNING = process.env.TESTS_RUNNING
 if TESTS_RUNNING
     QUnit = require('./qunit')
+
+logger = debug("cloudbrowser:worker:browser")
 
 class Browser extends EventEmitter
     constructor : (@id, @bserver, @config) ->
@@ -84,8 +91,8 @@ class Browser extends EventEmitter
             @document.close()
 
         if url?.indexOf('/') is 0
-            console.log("reading file: #{url}")
-            FS.readFile url, 'utf8', (err, data) =>
+            logger("reading file: #{url}")
+            utils.readCachedFile url, (err, data) =>
                 throw err if err
                 initDoc(data)
         else

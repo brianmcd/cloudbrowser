@@ -6,7 +6,6 @@ path           = require('path')
 async          = require('async')
 config         = require('./config')
 
-
 class Runner
     constructor: (argv, postConstruct) ->
         async.auto({

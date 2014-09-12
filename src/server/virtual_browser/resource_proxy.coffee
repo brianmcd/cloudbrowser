@@ -4,6 +4,8 @@ URL     = require('url')
 FS      = require('fs')
 Path    = require('path')
 
+utils   = require('../../shared/utils')
+
 class ResourceProxy
     constructor : (baseURL) ->
         @urlsByIndex = []
@@ -51,7 +53,7 @@ class ResourceProxy
                 throw err if err
                 sendResponse(data)
         else
-            FS.readFile path, (err, data) ->
+            utils.readCachedFile path, (err, data) ->
                 throw err if err
                 sendResponse(data)
         #console.log("Fetching resource: #{id} [type=#{type}] [path=#{path}]")

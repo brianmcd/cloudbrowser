@@ -17,7 +17,7 @@ Browserify    = require('browserify')
 require('coffee-script')
 
 logger=debug("cloudbrowser:worker:http")
-
+http.globalAgent.maxSockets = 65535
 
 # Dependency for digest based authentication
 #Auth = require('http-auth')
@@ -105,9 +105,7 @@ class HTTPServer extends EventEmitter
     # TODO handle unmoung on master node or wrap handlers in a local
     # registry
     unmount : (path) ->
-        console.log "unmount #{path}"
-        @server.routes.routes.get =
-            r for r in @server.routes.routes.get when r.path isnt path
+        logger "unmount #{path}"
 
     use : (middleware) ->
         @server.use(middleware)

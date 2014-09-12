@@ -115,7 +115,7 @@ class AppInstance extends EventEmitter
 
     # user: the user try to create browser, callback(err, browser)
     createBrowser : (user, callback) ->
-        console.log "getBrowser for #{@app.mountPoint} - #{@id}"
+        logger "getBrowser for #{@app.mountPoint} - #{@id}"
         if not @app.isMultiInstance()
             # return the only instance
             if not @weakrefToBrowser

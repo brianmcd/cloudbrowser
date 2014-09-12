@@ -35,7 +35,7 @@ class ClientProcess
     timeOutCheck : ()->
         time = (new Date()).getTime()
         for clientGroup in @clientGroups
-            clientGroup.timeOutCheck(time)       
+            clientGroup.timeOutCheck(time)
 
     isStopped:()->
         if @stopped
@@ -45,16 +45,16 @@ class ClientProcess
                 return false
         @stopped = true
         return true
-        
+
 
 
 # clients that share 1 appinstance
 class ClientGroup extends EventEmitter
     constructor: (options) ->
-        # append 'c' to client id to make each client id 
-        # not a substring of another, so we can just use 
+        # append 'c' to client id to make each client id
+        # not a substring of another, so we can just use
         # serverResponse.substring(clientId) to see if the
-        # client's events has taken effect the server DOM 
+        # client's events has taken effect the server DOM
         {@browserCount, @clientCount, @groupName} = options
         @clients = []
         clientsPerBrowser = @clientCount/@browserCount
@@ -81,7 +81,7 @@ class ClientGroup extends EventEmitter
                 clientIndex++
         # the one that starts all
         @clients[0].start()
-        
+
 
     isStopped : ()->
         if @stopped
@@ -95,7 +95,7 @@ class ClientGroup extends EventEmitter
     timeOutCheck : (time)->
         for client in @clients
             client.timeOutCheck(time)
-        
+
 
 
 class Stat
@@ -141,16 +141,16 @@ class StatProvider
     addError : (key, error)->
         @_getStat(key).addError(error)
 
-        
-    
+
+
 
 
 
 # eventCount contains the event to create browser
 class Client extends EventEmitter
-    constructor : (options) ->
+    constructor : (@options) ->
         # id is a unique client identifier in all client processes
-        {@eventDescriptors, @createBrowser, 
+        {@eventDescriptors, @createBrowser,
         @appAddress, @cbhost, @socketioUrl, @stats,
         @id, @serverLogging} = options
         @stopped = false
@@ -186,7 +186,11 @@ class Client extends EventEmitter
         @_initStartTs()
         # cookie jar to get session cookie
         j = request.jar()
-        opts = {url: @appAddress, jar: j, timeout: 10000}
+        opts = {
+            url: @appAddress
+            jar: j
+            timeout: @options.timeout
+        }
         if @createBrowser
             if @browserConfig?.appInstanceId?
                 opts.url = routes.buildAppInstancePath(@appAddress, @browserConfig.appInstanceId)
@@ -246,7 +250,7 @@ class Client extends EventEmitter
                     )
             @socket.on('newSymbol', (original, compressed)=>
                 @compressionTable[original] = compressed
-                do (original, compressed) =>                
+                do (original, compressed) =>
                     @socket.on(compressed, ()=>
                         @_serverEventHandler(original, arguments)
                     )
@@ -260,7 +264,7 @@ class Client extends EventEmitter
     _nextEvent : ()->
         if @stopped
             return
-        
+
         @expect = null
         @expectStartTime = null
         nextEvent = @eventQueue.poll()
@@ -282,9 +286,9 @@ class Client extends EventEmitter
                 @_nextEvent()
 
     timeOutCheck : (time)->
-        if @expectStartTime? and time - @expectStartTime > 10*1000
+        if @expectStartTime? and time - @expectStartTime > @options.timeout
             @_fatalErrorHandler("Timeout while expecting #{@expect.getExpectingEventName()}")
-        
+
 
 
     _createSocket : ()->
@@ -297,13 +301,17 @@ class Client extends EventEmitter
         queryString = "referer=#{encodeURIComponent(@browserConfig.url)}&cb.id=#{@sessionId}"
         if @serverLogging
             queryString += "&logging=#{@serverLogging}&browserId=#{@browserConfig.browserId}"
-        
+
         # this is a synchronized call, seems no actual connection established
         # at this point.
         # forceNew is mandatory or socket-io will reuse a connection!!!!
-        @socket = socketio(@socketioUrl, { query: queryString, forceNew:true, timeout: 10000 })
+        @socket = socketio(@socketioUrl, {
+            query: queryString
+            forceNew:true
+            timeout: @options.timeout
+            })
         @stats.add('socketioClientCreateTime', @_timpeElapsed())
-        
+
         @socket.on('error',(err)=>
             @_fatalErrorHandler(err)
         )
@@ -357,6 +365,11 @@ options = {
         default : 'http://localhost:3000/benchmark'
         help : 'benchmark application address'
     },
+    timeout : {
+        default : 1000*30
+        type : 'number'
+        help : 'connection timeout in ms'
+    },
     processId : {
         full : 'process-id'
         default : 'p0'
@@ -389,7 +402,7 @@ eventDescriptorReader.read((err, eventDescriptors)->
     return console.log(err) if err
 
     opts.eventDescriptors = eventDescriptors
-    clientProcess = new ClientProcess(opts)    
+    clientProcess = new ClientProcess(opts)
     intervalObj = setInterval(()->
         console.log(new Date())
         clientProcess.timeOutCheck()

@@ -88,6 +88,7 @@ exports.readJsonFromFileAsync = (path,callback) ->
     Fs.readFile path, {encoding : "utf8"}, readJsonDataHandler
 
 exports.parseAttributePath = (obj, attr) ->
+    return null if not attr? or not obj?
     attrPaths = attr.split('.')
     lastAttrPath = attrPaths[attrPaths.length-1]
     attrPaths = attrPaths[0...-1]
@@ -108,6 +109,20 @@ exports.toCamelCase = (str)->
 
 exports.isEmail = (str) ->
     return /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}$/.test(str.toUpperCase())
+
+fileDataCache = {}
+
+exports.readCachedFile = (fileName, callback)->
+    cache = fileDataCache[fileName]
+    if cache?
+        return callback(null, cache)
+    
+    Fs.readFile(fileName, 'utf8', (err, data)->
+        callback(err) if err?
+        fileDataCache[fileName] = data
+        callback null, data
+    )
+
 
 # apparently the lodash's merge can only support plain objects!
 merge = (object, source, depth=5) ->
