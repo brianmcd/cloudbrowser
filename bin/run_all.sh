@@ -3,6 +3,10 @@
 i_scriptDir=$(cd "$(dirname "$0")"; pwd)
 cd $i_scriptDir/..
 
+if [[ "X$DEBUG" == "X" ]]; then
+    export DEBUG=cloudbrowser:*,－cloudbrowser:worker:browser:*,-cloudbrowser:worker:init    
+fi
+
 nohup bin/run_master.sh examples src/server/applications --disable-logging=false >master.log  2>master.err.log &
 
 i_workers=2

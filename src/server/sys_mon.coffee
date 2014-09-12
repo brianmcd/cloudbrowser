@@ -29,7 +29,9 @@ class SysMon
             logger("get process usage error #{err.message}") if err?
             result = process.memoryUsage()
             lodash.merge(result, data) if data?
-            logger("#{@opts.id}: cpu #{result.cpu}%, memory #{result.memory/1000000}MB, rss #{result.rss}, heapTotal #{result.heapTotal}, heapUsed #{result.heapUsed}")
+            result.cpu = result.cpu.toFixed(2) if result.cpu?
+            result.memoryInMB = (result.memory/1000000).toFixed(2) if result.memory?
+            logger("#{@opts.id}: cpu #{result.cpu}%, memory #{result.memoryInMB}MB, rss #{result.rss}, heapTotal #{result.heapTotal}, heapUsed #{result.heapUsed}")
         )
 
     start : ()->
