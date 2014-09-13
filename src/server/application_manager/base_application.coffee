@@ -109,7 +109,6 @@ class BaseApplication extends EventEmitter
     _serveVirtualBrowserHandler : (req, res, next) ->
         appInstanceID = req.params.appInstanceID
         vBrowserID = req.params.browserID
-        logger("begin handler for #{appInstanceID}:#{vBrowserID}")
 
         #should check by user and permission
         #check in local object is suffice because the master has routed this appInstance here
@@ -137,7 +136,6 @@ class BaseApplication extends EventEmitter
             appInstanceID : appInstanceID
             host : @server.config.getHttpAddr()
         res.end()
-        logger("end handler for #{appInstanceID}:#{vBrowserID}")
 
     _serveResourceHandler : (req, res, next) ->
         appInstanceID = req.params.appInstanceID
@@ -200,7 +198,6 @@ class BaseApplication extends EventEmitter
 
     # handle for case that user request the mount point url
     _mountPointHandler : (req, res, next) ->
-        logger("begin mountpoint handler")
         # "multiInstance"
         # authenticationInterface must be set to true
         if @isMultiInstance() and @landingPageApp
@@ -236,7 +233,6 @@ class BaseApplication extends EventEmitter
 
         # we fall to default initiation strategy, create a new instance for every new request
         @appInstanceManager.create(null, (err, appInstance)=>
-            logger("end mountpoint handler")
             return routes.internalError(res, err.message) if err?
             routes.redirect(res,
                 routes.buildBrowserPath(@mountPoint, appInstance.id, appInstance.browserId))
@@ -247,8 +243,6 @@ class BaseApplication extends EventEmitter
         # if isSingleInstance, check if this instance exist
         # if isMultiInstance, check authentication, and return or create a vbrowser
         id = req.params.appInstanceID
-
-        logger("begin handler #{id}")
 
         appInstance = @appInstanceManager.find(id)
         if not appInstance then return routes.notFound(res, "The application instance #{id} was not found.")
@@ -276,7 +270,6 @@ class BaseApplication extends EventEmitter
         else
             routes.redirectToBrowser(res, @mountPoint, id, appInstance.browserId)
 
-        logger("end handler #{id}")
 
     mount : () ->
         @httpServer.mount(@mountPoint, @mountPointHandler)

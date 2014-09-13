@@ -1,7 +1,9 @@
 {EventEmitter}   = require('events')
 parseUrl         = require('url').parse
 querystring      = require('querystring')
+timers           = require('timers')
 
+socketio         = require('socket.io-client')
 request          = require('request')
 lodash           = require('lodash')
 debug            = require('debug')
@@ -65,6 +67,9 @@ class ClientGroup extends EventEmitter
             clientOptions = lodash.clone(options)
             clientOptions.createBrowser = true
             clientOptions.id = "#{@groupName}_#{clientIndex}c"
+            if browserIndex is 0
+                #the very first one will create the Appinstance
+                clientOptions.createAppInstance = true
             bootstrapClient = new Client(clientOptions)
             if browserIndex > 0
                 # this client should wait til app instance is created
@@ -102,7 +107,6 @@ class Stat
     constructor: () ->
         @count = 0
         @total = 0
-        @errorCount = 0
 
     add : (num) ->
         if not @min?
@@ -117,17 +121,14 @@ class Stat
             @min = num
 
     addError : (@error) ->
+        if not @errorCount?
+            return @errorCount = 1
         @errorCount++
 
-    mergeStat : (stat) ->
-        @count += stat.count
-        @total += stat.total
-        @errorCount += stat.errorCount
-        return this
 
 class StatProvider
     constructor: () ->
-        @startTime = new Date()
+        @startTime = (new Date()).getTime()
         @stats = {}
 
     _getStat : (key)->
@@ -140,10 +141,6 @@ class StatProvider
 
     addError : (key, error)->
         @_getStat(key).addError(error)
-
-
-
-
 
 
 # eventCount contains the event to create browser
@@ -192,7 +189,8 @@ class Client extends EventEmitter
             timeout: @options.timeout
         }
         if @createBrowser
-            if @browserConfig?.appInstanceId?
+            if not @options.createAppInstance
+                # create a browser under an app instance
                 opts.url = routes.buildAppInstancePath(@appAddress, @browserConfig.appInstanceId)
         else
             opts.url = @browserConfig.url
@@ -212,6 +210,7 @@ class Client extends EventEmitter
 
             @sessionId = sessionIdCookie.value
 
+            timeElapsed = @_timpeElapsed()
             if @createBrowser
                 @browserConfig = {}
                 @browserConfig.browserId = response.headers['x-cb-browserid']
@@ -219,15 +218,29 @@ class Client extends EventEmitter
                 @browserConfig.appInstanceId = response.headers['x-cb-appinstanceid']
                 # for clients that would share this browser instance
                 @browserConfig.url = response.headers['x-cb-url']
-                logger("#{@id} emit browserConfig  #{@browserConfig.url}")
-                @emit('browserconfig', @browserConfig)
+                
 
             if not @browserConfig.appId? or not @browserConfig.browserId?
                 @_fatalErrorHandler(new Error("Something is wrong, no browserid detected."))
 
-            @stats.add('initialPage', @_timpeElapsed())
-            @_createSocket()
-            @_initialSocketIo()
+            if @createBrowser
+                @stats.add('createBrowser', timeElapsed)
+                if @options.createAppInstance
+                    @stats.add('createAppInstance', timeElapsed)
+                # give others opportunity to receive io events
+                setTimeout(()=>
+                    logger("#{@id} emit browserConfig  #{@browserConfig.url}")
+                    # creating socket after children clients send initial requests
+                    @emit('browserconfig', @browserConfig)
+                    setTimeout(()=>
+                        @_createSocket()
+                        @_initialSocketIo()
+                    , 0)
+                , 0)
+            else
+                logger("#{@id} opened #{@browserConfig.url}")
+                
+            @stats.add('initialPage', timeElapsed)
 
     _initialSocketIo : ()->
         @_initStartTs()
@@ -255,7 +268,9 @@ class Client extends EventEmitter
                         @_serverEventHandler(original, arguments)
                     )
             )
-            @_nextEvent()
+            setTimeout(()=>
+                @_nextEvent()
+            , 0)
 
         @socket.on('disconnect', ()=>
             @stop()
@@ -276,7 +291,9 @@ class Client extends EventEmitter
             @expectStartTime = (new Date()).getTime()
         else
             nextEvent.emitEvent(@socket)
-            @_nextEvent()
+            setTimeout(()=>
+                @_nextEvent()
+            , 0)
 
     _serverEventHandler : (eventName, args)->
         if @expect?
@@ -293,7 +310,6 @@ class Client extends EventEmitter
 
     _createSocket : ()->
         @_initStartTs()
-        socketio = require('socket.io-client')
         # pass the session id through url, there is a way to pass through cookie
         # https://gist.github.com/jfromaniello/4087861
         # but it only works for one client instance.
@@ -310,7 +326,7 @@ class Client extends EventEmitter
             forceNew:true
             timeout: @options.timeout
             })
-        @stats.add('socketioClientCreateTime', @_timpeElapsed())
+        @stats.add('socketCreateTime', @_timpeElapsed())
 
         @socket.on('error',(err)=>
             @_fatalErrorHandler(err)
@@ -392,8 +408,8 @@ if opts.appAddress?
     opts.cbhost = "http://#{parsedUrl.hostname}"
     # host contains port
     opts.socketioUrl = "http://#{parsedUrl.host}"
-    logger("assign cbhost #{opts.cbhost} , socketio url #{opts.socketioUrl}")
 
+logger("options #{opts}")
 
 eventDescriptorReader = new benchmarkConfig.EventDescriptorsReader({fileName:opts.configFile})
 SysMon = require('../../src/server/sys_mon')
@@ -401,23 +417,18 @@ sysMon = new SysMon()
 eventDescriptorReader.read((err, eventDescriptors)->
     return console.log(err) if err
 
+    resultLogger = debug("cloudbrowser:benchmark:result")
     opts.eventDescriptors = eventDescriptors
     clientProcess = new ClientProcess(opts)
     intervalObj = setInterval(()->
-        console.log(new Date())
+        resultLogger("Elapsed #{(new Date()).getTime() - clientProcess.stats.startTime}ms")
         clientProcess.timeOutCheck()
-        console.log JSON.stringify(clientProcess.stats)
+        resultLogger JSON.stringify(clientProcess.stats)
         sysMon.logStats()
         if clientProcess.isStopped()
-            console.log "stopped"
+            resultLogger "stopped"
             clearInterval(intervalObj)
             process.exit(1)
     , 3000
     )
 )
-
-
-
-
-
-

@@ -31,7 +31,7 @@ class TextInputEventGroup
         {@descriptor, @context} = options
         @text = ''
         if @descriptor.textType is 'random'
-            @text = "#{@context.clientId} want #{@context.counter}"
+            @text = "#{@context.clientId} want #{@context.counter}c"
             @context.counter++
         if @descriptor.textType is 'clientId'
             @text = "#{@context.clientId}"

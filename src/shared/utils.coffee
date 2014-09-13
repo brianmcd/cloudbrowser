@@ -112,16 +112,26 @@ exports.isEmail = (str) ->
 
 fileDataCache = {}
 
-exports.readCachedFile = (fileName, callback)->
+exports.readCachedFile = ()->
+    fileName = arguments[0]
+    callback = arguments[arguments.length-1]
     cache = fileDataCache[fileName]
     if cache?
         return callback(null, cache)
+
+    fsReadArgs = [fileName]
     
-    Fs.readFile(fileName, 'utf8', (err, data)->
+    # if we have encoding specified
+    if arguments.length > 2
+        fsReadArgs.push(arguments[1])
+    # push callback    
+    fsReadArgs.push((err, data)->
         callback(err) if err?
         fileDataCache[fileName] = data
         callback null, data
     )
+    Fs.readFile.apply(Fs, fsReadArgs)
+
 
 
 # apparently the lodash's merge can only support plain objects!

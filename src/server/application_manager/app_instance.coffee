@@ -69,8 +69,13 @@ class AppInstance extends EventEmitter
 
     _create : (user, callback) ->
         user = User.toUser(user)
-        
         id = @uuidService.getId()
+        if not user?
+            vbrowser = @_createVirtualBrowser
+                type : VirtualBrowser
+                id   : id
+            return callback null, @addBrowser(vbrowser)
+        
         Async.series([
             (cb)=>
                 @server.permissionManager.addBrowserPermRec
@@ -80,28 +85,21 @@ class AppInstance extends EventEmitter
                     permission  : 'own'
                     callback    : cb    
             ,
-            (cb)=>
-                vbrowser = null
-                if user
-                    vbrowser = @_createVirtualBrowser
-                        type        : SecureVirtualBrowser
-                        id          : @uuidService.getId()
-                        creator     : user
-                        permission  : 'own'
-                else 
-                    vbrowser = @_createVirtualBrowser
-                        type : VirtualBrowser
-                        id   : @uuidService.getId()
-                # retrun weak reference
-                logger "createBrowser #{vbrowser.id} for #{@app.mountPoint} - #{@id}"
-                callback null, @addBrowser(vbrowser)       
+            (cb)=>                
+                vbrowser = @_createVirtualBrowser
+                    type        : SecureVirtualBrowser
+                    id          : id
+                    creator     : user
+                    permission  : 'own'
+                return callback null, @addBrowser(vbrowser)       
             ],(err)->
-                callback(err) if err?
+                callback(err)
         )
         
         
 
     _createVirtualBrowser : (browserInfo) ->
+        startTime = (new Date()).getTime()
         {id, type, creator, permission} = browserInfo
         vbrowser = new type
             id          : id
@@ -111,6 +109,7 @@ class AppInstance extends EventEmitter
             permission  : permission
             appInstance : this
         vbrowser.load(@app)
+        logger("createBrowser #{@id}:#{id} for #{(new Date()).getTime()-startTime}ms")
         return vbrowser
 
     # user: the user try to create browser, callback(err, browser)

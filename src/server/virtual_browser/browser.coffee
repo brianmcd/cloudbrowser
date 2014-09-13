@@ -92,7 +92,7 @@ class Browser extends EventEmitter
 
         if url?.indexOf('/') is 0
             logger("reading file: #{url}")
-            utils.readCachedFile url, (err, data) =>
+            utils.readCachedFile url, 'utf8', (err, data) =>
                 throw err if err
                 initDoc(data)
         else
