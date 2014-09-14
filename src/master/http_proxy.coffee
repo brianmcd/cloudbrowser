@@ -19,7 +19,7 @@ class HttpProxy
             @proxyWebSocketRequest req, socket, head
         )
         @proxy.on('error', (err, req, res, target)=>
-            infoLogger "Proxy error #{err.message} #{target.host}:#{target.port} #{req.url}"
+            infoLogger "Proxy error #{err.message} #{target?.host}:#{target?.port} #{req.url}"
         )
         infoLogger "starting proxy server listening on #{@config.httpPort}"
         server.listen(@config.httpPort, ()=>

@@ -15,13 +15,15 @@ class SysMon
         if not @opts.id?
             @opts.id = "#{process.title} #{@pid}"
 
-        if @opts.interval? and logger.enabled
+        # undocumented property ! if the logger is not enabled, do nothing
+        @enabled = logger.enabled
+
+        if @opts.interval? and @enabled
             @start()
 
     # time is printed when the output is redirect to file
     logStats : ()->
-        # undocumented property !
-        if not logger.enabled
+        if not @enabled
             return
 
         options = { keepHistory: true }

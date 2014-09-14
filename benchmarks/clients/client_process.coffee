@@ -10,6 +10,7 @@ debug            = require('debug')
 
 benchmarkConfig = require('./benchmark_config')
 routes = require('../../src/server/application_manager/routes')
+{StatProvider} = require('../../src/shared/stats')
 
 logger = debug('cloudbrowser:benchmark')
 
@@ -102,45 +103,6 @@ class ClientGroup extends EventEmitter
             client.timeOutCheck(time)
 
 
-
-class Stat
-    constructor: () ->
-        @count = 0
-        @total = 0
-
-    add : (num) ->
-        if not @min?
-            @min = num
-        if not @max?
-            @max = num
-        @count++
-        @total+=num
-        if num > @max
-            @max = num
-        if num < @min
-            @min = num
-
-    addError : (@error) ->
-        if not @errorCount?
-            return @errorCount = 1
-        @errorCount++
-
-
-class StatProvider
-    constructor: () ->
-        @startTime = (new Date()).getTime()
-        @stats = {}
-
-    _getStat : (key)->
-        if not @stats[key]?
-            @stats[key] = new Stat()
-        return @stats[key]
-
-    add: (key, num)->
-        @_getStat(key).add(num)
-
-    addError : (key, error)->
-        @_getStat(key).addError(error)
 
 
 # eventCount contains the event to create browser
@@ -290,12 +252,12 @@ class Client extends EventEmitter
             @expect = nextEvent
             @expectStartTime = (new Date()).getTime()
         else
+            @stats.addCounter('clientEvent')
             nextEvent.emitEvent(@socket)
-            setTimeout(()=>
-                @_nextEvent()
-            , 0)
+            @_nextEvent()
 
     _serverEventHandler : (eventName, args)->
+        @stats.addCounter('serverEvent')
         if @expect?
             expectResult = @expect.expect(eventName, args)
             if expectResult is 2
@@ -337,7 +299,7 @@ class Client extends EventEmitter
 
 
     _fatalErrorHandler : (@error)->
-        @stats.addError('fatalError', @error)
+        @stats.addCounter('fatalError', @error)
         @stop()
 
     stop : () ->
@@ -409,7 +371,7 @@ if opts.appAddress?
     # host contains port
     opts.socketioUrl = "http://#{parsedUrl.host}"
 
-logger("options #{opts}")
+logger("options #{JSON.stringify(opts)}")
 
 eventDescriptorReader = new benchmarkConfig.EventDescriptorsReader({fileName:opts.configFile})
 SysMon = require('../../src/server/sys_mon')
