@@ -67,8 +67,8 @@
         msgObj.type = type;
       }
       chatManager.messages.push(msgObj);
-      if (chatManager.messages.length > 1000) {
-        chatManager.messages = chatManager.messages.slice(500);
+      if (chatManager.messages.length > 100) {
+        chatManager.messages.splice(0, 50);
       }
       return setTimeout(scrollDown, 0);
     };

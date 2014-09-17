@@ -70,21 +70,16 @@ class TaggedNodeCollection
             throw new Error("params must be an array or object")
         return params
 
-    # Replace nodeIDs with nodes in arrays or objects (shallow).
-    # Updates are done in place.
+    # Replace nodeIDs with nodes in process event object
+    # Updates are done in place. For perfomance sake, avoid regex if possilbe
     unscrub : (params) ->
-        if params instanceof Array
-            for param, index in params
-                if (typeof param == 'string') && /^node\d+$/.test(param)
-                    params[index] = @get(param)
-            return params
-        else if params instanceof Object
-            for own key, value of params
-                if (typeof value == 'string') && /^node\d+$/.test(value)
-                    params[key] = @get(value)
+        if params instanceof Object
+            for key in ['target', 'relatedTarget']
+                value = params[key]
+                params[key] = @get(value) if value?
             return params
         else
-            throw new Error("params must be an array or object")
+            throw new Error("params must be an object")
         return params
 
 module.exports = TaggedNodeCollection

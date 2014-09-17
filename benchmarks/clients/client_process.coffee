@@ -199,8 +199,8 @@ class Client extends EventEmitter
                         @_initialSocketIo()
                     , 0)
                 , 0)
-            else
-                logger("#{@id} opened #{@browserConfig.url}")
+            
+            logger("#{@id} opened #{@browserConfig.url}")
                 
             @stats.add('initialPage', timeElapsed)
 
@@ -242,8 +242,6 @@ class Client extends EventEmitter
         if @stopped
             return
 
-        @expect = null
-        @expectStartTime = null
         nextEvent = @eventQueue.poll()
         if not nextEvent
             return @stop()
@@ -262,7 +260,12 @@ class Client extends EventEmitter
             expectResult = @expect.expect(eventName, args)
             if expectResult is 2
                 @stats.add('eventProcess', (new Date()).getTime()- @expectStartTime)
-                @_nextEvent()
+                @expect = null
+                @expectStartTime = null
+                setTimeout(()=>
+                    @_nextEvent()
+                , 0)
+                
 
     timeOutCheck : (time)->
         if @expectStartTime? and time - @expectStartTime > @options.timeout

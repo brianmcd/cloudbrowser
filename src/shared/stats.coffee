@@ -8,6 +8,7 @@ class Stat
             @min = num
         if not @max?
             @max = num
+        @current=num
         @count++
         @total+=num
         if num > @max

@@ -57,8 +57,9 @@ app.controller "ChatCtrl", ($scope, $timeout) ->
         msgObj.type = type if type?
         chatManager.messages.push(msgObj)
         #console.log(chatManager.messages)
-        if chatManager.messages.length > 1000
-            chatManager.messages = chatManager.messages.slice(500)
+        # performance is really bad when the cap is 500, 1000
+        if chatManager.messages.length > 100
+            chatManager.messages.splice(0, 50)
         # scroll down to the last message. It does not work
         setTimeout(scrollDown, 0)
         
