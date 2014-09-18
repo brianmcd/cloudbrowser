@@ -462,7 +462,7 @@ var cbAngularDigest = noop;
 var cbAngularObj = {
   log : noop
 };
-if (typeof cloudbrowser != "undefined") {
+if (false && typeof cloudbrowser != "undefined") {
   var cbAppInsEventBus = cloudbrowser.currentAppInstanceConfig.getEventBus();
   var currentBrowser = cloudbrowser.currentBrowser;
   var browserLogger = currentBrowser.getLogger();

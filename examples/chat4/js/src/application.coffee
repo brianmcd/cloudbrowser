@@ -12,7 +12,7 @@ app.directive 'enterSubmit', () ->
                     e.preventDefault()
             )
 
-app.controller "ChatCtrl", ($scope, $timeout) ->
+app.controller "ChatCtrl", ($scope, $timeout, $rootScope) ->
     {currentBrowser} = cloudbrowser
     browserId = currentBrowser.getID()
     chatManager = cloudbrowser.currentAppInstanceConfig.getObj()
@@ -23,6 +23,15 @@ app.controller "ChatCtrl", ($scope, $timeout) ->
 
     chatManager.users[browserId] = $scope.userName
     $scope.chatManager = chatManager
+
+    eventbus = cloudbrowser.currentAppInstanceConfig.getEventBus()
+    eventbus.on('newMessage', (fromBrowser)->
+        if fromBrowser is browserId
+            return
+        if $rootScope.$$phase is '$apply' or $rootScope.$$phase is '$digest'
+            return
+        $rootScope.$apply(angular.noop)           
+    )
 
     scrollDown=()->
         messageBox = document.getElementById("chatMessageBox")
@@ -61,7 +70,8 @@ app.controller "ChatCtrl", ($scope, $timeout) ->
         if chatManager.messages.length > 100
             chatManager.messages.splice(0, 50)
         # scroll down to the last message. It does not work
-        setTimeout(scrollDown, 0)
+        # setTimeout(scrollDown, 0)
+        eventbus.emit('newMessage', browserId)
         
 
     $scope.changeName = ()->

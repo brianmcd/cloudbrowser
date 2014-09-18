@@ -21,8 +21,8 @@
     };
   });
 
-  app.controller("ChatCtrl", function($scope, $timeout) {
-    var addMessage, browserId, chatManager, currentBrowser, messageId, scrollDown;
+  app.controller("ChatCtrl", function($scope, $timeout, $rootScope) {
+    var addMessage, browserId, chatManager, currentBrowser, eventbus, messageId, scrollDown;
     currentBrowser = cloudbrowser.currentBrowser;
     browserId = currentBrowser.getID();
     chatManager = cloudbrowser.currentAppInstanceConfig.getObj();
@@ -32,6 +32,16 @@
     $scope.alertMessages = [];
     chatManager.users[browserId] = $scope.userName;
     $scope.chatManager = chatManager;
+    eventbus = cloudbrowser.currentAppInstanceConfig.getEventBus();
+    eventbus.on('newMessage', function(fromBrowser) {
+      if (fromBrowser === browserId) {
+        return;
+      }
+      if ($rootScope.$$phase === '$apply' || $rootScope.$$phase === '$digest') {
+        return;
+      }
+      return $rootScope.$apply(angular.noop);
+    });
     scrollDown = function() {
       var messageBox;
       messageBox = document.getElementById("chatMessageBox");
@@ -70,7 +80,7 @@
       if (chatManager.messages.length > 100) {
         chatManager.messages.splice(0, 50);
       }
-      return setTimeout(scrollDown, 0);
+      return eventbus.emit('newMessage', browserId);
     };
     $scope.changeName = function() {
       var k, name, v, _ref;
