@@ -462,7 +462,7 @@ var cbAngularDigest = noop;
 var cbAngularObj = {
   log : noop
 };
-if (cloudbrowser) {
+if (typeof cloudbrowser != "undefined") {
   var cbAppInsEventBus = cloudbrowser.currentAppInstanceConfig.getEventBus();
   var currentBrowser = cloudbrowser.currentBrowser;
   var browserLogger = currentBrowser.getLogger();
@@ -13038,7 +13038,7 @@ function $RootScopeProvider(){
         }
 
         lastDirtyWatch = null;
-        hadDirtySet = false;
+        var hadDirtySet = false;
 
         do { // "while dirty" loop
           dirty = false;
