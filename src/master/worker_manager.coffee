@@ -232,20 +232,22 @@ class WokerManager
     constructor : (dependencies, callback) ->
         @_rmiService = dependencies.rmiService
         @workersMap = {}
-        # a list of workers, this is for getMostFreeWorker
-        @_workerList = []
-        # counter for getMostFreeWorker
-        @_counter = 0
         @appInstanceMap = {}
         @_workerStubs = {}
         callback null, this
 
-    # pick a worker in round robin
+    # pick a worker with smallest weight
     getMostFreeWorker : () ->
-        if @_workerList.length>0
-            @_counter++
-            return @_workerList[@_counter%@_workerList.length]
-        return null
+        freeWorker = null
+        logger("getMostFreeWorker")
+        logger(@workersMap)
+        for id, worker of @workersMap
+            if not freeWorker?
+                freeWorker = worker
+            else if worker.weight < freeWorker.weight
+                freeWorker = worker
+        logger("freeworker is #{JSON.stringify(freeWorker)}")
+        return freeWorker
 
     # like .jpg .html ...
     isStaticFileRequest : (path) ->
@@ -262,16 +264,13 @@ class WokerManager
             host : worker.host
             httpPort : worker.httpPort
             rmiPort : worker.rmiPort
+            # set initial weight
+            weight : 10
         }
         if @workersMap[worker.id]?
             console.log "worker exists, updating with new info"
-            @_workerList = lodash.filter(@_workerList, (oldWorker)->
-                return oldWorker.id isnt worker.id
-                );
-
         console.log "register #{JSON.stringify(workerInfo)}"
-        @workersMap[worker.id]=workerInfo
-        @_workerList.push(workerInfo)
+        @workersMap[worker.id] = workerInfo
         if callback?
             callback null
 
@@ -288,11 +287,26 @@ class WokerManager
         return null
 
     registerAppInstance : (appInstance) ->
-        console.log "register appInstance #{appInstance.id} from #{appInstance.workerId}"
+        workerId = appInstance.workerId
+        console.log "register appInstance #{appInstance.id} from #{workerId}"
+        if @workersMap[workerId]?
+            @workersMap[workerId].weight += 10
         @appInstanceMap[appInstance.id] = appInstance
 
     unregisterAppInstance : (appInstanceId) ->
-        delete @appInstanceMap[appInstanceId]
+        appInstance = @appInstanceMap[appInstanceId]
+        if appInstance?
+            workerId = appInstance.workerId
+            if @workersMap[workerId]?
+                @workersMap[workerId].weight -= 10
+            delete @appInstanceMap[appInstanceId]
+
+    heartBeat : (workerId, memroyInBytes, callback)->
+        if @workersMap[workerId]?
+            @workersMap[workerId].weight = memroyInBytes/1000000
+            callback null
+        else
+            callback "worker not registered."
 
 
     ###
@@ -348,7 +362,8 @@ class WokerManager
                 port : worker.rmiPort
                 }, (err, stub)=>
                     return callback(err) if err?
-                    @_workerStubs[worker.id] = stub
+                    # put worker's stub into cache when the worker is ready
+                    @_workerStubs[worker.id] = stub if stub.appManager?
                     callback null, stub
                 )
         else

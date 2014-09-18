@@ -12,9 +12,13 @@ HTTPServer         = require('./http_server')
 RmiService         = require('./rmi_service')
 UuidService        = require('./uuid_service')
 
+#require('webkit-devtools-agent').start()
+
 # https://github.com/trevnorris/node-ofe
 # This will overwrite OnFatalError to create a heapdump when your app fatally crashes.
 require('ofe').call()
+
+logger = debug('cloudbrowser:worker:init')
 
 class EventTracker
     constructor: (serverConfig) ->
@@ -33,7 +37,22 @@ class EventTracker
     inc : () ->
         @processedEvents++
 
-logger = debug('cloudbrowser:worker:init')
+heartbeatLogger = debug('cloudbrowser:worker:heart')
+
+class HeartBeater
+    constructor: (dependencies)->
+        {@sysMonitor, @masterStub} = dependencies
+        {@id} = dependencies.config.serverConfig
+        setInterval(()=>
+            @heartBeat()
+        , 5000)
+
+    heartBeat : ()->
+        monitorResult = @sysMonitor.getResult()
+        if monitorResult?
+            @masterStub.workerManager.heartBeat(@id, monitorResult.rss, (err)->
+                heartbeatLogger("#{@id} Error in sending heartbeat #{err}") if err?
+            )
 
 
 class Runner
@@ -59,9 +78,23 @@ class Runner
                 masterStub = results.masterStub
                 serverConfig = results.config.serverConfig
                 appManager = masterStub.appManager
-                # the master app manager returns appConfig upon worker registeration
-                appManager.registerWorker(serverConfig.getWorkerConfig(),callback)
+                # the master app manager returns appConfig in the callback
+                appManager.registerWorker(serverConfig.getWorkerConfig(), callback)
             ],
+            'sysMonitor' : ['config',(callback, results)->
+                    id = results.config.serverConfig.id
+                    # monitoring
+                    sysMonitor = require('../server/sys_mon').createSysMon({
+                        id : id
+                        interval : 5000
+                    })
+                    callback null, sysMonitor
+            ],
+            'heartBeat' : ['sysMonitor', 'appConfigs', (callback, results)->
+                    heartBeater = new HeartBeater(results)
+                    callback null, heartBeater
+                    logger("hearbeat initiated")
+            ]
             'eventTracker' : ['masterStub', (callback,results) =>
                 callback(null, new EventTracker(results.config.serverConfig))
             ],
@@ -117,12 +150,6 @@ class Runner
                         console.log("Worker #{id} Uncaught Exception:")
                         console.log(err)
                         console.log(err.stack)
-                    # monitoring
-                    require('../server/sys_mon').createSysMon({
-                        id : id
-                        interval : 5000
-                        printTime : true
-                    })
             )
 
     handlerInitializeError : (err) ->
