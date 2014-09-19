@@ -22,7 +22,7 @@ echo start $i_logprefix with $i_processes benchmark processes
 
 for (( i = 0; i < $i_processes; i++ )); do
     i_group=p"$i"
-    i_logfile="$i_logprefix""$i"_"$i_time"".log"
+    i_logfile="$i_logprefix"_"$i_group"_"$i_time"".log"
     nohup node_modules/coffee-script/bin/coffee benchmarks/clients/client_process.coffee \
     --appinstance-count $CB_APPINS --browser-count $CB_BROWSER --client-count $CB_CLIENT --server-logging false \
     --configFile $CB_CONF --app-address $CBAPP_ADDR --process-id $i_group >$i_logfile 2>&1 &

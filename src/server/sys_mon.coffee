@@ -14,7 +14,8 @@ class SysMon
             lodash.merge(@opts, opts)
         if not @opts.id?
             @opts.id = "#{process.title} #{@pid}"
-        @start()
+        if @opts.interval?
+            @start()
 
     # time is printed when the output is redirect to file
     logStats : ()->

@@ -10,7 +10,7 @@ source $i_scriptDir/debug_env.sh
 i_master_log="master_"$i_time".log"
 
 nohup bin/run_master.sh examples src/server/applications --disable-logging=false >$i_master_log  2>&1 &
-echo $! master log write to $i_master_log
+echo master log write to $i_master_log
 
 i_workers=2
 if [[ "X$1" != "X" ]]; then
