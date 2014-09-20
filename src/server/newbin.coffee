@@ -37,8 +37,6 @@ class EventTracker
     inc : () ->
         @processedEvents++
 
-heartbeatLogger = debug('cloudbrowser:worker:heart')
-
 class HeartBeater
     constructor: (dependencies)->
         {@sysMonitor, @masterStub} = dependencies
@@ -50,9 +48,7 @@ class HeartBeater
     heartBeat : ()->
         monitorResult = @sysMonitor.getResult()
         if monitorResult?
-            @masterStub.workerManager.heartBeat(@id, monitorResult.rss, (err)->
-                heartbeatLogger("#{@id} Error in sending heartbeat #{err}") if err?
-            )
+            @masterStub.workerManager.heartBeat(@id, monitorResult.rss)
 
 
 class Runner

@@ -20,6 +20,7 @@ class HttpProxy
         )
         @proxy.on('error', (err, req, res, target)=>
             infoLogger "Proxy error #{err.message} #{target?.host}:#{target?.port} #{req.url}"
+            infoLogger err.stack
         )
         infoLogger "starting proxy server listening on #{@config.httpPort}"
         server.listen(@config.httpPort, ()=>

@@ -6,5 +6,6 @@
     "description": "A multi user chat application written using AngularJS",
     "mountOnStartup": true,
     "mountPoint": "/chat4",
-    "collectionName": "chat4.users"
+    "collectionName": "chat4.users",
+    "keyboardEvent" : "basic"
 }

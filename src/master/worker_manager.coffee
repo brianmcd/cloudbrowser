@@ -6,7 +6,7 @@ debug  = require('debug')
 
 routes = require('../server/application_manager/routes')
 
-logger = debug('cloudbrowser:master:proxy')
+logger = debug('cloudbrowser:master:worker')
 
 # return the index of next char that is not skipChar
 strSkip = (str, startIndex, skipChar) ->
@@ -193,7 +193,7 @@ routers = {
     addRoute : (appInfo) ->
         {mountPoint} = appInfo
         if @routersMap[mountPoint]?
-            console.log "route for #{mountPoint} was registered before"
+            logger "route for #{mountPoint} was registered before"
             return
 
         r = new AppPathMather(mountPoint)
@@ -222,7 +222,7 @@ routers = {
                     mountPoint: matchResult.data.mountPoint,
                     appInstanceId: matchResult.params.appInstanceID
                 }
-        console.log "cannot match #{path} to any app, defaulting to root"
+        logger "cannot match #{path} to any app, defaulting to root"
         return {mountPoint:'/'}
 }
 
@@ -239,14 +239,11 @@ class WokerManager
     # pick a worker with smallest weight
     getMostFreeWorker : () ->
         freeWorker = null
-        logger("getMostFreeWorker")
-        logger(@workersMap)
         for id, worker of @workersMap
             if not freeWorker?
                 freeWorker = worker
             else if worker.weight < freeWorker.weight
                 freeWorker = worker
-        logger("freeworker is #{JSON.stringify(freeWorker)}")
         return freeWorker
 
     # like .jpg .html ...
@@ -258,7 +255,7 @@ class WokerManager
 
     # may have slots in the future
     registerWorker : (worker, callback) ->
-        console.log "register worker #{worker.id}"
+        logger "register worker #{worker.id}"
         workerInfo = {
             id : worker.id
             host : worker.host
@@ -268,8 +265,8 @@ class WokerManager
             weight : 10
         }
         if @workersMap[worker.id]?
-            console.log "worker exists, updating with new info"
-        console.log "register #{JSON.stringify(workerInfo)}"
+            logger "worker exists, updating with new info"
+        logger "register #{JSON.stringify(workerInfo)}"
         @workersMap[worker.id] = workerInfo
         if callback?
             callback null
@@ -288,7 +285,7 @@ class WokerManager
 
     registerAppInstance : (appInstance) ->
         workerId = appInstance.workerId
-        console.log "register appInstance #{appInstance.id} from #{workerId}"
+        logger "register appInstance #{appInstance.id} from #{workerId}"
         if @workersMap[workerId]?
             @workersMap[workerId].weight += 10
         @appInstanceMap[appInstance.id] = appInstance
@@ -301,12 +298,11 @@ class WokerManager
                 @workersMap[workerId].weight -= 10
             delete @appInstanceMap[appInstanceId]
 
-    heartBeat : (workerId, memroyInBytes, callback)->
+    heartBeat : (workerId, memroyInBytes)->
         if @workersMap[workerId]?
-            @workersMap[workerId].weight = memroyInBytes/1000000
-            callback null
+            @workersMap[workerId].weight = parseInt(memroyInBytes/1000000)
         else
-            callback "worker not registered."
+            logger "worker #{workerId} not registered."
 
 
     ###
@@ -329,7 +325,7 @@ class WokerManager
                 query = querystring.parse(urlObj.query)
                 referer = query.referer
                 if not referer?
-                    console.log "#{path} has no referer"
+                    logger "#{path} has no referer"
                     return {worker : @getMostFreeWorker()}
 
             result = @_getWorkerByUrlPath(urlModule.parse(referer).pathname)

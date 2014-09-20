@@ -95,12 +95,15 @@ class AppInstanceManager extends EventEmitter
             (next)->
                 appInstance.createBrowser(user, next)
             (next)=>
+                next()
+                # FIXME it is crazily slow some concurrent access
                 @permissionManager.addAppInstancePermRec
                     user        : owner
                     mountPoint  : @app.getMountPoint()
                     permission  : 'own'
                     appInstanceID : id
-                    callback : next
+                    callback : ()->
+
             ],(err)=>
                 return callback(err) if err
                 @appInstances[id] = appInstance

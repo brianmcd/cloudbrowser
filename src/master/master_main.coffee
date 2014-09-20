@@ -6,6 +6,8 @@ path           = require('path')
 async          = require('async')
 config         = require('./config')
 
+#require('webkit-devtools-agent').start()
+
 class Runner
     constructor: (argv, postConstruct) ->
         async.auto({

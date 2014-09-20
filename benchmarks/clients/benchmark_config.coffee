@@ -176,6 +176,11 @@ class RegularEvent
                 emitArgs.push(i)
         emitter.emit.apply(emitter, emitArgs)
 
+    getWaitDuration : ()->
+        return @descriptor.wait if @descriptor.wait?
+        return 0
+        
+
 # the difference between EventGroup and ActionQueue is that EventGroup
 # iterates over the same events over and over again
 class EventGroup

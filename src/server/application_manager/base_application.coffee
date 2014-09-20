@@ -83,7 +83,7 @@ class BaseApplication extends EventEmitter
         @_masterApp.on('change', (changeObj)=>
             @_handleChange(changeObj)
             )
-
+        
         @remoteBrowsing = /^http/.test(@appConfig.entryPoint)
         @counter = 0
         @appInstanceManager = new AppInstanceManager(@appInstanceProvider, @server, this)
@@ -234,6 +234,7 @@ class BaseApplication extends EventEmitter
         # we fall to default initiation strategy, create a new instance for every new request
         @appInstanceManager.create(null, (err, appInstance)=>
             return routes.internalError(res, err.message) if err?
+            logger("Redirect request to #{appInstance.id} #{appInstance.browserId}")
             routes.redirect(res,
                 routes.buildBrowserPath(@mountPoint, appInstance.id, appInstance.browserId))
         )

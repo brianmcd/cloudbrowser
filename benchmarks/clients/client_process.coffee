@@ -157,7 +157,7 @@ class Client extends EventEmitter
         else
             opts.url = @browserConfig.url
 
-        logger("#{@id} open #{opts.url}")
+        logger("#{@id} requests #{opts.url}")
         request opts, (err, response, body) =>
             return @_fatalErrorHandler(err) if err?
             cookies = j.getCookies(@cbhost)
@@ -183,22 +183,22 @@ class Client extends EventEmitter
                 
 
             if not @browserConfig.appId? or not @browserConfig.browserId?
-                @_fatalErrorHandler(new Error("Something is wrong, no browserid detected."))
+                @_fatalErrorHandler("No browserid detected.")
 
             if @createBrowser
                 @stats.add('createBrowser', timeElapsed)
                 if @options.createAppInstance
                     @stats.add('createAppInstance', timeElapsed)
                 # give others opportunity to receive io events
-                setTimeout(()=>
+                timers.setImmediate(()=>
                     logger("#{@id} emit browserConfig  #{@browserConfig.url}")
                     # creating socket after children clients send initial requests
                     @emit('browserconfig', @browserConfig)
-                    setTimeout(()=>
+                    timers.setImmediate(()=>
                         @_createSocket()
                         @_initialSocketIo()
-                    , 0)
-                , 0)
+                    )
+                )
             
             logger("#{@id} opened #{@browserConfig.url}")
                 
@@ -230,9 +230,9 @@ class Client extends EventEmitter
                         @_serverEventHandler(original, arguments)
                     )
             )
-            setTimeout(()=>
+            timers.setImmediate(()=>
                 @_nextEvent()
-            , 0)
+            )
 
         @socket.on('disconnect', ()=>
             @stop()
@@ -244,6 +244,7 @@ class Client extends EventEmitter
 
         nextEvent = @eventQueue.poll()
         if not nextEvent
+            @stats.addCounter('finished')
             return @stop()
         # stop and expect
         if nextEvent.type is 'expect'
@@ -260,11 +261,13 @@ class Client extends EventEmitter
             expectResult = @expect.expect(eventName, args)
             if expectResult is 2
                 @stats.add('eventProcess', (new Date()).getTime()- @expectStartTime)
+                waitDuration = @expect.getWaitDuration()
                 @expect = null
                 @expectStartTime = null
-                setTimeout(()=>
-                    @_nextEvent()
-                , 0)
+                if waitDuration <=0
+                    timers.setImmediate(@_nextEvent.bind(@))
+                else
+                    setTimeout(@_nextEvent.bind(@), waitDuration)
                 
 
     timeOutCheck : (time)->
@@ -294,15 +297,15 @@ class Client extends EventEmitter
         @stats.add('socketCreateTime', @_timpeElapsed())
 
         @socket.on('error',(err)=>
-            @_fatalErrorHandler(err)
+            @_fatalErrorHandler("SoketIoError #{err}")
         )
         @socket.on('cberror',(err)=>
-            @_fatalErrorHandler(err)
+            @_fatalErrorHandler("cberror #{err}")
         )
 
 
     _fatalErrorHandler : (@error)->
-        @stats.addCounter('fatalError', @error)
+        @stats.addCounter('fatalError', "#{@id} #{error}")
         @stop()
 
     stop : () ->
