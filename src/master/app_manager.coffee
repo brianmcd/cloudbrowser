@@ -237,30 +237,16 @@ class Application extends EventEmitter
                 callback null, result
             )
         )
-
-
-    getNewAppInstance : (callback) ->
-        worker = @_workerManager.getMostFreeWorker()
-        appInstance = new AppInstance(null, worker.id)
-        @_workerManager._getWorkerStub(worker, (err, stub)=>
-            if err?
-                return callback err
-            stub.appManager.createAppInstance(@mountPoint, (err, result)=>
-                if err?
-                    return callback err
-                appInstance._setRemoteInstance(result)
-                @_addAppInstance(appInstance)
-                callback null, result
-            )
-        )
-
     
     regsiterAppInstance : (workerId, appInstance, callback) ->
-        applogger "#{workerId} register #{appInstance.id} for #{@mountPoint}"
+        applogger("get appInstance #{appInstance.id} from #{workerId}")
         localAppInstance = new AppInstance(null, workerId)
         localAppInstance._setRemoteInstance(appInstance)
         @_addAppInstance(localAppInstance)
-        callback null
+        callback(null, {
+            id : appInstance.id
+            browserId : appInstance.browserId
+        })
 
     unregisterAppInstance : (appInstanceId, callback) ->
         delete @_appInstanceMap[appInstanceId]

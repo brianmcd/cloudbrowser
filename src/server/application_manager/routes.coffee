@@ -28,6 +28,7 @@ module.exports = {
             'Location'      : route
             'Cache-Control' : "max-age=0, must-revalidate"
         res.end()
+        
     notFound : (res, message) ->
         res.status(404).send(message)
 

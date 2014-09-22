@@ -14,6 +14,8 @@ routes = require('../../src/server/application_manager/routes')
 
 logger = debug('cloudbrowser:benchmark')
 
+require('http').globalAgent.maxSockets = 65535
+
 class ClientProcess
     constructor: (options) ->
         {@appInstanceCount, @browserCount, @clientCount, @processId} = options

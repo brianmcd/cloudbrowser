@@ -232,7 +232,7 @@ class BaseApplication extends EventEmitter
             return
 
         # we fall to default initiation strategy, create a new instance for every new request
-        @appInstanceManager.create(null, (err, appInstance)=>
+        @appInstanceManager.createAndRegister(null, (err, appInstance)=>
             return routes.internalError(res, err.message) if err?
             logger("Redirect request to #{appInstance.id} #{appInstance.browserId}")
             routes.redirect(res,
