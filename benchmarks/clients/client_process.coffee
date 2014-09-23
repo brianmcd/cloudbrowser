@@ -185,7 +185,7 @@ class Client extends EventEmitter
                 
 
             if not @browserConfig.appId? or not @browserConfig.browserId?
-                @_fatalErrorHandler("No browserid detected.")
+                return @_fatalErrorHandler("No browserid detected.")
 
             if @createBrowser
                 @stats.add('createBrowser', timeElapsed)

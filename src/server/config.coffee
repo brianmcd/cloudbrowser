@@ -37,7 +37,7 @@ class Config
             console.log "config initialized for #{@serverConfig.id}"
             if not obj.host?
                 # the host is not specified, try to get the ip address
-                serverUtils.getLocalHostIpAddress((err, address)=>
+                serverUtils.getLocalHostName((err, address)=>
                     if err?
                         console.log "Get ip address for localhost failed, applying default value."
                         console.log err

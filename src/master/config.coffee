@@ -57,7 +57,7 @@ class MasterConfig
                     console.log "Get localhost dns name failed, setting hosts using defaults"
                     #console.log err
                 else
-                    this.host = hostName
+                    @host = hostName if not @host
                     # the user did not specify a host
                     if not obj.proxyConfig?.host?
                         this.proxyConfig.host = hostName
@@ -323,8 +323,9 @@ class WorkerConfigGenerator
             @portsTaken.push(@masterRmiPort)
             @host = @masterConfig.proxyConfig.host
             @portsTaken.push(@masterConfig.databaseConfig.port)
-            @portsTaken.push(@masterConfig.proxyConfig.httpPort)
-            @_doGenerate()
+            @masterHttpPort = @masterConfig.proxyConfig.httpPort 
+            @portsTaken.push(@masterHttpPort)
+            @_readOtherOptions()
         else
             serverUtils.getLocalHostName((err, hostName)=>
                 @host = hostName
@@ -335,20 +336,24 @@ class WorkerConfigGenerator
     _readOtherOptions : () ->
         async.waterfall([
             (next) =>
-                if @host?
-                    next null, @host, true
-                else
-                    read({prompt : "Master's host[default localhost]: ", default: 'localhost'}, next)
+                defaultVal = if @host? then @host else "localhost"
+                # the master host is mandatory, put a default here
+                read({prompt : "Master's host: ",default: defaultVal}, next)
             (host, isDefault, next)=>
                 @host = host
-                read({prompt : "Master's rmi port[default 3040]: ", default: 3040}, next)
+                defaultVal = if @masterRmiPort? then @masterRmiPort else 3040
+                read({prompt : "Master's rmi port: ", default: defaultVal}, next)
             (port, isDefault, next) =>
                 @masterRmiPort = port
                 @portsTaken.push(port)
-                read({promt: "Master's http port [default 3000]", default: 3000}, next)
+                defaultVal = if @masterHttpPort? then @masterHttpPort else 3000
+                read({prompt: "Master's http port: ", default: defaultVal}, next)
             (port, isDefault, next) =>
                 @portsTaken.push(port)
-                next null
+                read({prompt:"Worker's host[default null]" }, next)
+            (workerHost, isDefault, next)=>
+                @workerHost = workerHost
+                next()
             ],(err)=>
                 @_doGenerate()
         )
@@ -370,6 +375,7 @@ class WorkerConfigGenerator
                 id : 'worker' + i
                 masterConfig : masterConfig
             }
+            workerConfig.host = @workerHost if @workerHost? and @workerHost
             configDir = path.resolve(@configPath, workerConfig.id)
             configFile = path.resolve(configDir, 'server_config.json')
             workerConfig.httpPort = @_nextPort()

@@ -52,7 +52,7 @@ class HTTPServer extends EventEmitter
 
         @setupClientEngineRoutes()
         # apprently the callback for listen only fires when the server start successfully
-        @httpServer.listen(@config.httpPort, () =>
+        @httpServer.listen(@config.httpPort, 2048, () =>
             logger("listening #{@config.httpPort}")
             callback null, this
         )

@@ -4,7 +4,6 @@ nodermi = require('nodermi')
 class RmiService
     constructor: (config,callback) ->
         {@rmiPort}=config
-        console.log "starting rmi service on #{@rmiPort}"
         host = null
         if config.domain?
             host = config.domain
@@ -12,6 +11,8 @@ class RmiService
             host = config.host
         if config.rmiHost?
             host = rmiHost
+
+        console.log "starting rmi service on #{host} #{@rmiPort}"
         
         nodermi.createRmiService({
             host: host

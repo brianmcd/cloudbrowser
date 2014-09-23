@@ -25,7 +25,7 @@ class HttpProxy
             res.end()
         )
         infoLogger "starting proxy server listening on #{@config.httpPort}"
-        server.listen(@config.httpPort, (err)=>
+        server.listen(@config.httpPort, 2048, (err)=>
             callback err, this
         )
 
@@ -55,6 +55,8 @@ class HttpProxy
             res.writeHead(404)
             return res.end("The url is no longer valid.")
         logger("proxy reqeust #{req.url} to #{worker.id}")
+        # increase worker's weight
+        worker.weight += 5
         @proxy.web(req, res, {
             target:
                 {
