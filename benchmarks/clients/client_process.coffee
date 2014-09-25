@@ -487,7 +487,6 @@ async.waterfall([
             resultLogger("Elapsed #{(new Date()).getTime() - clientProcess.stats.startTime}ms")
             clientProcess.timeOutCheck()
             resultLogger JSON.stringify(clientProcess.stats)
-            sysMon.logStats()
             if clientProcess.isStopped()
                 clearInterval(intervalObj)
                 sysMon.stop()

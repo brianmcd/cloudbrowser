@@ -177,7 +177,13 @@ class RegularEvent
         emitter.emit.apply(emitter, emitArgs)
 
     getWaitDuration : ()->
-        return @descriptor.wait if @descriptor.wait?
+        if @descriptor.wait?
+            return @descriptor.wait if typeof @descriptor.wait is 'number'
+            waitType = @descriptor.wait.type
+            if waitType is 'random'
+                max = @descriptor.wait.max
+                min = if @descriptor.wait.min? then @descriptor.wait.min else 0
+                return Math.random()*(max-min) + min
         return 0
         
 
