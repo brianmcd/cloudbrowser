@@ -21,6 +21,12 @@ class Stat
             return @errorCount = 1
         @errorCount++
 
+    accumulate : ()->
+        if @count >0
+            @avg = @total/@count
+            @avg = @avg.toFixed(2)
+        
+
 class Counter
     constructor: () ->
         @count = 0
@@ -51,5 +57,11 @@ class StatProvider
         if not @stats[key]?
             @stats[key] = new Counter()
         @stats[key].add(desc)
+
+    accumulate : ()->
+        for k, v of @stats
+            v.accumulate?()
+        return
+        
         
 exports.StatProvider = StatProvider

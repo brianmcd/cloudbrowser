@@ -483,6 +483,11 @@ eventDescriptorReader.read((err, eventDescriptors)->
             if clientProcess.isStopped()
                 resultLogger "stopped"
                 clearInterval(intervalObj)
+
+                clientProcess.stats.accumulate()
+
+                resultLogger JSON.stringify(clientProcess.stats)
+
                 process.exit(1)
         , 3000
         )
