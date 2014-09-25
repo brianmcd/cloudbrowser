@@ -7,6 +7,7 @@ socketio         = require('socket.io-client')
 request          = require('request')
 lodash           = require('lodash')
 debug            = require('debug')
+async            = require('async')
 
 benchmarkConfig = require('./benchmark_config')
 routes = require('../../src/server/application_manager/routes')
@@ -16,9 +17,10 @@ logger = debug('cloudbrowser:benchmark')
 
 require('http').globalAgent.maxSockets = 65535
 
-class ClientProcess
+class ClientProcess extends EventEmitter
     constructor: (options) ->
-        {@appInstanceCount, @browserCount, @clientCount, @processId} = options
+        {@appInstanceCount, @browserCount, @clientCount,
+         @processId, @optimizeConnection, @batchSize} = options
         if @browserCount > @clientCount or @appInstanceCount > @browserCount or @appInstanceCount > @clientCount or @appInstanceCount <= 0
             msg = "invalid parameter appInstanceCount #{@appInstanceCount} browserCount #{browserCount} clientCount #{clientCount}"
             console.log(msg)
@@ -36,6 +38,37 @@ class ClientProcess
             clientGroupOptions.stats = @stats
             clientGroup = new ClientGroup(clientGroupOptions)
             @clientGroups.push(clientGroup)
+
+    start: ()->
+        if not @optimizeConnection
+            async.each(@clientGroups, 
+                (clientGroup, next)->
+                    clientGroup.start()
+                    next()
+                ,(err)=>
+                    @emit("started", err)
+                )
+            return
+
+        # start clients one by one
+        async.eachLimit(@clientGroups, @batchSize,
+            (clientGroup, next)->
+                clientGroup.start()
+                clientGroup.once("started", next)
+            , (err)=>
+                @emit("started", err)
+        )
+
+    startBenchmark : ()->
+        if @optimizeConnection
+            async.each(@clientGroups,
+                (clientGroup, next)->
+                    clientGroup.startBenchmark()
+                    next()
+                ,(err)->
+                    logger("error when startBenchmark #{err}") if err?
+            )
+
 
     timeOutCheck : ()->
         time = (new Date()).getTime()
@@ -60,7 +93,8 @@ class ClientGroup extends EventEmitter
         # not a substring of another, so we can just use
         # serverResponse.substring(clientId) to see if the
         # client's events has taken effect the server DOM
-        {@browserCount, @clientCount, @groupName} = options
+        {@browserCount, @clientCount, 
+        @groupName, @optimizeConnection} = options
         @clients = []
         clientsPerBrowser = @clientCount/@browserCount
         clientIndex = 0
@@ -87,8 +121,28 @@ class ClientGroup extends EventEmitter
                 bootstrapClient.addChild(client)
                 @clients.push(client)
                 clientIndex++
-        # the one that starts all
-        @clients[0].start()
+
+    start : ()->
+        if not @optimizeConnection
+            # the one that starts all
+            @clients[0].start()
+            return @emit("started")
+
+        async.eachSeries(@clients, 
+            (client, next)->
+                client.start()
+                client.once("clientEngineReady", next)
+            , (err)=>
+                @emit("started", err)
+            )
+
+    startBenchmark : ()->
+        async.each(@clients, (client, next)->
+            client.emit("startBenchmark")
+            next()
+        , (err)->
+            logger("#{@groupName} startBenchmark failed #{err}") if err?
+        )
 
 
     isStopped : ()->
@@ -113,7 +167,7 @@ class Client extends EventEmitter
         # id is a unique client identifier in all client processes
         {@eventDescriptors, @createBrowser,
         @appAddress, @cbhost, @socketioUrl, @stats,
-        @id, @serverLogging} = options
+        @id, @serverLogging, @optimizeConnection} = options
         @stopped = false
         @eventContext = new benchmarkConfig.EventContext({clientId:@id})
         @eventQueue = new benchmarkConfig.EventQueue({
@@ -122,6 +176,13 @@ class Client extends EventEmitter
             })
 
     addChild : (child) ->
+        if @optimizeConnection
+            @once('browserconfig', (browserConfig)->
+                child.browserConfig = browserConfig
+            )
+            return
+        
+
         @once('browserconfig', (browserConfig)->
             logger("#{child.id} starting")
             child.browserConfig = browserConfig
@@ -196,12 +257,12 @@ class Client extends EventEmitter
                     logger("#{@id} emit browserConfig  #{@browserConfig.url}")
                     # creating socket after children clients send initial requests
                     @emit('browserconfig', @browserConfig)
-                    timers.setImmediate(()=>
-                        @_createSocket()
-                        @_initialSocketIo()
-                    )
                 )
-            
+
+            timers.setImmediate(()=>
+                @_createSocket()
+                @_initialSocketIo()
+            )
             logger("#{@id} opened #{@browserConfig.url}")
                 
             @stats.add('initialPage', timeElapsed)
@@ -232,9 +293,17 @@ class Client extends EventEmitter
                         @_serverEventHandler(original, arguments)
                     )
             )
-            timers.setImmediate(()=>
-                @_nextEvent()
-            )
+            if @optimizeConnection
+                @once('startBenchmark', ()=>
+                    @_nextEvent()
+                )
+            else        
+                timers.setImmediate(()=>
+                    @_nextEvent()
+                )
+
+            #logger("#{@id} emit clientEngineReady")
+            @emit("clientEngineReady")
 
         @socket.on('disconnect', ()=>
             @stop()
@@ -365,6 +434,16 @@ options = {
         default : false
         type : 'boolean'
     },
+    optimizeConnection : {
+        full : 'optimize-connection'
+        default : true
+        type : 'boolean'
+    },
+    batchSize : {
+        full : "batch-size"
+        default : 20
+        type : "number"
+    },
     configFile : {
         full : 'configFile'
         default : '#{__dirname}/chat_benchmark.conf'
@@ -390,15 +469,25 @@ eventDescriptorReader.read((err, eventDescriptors)->
     resultLogger = debug("cloudbrowser:benchmark:result")
     opts.eventDescriptors = eventDescriptors
     clientProcess = new ClientProcess(opts)
-    intervalObj = setInterval(()->
-        resultLogger("Elapsed #{(new Date()).getTime() - clientProcess.stats.startTime}ms")
-        clientProcess.timeOutCheck()
-        resultLogger JSON.stringify(clientProcess.stats)
-        sysMon.logStats()
-        if clientProcess.isStopped()
-            resultLogger "stopped"
-            clearInterval(intervalObj)
-            process.exit(1)
-    , 3000
-    )
+    clientProcess.start()
+    clientProcess.once("started",(err)->
+        return console.log("client process start failed #{err}") if err?
+
+        clientProcess.startBenchmark()
+
+        intervalObj = setInterval(()->
+            resultLogger("Elapsed #{(new Date()).getTime() - clientProcess.stats.startTime}ms")
+            clientProcess.timeOutCheck()
+            resultLogger JSON.stringify(clientProcess.stats)
+            sysMon.logStats()
+            if clientProcess.isStopped()
+                resultLogger "stopped"
+                clearInterval(intervalObj)
+                process.exit(1)
+        , 3000
+        )
+
+)
+
+    
 )
