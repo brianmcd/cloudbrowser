@@ -41,7 +41,7 @@ class ClientProcess extends EventEmitter
 
     start: ()->
         if not @optimizeConnection
-            async.each(@clientGroups, 
+            async.each(@clientGroups,
                 (clientGroup, next)->
                     clientGroup.start()
                     next()
@@ -93,7 +93,7 @@ class ClientGroup extends EventEmitter
         # not a substring of another, so we can just use
         # serverResponse.substring(clientId) to see if the
         # client's events has taken effect the server DOM
-        {@browserCount, @clientCount, 
+        {@browserCount, @clientCount,
         @groupName, @optimizeConnection} = options
         @clients = []
         clientsPerBrowser = @clientCount/@browserCount
@@ -128,7 +128,7 @@ class ClientGroup extends EventEmitter
             @clients[0].start()
             return @emit("started")
 
-        async.eachSeries(@clients, 
+        async.eachSeries(@clients,
             (client, next)->
                 client.start()
                 client.once("clientEngineReady", next)
@@ -181,7 +181,6 @@ class Client extends EventEmitter
                 child.browserConfig = browserConfig
             )
             return
-        
 
         @once('browserconfig', (browserConfig)->
             logger("#{child.id} starting")
@@ -241,9 +240,9 @@ class Client extends EventEmitter
                 @browserConfig.browserId = response.headers['x-cb-browserid']
                 @browserConfig.appId = response.headers['x-cb-appid']
                 @browserConfig.appInstanceId = response.headers['x-cb-appinstanceid']
-                # for clients that would share this browser instance
+                # for clients that share browser
                 @browserConfig.url = response.headers['x-cb-url']
-                
+
 
             if not @browserConfig.appId? or not @browserConfig.browserId?
                 return @_fatalErrorHandler("No browserid detected.")
@@ -264,7 +263,7 @@ class Client extends EventEmitter
                 @_initialSocketIo()
             )
             logger("#{@id} opened #{@browserConfig.url}")
-                
+
             @stats.add('initialPage', timeElapsed)
 
     _initialSocketIo : ()->
@@ -297,12 +296,13 @@ class Client extends EventEmitter
                 @once('startBenchmark', ()=>
                     @_nextEvent()
                 )
-            else        
+            else
                 timers.setImmediate(()=>
                     @_nextEvent()
                 )
 
             #logger("#{@id} emit clientEngineReady")
+            @clientEngineReady=true
             @emit("clientEngineReady")
 
         @socket.on('disconnect', ()=>
@@ -339,7 +339,7 @@ class Client extends EventEmitter
                     timers.setImmediate(@_nextEvent.bind(@))
                 else
                     setTimeout(@_nextEvent.bind(@), waitDuration)
-                
+
 
     timeOutCheck : (time)->
         if @expectStartTime? and time - @expectStartTime > @options.timeout
@@ -377,6 +377,10 @@ class Client extends EventEmitter
 
     _fatalErrorHandler : (@error)->
         @stats.addCounter('fatalError', "#{@id} #{error}")
+        if not @clientEngineReady
+            # the clientEngineReady will always be triggered,
+            # so the benchmark could go on even some clients fail
+            @emit("clientEngineReady")
         @stop()
 
     stop : () ->
@@ -462,37 +466,47 @@ logger("options #{JSON.stringify(opts)}")
 
 eventDescriptorReader = new benchmarkConfig.EventDescriptorsReader({fileName:opts.configFile})
 SysMon = require('../../src/server/sys_mon')
-sysMon = new SysMon()
-eventDescriptorReader.read((err, eventDescriptors)->
-    return console.log(err) if err
+sysMon = new SysMon({
+    interval : 5000
+    })
+clientProcess = null
+benchmarkFinished = false
+resultLogger = debug("cloudbrowser:benchmark:result")
 
-    resultLogger = debug("cloudbrowser:benchmark:result")
-    opts.eventDescriptors = eventDescriptors
-    clientProcess = new ClientProcess(opts)
-    clientProcess.start()
-    clientProcess.once("started",(err)->
-        return console.log("client process start failed #{err}") if err?
-
+async.waterfall([
+    (next)->
+        eventDescriptorReader.read(next)
+    (eventDescriptors, next)->
+        opts.eventDescriptors = eventDescriptors
+        clientProcess = new ClientProcess(opts)
+        clientProcess.start()
+        clientProcess.once("started", next)
+    (next)->
         clientProcess.startBenchmark()
-
         intervalObj = setInterval(()->
             resultLogger("Elapsed #{(new Date()).getTime() - clientProcess.stats.startTime}ms")
             clientProcess.timeOutCheck()
             resultLogger JSON.stringify(clientProcess.stats)
             sysMon.logStats()
             if clientProcess.isStopped()
-                resultLogger "stopped"
                 clearInterval(intervalObj)
-
+                sysMon.stop()
                 clientProcess.stats.accumulate()
-
                 resultLogger JSON.stringify(clientProcess.stats)
-
+                resultLogger "stopped"
+                benchmarkFinished = true
                 process.exit(1)
         , 3000
         )
-
+        next()
+    ], (err)->
+        console.log("clientProcess #{opts.processId} error #{err}") if err?
 )
 
-    
+process.on('SIGTERM',()->
+    if clientProcess and not benchmarkFinished
+        clientProcess.stats.accumulate()
+        resultLogger JSON.stringify(clientProcess.stats)
+        resultLogger "terminated"
+        process.exit(1)
 )
