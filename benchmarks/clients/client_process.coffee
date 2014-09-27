@@ -482,18 +482,18 @@ async.waterfall([
         clientProcess.start()
         clientProcess.once("started", next)
     (next)->
+        resultLogger("start benchmark...")
         clientProcess.startBenchmark()
         intervalObj = setInterval(()->
             resultLogger("Elapsed #{(new Date()).getTime() - clientProcess.stats.startTime}ms")
-            clientProcess.timeOutCheck()
-            resultLogger JSON.stringify(clientProcess.stats)
-            if clientProcess.isStopped()
+            benchmarkFinished = clientProcess.isStopped()
+            resultLogger JSON.stringify(clientProcess.stats.report())
+            if not benchmarkFinished
+                clientProcess.timeOutCheck()
+            if benchmarkFinished
                 clearInterval(intervalObj)
                 sysMon.stop()
-                clientProcess.stats.accumulate()
-                resultLogger JSON.stringify(clientProcess.stats)
                 resultLogger "stopped"
-                benchmarkFinished = true
                 process.exit(1)
         , 3000
         )
@@ -504,8 +504,7 @@ async.waterfall([
 
 process.on('SIGTERM',()->
     if clientProcess and not benchmarkFinished
-        clientProcess.stats.accumulate()
-        resultLogger JSON.stringify(clientProcess.stats)
+        resultLogger JSON.stringify(clientProcess.stats.report())
         resultLogger "terminated"
         process.exit(1)
 )

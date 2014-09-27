@@ -1,3 +1,5 @@
+lodash = require('lodash')
+
 class Stat
     constructor: () ->
         @count = 0
@@ -21,11 +23,6 @@ class Stat
             return @errorCount = 1
         @errorCount++
 
-    accumulate : ()->
-        if @count >0
-            @avg = @total/@count
-            @avg = @avg.toFixed(2)
-        
 
 class Counter
     constructor: () ->
@@ -35,7 +32,7 @@ class Counter
         if desc?
             @desc = desc
         @count++
-    
+
 
 class StatProvider
     constructor: () ->
@@ -58,10 +55,38 @@ class StatProvider
             @stats[key] = new Counter()
         @stats[key].add(desc)
 
-    accumulate : ()->
-        for k, v of @stats
-            v.accumulate?()
-        return
-        
-        
+    # report the most recent stats
+    report : ()->
+        current = lodash.clone(@stats)
+        current.timestamp = (new Date()).getTime()
+        current.totalTimeElapsed = current.timestamp - @startTime
+        if not @previous?
+            current.timeElapsed = current.totalTimeElapsed
+            timeElapsedInS = current.timeElapsed/1000
+            if timeElapsedInS > 0
+                for k, v of current
+                    continue if not v.count? or v.count <=0
+                    v.rate = v.totalRate = (v.count/timeElapsedInS).toFixed(2)
+                    v.avg = v.totalAvg = (v.total/v.count).toFixed(2) if v.total?
+        else    
+            current.timeElapsed = current.timestamp - @previous.timestamp
+            
+            timeElapsed = current.timeElapsed/1000
+            totalTimeElapsed = current.totalTimeElapsed/1000
+            
+            for k, v of current
+                old = @previous[k]
+                continue if not old? or not old.count? or not current.count?
+                if timeElapsed > 0
+                    v.rate = ((old.count - v.count)/timeElapsed).toFixed(2)
+                if totalTimeElapsed > 0
+                    v.totalRate = (v.count/totalTimeElapsed).toFixed(2)
+                if old.total? and v.total?
+                    v.avg = ((v.total - old.total)/(v.count - old.count)).toFixed(2) if v.count > old.count
+                    v.totalAvg = v.total/v.count if v.count>0
+                
+        @previous = current
+        return @previous
+
+
 exports.StatProvider = StatProvider
