@@ -2,13 +2,13 @@ lodash = require('lodash')
 
 class Stat
     constructor: () ->
-        @startTime = (new Date()).getTime()
+        @startTime = Date.now()
         @count = 0
         @total = 0
         
 
     add : (num) ->
-        @updateTime = (new Date()).getTime()
+        @updateTime = Date.now()
         if not @min?
             @min = num
         if not @max?
@@ -30,12 +30,12 @@ class Stat
 
 class Counter
     constructor: () ->
-        @startTime = (new Date()).getTime()
+        @startTime = Date.now()
         @count = 0
         
 
     add:(desc)->
-        @updateTime = (new Date()).getTime()
+        @updateTime = Date.now()
         if desc?
             @desc = desc
         @count++

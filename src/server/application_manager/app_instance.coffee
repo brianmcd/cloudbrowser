@@ -99,7 +99,7 @@ class AppInstance extends EventEmitter
         
 
     _createVirtualBrowser : (browserInfo) ->
-        startTime = (new Date()).getTime()
+        startTime = Date.now()
         {id, type, creator, permission} = browserInfo
         vbrowser = new type
             id          : id
@@ -109,7 +109,7 @@ class AppInstance extends EventEmitter
             permission  : permission
             appInstance : this
         vbrowser.load(@app)
-        logger("createBrowser #{@id}:#{id} for #{(new Date()).getTime()-startTime}ms")
+        logger("createBrowser #{@id}:#{id} for #{Date.now()-startTime}ms")
         return vbrowser
 
     # user: the user try to create browser, callback(err, browser)

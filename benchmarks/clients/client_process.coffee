@@ -71,7 +71,7 @@ class ClientProcess extends EventEmitter
 
 
     timeOutCheck : ()->
-        time = (new Date()).getTime()
+        time = Date.now()
         for clientGroup in @clientGroups
             clientGroup.timeOutCheck(time)
 
@@ -198,10 +198,10 @@ class Client extends EventEmitter
         @_initialConnect()
 
     _initStartTs : ()->
-        @startTs = (new Date()).getTime()
+        @startTs = Date.now()
 
     _timpeElapsed : ()->
-        return (new Date()).getTime() - @startTs
+        return Date.now() - @startTs
 
     _initialConnect : ()->
         @_initStartTs()
@@ -317,10 +317,14 @@ class Client extends EventEmitter
         if not nextEvent
             @stats.addCounter('finished')
             return @stop()
+        if @waitStart?
+            @stats.add('wait', Date.now()- @waitStart)
+            @waitStart = null
+        
         # stop and expect
         if nextEvent.type is 'expect'
             @expect = nextEvent
-            @expectStartTime = (new Date()).getTime()
+            @expectStartTime = Date.now()
         else
             @stats.addCounter('clientEvent')
             nextEvent.emitEvent(@socket)
@@ -331,13 +335,15 @@ class Client extends EventEmitter
         if @expect?
             expectResult = @expect.expect(eventName, args)
             if expectResult is 2
-                @stats.add('eventProcess', (new Date()).getTime()- @expectStartTime)
+                now = Date.now()
+                @stats.add('eventProcess', now - @expectStartTime)
                 waitDuration = @expect.getWaitDuration()
                 @expect = null
                 @expectStartTime = null
                 if waitDuration <=0
                     timers.setImmediate(@_nextEvent.bind(@))
                 else
+                    @waitStart = now
                     setTimeout(@_nextEvent.bind(@), waitDuration)
 
 
