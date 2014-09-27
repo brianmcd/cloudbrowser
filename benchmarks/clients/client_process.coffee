@@ -473,6 +473,13 @@ clientProcess = null
 benchmarkFinished = false
 resultLogger = debug("cloudbrowser:benchmark:result")
 
+reportStats = (statsObj)->
+    resultLogger(JSON.stringify(statsObj))
+    #for k, v of statsObj
+    #    continue if not v.count?
+    #    console.log("#{k} #{JSON.stringify(v)}")
+    
+
 async.waterfall([
     (next)->
         eventDescriptorReader.read(next)
@@ -485,9 +492,8 @@ async.waterfall([
         resultLogger("start benchmark...")
         clientProcess.startBenchmark()
         intervalObj = setInterval(()->
-            resultLogger("Elapsed #{(new Date()).getTime() - clientProcess.stats.startTime}ms")
             benchmarkFinished = clientProcess.isStopped()
-            resultLogger JSON.stringify(clientProcess.stats.report())
+            reportStats(clientProcess.stats.report())
             if not benchmarkFinished
                 clientProcess.timeOutCheck()
             if benchmarkFinished
@@ -504,7 +510,7 @@ async.waterfall([
 
 process.on('SIGTERM',()->
     if clientProcess and not benchmarkFinished
-        resultLogger JSON.stringify(clientProcess.stats.report())
+        reportStats(clientProcess.stats.report())
         resultLogger "terminated"
         process.exit(1)
 )

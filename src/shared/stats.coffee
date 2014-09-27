@@ -2,10 +2,13 @@ lodash = require('lodash')
 
 class Stat
     constructor: () ->
+        @startTime = (new Date()).getTime()
         @count = 0
         @total = 0
+        
 
     add : (num) ->
+        @updateTime = (new Date()).getTime()
         if not @min?
             @min = num
         if not @max?
@@ -17,6 +20,7 @@ class Stat
             @max = num
         if num < @min
             @min = num
+        
 
     addError : (@error) ->
         if not @errorCount?
@@ -26,17 +30,19 @@ class Stat
 
 class Counter
     constructor: () ->
+        @startTime = (new Date()).getTime()
         @count = 0
+        
 
     add:(desc)->
+        @updateTime = (new Date()).getTime()
         if desc?
             @desc = desc
         @count++
-
+        
 
 class StatProvider
     constructor: () ->
-        @startTime = (new Date()).getTime()
         @stats = {}
 
     _getStat : (key)->
@@ -57,27 +63,24 @@ class StatProvider
 
     # report the most recent stats
     report : ()->
-        # must deep clone the thing
+        # must deep clone the thing.
+        # could use some trick to reduce clone and computation overhead
         current = lodash.clone(@stats, true)
-        current.timestamp = (new Date()).getTime()
-        current.totalTimeElapsed = current.timestamp - @startTime
         if not @previous?
-            current.timeElapsed = current.totalTimeElapsed
-            timeElapsedInS = current.timeElapsed/1000
-            if timeElapsedInS > 0
-                for k, v of current
-                    continue if not v.count? or v.count <=0
-                    v.rate = v.totalRate = (v.count/timeElapsedInS).toFixed(2)
-                    v.avg = v.totalAvg = (v.total/v.count).toFixed(2) if v.total?
+            for k, v of current
+                continue if not v.count? or v.count <=0
+                timeElapsed = (v.updateTime - v.startTime)/1000
+                continue if timeElapsed <= 0
+                v.rate = v.totalRate = (v.count/timeElapsed).toFixed(2)
+                v.avg = v.totalAvg = (v.total/v.count).toFixed(2) if v.total?
         else
-            current.timeElapsed = current.timestamp - @previous.timestamp
-
-            timeElapsed = current.timeElapsed/1000
-            totalTimeElapsed = current.totalTimeElapsed/1000
-
             for k, v of current
                 old = @previous[k]
-                continue if not old? or not old.count? or not v.count?
+                continue if not old? or not old.count? or not v.count? or not v.updateTime?
+                # do not compute anything if nothing happened
+                continue if old.count is v.count and old.errorCount is v.errorCount
+                timeElapsed = (v.updateTime - old.updateTime)/1000
+                totalTimeElapsed = (v.updateTime - v.startTime)/1000
                 if timeElapsed > 0
                     v.rate = ((v.count - old.count)/timeElapsed).toFixed(2)
                 if totalTimeElapsed > 0
