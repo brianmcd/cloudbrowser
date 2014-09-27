@@ -14,4 +14,6 @@ done
 
 for line in $(ls *client*.log); do
     # some processing maybe
+    echo $line open inital html count
+    grep opened $line | wc -l
 done

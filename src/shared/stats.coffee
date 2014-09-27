@@ -57,7 +57,8 @@ class StatProvider
 
     # report the most recent stats
     report : ()->
-        current = lodash.clone(@stats)
+        # must deep clone the thing
+        current = lodash.clone(@stats, true)
         current.timestamp = (new Date()).getTime()
         current.totalTimeElapsed = current.timestamp - @startTime
         if not @previous?
@@ -68,23 +69,23 @@ class StatProvider
                     continue if not v.count? or v.count <=0
                     v.rate = v.totalRate = (v.count/timeElapsedInS).toFixed(2)
                     v.avg = v.totalAvg = (v.total/v.count).toFixed(2) if v.total?
-        else    
+        else
             current.timeElapsed = current.timestamp - @previous.timestamp
-            
+
             timeElapsed = current.timeElapsed/1000
             totalTimeElapsed = current.totalTimeElapsed/1000
-            
+
             for k, v of current
                 old = @previous[k]
-                continue if not old? or not old.count? or not current.count?
+                continue if not old? or not old.count? or not v.count?
                 if timeElapsed > 0
-                    v.rate = ((old.count - v.count)/timeElapsed).toFixed(2)
+                    v.rate = ((v.count - old.count)/timeElapsed).toFixed(2)
                 if totalTimeElapsed > 0
                     v.totalRate = (v.count/totalTimeElapsed).toFixed(2)
-                if old.total? and v.total?
+                if old.total? and v.total? and v.count > old.count
                     v.avg = ((v.total - old.total)/(v.count - old.count)).toFixed(2) if v.count > old.count
-                    v.totalAvg = v.total/v.count if v.count>0
-                
+                    v.totalAvg = (v.total/v.count).toFixed(2) if v.count>0
+
         @previous = current
         return @previous
 
