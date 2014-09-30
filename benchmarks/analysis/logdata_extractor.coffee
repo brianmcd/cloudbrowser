@@ -46,8 +46,8 @@ class LogExtractorGroup extends EventEmitter
     constructor: (@options) ->
         {@testId, @logfiles} = @options
         @logFileByType = lodash.groupBy(@logfiles, 'type')
-        @options.baseDir = @options.dir
-
+        @options.baseDir = "#{@options.dir}/#{@testId}_data" 
+        fs.mkdirSync(@options.baseDir)
 
     extract : ()->
         logger("begin to extract from #{@testId}")
@@ -507,7 +507,16 @@ class DataFileAggregator extends EventEmitter
 
 
 if require.main is module
-    runner = new Runner({dir : '.'})
+    options = {
+        dir : {
+            full : 'directory'
+            default : '.'
+            help : 'directory of logs'
+        }
+    }
+    opts = require('nomnom').options(options).script(process.argv[1]).parse()
+    
+    runner = new Runner(opts)
     runner.extract()
     runner.on('complete', ()->
         console.log("completed")

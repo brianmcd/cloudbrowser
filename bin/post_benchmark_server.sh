@@ -2,7 +2,18 @@
 i_scriptDir=$(cd "$(dirname "$0")"; pwd)
 cd $i_scriptDir/..
 
-node_modules/coffee-script/bin/coffee benchmarks/analysis/logdata_extractor.coffee
+source $i_scriptDir/debug_env.sh
+
+
+i_dir=$(pwd)
+if [[ "X$1" != "X" ]]; then
+    i_dir=$1
+fi
+
+node_modules/coffee-script/bin/coffee benchmarks/analysis/logdata_extractor.coffee \
+--directory=$i_dir
+
+cd $i_dir
 
 for line in $(ls *worker*.log); do
     echo $line createBrowser count
