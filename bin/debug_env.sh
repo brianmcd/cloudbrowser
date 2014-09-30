@@ -4,5 +4,4 @@ if [[ "X$DEBUG" == "X" ]]; then
 -cloudbrowser:worker:browser:*,-cloudbrowser:worker:init,-cloudbrowser:worker:dom:*
 fi
 
-echo setting DEBUG=$DEBUG
-
+echo export DEBUG=$DEBUG

@@ -120,11 +120,11 @@ exports.readCachedFile = ()->
         return callback(null, cache)
 
     fsReadArgs = [fileName]
-    
+
     # if we have encoding specified
     if arguments.length > 2
         fsReadArgs.push(arguments[1])
-    # push callback    
+    # push callback
     fsReadArgs.push((err, data)->
         callback(err) if err?
         fileDataCache[fileName] = data
@@ -140,8 +140,8 @@ merge = (object, source, depth=5) ->
         return source
     if lodash.isDate(object)
         return source
-    
-    
+
+
     if lodash.isObject(object)
         for k, v of source
             object[k] = merge(object[k], v, depth - 1)
@@ -158,13 +158,50 @@ exports.merge = merge
 
 exports.isBlank = (str)->
     return (!str || /^\s*$/.test(str))
-            
+
+exports.endsWith = (str, suffix)->
+    return false if not str?
+    return true if not suffix?
+    index = str.indexOf(suffix)
+    return false if index is -1
+    return (index + suffix.length) is str.length
+
+exports.lastIndexOf = (str, val)->
+    index = str.indexOf(val)
+    lastIndex = index
+    while index is not -1
+        lastIndex = index
+        index = str.indexOf(val, index + 1)
+    return lastIndex
+
+exports.substringAfter = (str, val)->
+    index = str.indexOf(val)
+    return str if index <= 0
+    return str.substr(index)
+
+class StringReader
+    constructor: (@str) ->
+        @index = 0
+
+    skipUntil : (val)->
+        nextIndex = @str.indexOf(val, @index)
+        @index = (nextIndex + val.length) if nextIndex > 0
+        return nextIndex
+
+    readUntil : (val)->
+        substring = null
+        if not val? or val is ''
+            substring = @str.substring(@index)
+            @index = @str.length
+            return substring
         
-    
+        nextIndex = @str.indexOf(val, @index)
 
-
-                
-            
+        # read til the end of string if not found
+        nextIndex = @str.length if nextIndex < 0
         
+        substring = @str.substring(@index, nextIndex)
+        @index = nextIndex + val.length
+        return substring
     
-
+exports.StringReader = StringReader

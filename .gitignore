@@ -23,3 +23,5 @@ config/worker2/server_config.json
 
 .idea
 *.iml
+
+*.data
