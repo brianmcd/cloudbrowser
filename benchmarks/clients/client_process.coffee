@@ -351,8 +351,6 @@ class Client extends EventEmitter
         if @expectStartTime? and time - @expectStartTime > @options.timeout
             @_fatalErrorHandler("Timeout while expecting #{@expect.getExpectingEventName()}")
 
-
-
     _createSocket : ()->
         @_initStartTs()
         # pass the session id through url, there is a way to pass through cookie

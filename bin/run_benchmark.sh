@@ -23,11 +23,16 @@ if [[ "X$2" != "X" ]]; then
     i_prefix=$2
 fi
 
+i_group_prefix=p
+if [[ "X$3" != "X" ]]; then
+    i_group_prefix=$3
+fi
+
 
 echo start $i_logprefix with $i_processes benchmark processes
 
 for (( i = 0; i < $i_processes; i++ )); do
-    i_group=p"$i"
+    i_group="$i_group_prefix""$i"
     i_logfile="$i_prefix"_client_"$i_group"".log"
     nohup node_modules/coffee-script/bin/coffee benchmarks/clients/client_process.coffee \
     --appinstance-count $CB_APPINS --browser-count $CB_BROWSER --client-count $CB_CLIENT \

@@ -46,8 +46,14 @@ class LogExtractorGroup extends EventEmitter
     constructor: (@options) ->
         {@testId, @logfiles} = @options
         @logFileByType = lodash.groupBy(@logfiles, 'type')
-        @options.baseDir = "#{@options.dir}/#{@testId}_data" 
-        fs.mkdirSync(@options.baseDir)
+        @options.baseDir = "#{@options.dir}/#{@testId}_data"
+        try
+            fs.mkdirSync(@options.baseDir)
+        catch e
+            # dir could already exist
+            logger("mkdir #{@options.baseDir} error #{e}")
+
+
 
     extract : ()->
         logger("begin to extract from #{@testId}")
@@ -105,6 +111,7 @@ class LogExtractorGroup extends EventEmitter
         logger("aggregate fileGroup #{JSON.stringify(fileGroup)}")
         aggregators = []
         for k, dataFiles of fileGroup
+            continue if not dataFiles? or dataFiles.length is 0
             options = lodash.clone(@options)
             options.prefix="#{@options.baseDir}/#{@testId}_#{k}"
             options.dataFiles = dataFiles
@@ -404,7 +411,7 @@ class DataFileAggregator extends EventEmitter
         @startTime = 0
         @endTime = 5000
         logger("start aggregate from #{@startTime} to #{@endTime}")
-        
+
         @writeBuffer = []
 
     writeAggregateData : ()->
@@ -515,7 +522,7 @@ if require.main is module
         }
     }
     opts = require('nomnom').options(options).script(process.argv[1]).parse()
-    
+
     runner = new Runner(opts)
     runner.extract()
     runner.on('complete', ()->

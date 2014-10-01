@@ -39,10 +39,35 @@ class TextInputEventGroup
         @upperCaseText = @text.toUpperCase()
         @textInputDefinition = getTextInputDefinition()
         @textIndex = 0
+        # skip keyboard input events for characters
+        @textIndex = @text.length-1 if @descriptor.keyEvent is 'basic'
         @_initializeEventQueue()
 
     _initializeEventQueue : ()->
         eventDescriptors = []
+        @_inputKeyEvents(eventDescriptors)
+        if @textIndex == @text.length-1 and @descriptor.endEvent
+            endEventDescriptors = @textInputDefinition.endEvent[@descriptor.endEvent]
+            if endEventDescriptors
+                for eventDescriptor in endEventDescriptors
+                    newEventDescriptor = lodash.clone(eventDescriptor, true)
+                    if newEventDescriptor.event is 'setAttribute'
+                        newEventDescriptor.args = [@descriptor.target, "value", @text]
+                        newEventDescriptor.previousInputValue = @text
+                    else
+                        #for change event and keydown keyup of enter
+                        keyEvent = newEventDescriptor.args[0]
+                        keyEvent.target = @descriptor.target
+                    eventDescriptors.push(newEventDescriptor)
+
+        @eventQueue = new EventQueue({
+            descriptors : eventDescriptors
+            context : @context
+            })
+
+    _inputKeyEvents : (eventDescriptors)->
+        return if @descriptor.keyEvent is 'basic'
+        #logger("input full events")
         for eventDescriptor in @textInputDefinition.eventGroup
             newEventDescriptor = null
             if eventDescriptor.event is 'setAttribute'
@@ -66,24 +91,7 @@ class TextInputEventGroup
                 keyEvent.which = curCharCode
                 keyEvent.keyCode = curCharCode
             eventDescriptors.push(newEventDescriptor)
-        if @textIndex == @text.length-1 and @descriptor.endEvent
-            endEventDescriptors = @textInputDefinition.endEvent[@descriptor.endEvent]
-            if endEventDescriptors
-                for eventDescriptor in endEventDescriptors
-                    newEventDescriptor = lodash.clone(eventDescriptor, true)
-                    if newEventDescriptor.event is 'setAttribute'
-                        newEventDescriptor.args = [@descriptor.target, "value", @text]
-                        newEventDescriptor.previousInputValue = @text
-                    else
-                        #for change event and keydown keyup of enter
-                        keyEvent = newEventDescriptor.args[0]
-                        keyEvent.target = @descriptor.target
-                    eventDescriptors.push(newEventDescriptor)
 
-        @eventQueue = new EventQueue({
-            descriptors : eventDescriptors
-            context : @context
-            })
 
     poll :()->
         if @textIndex >= @text.length
