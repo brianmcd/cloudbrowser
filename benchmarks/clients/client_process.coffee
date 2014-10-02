@@ -462,6 +462,7 @@ opts = require('nomnom').options(options).script(process.argv[1]).parse()
 
 if opts.appAddress?
     parsedUrl = parseUrl(opts.appAddress)
+    # as request cookie domain
     opts.cbhost = "http://#{parsedUrl.hostname}"
     # host contains port
     opts.socketioUrl = "http://#{parsedUrl.host}"
