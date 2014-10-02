@@ -4,7 +4,7 @@ app.directive 'enterSubmit', () ->
     return directive =
         restrict: 'A',
         link: (scope, element, attrs) ->
-            element.bind('keydown', (e) ->                
+            element.bind('keydown', (e) ->
                 if e.which is 13
                     scope.$apply(()->
                         scope.$eval(attrs.enterSubmit)
@@ -24,13 +24,23 @@ app.controller "ChatCtrl", ($scope, $timeout, $rootScope) ->
     chatManager.users[browserId] = $scope.userName
     $scope.chatManager = chatManager
 
-    eventbus = cloudbrowser.currentAppInstanceConfig.getEventBus()
-    eventbus.on('newMessage', (fromBrowser)->
+    newMessageHandler = (fromBrowser, version)->
+        # only update the view for the newest event
+        if version < chatManager.getVersion()
+            return
+
         if fromBrowser is browserId
             return
         if $rootScope.$$phase is '$apply' or $rootScope.$$phase is '$digest'
             return
-        $rootScope.$apply(angular.noop)           
+        $rootScope.$apply(angular.noop)
+
+    eventbus = cloudbrowser.currentAppInstanceConfig.getEventBus()
+    eventbus.on('newMessage', (fromBrowser, version)->
+        # trigger handler asynchronsly
+        setTimeout(()->
+            newMessageHandler(fromBrowser, version)
+        , 0)
     )
 
     scrollDown=()->
@@ -38,14 +48,11 @@ app.controller "ChatCtrl", ($scope, $timeout, $rootScope) ->
         messageBox.scrollTop = messageBox.scrollHeight
 
     $scope.alert = (msg)->
-        alert = {
-            msg : msg
-        }
+        alert = { msg : msg }
         $scope.alertMessages.push(alert)
         $timeout(()->
             $scope.removeAlert(alert)
-        , 3000
-        )
+        , 3000)
 
     $scope.removeAlert = (alert)->
         index = $scope.alertMessages.indexOf(alert)
@@ -60,19 +67,18 @@ app.controller "ChatCtrl", ($scope, $timeout, $rootScope) ->
             browserId : browserId
             msg : msg
             userName : $scope.userName
-            time : (new Date().getTime())
+            time : Date.now()
             $$hashKey : "#{browserId}_#{messageId++}"
         }
         msgObj.type = type if type?
-        chatManager.messages.push(msgObj)
-        #console.log(chatManager.messages)
-        # performance is really bad when the cap is 500, 1000
-        if chatManager.messages.length > 100
-            chatManager.messages.splice(0, 50)
+        chatManager.addMessage(msgObj)
+
+        version = chatManager.getVersion()
         # scroll down to the last message. It does not work
         # setTimeout(scrollDown, 0)
-        eventbus.emit('newMessage', browserId)
-        
+
+        eventbus.emit('newMessage', browserId, version)
+
 
     $scope.changeName = ()->
         if not $scope.draftUserName or $scope.draftUserName is ''
@@ -99,4 +105,4 @@ app.controller "ChatCtrl", ($scope, $timeout, $rootScope) ->
         if msg.type is 'sys'
             return "alert alert-success"
         return ""
-        
+
