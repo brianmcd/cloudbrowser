@@ -205,3 +205,12 @@ class StringReader
         return substring
     
 exports.StringReader = StringReader
+
+isInt = (n) ->
+    return typeof n is "number" and isFinite(n) and n%1 is 0
+
+isFloat = (n) ->
+    return typeof n is "number" and not isInt(n)
+
+exports.isInt = isInt
+exports.isFloat = isFloat

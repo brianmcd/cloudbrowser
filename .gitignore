@@ -25,3 +25,5 @@ config/worker2/server_config.json
 *.iml
 
 *.data
+
+*_data

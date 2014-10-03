@@ -5,7 +5,7 @@ class Stat
         @startTime = Date.now()
         @count = 0
         @total = 0
-        
+
 
     add : (num) ->
         @updateTime = Date.now()
@@ -20,7 +20,7 @@ class Stat
             @max = num
         if num < @min
             @min = num
-        
+
 
     addError : (@error) ->
         if not @errorCount?
@@ -32,14 +32,14 @@ class Counter
     constructor: () ->
         @startTime = Date.now()
         @count = 0
-        
+
 
     add:(desc)->
         @updateTime = Date.now()
         if desc?
             @desc = desc
         @count++
-        
+
 
 class StatProvider
     constructor: () ->
@@ -69,10 +69,10 @@ class StatProvider
         if not @previous?
             for k, v of current
                 continue if not v.count? or v.count <=0
+                v.avg = v.totalAvg = (v.total/v.count).toFixed(2) if v.total?
                 timeElapsed = (v.updateTime - v.startTime)/1000
                 continue if timeElapsed <= 0
                 v.rate = v.totalRate = (v.count/timeElapsed).toFixed(2)
-                v.avg = v.totalAvg = (v.total/v.count).toFixed(2) if v.total?
         else
             for k, v of current
                 old = @previous[k]

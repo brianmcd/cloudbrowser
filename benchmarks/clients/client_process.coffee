@@ -478,6 +478,9 @@ clientProcess = null
 benchmarkFinished = false
 resultLogger = debug("cloudbrowser:benchmark:result")
 
+# TODO output a human readable simple message
+simpleStatTemplate = "eventProcess: rate ${eventProcess.rate}, avg ${eventProcess.avg}"
+
 reportStats = (statsObj)->
     resultLogger(JSON.stringify(statsObj))
     #for k, v of statsObj

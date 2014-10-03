@@ -1,5 +1,6 @@
 {EventEmitter} = require('events')
 fs = require('fs')
+timers = require('timers')
 
 lodash = require('lodash')
 async  = require('async')
@@ -7,9 +8,13 @@ debug  = require('debug')
 LineByLineReader = require('line-by-line')
 
 fileNameParser = require('./filename_parser')
+ReportWriter = require('./report_writer')
 utils = require('../../src/shared/utils')
+{StatProvider} = require('../../src/shared/stats')
 
 logger = debug("cloudbrowser:analysis")
+
+{isInt, isFloat} = utils
 
 class Runner extends EventEmitter
     constructor: (@options) ->
@@ -39,8 +44,6 @@ pushAll = (arr1, arr2)->
         arr1.push(i)
     return arr1
 
-
-
 # for log files in a single test
 class LogExtractorGroup extends EventEmitter
     constructor: (@options) ->
@@ -52,8 +55,14 @@ class LogExtractorGroup extends EventEmitter
         catch e
             # dir could already exist
             logger("mkdir #{@options.baseDir} error #{e}")
+        @metaData = {
+            stats : {}
+        }
+        for i in ['worker','client', 'master']
+            @metaData["#{i}Count"] = lodash.size(@logFileByType[i])
+        @metaData.serverCount = @metaData.workerCount + @metaData.masterCount
 
-
+    countGroup : (group)->
 
     extract : ()->
         logger("begin to extract from #{@testId}")
@@ -69,13 +78,14 @@ class LogExtractorGroup extends EventEmitter
             return @emit('complete', err) if err?
             startTimes.sort()
             # pick the earliest as baseTime
-            baseTime = parseInt(startTimes[0])
-            logger("extract baseTime #{baseTime}")
+            baseTime = startTimes[0]
+            logger("extract baseTime #{baseTime} from #{startTimes}")
             @emit('baseTimeReady', baseTime)
         )
 
         @on('baseTimeReady', @extractContent.bind(@))
         @on('dataExtracted', @aggregate.bind(@))
+        @on('aggregated', @generateReport.bind(@))
 
     extractContent : (baseTime)->
         @options.baseTime = baseTime
@@ -88,9 +98,16 @@ class LogExtractorGroup extends EventEmitter
         async.each(@logExtractors,
             (extractor, next)->
                 extractor.extract()
-                extractor.on('complete', next)
+                extractor.once('complete', next)
             , (err)=>
                 return @emit('complete', err) if err?
+                # returns empty array if there is none
+                clientLogs=lodash.where(@logExtractors, {type:'client'})
+                clientStartTimes = lodash.pluck(clientLogs, 'startTime')
+                clientEndTimes = lodash.pluck(clientLogs, 'endTime')
+                @metaData.clientStart = lodash.min(clientStartTimes)
+                @metaData.clientEnd = lodash.max(clientEndTimes)
+                @metaData.clientConfigs = lodash.pluck(clientLogs, 'benchmarkConf')
                 @emit('dataExtracted')
             )
 
@@ -98,7 +115,6 @@ class LogExtractorGroup extends EventEmitter
         logger("begin aggregate data")
         dataFiles = []
         for logExtractor in @logExtractors
-            debugger
             pushAll(dataFiles, logExtractor.getDataFiles())
 
         logger("data files #{dataFiles}")
@@ -109,20 +125,37 @@ class LogExtractorGroup extends EventEmitter
         pushAll(fileGroup['server_sysmon'], fileGroup['master_sysmon'])
         pushAll(fileGroup['server_sysmon'], fileGroup['worker_sysmon'])
         logger("aggregate fileGroup #{JSON.stringify(fileGroup)}")
-        aggregators = []
+        @aggregators = []
+        # k is like master_sysmon, client_request, ... etc
         for k, dataFiles of fileGroup
             continue if not dataFiles? or dataFiles.length is 0
             options = lodash.clone(@options)
-            options.prefix="#{@options.baseDir}/#{@testId}_#{k}"
+            options.group = k
             options.dataFiles = dataFiles
-            aggregators.push(new DataFileAggregator(options))
-        async.eachSeries(aggregators,
+            options.clientStart = @metaData.clientStart
+            options.clientEnd = @metaData.clientEnd
+            @aggregators.push(new DataFileAggregator(options))
+
+        async.each(@aggregators,
             (aggregator, next)->
                 aggregator.once('complete', next)
-            (err)=>
+            ,(err)=>
                 console.log("error in aggregate #{err}") if err?
-                @emit('complete')
+                @metaData.stats.total = {}
+                @metaData.stats.avg = {}
+                for agg in @aggregators
+                    @metaData.stats.total[agg.group] = agg.getLastStat()
+                    @metaData.stats.avg[agg.group] = agg.getAvgStats()
+                logger("#{@testId} aggregated")
+                @emit('aggregated')
         )
+
+    generateReport : ()->
+        logger("#{@testId} generating report...")
+        options = lodash.clone(@options)
+        options.metaData = @metaData
+        new ReportWriter(options)
+        @emit('complete')
 
 
 logRecordKeyWord = 'cloudbrowser:'
@@ -180,7 +213,7 @@ parseSysMon = (logRecord)->
 
 class LogStartTimeExtractor extends EventEmitter
     constructor: (@fileDescriptor) ->
-        # ...
+        @counter=0
     extract :()->
         lr = new LineByLineReader(@fileDescriptor.name)
         lr.on('error', (err)=>
@@ -189,9 +222,12 @@ class LogStartTimeExtractor extends EventEmitter
         )
         lr.on('line', (line)=>
             logRecord = parseLogRecord(line)
-            return if not logRecord?
-            @startTime = logRecord.time
-            logger("read startime from #{@fileDescriptor.name} #{@startTime}")
+            return if not logRecord? or not logRecord.time?
+            # close won't really stop emitting line events
+            @startTime = logRecord.time if not @startTime?
+            @emit('complete')
+            #logger("read startime from #{@fileDescriptor.name} #{@startTime}")
+            lr.pause()
             lr.close()
         )
         lr.on('end', ()=>
@@ -216,31 +252,29 @@ class ColumnedDataWriter
         appendArrayToFile(@fileName, @columns)
 
     writeLine : (stat) ->
+        # compact
+        if @lastStat? and @lastStat.count?
+            return if @lastStat.count is stat.count and @lastStat.errorCount is stat.errorCount
+        @lastStat = stat
         content = []
         for i in @columns
             if stat[i]?
                 converted=stat[i]
-                converted=converted.toFixed(2) if typeof converted is 'number'
+                converted=converted.toFixed(2) if isFloat(converted)
                 content.push(converted)
             else
                 content.push('NA')
         appendArrayToFile(@fileName, content)
-
-class PlainTextWriter
-    constructor: (@fileName)->
-
-    writeLine: (line)->
-        fs.appendFileSync(@fileName, line+"\n")
 
 
 
 # ordered by importance of the metrics
 clientMetrics = ['eventProcess', 'clientEvent', 'serverEvent', 'wait',
 'createBrowser', 'createAppInstance', 'initialPage', 'socketCreateTime',
-'socketIoConnect', 'pageLoaded', 'finished']
+'socketIoConnect', 'pageLoaded']
 
 
-
+# one logExtractor one log file
 class LogExtractor extends EventEmitter
     constructor: (@options)->
         {@fileDescriptor, @baseTime, baseDir} = options
@@ -302,6 +336,8 @@ class LogExtractor extends EventEmitter
 
 
     handleBenchmarkResult : (logRecord)->
+        @startTime=logRecord.time if not @startTime
+        @endTime=logRecord.time
         return if logRecord.logger isnt 'cloudbrowser:benchmark:result'
         stats = null
         try
@@ -317,7 +353,7 @@ class LogExtractor extends EventEmitter
             writer.writeLine(v)
 
     handleClientConfig: (logRecord)->
-        return if @config?
+        return if @benchmarkConf?
         return if not logRecordContains(logRecord, ['options', 'appInstanceCount'])
         jsonContent = utils.substringAfter(logRecord.content, '{')
         config = null
@@ -326,7 +362,7 @@ class LogExtractor extends EventEmitter
         catch e
             # ...
         return if not config?
-        @config = config
+        @benchmarkConf = config
 
 
 class DataFileBuffer extends EventEmitter
@@ -397,7 +433,8 @@ class MultiDataFileBuffer extends EventEmitter
 
 class DataFileAggregator extends EventEmitter
     constructor: (@options) ->
-        {@prefix, @dataFiles} = @options
+        {@dataFiles, @group} = @options
+        @prefix = "#{@options.baseDir}/#{@options.testId}_#{@options.group}"
         logger("data aggregator prefix #{@prefix}")
         @type = @dataFiles[0].type
         # write down the columns first
@@ -417,12 +454,16 @@ class DataFileAggregator extends EventEmitter
     writeAggregateData : ()->
         @writer = null
         if @type is 'sysmon'
-            writer= new ColumnedDataWriter("#{@prefix}_agg.data", sysMonColumns)
+            @writer= new ColumnedDataWriter("#{@prefix}_agg.data", sysMonColumns)
         else
-            writer= new ColumnedDataWriter("#{@prefix}_agg.data", statsColumns)
+            @writer= new ColumnedDataWriter("#{@prefix}_agg.data", statsColumns)
         for i in @writeBuffer
-            writer.writeLine(i)
+            @writer.writeLine(i)
+        logger("data aggregator #{@prefix} emit complete")
         @emit('complete')
+
+    getLastStat : ()->
+        return @writer.lastStat
 
     aggregate: ()->
         aggregateRecords = []
@@ -447,7 +488,11 @@ class DataFileAggregator extends EventEmitter
             @writeAggregateData()
         else
             @incrementRange()
-            @aggregate()
+            # avoid long stack size
+            timers.setImmediate(()=>
+                @aggregate()
+            )
+            
 
     belowRange : (record)->
         return false if not record?
@@ -460,7 +505,7 @@ class DataFileAggregator extends EventEmitter
 
     doAggregate : (records)->
         return if records.length is 0
-        logger("aggregate #{records.length} records")
+        #logger("aggregate #{records.length} records")
         lodash.sortBy(records, @timeColumn)
 
         aggregated = lodash.clone(records[records.length-1])
@@ -484,11 +529,22 @@ class DataFileAggregator extends EventEmitter
                 continue if k is 'current'
                 aggregated[k] += v if k isnt @timeColumn
 
-        if @type isnt 'sysmon'
+        if @type is 'sysmon'
+            @calculateAvg(aggregated)
+        else
             @calculateRates(aggregated)
 
         @writeBuffer.push(aggregated)
 
+    calculateAvg : (aggregated)->
+        @stats = new StatProvider() if not @stats?
+        return if aggregated[@timeColumn]<@options.clientStart or aggregated[@timeColumn]>@options.clientEnd
+        for k, v of aggregated
+            @stats.add(k, v) if k isnt @timeColumn
+
+    # not avg per process, it is avg in the whole benchmarking time span
+    getAvgStats : ()->
+        return @stats
 
     calculateRates : (aggregated)->
         for k in ['rate', 'totalRate', 'avg', 'totalAvg']
