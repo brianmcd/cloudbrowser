@@ -2,12 +2,12 @@
 
 Application endpoint : ${clientSetting.appAddress}
 
-- Server starts at ${baseTime} 
+- Server starts at ${baseTime}
 - Bechmark clients start sending events after ${clientStart}ms
 - All clients ended after ${clientEnd}ms
-- Clients sent events for ${clientElapsed} ms.
-- ${clientSetting.processCount} client process(es) mimicking ${clientSetting.total.clientCount} clients. 
-- ${serverSetting.workerCount} cloudbrowser workers.
+- Clients sent events for ${clientElapsed}ms.
+- ${clientSetting.processCount} client process(es) mimicking ${clientSetting.total.clientCount} clients
+- ${serverSetting.workerCount} cloudbrowser workers
 
 
 ## Benchmark client configuration
@@ -37,6 +37,11 @@ Config file : ${clientSetting.configFile}
 | Rate | Latency | Count | Error Count |
 | ---- | ----    | ----  | ----        |
 | ${ cstats.totalRate } | ${cstats.totalAvg} | ${cstats.count} |${cstats.errorCount} |
+
+<% cstats=stats.total['client_request_clientEvent'] %>
+client event count: ${cstats.count}
+<% cstats=stats.total['client_request_serverEvent'] %>
+server event count: ${cstats.count}
 
 ### Resource Usage (during clients sending events)
 

@@ -479,13 +479,18 @@ benchmarkFinished = false
 resultLogger = debug("cloudbrowser:benchmark:result")
 
 # TODO output a human readable simple message
-simpleStatTemplate = "eventProcess: rate ${eventProcess.rate}, avg ${eventProcess.avg}"
+simpleStatTemplate = "\neventProcess: rate ${eventProcess.rate}, avg ${eventProcess.avg},
+count ${eventProcess.count}, totalRate ${eventProcess.totalRate}, totalAvg ${eventProcess.totalAvg},
+current ${eventProcess.current}, max ${eventProcess.max}, min ${eventProcess.min};\n
+serverEvent: rate ${serverEvent.rate}, count ${serverEvent.count}; \n
+clientEvent: rate ${clientEvent.rate}, count ${clientEvent.count};"
+
+simpleStatTempFunc = lodash.template(simpleStatTemplate)
 
 reportStats = (statsObj)->
     resultLogger(JSON.stringify(statsObj))
-    #for k, v of statsObj
-    #    continue if not v.count?
-    #    console.log("#{k} #{JSON.stringify(v)}")
+    
+    resultLogger(simpleStatTempFunc(statsObj))
     
 
 async.waterfall([
