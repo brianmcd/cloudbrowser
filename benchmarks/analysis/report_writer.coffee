@@ -15,7 +15,7 @@ templateFunc = lodash.template(templateContent)
 
 
 formatTime = (time)->
-    moment(time).format('YYYY-MM-DDTHH:mm:ss.SSS')
+    moment(time).format('YYYY-MM-DD HH:mm:ss.SSS')
 
 
 class ReportWriter
@@ -29,7 +29,7 @@ class ReportWriter
         reportObj.clientSetting.processCount = clientConfigs.length
 
         clientConfigTotal = {}
-        aggregateAttrs = ['appInstanceCount', 'browserCount', 'clientCount', 'batchSize']
+        aggregateAttrs = ['appInstanceCount', 'browserCount', 'clientCount', 'batchSize', 'talkerCount']
         for clientConfig in clientConfigs
             for k in aggregateAttrs
                 continue if not clientConfig[k]?

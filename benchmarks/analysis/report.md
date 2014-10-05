@@ -6,7 +6,7 @@ Application endpoint : ${clientSetting.appAddress}
 - Bechmark clients start sending events after ${clientStart}ms
 - All clients ended after ${clientEnd}ms
 - Clients sent events for ${clientElapsed}ms.
-- ${clientSetting.processCount} client process(es) mimicking ${clientSetting.total.clientCount} clients
+- ${clientSetting.processCount} client process(es) mimicking ${clientSetting.total.clientCount} clients, ${clientSetting.total.talkerCount} talkers
 - ${serverSetting.workerCount} cloudbrowser workers
 
 

@@ -29,11 +29,14 @@ class ClientProcess extends EventEmitter
         @stats = new StatProvider()
         clientsPerGroup = @clientCount/@appInstanceCount
         browsersPerGroup = @browserCount/@appInstanceCount
+        talkersPerGroup = options.talkerCount/@appInstanceCount
         logger("clientsPerGroup #{clientsPerGroup}")
+        debugger
         for i in [0...@appInstanceCount] by 1
             clientGroupOptions = lodash.clone(options)
             clientGroupOptions.clientCount = clientsPerGroup
             clientGroupOptions.browserCount = browsersPerGroup
+            clientGroupOptions.talkerCount = talkersPerGroup
             clientGroupOptions.groupName = "#{@processId}_g#{i}"
             clientGroupOptions.stats = @stats
             clientGroup = new ClientGroup(clientGroupOptions)
@@ -93,34 +96,31 @@ class ClientGroup extends EventEmitter
         # not a substring of another, so we can just use
         # serverResponse.substring(clientId) to see if the
         # client's events has taken effect the server DOM
-        {@browserCount, @clientCount,
+        {@browserCount, @clientCount, @talkerCount,
         @groupName, @optimizeConnection} = options
         @clients = []
         clientsPerBrowser = @clientCount/@browserCount
-        clientIndex = 0
-        for browserIndex in [0...@browserCount] by 1
-            # the first client in every clientsPerBrowser clients will
-            # create the browser. the very first one will create app instance
+        bootstrapClient = null
+        for clientIndex in [0...@clientCount] by 1
             clientOptions = lodash.clone(options)
-            clientOptions.createBrowser = true
             clientOptions.id = "#{@groupName}_#{clientIndex}c"
-            if browserIndex is 0
+            if clientIndex%clientsPerBrowser is 0
+                clientOptions.createBrowser = true
+            if clientIndex is 0
                 #the very first one will create the Appinstance
                 clientOptions.createAppInstance = true
-            bootstrapClient = new Client(clientOptions)
-            if browserIndex > 0
+            if clientIndex >= @talkerCount
+                clientOptions.silent = true
+            client = new Client(clientOptions)
+            if clientOptions.createBrowser
                 # this client should wait til app instance is created
-                @clients[0].addChild(bootstrapClient)
-            @clients.push(bootstrapClient)
-            clientIndex++
-            # regular clients
-            for i in [0...clientsPerBrowser-1] by 1
-                clientOptions = lodash.clone(options)
-                clientOptions.id = "#{@groupName}_#{clientIndex}c"
-                client = new Client(clientOptions)
+                @clients[0].addChild(client) if clientIndex>0
+                bootstrapClient = client
+            else
+                # co browsing clients
                 bootstrapClient.addChild(client)
-                @clients.push(client)
-                clientIndex++
+            @clients.push(client)
+            
 
     start : ()->
         if not @optimizeConnection
@@ -149,6 +149,8 @@ class ClientGroup extends EventEmitter
         if @stopped
             return true
         for client in @clients
+            # ignore silent ones
+            continue if client.silent
             if not client.stopped
                 return false
         @stopped = true
@@ -160,16 +162,16 @@ class ClientGroup extends EventEmitter
 
 
 
-
 # eventCount contains the event to create browser
 class Client extends EventEmitter
     constructor : (@options) ->
         # id is a unique client identifier in all client processes
-        {@eventDescriptors, @createBrowser,
+        {@eventDescriptors, @createBrowser, @silent, 
         @appAddress, @cbhost, @socketioUrl, @stats,
         @id, @serverLogging, @optimizeConnection} = options
         @stopped = false
         @eventContext = new benchmarkConfig.EventContext({clientId:@id})
+        return if @silent
         @eventQueue = new benchmarkConfig.EventQueue({
             descriptors : @eventDescriptors
             context : @eventContext
@@ -292,14 +294,15 @@ class Client extends EventEmitter
                         @_serverEventHandler(original, arguments)
                     )
             )
-            if @optimizeConnection
-                @once('startBenchmark', ()=>
-                    @_nextEvent()
-                )
-            else
-                timers.setImmediate(()=>
-                    @_nextEvent()
-                )
+            if not @silent
+                if @optimizeConnection
+                    @once('startBenchmark', ()=>
+                        @_nextEvent()
+                    )
+                else
+                    timers.setImmediate(()=>
+                        @_nextEvent()
+                    )
 
             #logger("#{@id} emit clientEngineReady")
             @clientEngineReady=true
@@ -455,6 +458,11 @@ options = {
     configFile : {
         full : 'configFile'
         default : '#{__dirname}/chat_benchmark.conf'
+    },
+    talkerCount : {
+        full : 'talkerCount'
+        type : 'number'
+        help : 'how many clients actually send events, by default it equals clientCount'
     }
 }
 
@@ -466,6 +474,10 @@ if opts.appAddress?
     opts.cbhost = "http://#{parsedUrl.hostname}"
     # host contains port
     opts.socketioUrl = "http://#{parsedUrl.host}"
+
+if not opts.talkerCount?
+    opts.talkerCount = opts.clientCount
+
 
 logger("options #{JSON.stringify(opts)}")
 
