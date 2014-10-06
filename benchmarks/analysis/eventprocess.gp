@@ -21,6 +21,6 @@ set yrange [0:*]
 set y2range [0:*]
 
 # filename is a parameter
-plot filename u 1:2 t 'Throughput' with points pointtype 7 pointsize 1 axes x1y1,\
-"" u 1:4 t 'Latency' with points pointtype 7 pointsize 1 axes x1y2
+plot filename u 1:2 t 'Throughput' with lines axes x1y1,\
+"" u 1:4 t 'Latency' with lines axes x1y2
 #
