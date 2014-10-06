@@ -14,6 +14,8 @@ fi
 node_modules/coffee-script/bin/coffee benchmarks/analysis/logdata_extractor.coffee \
 --directory=$i_dir
 
+$i_scriptDir/plot_benchmark_data.sh $i_dir
+
 cd $i_dir
 
 for line in $(ls *worker*.log); do

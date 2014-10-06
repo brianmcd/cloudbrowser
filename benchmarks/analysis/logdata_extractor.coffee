@@ -117,6 +117,8 @@ class LogExtractorGroup extends EventEmitter
         for logExtractor in @logExtractors
             pushAll(dataFiles, logExtractor.getDataFiles())
 
+        @metaData.dataFiles=lodash.pluck(dataFiles, 'fileName') 
+
         logger("data files #{dataFiles}")
         fileGroup = lodash.groupBy(dataFiles, (dataFile)->
             return "#{dataFile.process}_#{dataFile.type}"
@@ -146,6 +148,7 @@ class LogExtractorGroup extends EventEmitter
                 for agg in @aggregators
                     @metaData.stats.total[agg.group] = agg.getLastStat()
                     @metaData.stats.avg[agg.group] = agg.getAvgStats()
+                    @metaData.dataFiles.push(agg.writer.fileName)
                 logger("#{@testId} aggregated")
                 @emit('aggregated')
         )
@@ -240,8 +243,8 @@ class LogStartTimeExtractor extends EventEmitter
 appendArrayToFile = (fileName, arr)->
     fs.appendFileSync(fileName, arr.join(' ') + '\n')
 
-statsColumns = ['updateTime', 'rate', 'totalRate', 'avg', 'count', 'total',
-'totalAvg', 'max', 'min', 'current', 'errorCount', 'startTime']
+statsColumns = ['updateTime', 'rate', 'totalRate', 'avg', 'totalAvg', 
+'current', 'count', 'total', 'max', 'min',  'errorCount', 'startTime']
 
 sysMonColumns = ['time', 'cpu', 'memory', 'heapTotal', 'heapUsed']
 
@@ -390,7 +393,7 @@ class DataFileBuffer extends EventEmitter
             @dataColumns = split
             # eliminate #
             if @dataColumns[0].indexOf('#') is 0
-                @dataColumns[0] = utils.substringAfterLast('#')
+                @dataColumns[0] = utils.substringAfterLast(@dataColumns[0], '#')
             return
 
         obj = {}
@@ -474,6 +477,8 @@ class DataFileAggregator extends EventEmitter
         for dataFile, dataFileBuffer of @buffer.dataFileBuffers
             record = dataFileBuffer.peek()
             allEmpty=false if record?
+            if record? and not record.content[@timeColumn]?
+                throw new Error("#{@timeColumn} is empty for #{JSON.stringify(record)} from #{dataFile}") 
             while @belowRange(record)
                 # highly unlikely
                 logger("record #{JSON.stringify(record)} from #{dataFile} fell below range
@@ -569,7 +574,7 @@ class DataFileAggregator extends EventEmitter
     incrementRange : ()->
         @startTime = @endTime
         @endTime += 5000
-        #logger("read from #{@startTime}")
+        logger("read from #{@startTime} for #{@prefix}")
 
 
 if require.main is module

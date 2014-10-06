@@ -49,6 +49,13 @@ server event count: ${cstats.count}
 
 ${resourceUsageTable}
 
+<% for(var i=0; i< imgFiles.length; i++) {%>
+![${imgFiles[i]}](${imgFiles[i]} "${imgFiles[i]}")
+
+<% } %>
+
+
+
 ### Config File Content
 
 ```

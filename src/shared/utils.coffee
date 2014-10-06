@@ -169,7 +169,7 @@ exports.endsWith = (str, suffix)->
 exports.lastIndexOf = (str, val)->
     index = str.indexOf(val)
     lastIndex = index
-    while index is not -1
+    while index isnt -1
         lastIndex = index
         index = str.indexOf(val, index + 1)
     return lastIndex
@@ -182,7 +182,7 @@ exports.substringAfter = (str, val)->
 exports.substringAfterLast = (str, val)->
     lastIndex = exports.lastIndexOf(str, val)
     return str if lastIndex is -1
-    return str.substr(lastIndex)
+    return str.substr(lastIndex+1)
 
 class StringReader
     constructor: (@str) ->

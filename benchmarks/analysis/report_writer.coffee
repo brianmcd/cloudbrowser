@@ -1,4 +1,5 @@
 fs = require 'fs'
+path = require 'path'
 
 lodash = require('lodash')
 moment = require('moment')
@@ -48,6 +49,9 @@ class ReportWriter
         columnAttrs = ['cpu', 'memory', 'heapTotal', 'heapUsed']
         dataRows = []
         for group in sysMonGroups
+            if not metaData.stats.avg["#{group}_sysmon"]?
+                logger("No data for #{group}_sysmon")
+                continue
             sysMonStat = metaData.stats.avg["#{group}_sysmon"].report()
             count = metaData["#{group}Count"]
             dataRow = [group, count]
@@ -72,6 +76,16 @@ class ReportWriter
         reportObj.serverSetting = {
             workerCount : metaData.workerCount
         }
+
+        reportObj.dataFiles = lodash.transform(metaData.dataFiles, (result, dataFile)->
+            baseName = path.basename(dataFile)
+            result.push(baseName)
+            )
+
+        reportObj.imgFiles = lodash.transform(metaData.dataFiles, (result, dataFile)->
+            baseName = path.basename(dataFile, '.dat')
+            result.push(baseName+".png") if baseName.indexOf('eventProcess') >= 0 or baseName.indexOf('sysmon') >=0
+        )
 
         @fileName = "#{baseDir}/#{testId}.md"
         
