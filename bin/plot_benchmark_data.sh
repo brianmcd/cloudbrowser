@@ -5,7 +5,7 @@ i_sysmonpg="$i_rootdir"/benchmarks/analysis/sysmon.gp
 
 i_workdir=$i_rootdir
 if [[ "X$1" != "X" ]]; then
-    i_workdir=$1
+    i_workdir=$(cd "$1";pwd)
 fi
 
 cd $i_workdir
@@ -35,6 +35,7 @@ plot_dir(){
         gnuplot -e "filename='$f'" $i_sysmonpg > $i_png
         echo write file $i_png
     done
+    cd $i_workdir
 }
 
 
