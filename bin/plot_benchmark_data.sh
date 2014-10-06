@@ -23,8 +23,8 @@ echo plot data "in" ${i_datadirs[*]}
 
 plot_dir(){
     # do plot in $1
-    cd $i_workdir/$1
-    echo plot in $i_workdir/$1
+    cd $1
+    echo plot in $1
     for f in $(ls *eventProcess*.dat); do
         i_png="${f%.*}".png
         gnuplot -e "filename='$f'" $i_eventpg > $i_png

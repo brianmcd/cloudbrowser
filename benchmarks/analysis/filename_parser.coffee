@@ -1,4 +1,5 @@
 fs = require('fs')
+path = require('path')
 
 lodash = require('lodash')
 
@@ -12,6 +13,7 @@ exports.parse = (fileName)->
     result = {
         name : fileName
     }
+    fileName = path.basename(fileName)
     if utils.endsWith(fileName, suffix)
         for i in keywords
             keyWordIndex = utils.lastIndexOf(fileName, "_#{i}")
@@ -34,9 +36,10 @@ exports.parseDir = (dirName)->
     files = fs.readdirSync(dirName)
     result = []
     for file in files
-        fstat = fs.statSync(file)
+        fullname = path.join(dirName, file)
+        fstat = fs.statSync(fullname)
         continue if not fstat.isFile()
-        fileMeta = exports.parse(file)
+        fileMeta = exports.parse(fullname)
         result.push(fileMeta) if fileMeta.type?
     return result
     
