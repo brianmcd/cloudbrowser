@@ -10,6 +10,7 @@ if [[ "X$1" != "X" ]]; then
     i_dir=$1
 fi
 
+# extract performance data
 node_modules/coffee-script/bin/coffee benchmarks/analysis/logdata_extractor.coffee \
 --directory=$i_dir
 

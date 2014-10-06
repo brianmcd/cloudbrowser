@@ -179,6 +179,11 @@ exports.substringAfter = (str, val)->
     return str if index <= 0
     return str.substr(index)
 
+exports.substringAfterLast = (str, val)->
+    lastIndex = exports.lastIndexOf(str, val)
+    return str if lastIndex is -1
+    return str.substr(lastIndex)
+
 class StringReader
     constructor: (@str) ->
         @index = 0

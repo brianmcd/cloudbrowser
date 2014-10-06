@@ -6,7 +6,7 @@ Application endpoint : ${clientSetting.appAddress}
 - Bechmark clients start sending events after ${clientStart}ms
 - All clients ended after ${clientEnd}ms
 - Clients sent events for ${clientElapsed}ms.
-- ${clientSetting.processCount} client process(es) mimicking ${clientSetting.total.clientCount} clients, ${clientSetting.total.talkerCount} talkers
+- ${clientSetting.processCount} client process(es) simulating ${clientSetting.total.clientCount} clients, ${clientSetting.total.talkerCount} talkers
 - ${serverSetting.workerCount} cloudbrowser workers
 
 
@@ -37,6 +37,8 @@ Config file : ${clientSetting.configFile}
 | Rate | Latency | Count | Error Count |
 | ---- | ----    | ----  | ----        |
 | ${ cstats.totalRate } | ${cstats.totalAvg} | ${cstats.count} |${cstats.errorCount} |
+
+#### Event Count
 
 <% cstats=stats.total['client_request_clientEvent'] %>
 client event count: ${cstats.count}

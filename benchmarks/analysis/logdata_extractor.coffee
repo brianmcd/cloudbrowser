@@ -240,7 +240,7 @@ class LogStartTimeExtractor extends EventEmitter
 appendArrayToFile = (fileName, arr)->
     fs.appendFileSync(fileName, arr.join(' ') + '\n')
 
-statsColumns = ['updateTime','count', 'rate', 'totalRate', 'total', 'avg',
+statsColumns = ['updateTime', 'rate', 'totalRate', 'avg', 'count', 'total',
 'totalAvg', 'max', 'min', 'current', 'errorCount', 'startTime']
 
 sysMonColumns = ['time', 'cpu', 'memory', 'heapTotal', 'heapUsed']
@@ -248,7 +248,7 @@ sysMonColumns = ['time', 'cpu', 'memory', 'heapTotal', 'heapUsed']
 
 class ColumnedDataWriter
     constructor: (@fileName, @columns) ->
-        fs.writeFileSync(@fileName, '')
+        fs.writeFileSync(@fileName, '##')
         appendArrayToFile(@fileName, @columns)
 
     writeLine : (stat) ->
@@ -288,13 +288,13 @@ class LogExtractor extends EventEmitter
             prefix = "#{baseDir}/#{testId}_client_#{clientId}"
             @requestStatsWriters = {}
             for metric in clientMetrics
-                @requestStatsWriters[metric] = new ColumnedDataWriter("#{prefix}_request_#{metric}.data",
+                @requestStatsWriters[metric] = new ColumnedDataWriter("#{prefix}_request_#{metric}.dat",
                     statsColumns)
             @on('logRecord', @handleBenchmarkResult.bind(@))
             @on('logRecord', @handleClientConfig.bind(@))
 
 
-        @sysmonWriter = new ColumnedDataWriter("#{prefix}_sysmon.data", sysMonColumns)
+        @sysmonWriter = new ColumnedDataWriter("#{prefix}_sysmon.dat", sysMonColumns)
         @on('logRecord', @handleSysMonlog.bind(@))
 
     getDataFiles: ()->
@@ -388,6 +388,9 @@ class DataFileBuffer extends EventEmitter
         split = line.split(' ')
         if @linenum is 1
             @dataColumns = split
+            # eliminate #
+            if @dataColumns[0].indexOf('#') is 0
+                @dataColumns[0] = utils.substringAfterLast('#')
             return
 
         obj = {}
@@ -454,9 +457,9 @@ class DataFileAggregator extends EventEmitter
     writeAggregateData : ()->
         @writer = null
         if @type is 'sysmon'
-            @writer= new ColumnedDataWriter("#{@prefix}_agg.data", sysMonColumns)
+            @writer= new ColumnedDataWriter("#{@prefix}_agg.dat", sysMonColumns)
         else
-            @writer= new ColumnedDataWriter("#{@prefix}_agg.data", statsColumns)
+            @writer= new ColumnedDataWriter("#{@prefix}_agg.dat", statsColumns)
         for i in @writeBuffer
             @writer.writeLine(i)
         logger("data aggregator #{@prefix} emit complete")
