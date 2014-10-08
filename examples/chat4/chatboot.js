@@ -10,6 +10,7 @@ ChatManager.prototype.addMessage = function(msgObj) {
         this.messages.splice(0, 50)
     }
     this.version++;
+    return this.version;
 };
 
 ChatManager.prototype.getVersion = function(){

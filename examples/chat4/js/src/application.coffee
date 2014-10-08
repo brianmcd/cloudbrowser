@@ -17,6 +17,10 @@ app.controller "ChatCtrl", ($scope, $timeout, $rootScope) ->
     browserId = currentBrowser.getID()
     chatManager = cloudbrowser.currentAppInstanceConfig.getObj()
     messageId = 0
+    # how often does the application render newMessage event, 0 indicates 
+    # immediately
+    checkUpdateInterval = 1000
+    newMessageVersion = null
     $scope.userName = "Goose_#{browserId}"
     $scope.editingUserName = false
     $scope.alertMessages = []
@@ -24,23 +28,41 @@ app.controller "ChatCtrl", ($scope, $timeout, $rootScope) ->
     chatManager.users[browserId] = $scope.userName
     $scope.chatManager = chatManager
 
-    newMessageHandler = (fromBrowser, version)->
-        # only update the view for the newest event
-        if version < chatManager.getVersion()
-            return
-
-        if fromBrowser is browserId
-            return
+    safeApply = ()->
         if $rootScope.$$phase is '$apply' or $rootScope.$$phase is '$digest'
             return
         $rootScope.$apply(angular.noop)
 
+
+    newMessageHandler = (fromBrowser, version)->
+        # only update the view for the newest event
+        if version < chatManager.getVersion()
+            return
+        if fromBrowser is browserId
+            return
+        
+        if checkUpdateInterval > 0
+            newMessageVersion = version
+            return
+        # immediate render if checkUpdateInterval==0
+        safeApply()
+
+    checkUpdate = ()->
+        if not newMessageVersion? or newMessageVersion < chatManager.getVersion()
+            return
+        newMessageVersion = null
+        safeApply()
+
+        
+
+    if checkUpdateInterval > 0
+        setInterval(checkUpdate, checkUpdateInterval)
+    
+
     eventbus = cloudbrowser.currentAppInstanceConfig.getEventBus()
     eventbus.on('newMessage', (fromBrowser, version)->
         # trigger handler asynchronsly
-        setTimeout(()->
-            newMessageHandler(fromBrowser, version)
-        , 0)
+        setImmediate(newMessageHandler, fromBrowser, version)
     )
 
     scrollDown=()->
@@ -71,9 +93,8 @@ app.controller "ChatCtrl", ($scope, $timeout, $rootScope) ->
             $$hashKey : "#{browserId}_#{messageId++}"
         }
         msgObj.type = type if type?
-        chatManager.addMessage(msgObj)
+        version = chatManager.addMessage(msgObj)
 
-        version = chatManager.getVersion()
         # scroll down to the last message. It does not work
         # setTimeout(scrollDown, 0)
 

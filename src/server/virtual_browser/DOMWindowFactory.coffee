@@ -100,9 +100,19 @@ class DOMWindowFactory
                 old () ->
                     self.logger("trigger #{timer}")
                     self.browser.emit('EnteredTimer')
-                    fn.apply(this, args)
+                    fn.apply(window, args)
                     self.browser.emit('ExitedTimer')
                 , interval
+        # expose setImmediate
+        window.setImmediate = (fn, args...)->
+            setImmediate(()->
+                self.logger("trigger setImmediate")
+                # need to trigger pauseRendering, resumeRendering in case
+                # there are DOM updates in fn
+                self.browser.emit('EnteredTimer')
+                fn.apply(window, args)
+                self.browser.emit('ExitedTimer')
+            )
 
     patchConsole : (window) ->
         self = this

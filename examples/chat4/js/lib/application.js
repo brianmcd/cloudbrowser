@@ -22,16 +22,24 @@
   });
 
   app.controller("ChatCtrl", function($scope, $timeout, $rootScope) {
-    var addMessage, browserId, chatManager, currentBrowser, eventbus, messageId, newMessageHandler, scrollDown;
+    var addMessage, browserId, chatManager, checkUpdate, checkUpdateInterval, currentBrowser, eventbus, messageId, newMessageHandler, newMessageVersion, safeApply, scrollDown;
     currentBrowser = cloudbrowser.currentBrowser;
     browserId = currentBrowser.getID();
     chatManager = cloudbrowser.currentAppInstanceConfig.getObj();
     messageId = 0;
+    checkUpdateInterval = 10000;
+    newMessageVersion = null;
     $scope.userName = "Goose_" + browserId;
     $scope.editingUserName = false;
     $scope.alertMessages = [];
     chatManager.users[browserId] = $scope.userName;
     $scope.chatManager = chatManager;
+    safeApply = function() {
+      if ($rootScope.$$phase === '$apply' || $rootScope.$$phase === '$digest') {
+        return;
+      }
+      return $rootScope.$apply(angular.noop);
+    };
     newMessageHandler = function(fromBrowser, version) {
       if (version < chatManager.getVersion()) {
         return;
@@ -39,16 +47,25 @@
       if (fromBrowser === browserId) {
         return;
       }
-      if ($rootScope.$$phase === '$apply' || $rootScope.$$phase === '$digest') {
+      if (checkUpdateInterval > 0) {
+        newMessageVersion = version;
         return;
       }
-      return $rootScope.$apply(angular.noop);
+      return safeApply();
     };
+    checkUpdate = function() {
+      if ((newMessageVersion == null) || newMessageVersion < chatManager.getVersion()) {
+        return;
+      }
+      newMessageVersion = null;
+      return safeApply();
+    };
+    if (checkUpdateInterval > 0) {
+      setInterval(checkUpdate, checkUpdateInterval);
+    }
     eventbus = cloudbrowser.currentAppInstanceConfig.getEventBus();
     eventbus.on('newMessage', function(fromBrowser, version) {
-      return setTimeout(function() {
-        return newMessageHandler(fromBrowser, version);
-      }, 0);
+      return setImmediate(newMessageHandler, fromBrowser, version);
     });
     scrollDown = function() {
       var messageBox;
@@ -84,8 +101,7 @@
       if (type != null) {
         msgObj.type = type;
       }
-      chatManager.addMessage(msgObj);
-      version = chatManager.getVersion();
+      version = chatManager.addMessage(msgObj);
       return eventbus.emit('newMessage', browserId, version);
     };
     $scope.changeName = function() {

@@ -394,6 +394,9 @@ DOMEventHandlers =
         return if @browserLoading
         @broadcastEvent 'pauseRendering'
 
+    # TODO DOM updates in timers should be batched, 
+    # there is no point to send any events to client if
+    # there's no DOM updates happened in the timer
     ExitedTimer :  () ->
         return if @browserLoading
         @broadcastEvent 'resumeRendering'
