@@ -5,6 +5,7 @@ cd $i_scriptDir/..
 i_time=$(date "+%Y%m%d%H%M%S")
 
 source $i_scriptDir/debug_env.sh
+source $i_scriptDir/node_env.sh
 
 if [[ "X$CB_BATCHSIZE" = "X" ]]; then
     export CB_BATCHSIZE=20
@@ -28,8 +29,6 @@ if [[ "X$3" != "X" ]]; then
     i_group_prefix=$3
 fi
 
-i_coffee=node_modules/coffee-script/bin/coffee
-
 i_opts="--appinstance-count $CB_APPINS --browser-count $CB_BROWSER --client-count $CB_CLIENT \
     --server-logging false --batch-size $CB_BATCHSIZE --configFile $CB_CONF --app-address $CBAPP_ADDR"
 
@@ -42,6 +41,6 @@ echo start $i_logprefix with $i_processes benchmark processes
 for (( i = 0; i < $i_processes; i++ )); do
     i_group="$i_group_prefix""$i"
     i_logfile="$i_prefix"_client_"$i_group"".log"
-    nohup $i_coffee benchmarks/clients/client_process.coffee $i_opts --process-id $i_group >$i_logfile 2>&1 &
+    nohup $i_exe benchmarks/clients/client_process.coffee $i_opts --process-id $i_group >$i_logfile 2>&1 &
     echo benchmark process $i_group log to $i_logfile
 done
