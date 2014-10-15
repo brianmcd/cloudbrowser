@@ -8,6 +8,9 @@ config         = require('./config')
 
 #require('webkit-devtools-agent').start()
 
+require('ofe').call()
+require('heapdump')
+
 class Runner
     constructor: (argv, postConstruct) ->
         async.auto({
