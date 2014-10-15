@@ -8,7 +8,7 @@ unset label                            # remove any previous labels
 set xtic auto                          # set xtics automatically
 set ytic auto                          # set ytics automatically
 set title "System Resource Usage ".filename
-set xlabel "Time(ms)"
+set xlabel "Time(s)"
 
 
 set ylabel "Percentage"
@@ -21,8 +21,8 @@ set yrange [0:*]
 set y2range [0:*]
 
 # filename is a parameter
-plot filename u 1:2 t 'cpu(%)' w lines axes x1y1,\
-"" u 1:3 t 'memory(MB)' w lines axes x1y2, \
-"" u 1:4 t 'HeapTotal(MB)' w lines axes x1y2, \
-"" u 1:5 t 'HeapUsed(MB)' w lines axes x1y2
+plot filename u ($1 / 1000):2 t 'cpu(%)' w lines axes x1y1,\
+"" u ($1 / 1000):3 t 'memory(MB)' w lines axes x1y2, \
+"" u ($1 / 1000):4 t 'HeapTotal(MB)' w lines axes x1y2, \
+"" u ($1 / 1000):5 t 'HeapUsed(MB)' w lines axes x1y2
 #
