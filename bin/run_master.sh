@@ -7,4 +7,4 @@ i_args="examples src/server/applications"
 if [[ $# -ne 0 ]]; then
     i_args="$@"
 fi
-$i_exe src/master/master_main.coffee $i_args
+$i_coffee --nodejs "$CB_NODE_ARGS" src/master/master_main.coffee $i_args

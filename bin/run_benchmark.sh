@@ -41,6 +41,6 @@ echo start $i_logprefix with $i_processes benchmark processes
 for (( i = 0; i < $i_processes; i++ )); do
     i_group="$i_group_prefix""$i"
     i_logfile="$i_prefix"_client_"$i_group"".log"
-    nohup $i_exe benchmarks/clients/client_process.coffee $i_opts --process-id $i_group >$i_logfile 2>&1 &
+    nohup $i_coffee --nodejs "$CB_NODE_ARGS" benchmarks/clients/client_process.coffee $i_opts --process-id $i_group >$i_logfile 2>&1 &
     echo benchmark process $i_group log to $i_logfile
 done
