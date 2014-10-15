@@ -2,6 +2,9 @@
 #set node parameter
 export i_coffee=node_modules/coffee-script/bin/coffee
 
+# disable default heapDump handler
+# export NODE_HEAPDUMP_OPTIONS=nosignal
+
 # to trace gc
 # export CB_NODE_ARGS=" --nodejs '--nouse-idle-notification --trace-gc' "
 

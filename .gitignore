@@ -27,3 +27,5 @@ config/worker2/server_config.json
 *.data
 
 *_data
+
+*.heapsnapshot

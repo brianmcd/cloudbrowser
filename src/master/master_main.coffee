@@ -9,7 +9,7 @@ config         = require('./config')
 #require('webkit-devtools-agent').start()
 
 require('ofe').call()
-require('heapdump')
+require('../server/profiler')
 
 class Runner
     constructor: (argv, postConstruct) ->

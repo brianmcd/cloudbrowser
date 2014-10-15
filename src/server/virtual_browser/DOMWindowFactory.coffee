@@ -95,7 +95,8 @@ class DOMWindowFactory
         # window.setTimeout and setInterval piggyback off of Node's functions,
         # but emit events before/after calling the supplied function.
         ['setTimeout', 'setInterval'].forEach (timer) ->
-            old = window[timer]
+            # FIXME: using native node's implement temporarily, there is a memory leak in jsdom's implementation 
+            old = global[timer]
             window[timer] = (fn, interval, args...) ->
                 old () ->
                     self.logger("trigger #{timer}")

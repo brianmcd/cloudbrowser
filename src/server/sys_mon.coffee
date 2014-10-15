@@ -46,6 +46,12 @@ class SysMon
 SysMon.createSysMon = (opts)->
     return new SysMon(opts)
 
+if require.main is module
+    new SysMon({
+        id : 'test'
+        interval : 500
+    })
+
 
 module.exports = SysMon
     

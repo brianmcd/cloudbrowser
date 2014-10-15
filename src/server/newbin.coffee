@@ -17,7 +17,7 @@ UuidService        = require('./uuid_service')
 # https://github.com/trevnorris/node-ofe
 # This will overwrite OnFatalError to create a heapdump when your app fatally crashes.
 require('ofe').call()
-require('heapdump')
+require('./profiler')
 
 logger = debug('cloudbrowser:worker:init')
 
