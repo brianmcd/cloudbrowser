@@ -48,7 +48,7 @@ class AppInstanceManager extends EventEmitter
         else if @app.isSingleInstancePerUser()
             if not user?
                 # the application is configured wrong, create a new instance anyway
-                console.log "__filename: App #{@app.mountPoint} is SingleInstancePerUser but 
+                applogger "App #{@app.mountPoint} is SingleInstancePerUser but 
                         did not provide user when calling createAppInstance"
                 return @_createAppInstance(user, callback)
             if not @userToAppInstances[user]?

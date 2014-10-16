@@ -204,17 +204,6 @@ class BaseApplication extends EventEmitter
             # redirect to landing page app
             return @landingPageApp._mountPointHandler(req, res, next)
 
-        if @isSingleInstance()
-            # get or create the only instance
-            @appInstanceManager.getAppInstance((err, appInstance)=>
-                return routes.internalError(res, err.message) if err?
-                # a browser will be created for the appinstance before worker return appInstance to master,
-                # the browserId of the first appinstance will be put in filed browserId of appinstance
-                routes.redirect(res,
-                    routes.buildBrowserPath(@mountPoint, appInstance.id, appInstance.browserId))
-            )
-            return
-
 
         if @isSingleInstancePerUser() and @authApp
             # get or create instance for user
@@ -226,6 +215,17 @@ class BaseApplication extends EventEmitter
             @appInstanceManager.getUserAppInstance(user, (err, appInstance)=>
                 return routes.internalError(res, err.message) if err?
 
+                routes.redirect(res,
+                    routes.buildBrowserPath(@mountPoint, appInstance.id, appInstance.browserId))
+            )
+            return
+
+        if @isSingleInstance() or @isSingleInstancePerUser()
+            # get or create the only instance
+            @appInstanceManager.getAppInstance((err, appInstance)=>
+                return routes.internalError(res, err.message) if err?
+                # a browser will be created for the appinstance before worker return appInstance to master,
+                # the browserId of the first appinstance will be put in filed browserId of appinstance
                 routes.redirect(res,
                     routes.buildBrowserPath(@mountPoint, appInstance.id, appInstance.browserId))
             )
