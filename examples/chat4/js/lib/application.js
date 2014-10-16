@@ -27,7 +27,7 @@
     browserId = currentBrowser.getID();
     chatManager = cloudbrowser.currentAppInstanceConfig.getObj();
     messageId = 0;
-    checkUpdateInterval = 1000;
+    checkUpdateInterval = 0;
     newMessageVersion = null;
     $scope.userName = "Goose_" + browserId;
     $scope.editingUserName = false;

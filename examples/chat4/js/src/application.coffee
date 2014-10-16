@@ -19,7 +19,7 @@ app.controller "ChatCtrl", ($scope, $timeout, $rootScope) ->
     messageId = 0
     # how often does the application render newMessage event, 0 indicates 
     # immediately
-    checkUpdateInterval = 1000
+    checkUpdateInterval = 0
     newMessageVersion = null
     $scope.userName = "Goose_#{browserId}"
     $scope.editingUserName = false
