@@ -490,14 +490,22 @@ clientProcess = null
 benchmarkFinished = false
 resultLogger = debug("cloudbrowser:benchmark:result")
 
-# TODO output a human readable simple message
-simpleStatTemplate = "\neventProcess: rate ${eventProcess.rate}, avg ${eventProcess.avg},
-count ${eventProcess.count}, totalRate ${eventProcess.totalRate}, totalAvg ${eventProcess.totalAvg},
-current ${eventProcess.current}, max ${eventProcess.max}, min ${eventProcess.min};\n
-serverEvent: rate ${serverEvent.rate}, count ${serverEvent.count}; \n
-clientEvent: rate ${clientEvent.rate}, count ${clientEvent.count};"
 
-simpleStatTempFunc = lodash.template(simpleStatTemplate)
+simpleStatTempFunc = (statsObj)->
+    return if not statsObj?
+    {eventProcess, serverEvent, clientEvent} = statsObj
+    msg = ''
+    if eventProcess?
+        msg += "eventProcess: rate #{eventProcess.rate}, avg #{eventProcess.avg},count #{eventProcess.count}, 
+        totalRate #{eventProcess.totalRate}, totalAvg #{eventProcess.totalAvg},current #{eventProcess.current}, 
+        max #{eventProcess.max}, min #{eventProcess.min};\n"
+
+    if serverEvent?
+        msg += "serverEvent: rate #{serverEvent.rate}, count #{serverEvent.count};\n"
+    
+    if clientEvent?
+        msg += "clientEvent: rate #{clientEvent.rate}, count #{clientEvent.count};\n"
+    return msg
 
 reportStats = (statsObj)->
     resultLogger(JSON.stringify(statsObj))
