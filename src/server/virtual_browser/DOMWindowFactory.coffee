@@ -67,7 +67,7 @@ class DOMWindowFactory
     patchImage : (window) ->
         # TODO MEM
         self = this
-        # Thanks Zombie for Image code 
+        # Thanks Zombie for Image code
         window.Image = (width, height) ->
             img = new self.jsdom
                       .dom
@@ -76,7 +76,7 @@ class DOMWindowFactory
             img.width = width
             img.height = height
             img
-    
+
     patchNavigator : (window) ->
         window.navigator.javaEnabled = false
         window.navigator.language = 'en-US'
@@ -95,15 +95,19 @@ class DOMWindowFactory
         # window.setTimeout and setInterval piggyback off of Node's functions,
         # but emit events before/after calling the supplied function.
         ['setTimeout', 'setInterval'].forEach (timer) ->
-            # FIXME: using native node's implement temporarily, there is a memory leak in jsdom's implementation 
+            # FIXME: using native node's implement temporarily, there is a memory leak in jsdom's implementation
             old = global[timer]
             window[timer] = (fn, interval, args...) ->
-                old () ->
+                fnWrap = ()->
                     self.logger("trigger #{timer}")
                     self.browser.emit('EnteredTimer')
                     fn.apply(window, args)
                     self.browser.emit('ExitedTimer')
-                , interval
+                #optimize for setTimeout(fn, 0)
+                if (not interval? or interval is 0) and timer is 'setTimeout'
+                    return setImmediate(fnWrap)
+
+                return old(fnWrap, interval)
         # expose setImmediate
         window.setImmediate = (fn, args...)->
             setImmediate(()->
