@@ -4,7 +4,7 @@ app.directive 'enterSubmit', () ->
     return directive =
         restrict: 'A',
         link: (scope, element, attrs) ->
-            element.bind('keydown', (e) ->                
+            element.bind('keydown', (e) ->
                 if e.which is 13
                     scope.$apply(()->
                         scope.$eval(attrs.enterSubmit)
@@ -12,10 +12,15 @@ app.directive 'enterSubmit', () ->
                     e.preventDefault()
             )
 
-app.controller "ChatCtrl", ($scope, $timeout) ->
+app.controller "ChatCtrl", ($scope, $timeout, $rootScope) ->
     {currentBrowser} = cloudbrowser
     browserId = currentBrowser.getID()
     chatManager = cloudbrowser.currentAppInstanceConfig.getObj()
+    messageId = 0
+    # how often does the application render newMessage event, 0 indicates 
+    # immediately
+    checkUpdateInterval = 0
+    newMessageVersion = null
     $scope.userName = "Goose_#{browserId}"
     $scope.editingUserName = false
     $scope.alertMessages = []
@@ -23,20 +28,53 @@ app.controller "ChatCtrl", ($scope, $timeout) ->
     chatManager.users[browserId] = $scope.userName
     $scope.chatManager = chatManager
 
+    safeApply = ()->
+        if $rootScope.$$phase is '$apply' or $rootScope.$$phase is '$digest'
+            return
+        $rootScope.$apply(angular.noop)
+
+
+    newMessageHandler = (fromBrowser, version)->
+        # only update the view for the newest event
+        if version < chatManager.getVersion()
+            return
+        if fromBrowser is browserId
+            return
+        
+        if checkUpdateInterval > 0
+            newMessageVersion = version
+            return
+        # immediate render if checkUpdateInterval==0
+        safeApply()
+
+    checkUpdate = ()->
+        if not newMessageVersion? or newMessageVersion < chatManager.getVersion()
+            return
+        newMessageVersion = null
+        safeApply()
+
+        
+
+    if checkUpdateInterval > 0
+        setInterval(checkUpdate, checkUpdateInterval)
+    
+
+    eventbus = cloudbrowser.currentAppInstanceConfig.getEventBus()
+    eventbus.on('newMessage', (fromBrowser, version)->
+        # trigger handler asynchronsly
+        setImmediate(newMessageHandler, fromBrowser, version)
+    )
+
     scrollDown=()->
         messageBox = document.getElementById("chatMessageBox")
         messageBox.scrollTop = messageBox.scrollHeight
 
     $scope.alert = (msg)->
-        console.log "whoops"
-        alert = {
-            msg : msg
-        }
+        alert = { msg : msg }
         $scope.alertMessages.push(alert)
         $timeout(()->
             $scope.removeAlert(alert)
-        , 3000
-        )
+        , 3000)
 
     $scope.removeAlert = (alert)->
         index = $scope.alertMessages.indexOf(alert)
@@ -45,19 +83,23 @@ app.controller "ChatCtrl", ($scope, $timeout) ->
 
 
     addMessage = (msg, type)->
+        # set hash key, or Error: ngRepeat:dupes
+        # Duplicate Key in Repeater.
         msgObj = {
             browserId : browserId
             msg : msg
             userName : $scope.userName
-            time : (new Date().getTime())
+            time : Date.now()
+            $$hashKey : "#{browserId}_#{messageId++}"
         }
         msgObj.type = type if type?
-        chatManager.messages.push(msgObj)
-        if chatManager.messages.length > 1000
-            chatManager.messages = chatManager.messages.slice(500)
+        version = chatManager.addMessage(msgObj)
+
         # scroll down to the last message. It does not work
-        setTimeout(scrollDown, 0)
-        
+        # setTimeout(scrollDown, 0)
+
+        eventbus.emit('newMessage', browserId, version)
+
 
     $scope.changeName = ()->
         if not $scope.draftUserName or $scope.draftUserName is ''
@@ -84,4 +126,4 @@ app.controller "ChatCtrl", ($scope, $timeout) ->
         if msg.type is 'sys'
             return "alert alert-success"
         return ""
-        
+

@@ -1,40 +1,82 @@
 {EventEmitter}   = require('events')
+parseUrl         = require('url').parse
 querystring      = require('querystring')
+timers           = require('timers')
 
+socketio         = require('socket.io-client')
 request          = require('request')
 lodash           = require('lodash')
 debug            = require('debug')
+async            = require('async')
 
 benchmarkConfig = require('./benchmark_config')
+routes = require('../../src/server/application_manager/routes')
+{StatProvider} = require('../../src/shared/stats')
 
 logger = debug('cloudbrowser:benchmark')
 
-class ClientProcess
+require('http').globalAgent.maxSockets = 65535
+
+class ClientProcess extends EventEmitter
     constructor: (options) ->
-        {@browserCount, @clientCount, @processId} = options
-        if @browserCount > @clientCount
-            msg = "invalid parameter browserCount > clientCount"
+        {@appInstanceCount, @browserCount, @clientCount,
+         @processId, @optimizeConnection, @batchSize} = options
+        if @browserCount > @clientCount or @appInstanceCount > @browserCount or @appInstanceCount > @clientCount or @appInstanceCount <= 0
+            msg = "invalid parameter appInstanceCount #{@appInstanceCount} browserCount #{browserCount} clientCount #{clientCount}"
             console.log(msg)
             throw new Error(msg)
         @clientGroups = []
-        clientsPerGroup = @clientCount/@browserCount
+        @stats = new StatProvider()
+        clientsPerGroup = @clientCount/@appInstanceCount
+        browsersPerGroup = @browserCount/@appInstanceCount
+        talkersPerGroup = options.talkerCount/@appInstanceCount
         logger("clientsPerGroup #{clientsPerGroup}")
-        for i in [0...@browserCount] by 1
+        debugger
+        for i in [0...@appInstanceCount] by 1
             clientGroupOptions = lodash.clone(options)
             clientGroupOptions.clientCount = clientsPerGroup
-            clientGroupOptions.groupName = @processId + "_g" + i
+            clientGroupOptions.browserCount = browsersPerGroup
+            clientGroupOptions.talkerCount = talkersPerGroup
+            clientGroupOptions.groupName = "#{@processId}_g#{i}"
+            clientGroupOptions.stats = @stats
             clientGroup = new ClientGroup(clientGroupOptions)
             @clientGroups.push(clientGroup)
-        # set up a timeout checker per process
-        @timeOutCheckerInterval = setInterval(()=>
-            @_timeOutCheck()
-        , 5000)
 
-    _timeOutCheck : ()->
-        return clearTimeout(@timeOutCheckerInterval) if @stopped
-        time = (new Date()).getTime()
+    start: ()->
+        if not @optimizeConnection
+            async.each(@clientGroups,
+                (clientGroup, next)->
+                    clientGroup.start()
+                    next()
+                ,(err)=>
+                    @emit("started", err)
+                )
+            return
+
+        # start clients one by one
+        async.eachLimit(@clientGroups, @batchSize,
+            (clientGroup, next)->
+                clientGroup.start()
+                clientGroup.once("started", next)
+            , (err)=>
+                @emit("started", err)
+        )
+
+    startBenchmark : ()->
+        if @optimizeConnection
+            async.each(@clientGroups,
+                (clientGroup, next)->
+                    clientGroup.startBenchmark()
+                    next()
+                ,(err)->
+                    logger("error when startBenchmark #{err}") if err?
+            )
+
+
+    timeOutCheck : ()->
+        time = Date.now()
         for clientGroup in @clientGroups
-            clientGroup.timeOutCheck(time)       
+            clientGroup.timeOutCheck(time)
 
     isStopped:()->
         if @stopped
@@ -45,48 +87,70 @@ class ClientProcess
         @stopped = true
         return true
 
-    computeStat:()->
-        @stat = new Stat()
-        @otherStat = {}
-        for clientGroup in @clientGroups
-            for client in clientGroup.clients
-                @stat.mergeStat(client.stat)
-                for k, v of client.otherStat
-                    if not @otherStat[k]
-                        @otherStat[k] = new Stat()
-                    @otherStat[k].add(v)
 
 
-# clients that share 1 browser
-class ClientGroup
+# clients that share 1 appinstance
+class ClientGroup extends EventEmitter
     constructor: (options) ->
-        {@clientCount, @groupName} = options
-        @clients = []
-        clientOptions = lodash.clone(options)
-        clientOptions.createBrowser = true
-        # append 'c' to client id to make each client id 
-        # not a substring of another, so we can just use 
+        # append 'c' to client id to make each client id
+        # not a substring of another, so we can just use
         # serverResponse.substring(clientId) to see if the
-        # client's events has taken effect the server DOM 
-        clientOptions.id = @groupName+'_0c'
-        bootstrapClient = new Client(clientOptions)
-        @clients.push(bootstrapClient)
-        if @clientCount > 1
-            bootstrapClient.once('browserconfig', ()=>
-                for i in [1...@clientCount] by 1
-                    clientOptions = lodash.clone(options)
-                    clientOptions.id = @groupName+'_' + i + 'c'
-                    clientOptions.browserConfig = bootstrapClient.browserConfig
-                    client = new Client(clientOptions)
-                    @clients.push(client)
-                    client.start()
+        # client's events has taken effect the server DOM
+        {@browserCount, @clientCount, @talkerCount,
+        @groupName, @optimizeConnection} = options
+        @clients = []
+        clientsPerBrowser = @clientCount/@browserCount
+        bootstrapClient = null
+        for clientIndex in [0...@clientCount] by 1
+            clientOptions = lodash.clone(options)
+            clientOptions.id = "#{@groupName}_#{clientIndex}c"
+            if clientIndex%clientsPerBrowser is 0
+                clientOptions.createBrowser = true
+            if clientIndex is 0
+                #the very first one will create the Appinstance
+                clientOptions.createAppInstance = true
+            if clientIndex >= @talkerCount
+                clientOptions.silent = true
+            client = new Client(clientOptions)
+            if clientOptions.createBrowser
+                # this client should wait til app instance is created
+                @clients[0].addChild(client) if clientIndex>0
+                bootstrapClient = client
+            else
+                # co browsing clients
+                bootstrapClient.addChild(client)
+            @clients.push(client)
+            
+
+    start : ()->
+        if not @optimizeConnection
+            # the one that starts all
+            @clients[0].start()
+            return @emit("started")
+
+        async.eachSeries(@clients,
+            (client, next)->
+                client.start()
+                client.once("clientEngineReady", next)
+            , (err)=>
+                @emit("started", err)
             )
-        bootstrapClient.start()
+
+    startBenchmark : ()->
+        async.each(@clients, (client, next)->
+            client.emit("startBenchmark")
+            next()
+        , (err)->
+            logger("#{@groupName} startBenchmark failed #{err}") if err?
+        )
+
 
     isStopped : ()->
         if @stopped
             return true
         for client in @clients
+            # ignore silent ones
+            continue if client.silent
             if not client.stopped
                 return false
         @stopped = true
@@ -95,106 +159,119 @@ class ClientGroup
     timeOutCheck : (time)->
         for client in @clients
             client.timeOutCheck(time)
-        
 
-
-class Stat
-    constructor: () ->
-        @startTime = new Date()
-        @count = 0
-        @total = 0
-        @errorCount = 0
-
-    add : (num) ->
-        if not @min?
-            @min = num
-        if not @max?
-            @max = num
-        @count++
-        @total+=num
-        if num > @max
-            @max = num
-        if num > @min
-            @min = num
-
-    addError : () ->
-        @errorCount++
-
-    mergeStat : (stat) ->
-        @count += stat.count
-        @total += stat.total
-        @errorCount += stat.errorCount
-        return this
 
 
 # eventCount contains the event to create browser
 class Client extends EventEmitter
-    constructor : (options) ->
+    constructor : (@options) ->
         # id is a unique client identifier in all client processes
-        {@eventDescriptors, @createBrowser, 
-        @appAddress, @cbhost, @browserConfig, 
-        @id, @serverLogging} = options
+        {@eventDescriptors, @createBrowser, @silent, 
+        @appAddress, @cbhost, @socketioUrl, @stats,
+        @id, @serverLogging, @optimizeConnection} = options
+        @stopped = false
         @eventContext = new benchmarkConfig.EventContext({clientId:@id})
+        return if @silent
         @eventQueue = new benchmarkConfig.EventQueue({
             descriptors : @eventDescriptors
             context : @eventContext
             })
-        @stat= new Stat()
-        @otherStat = {}
+
+    addChild : (child) ->
+        if @optimizeConnection
+            @once('browserconfig', (browserConfig)->
+                child.browserConfig = browserConfig
+            )
+            return
+
+        @once('browserconfig', (browserConfig)->
+            logger("#{child.id} starting")
+            child.browserConfig = browserConfig
+            child.start()
+        )
+        @once('stopped', ()->
+            if not child.started
+                child.stop()
+        )
+
 
     start : ()->
+        @started = true
         @_initialConnect()
 
     _initStartTs : ()->
-        @startTs = (new Date()).getTime()
+        @startTs = Date.now()
 
     _timpeElapsed : ()->
-        return (new Date()).getTime() - @startTs
+        return Date.now() - @startTs
 
     _initialConnect : ()->
         @_initStartTs()
         # cookie jar to get session cookie
         j = request.jar()
-        opts = {url: @appAddress, jar: j}
-        if not @createBrowser
+        opts = {
+            url: @appAddress
+            jar: j
+            timeout: @options.timeout
+        }
+        if @createBrowser
+            if not @options.createAppInstance
+                # create a browser under an app instance
+                opts.url = routes.buildAppInstancePath(@appAddress, @browserConfig.appInstanceId)
+        else
             opts.url = @browserConfig.url
-        logger("#{@id} open #{opts.url}")
+
+        logger("#{@id} requests #{opts.url}")
         request opts, (err, response, body) =>
             return @_fatalErrorHandler(err) if err?
             cookies = j.getCookies(@cbhost)
             if not cookies or cookies.length is 0
-                return @_fatalErrorHandler(new Error("No cookies received."))
+                return @_fatalErrorHandler("No cookies received.")
             sessionIdCookie = lodash.find(cookies, (cookie)->
                 # session cookie's name as in workerConfig.cookieName
                 return cookie.key is 'cb.id'
             )
             if not sessionIdCookie
-                return @_fatalErrorHandler(new Error("No session cookie found."))
+                return @_fatalErrorHandler("No session cookie found.")
 
             @sessionId = sessionIdCookie.value
 
+            timeElapsed = @_timpeElapsed()
             if @createBrowser
                 @browserConfig = {}
                 @browserConfig.browserId = response.headers['x-cb-browserid']
                 @browserConfig.appId = response.headers['x-cb-appid']
                 @browserConfig.appInstanceId = response.headers['x-cb-appinstanceid']
-                # for clients that would share this browser instance
+                # for clients that share browser
                 @browserConfig.url = response.headers['x-cb-url']
-                logger("#{@id} emit browserConfig 
-                    #{@browserConfig.url}")
-                @emit('browserconfig')
+
 
             if not @browserConfig.appId? or not @browserConfig.browserId?
-                @_fatalErrorHandler(new Error("Something is wrong, no browserid detected."))
+                return @_fatalErrorHandler("No browserid detected.")
 
-            @otherStat.initialConnectTime = @_timpeElapsed()
-            @_createSocket()
-            @_initialSocketIo()
+            if @createBrowser
+                @stats.add('createBrowser', timeElapsed)
+                if @options.createAppInstance
+                    @stats.add('createAppInstance', timeElapsed)
+                # give others opportunity to receive io events
+                timers.setImmediate(()=>
+                    logger("#{@id} emit browserConfig  #{@browserConfig.url}")
+                    # creating socket after children clients send initial requests
+                    @emit('browserconfig', @browserConfig)
+                )
+
+            timers.setImmediate(()=>
+                @_createSocket()
+                @_initialSocketIo()
+            )
+            logger("#{@id} opened #{@browserConfig.url}")
+
+            @stats.add('initialPage', timeElapsed)
 
     _initialSocketIo : ()->
         @_initStartTs()
         @socket.on('connect', ()=>
-            @otherStat.connectTime = @_timpeElapsed()
+            @stats.add('socketIoConnect', @_timpeElapsed())
             @socket.emit('auth', @browserConfig.appId, @browserConfig.appInstanceId,
                 @browserConfig.browserId)
             @_initStartTs()
@@ -203,7 +280,7 @@ class Client extends EventEmitter
             )
         )
         @socket.once 'PageLoaded', (nodes, registeredEventTypes, clientComponents, compressionTable) =>
-            @otherStat.pageLoadedTime = @_timpeElapsed()
+            @stats.add('pageLoaded', @_timpeElapsed())
             @compressionTable = if compressionTable? then compressionTable else {}
             for k, v of @compressionTable
                 do (k, v)=>
@@ -212,12 +289,24 @@ class Client extends EventEmitter
                     )
             @socket.on('newSymbol', (original, compressed)=>
                 @compressionTable[original] = compressed
-                do (original, compressed) =>                
+                do (original, compressed) =>
                     @socket.on(compressed, ()=>
                         @_serverEventHandler(original, arguments)
                     )
             )
-            @_nextEvent()
+            if not @silent
+                if @optimizeConnection
+                    @once('startBenchmark', ()=>
+                        @_nextEvent()
+                    )
+                else
+                    timers.setImmediate(()=>
+                        @_nextEvent()
+                    )
+
+            #logger("#{@id} emit clientEngineReady")
+            @clientEngineReady=true
+            @emit("clientEngineReady")
 
         @socket.on('disconnect', ()=>
             @stop()
@@ -226,35 +315,47 @@ class Client extends EventEmitter
     _nextEvent : ()->
         if @stopped
             return
-        
-        @expect = null
-        @expectStartTime = null
+
         nextEvent = @eventQueue.poll()
         if not nextEvent
+            @stats.addCounter('finished')
             return @stop()
+        if @waitStart?
+            @stats.add('wait', Date.now()- @waitStart)
+            @waitStart = null
+        
         # stop and expect
         if nextEvent.type is 'expect'
             @expect = nextEvent
-            @expectStartTime = (new Date()).getTime()
+            @expectStartTime = Date.now()
         else
+            @stats.addCounter('clientEvent')
             nextEvent.emitEvent(@socket)
             @_nextEvent()
 
     _serverEventHandler : (eventName, args)->
+        @stats.addCounter('serverEvent')
         if @expect?
             expectResult = @expect.expect(eventName, args)
             if expectResult is 2
-                @_nextEvent()
+                now = Date.now()
+                @stats.add('eventProcess', now - @expectStartTime)
+                waitDuration = @expect.getWaitDuration()
+                @expect = null
+                @expectStartTime = null
+                if waitDuration <=0
+                    timers.setImmediate(@_nextEvent.bind(@))
+                else
+                    @waitStart = now
+                    setTimeout(@_nextEvent.bind(@), waitDuration)
+
 
     timeOutCheck : (time)->
-        if @expectStartTime? and time - @expectStartTime > 100*1000
-            @_fatalErrorHandler("Timeout while expecting #{@expect.descriptor}")
-        
-
+        if @expectStartTime? and time - @expectStartTime > @options.timeout
+            @_fatalErrorHandler("Timeout while expecting #{@expect.getExpectingEventName()}")
 
     _createSocket : ()->
         @_initStartTs()
-        socketio = require('socket.io-client')
         # pass the session id through url, there is a way to pass through cookie
         # https://gist.github.com/jfromaniello/4087861
         # but it only works for one client instance.
@@ -262,25 +363,36 @@ class Client extends EventEmitter
         queryString = "referer=#{encodeURIComponent(@browserConfig.url)}&cb.id=#{@sessionId}"
         if @serverLogging
             queryString += "&logging=#{@serverLogging}&browserId=#{@browserConfig.browserId}"
-        
+
         # this is a synchronized call, seems no actual connection established
         # at this point.
         # forceNew is mandatory or socket-io will reuse a connection!!!!
-        @socket = socketio(@cbhost, { query: queryString, forceNew:true })
-        @otherStat.socketioClientCreateTime = @_timpeElapsed()
+        @socket = socketio(@socketioUrl, {
+            query: queryString
+            forceNew:true
+            timeout: @options.timeout
+            })
+        @stats.add('socketCreateTime', @_timpeElapsed())
+
         @socket.on('error',(err)=>
-            @_fatalErrorHandler(err)
+            @_fatalErrorHandler("SoketIoError #{err}")
         )
         @socket.on('cberror',(err)=>
-            @_fatalErrorHandler(err)
+            @_fatalErrorHandler("cberror #{err}")
         )
 
 
     _fatalErrorHandler : (@error)->
+        @stats.addCounter('fatalError', "#{@id} #{error}")
+        if not @clientEngineReady
+            # the clientEngineReady will always be triggered,
+            # so the benchmark could go on even some clients fail
+            @emit("clientEngineReady")
         @stop()
 
     stop : () ->
         clearTimeout(@timeoutObj) if @timeoutObj?
+        @expectStartTime = null
         @stopped = true
         @socket?.disconnect()
         @socket?.removeAllListeners()
@@ -294,36 +406,14 @@ class Client extends EventEmitter
             result[k] = v
         return result
 
-###
-client = new Client({
-    eventCount : 200
-    createBrowser : true
-    appAddress : 'http://localhost:3000/benchmark'
-    cbhost  : 'http://localhost:3000'
-    delay : 200
-    id : 'client1'
-    'clientEvent' : dumbEvent
-    })
 
-client1 = new Client({
-    eventCount : 200
-    cbhost  : 'http://localhost:3000'
-    delay : 200
-    id : 'client3'
-    'clientEvent' : dumbEvent
-    browserConfig : {"browserid":"139fz5elz6","appid":"/benchmark","appInstanceId":"0087z5elz4","url":"http://localhost:3000/benchmark/a/0087z5elz4/browsers/139fz5elz6/index"}
-})
-
-client.start()
-client.on('stopped', ()->
-    console.log "stopped"
-)
-setInterval(()->
-    console.log JSON.stringify(client)
-, 3000
-)
-###
 options = {
+    appInstanceCount : {
+        full : 'appinstance-count'
+        default : 10
+        type : 'number'
+        help : 'count of appinstances created on server side.'
+    },
     browserCount : {
         full : 'browser-count'
         default : 50
@@ -341,10 +431,10 @@ options = {
         default : 'http://localhost:3000/benchmark'
         help : 'benchmark application address'
     },
-    cbhost : {
-        full : 'cb-host'
-        default : 'http://localhost:3000'
-        help : 'cloudbrowser host'
+    timeout : {
+        default : 1000*30
+        type : 'number'
+        help : 'connection timeout in ms'
     },
     processId : {
         full : 'process-id'
@@ -355,34 +445,105 @@ options = {
         default : false
         type : 'boolean'
     },
+    optimizeConnection : {
+        full : 'optimize-connection'
+        default : true
+        type : 'boolean'
+    },
+    batchSize : {
+        full : "batch-size"
+        default : 20
+        type : "number"
+    },
     configFile : {
         full : 'configFile'
         default : '#{__dirname}/chat_benchmark.conf'
+    },
+    talkerCount : {
+        full : 'talkerCount'
+        type : 'number'
+        help : 'how many clients actually send events, by default it equals clientCount'
     }
 }
 
 opts = require('nomnom').options(options).script(process.argv[1]).parse()
 
+if opts.appAddress?
+    parsedUrl = parseUrl(opts.appAddress)
+    # as request cookie domain
+    opts.cbhost = "http://#{parsedUrl.hostname}"
+    # host contains port
+    opts.socketioUrl = "http://#{parsedUrl.host}"
+
+if not opts.talkerCount?
+    opts.talkerCount = opts.clientCount
+
+
+logger("options #{JSON.stringify(opts)}")
+
 eventDescriptorReader = new benchmarkConfig.EventDescriptorsReader({fileName:opts.configFile})
-eventDescriptorReader.read((err, eventDescriptors)->
-    return console.log(err) if err
+SysMon = require('../../src/server/sys_mon')
+sysMon = new SysMon({
+    interval : 5000
+    })
+clientProcess = null
+benchmarkFinished = false
+resultLogger = debug("cloudbrowser:benchmark:result")
 
-    opts.eventDescriptors = eventDescriptors
-    clientProcess = new ClientProcess(opts)    
-    intervalObj = setInterval(()->
-        clientProcess.computeStat()
-        console.log JSON.stringify(clientProcess.stat)
-        console.log JSON.stringify(clientProcess.otherStat)
-        if clientProcess.isStopped()
-            console.log "stopped"
-            clearInterval(intervalObj)
 
-    , 3000
-    )
+simpleStatTempFunc = (statsObj)->
+    return if not statsObj?
+    {eventProcess, serverEvent, clientEvent} = statsObj
+    msg = ''
+    if eventProcess?
+        msg += "eventProcess: rate #{eventProcess.rate}, avg #{eventProcess.avg},count #{eventProcess.count}, 
+        totalRate #{eventProcess.totalRate}, totalAvg #{eventProcess.totalAvg},current #{eventProcess.current}, 
+        max #{eventProcess.max}, min #{eventProcess.min};\n"
+
+    if serverEvent?
+        msg += "serverEvent: rate #{serverEvent.rate}, count #{serverEvent.count};\n"
+    
+    if clientEvent?
+        msg += "clientEvent: rate #{clientEvent.rate}, count #{clientEvent.count};\n"
+    return msg
+
+reportStats = (statsObj)->
+    resultLogger(JSON.stringify(statsObj))
+    
+    resultLogger(simpleStatTempFunc(statsObj))
+    
+
+async.waterfall([
+    (next)->
+        eventDescriptorReader.read(next)
+    (eventDescriptors, next)->
+        opts.eventDescriptors = eventDescriptors
+        clientProcess = new ClientProcess(opts)
+        clientProcess.start()
+        clientProcess.once("started", next)
+    (next)->
+        resultLogger("start benchmark...")
+        clientProcess.startBenchmark()
+        intervalObj = setInterval(()->
+            benchmarkFinished = clientProcess.isStopped()
+            reportStats(clientProcess.stats.report())
+            if not benchmarkFinished
+                clientProcess.timeOutCheck()
+            if benchmarkFinished
+                clearInterval(intervalObj)
+                sysMon.stop()
+                resultLogger "stopped"
+                process.exit(1)
+        , 3000
+        )
+        next()
+    ], (err)->
+        console.log("clientProcess #{opts.processId} error #{err}") if err?
 )
 
-
-
-
-
-
+process.on('SIGTERM',()->
+    if clientProcess and not benchmarkFinished
+        reportStats(clientProcess.stats.report())
+        resultLogger "terminated"
+        process.exit(1)
+)

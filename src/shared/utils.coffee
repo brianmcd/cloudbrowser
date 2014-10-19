@@ -88,6 +88,7 @@ exports.readJsonFromFileAsync = (path,callback) ->
     Fs.readFile path, {encoding : "utf8"}, readJsonDataHandler
 
 exports.parseAttributePath = (obj, attr) ->
+    return null if not attr? or not obj?
     attrPaths = attr.split('.')
     lastAttrPath = attrPaths[attrPaths.length-1]
     attrPaths = attrPaths[0...-1]
@@ -109,14 +110,38 @@ exports.toCamelCase = (str)->
 exports.isEmail = (str) ->
     return /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}$/.test(str.toUpperCase())
 
+fileDataCache = {}
+
+exports.readCachedFile = ()->
+    fileName = arguments[0]
+    callback = arguments[arguments.length-1]
+    cache = fileDataCache[fileName]
+    if cache?
+        return callback(null, cache)
+
+    fsReadArgs = [fileName]
+
+    # if we have encoding specified
+    if arguments.length > 2
+        fsReadArgs.push(arguments[1])
+    # push callback
+    fsReadArgs.push((err, data)->
+        callback(err) if err?
+        fileDataCache[fileName] = data
+        callback null, data
+    )
+    Fs.readFile.apply(Fs, fsReadArgs)
+
+
+
 # apparently the lodash's merge can only support plain objects!
 merge = (object, source, depth=5) ->
     if not object? or depth <= 0
         return source
     if lodash.isDate(object)
         return source
-    
-    
+
+
     if lodash.isObject(object)
         for k, v of source
             object[k] = merge(object[k], v, depth - 1)
@@ -133,13 +158,64 @@ exports.merge = merge
 
 exports.isBlank = (str)->
     return (!str || /^\s*$/.test(str))
-            
+
+exports.endsWith = (str, suffix)->
+    return false if not str?
+    return true if not suffix?
+    index = str.indexOf(suffix)
+    return false if index is -1
+    return (index + suffix.length) is str.length
+
+exports.lastIndexOf = (str, val)->
+    index = str.indexOf(val)
+    lastIndex = index
+    while index isnt -1
+        lastIndex = index
+        index = str.indexOf(val, index + 1)
+    return lastIndex
+
+exports.substringAfter = (str, val)->
+    index = str.indexOf(val)
+    return str if index <= 0
+    return str.substr(index)
+
+exports.substringAfterLast = (str, val)->
+    lastIndex = exports.lastIndexOf(str, val)
+    return str if lastIndex is -1
+    return str.substr(lastIndex+1)
+
+class StringReader
+    constructor: (@str) ->
+        @index = 0
+
+    skipUntil : (val)->
+        nextIndex = @str.indexOf(val, @index)
+        @index = (nextIndex + val.length) if nextIndex > 0
+        return nextIndex
+
+    readUntil : (val)->
+        substring = null
+        if not val? or val is ''
+            substring = @str.substring(@index)
+            @index = @str.length
+            return substring
         
-    
+        nextIndex = @str.indexOf(val, @index)
 
-
-                
-            
+        # read til the end of string if not found
+        nextIndex = @str.length if nextIndex < 0
         
+        substring = @str.substring(@index, nextIndex)
+        @index = nextIndex + val.length
+        return substring
     
+exports.StringReader = StringReader
 
+isInt = (n) ->
+    return typeof n is "number" and isFinite(n) and n%1 is 0
+
+isFloat = (n) ->
+    return typeof n is "number" and not isInt(n)
+
+exports.isInt = isInt
+exports.isFloat = isFloat

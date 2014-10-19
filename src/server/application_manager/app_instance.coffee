@@ -16,6 +16,8 @@ cleanupBserver = (id) ->
     return () ->
         console.log "[Browser Manager] - Garbage collected vbrowser #{id}"
 
+logger = debug("cloudbrowser:worker:appins")
+
 class AppInstance extends EventEmitter
     __r_skip :['app','browsers','weakrefsToBrowsers', 'browser', 
                 'weakrefToBrowser', 'server', 'obj', 'uuidService']
@@ -60,15 +62,20 @@ class AppInstance extends EventEmitter
             @browser = vbrowser
         @weakrefsToBrowsers[id] = weakrefToBrowser
         @browsers[id] = vbrowser
-        console.log "#{__filename} : appInstance #{@id} emit addBrowser event #{vbrowser.id}"
+        logger "appInstance #{@id} emit addBrowser event #{vbrowser.id}"
         @emit('addBrowser', vbrowser)
         return weakrefToBrowser
 
 
     _create : (user, callback) ->
         user = User.toUser(user)
-        
         id = @uuidService.getId()
+        if not user?
+            vbrowser = @_createVirtualBrowser
+                type : VirtualBrowser
+                id   : id
+            return callback null, @addBrowser(vbrowser)
+        
         Async.series([
             (cb)=>
                 @server.permissionManager.addBrowserPermRec
@@ -78,28 +85,21 @@ class AppInstance extends EventEmitter
                     permission  : 'own'
                     callback    : cb    
             ,
-            (cb)=>
-                vbrowser = null
-                if user
-                    vbrowser = @_createVirtualBrowser
-                        type        : SecureVirtualBrowser
-                        id          : @uuidService.getId()
-                        creator     : user
-                        permission  : 'own'
-                else 
-                    vbrowser = @_createVirtualBrowser
-                        type : VirtualBrowser
-                        id   : @uuidService.getId()
-                # retrun weak reference
-                console.log "createBrowser #{vbrowser.id} for #{@app.mountPoint} - #{@id}"
-                callback null, @addBrowser(vbrowser)       
+            (cb)=>                
+                vbrowser = @_createVirtualBrowser
+                    type        : SecureVirtualBrowser
+                    id          : id
+                    creator     : user
+                    permission  : 'own'
+                return callback null, @addBrowser(vbrowser)       
             ],(err)->
-                callback(err) if err?
+                callback(err)
         )
         
         
 
     _createVirtualBrowser : (browserInfo) ->
+        startTime = Date.now()
         {id, type, creator, permission} = browserInfo
         vbrowser = new type
             id          : id
@@ -109,11 +109,12 @@ class AppInstance extends EventEmitter
             permission  : permission
             appInstance : this
         vbrowser.load(@app)
+        logger("createBrowser #{@id}:#{id} for #{Date.now()-startTime}ms")
         return vbrowser
 
     # user: the user try to create browser, callback(err, browser)
     createBrowser : (user, callback) ->
-        console.log "getBrowser for #{@app.mountPoint} - #{@id}"
+        logger "getBrowser for #{@app.mountPoint} - #{@id}"
         if not @app.isMultiInstance()
             # return the only instance
             if not @weakrefToBrowser

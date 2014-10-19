@@ -83,7 +83,7 @@ class BaseApplication extends EventEmitter
         @_masterApp.on('change', (changeObj)=>
             @_handleChange(changeObj)
             )
-
+        
         @remoteBrowsing = /^http/.test(@appConfig.entryPoint)
         @counter = 0
         @appInstanceManager = new AppInstanceManager(@appInstanceProvider, @server, this)
@@ -135,6 +135,7 @@ class BaseApplication extends EventEmitter
             browserID : vBrowserID
             appInstanceID : appInstanceID
             host : @server.config.getHttpAddr()
+        res.end()
 
     _serveResourceHandler : (req, res, next) ->
         appInstanceID = req.params.appInstanceID
@@ -203,17 +204,6 @@ class BaseApplication extends EventEmitter
             # redirect to landing page app
             return @landingPageApp._mountPointHandler(req, res, next)
 
-        if @isSingleInstance()
-            # get or create the only instance
-            @appInstanceManager.getAppInstance((err, appInstance)=>
-                return res.send(err.message, 500) if err?
-                # a browser will be created for the appinstance before worker return appInstance to master,
-                # the browserId of the first appinstance will be put in filed browserId of appinstance
-                routes.redirect(res,
-                    routes.buildBrowserPath(@mountPoint, appInstance.id, appInstance.browserId))
-            )
-            return
-
 
         if @isSingleInstancePerUser() and @authApp
             # get or create instance for user
@@ -223,19 +213,28 @@ class BaseApplication extends EventEmitter
                 return @authApp._mountPointHandler(req, res, next)
             # if the user has logged in, create appInstance and browsers
             @appInstanceManager.getUserAppInstance(user, (err, appInstance)=>
-                if err?
-
-                    return res.send(err.message, 500)
+                return routes.internalError(res, err.message) if err?
 
                 routes.redirect(res,
                     routes.buildBrowserPath(@mountPoint, appInstance.id, appInstance.browserId))
             )
             return
 
+        if @isSingleInstance() or @isSingleInstancePerUser()
+            # get or create the only instance
+            @appInstanceManager.getAppInstance((err, appInstance)=>
+                return routes.internalError(res, err.message) if err?
+                # a browser will be created for the appinstance before worker return appInstance to master,
+                # the browserId of the first appinstance will be put in filed browserId of appinstance
+                routes.redirect(res,
+                    routes.buildBrowserPath(@mountPoint, appInstance.id, appInstance.browserId))
+            )
+            return
+
         # we fall to default initiation strategy, create a new instance for every new request
-        @appInstanceManager.create(null, (err, appInstance)=>
-            if err?
-                return res.send(err.message, 500)
+        @appInstanceManager.createAndRegister(null, (err, appInstance)=>
+            return routes.internalError(res, err.message) if err?
+            logger("Redirect request to #{appInstance.id} #{appInstance.browserId}")
             routes.redirect(res,
                 routes.buildBrowserPath(@mountPoint, appInstance.id, appInstance.browserId))
         )
@@ -259,7 +258,7 @@ class BaseApplication extends EventEmitter
                 return @authApp._mountPointHandler(req, res, next)
             previlege = appInstance.getUserPrevilege(user)
             if not previlege
-                return res.send('You do not have the previlege for this page.', 403)
+                return routes.forbidden(res, 'You do not have the previlege for this page.')
 
         if @isMultiInstance()
             # if it is multiple instance, create a new browser
@@ -271,6 +270,7 @@ class BaseApplication extends EventEmitter
             )
         else
             routes.redirectToBrowser(res, @mountPoint, id, appInstance.browserId)
+
 
     mount : () ->
         @httpServer.mount(@mountPoint, @mountPointHandler)

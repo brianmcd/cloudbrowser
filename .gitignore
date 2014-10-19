@@ -20,3 +20,12 @@ config/*
 config/worker1/server_config.json
 
 config/worker2/server_config.json
+
+.idea
+*.iml
+
+*.data
+
+*_data
+
+*.heapsnapshot

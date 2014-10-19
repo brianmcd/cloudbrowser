@@ -1,4 +1,6 @@
 async              = require('async')
+debug              = require('debug')
+
 Config             = require('./config').Config
 DatabaseInterface  = require('./database_interface')
 PermissionManager  = require('./permission_manager')
@@ -10,9 +12,14 @@ HTTPServer         = require('./http_server')
 RmiService         = require('./rmi_service')
 UuidService        = require('./uuid_service')
 
+#require('webkit-devtools-agent').start()
+
 # https://github.com/trevnorris/node-ofe
 # This will overwrite OnFatalError to create a heapdump when your app fatally crashes.
 require('ofe').call()
+require('./profiler')
+
+logger = debug('cloudbrowser:worker:init')
 
 class EventTracker
     constructor: (serverConfig) ->
@@ -31,7 +38,18 @@ class EventTracker
     inc : () ->
         @processedEvents++
 
+class HeartBeater
+    constructor: (dependencies)->
+        {@sysMonitor, @masterStub} = dependencies
+        {@id} = dependencies.config.serverConfig
+        setInterval(()=>
+            @heartBeat()
+        , 5000)
 
+    heartBeat : ()->
+        monitorResult = @sysMonitor.getResult()
+        if monitorResult?
+            @masterStub.workerManager.heartBeat(@id, monitorResult.rss)
 
 
 class Runner
@@ -57,15 +75,29 @@ class Runner
                 masterStub = results.masterStub
                 serverConfig = results.config.serverConfig
                 appManager = masterStub.appManager
-                # the master app manager returns appConfig upon worker registeration
-                appManager.registerWorker(serverConfig.getWorkerConfig(),callback)
+                # the master app manager returns appConfig in the callback
+                appManager.registerWorker(serverConfig.getWorkerConfig(), callback)
             ],
+            'sysMonitor' : ['config',(callback, results)->
+                    id = results.config.serverConfig.id
+                    # monitoring
+                    sysMonitor = require('../server/sys_mon').createSysMon({
+                        id : id
+                        interval : 5000
+                    })
+                    callback null, sysMonitor
+            ],
+            'heartBeat' : ['sysMonitor', 'appConfigs', (callback, results)->
+                    heartBeater = new HeartBeater(results)
+                    callback null, heartBeater
+                    logger("hearbeat initiated")
+            ]
             'eventTracker' : ['masterStub', (callback,results) =>
                 callback(null, new EventTracker(results.config.serverConfig))
             ],
             'database' : ['masterStub',
                     (callback,results) =>
-                        new DatabaseInterface(results.config.serverConfig.databaseConfig, 
+                        new DatabaseInterface(results.config.serverConfig.databaseConfig,
                             callback)
                     ],
             'uuidService' : ['config', 'database',
@@ -83,17 +115,21 @@ class Runner
             'httpServer' :['database','sessionManager','permissionManager',
                             (callback,results) ->
                                 new HTTPServer(results, callback)
+                                logger("httpServer called")
             ],
-            'applicationManager' : ['eventTracker','permissionManager',
+            'applicationManager' : ['eventTracker','permissionManager', 'appConfigs',
                                     'database','httpServer', 'sessionManager','uuidService',
                                     (callback,results) ->
-                                        new ApplicationManager(results,callback);
+                                        new ApplicationManager(results,callback)
+                                        logger("applicationManager called")
             ],
             'socketIOServer':['httpServer','applicationManager','sessionManager', 'permissionManager',
                                 (callback,results) ->
                                     new SocketIoServer(results,callback)
+                                    logger("SocketIoServer called")
             ]
             },(err,results)=>
+                logger("final callback called")
                 if err?
                     @handlerInitializeError(err)
                     if postConstruct?
@@ -106,6 +142,11 @@ class Runner
                     if postConstruct?
                         postConstruct null
                     process.send?({type:'ready'})
+                    id = results.config.serverConfig.id
+                    process.on 'uncaughtException', (err) ->
+                        console.log("Worker #{id} Uncaught Exception:")
+                        console.log(err)
+                        console.log(err.stack)
             )
 
     handlerInitializeError : (err) ->
@@ -115,14 +156,9 @@ class Runner
         process.exit(1)
 
 
-process.on 'uncaughtException', (err) ->
-    console.log("Uncaught Exception:")
-    console.log(err)
-    console.log(err.stack)
-
 if require.main is module
     new Runner(null, (err)->
-        console.log('Server started in local mode')
+        console.log('Server started in standalone mode.')
         )
 
 module.exports = Runner

@@ -6,7 +6,8 @@ http           = require('http')
 
 Uglify         = require('uglify-js')
 Passport       = require('passport')
-lodash = require('lodash')
+lodash         = require('lodash')
+debug          = require('debug')
 
 ###
 browserify will include a lower version of coffee-script wich will register it
@@ -15,6 +16,8 @@ to handle .coffee files, we do not want that
 Browserify    = require('browserify')
 require('coffee-script')
 
+logger=debug("cloudbrowser:worker:http")
+http.globalAgent.maxSockets = 65535
 
 # Dependency for digest based authentication
 #Auth = require('http-auth')
@@ -25,7 +28,7 @@ class HTTPServer extends EventEmitter
         {@sessionManager, @database, @permissionManager} = dependencies
         express = require('express')
         @server = express()
-        @server.use(require('body-parser').urlencoded({extended:true}))
+        @server.use(require('body-parser').urlencoded({extended:true, limit: '10mb'}))
         @server.use(require('cookie-parser')('secret'))
         session = require('express-session')
         @server.use(session(
@@ -49,7 +52,8 @@ class HTTPServer extends EventEmitter
 
         @setupClientEngineRoutes()
         # apprently the callback for listen only fires when the server start successfully
-        @httpServer.listen(@config.httpPort, () =>
+        @httpServer.listen(@config.httpPort, 2048, () =>
+            logger("listening #{@config.httpPort}")
             callback null, this
         )
 
@@ -101,9 +105,7 @@ class HTTPServer extends EventEmitter
     # TODO handle unmoung on master node or wrap handlers in a local
     # registry
     unmount : (path) ->
-        console.log "unmount #{path}"
-        @server.routes.routes.get =
-            r for r in @server.routes.routes.get when r.path isnt path
+        logger "unmount #{path}"
 
     use : (middleware) ->
         @server.use(middleware)

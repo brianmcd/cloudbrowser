@@ -5,6 +5,7 @@ Weak                 = require('weak')
 {EventEmitter}       = require('events')
 
 debug                = require('debug')
+lodash               = require('lodash')
 
 Browser              = require('./browser')
 ResourceProxy        = require('./resource_proxy')
@@ -30,6 +31,7 @@ cleanupBserver = (id) ->
     return () ->
         console.log "[Virtual Browser] - Garbage collected virtual browser #{id}"
 
+
 # Serves 1 Browser to n clients.
 class VirtualBrowser extends EventEmitter
     __r_skip :['server','browser','sockets','compressor','registeredEventTypes','queuedSockets',
@@ -40,6 +42,11 @@ class VirtualBrowser extends EventEmitter
         {@workerId} = @appInstance
         @appInstanceId = @appInstance.id
         weakRefToThis = Weak(this, cleanupBserver(@id))
+
+        @compressor = new Compressor()
+        # make the compressed result deterministic
+        for k in keywordsList
+            @compressor.compress(k)
 
         @browser = new Browser(@id, weakRefToThis, @server.config)
 
@@ -61,16 +68,18 @@ class VirtualBrowser extends EventEmitter
                                 @browser.window.location.hash)
 
         @sockets = []
-        @compressor = new Compressor()
+
         @compressor.on 'newSymbol', (args) =>
             for socket in @sockets
                 socket.emit('newSymbol', args.original, args.compressed)
 
+        @registeredEventTypes = []
         # Indicates whether @browser is currently loading a page.
         # If so, we don't process client events/updates.
         @browserLoading = false
 
-        @registeredEventTypes = []
+        # flag inicate that dom has not changed yet
+        @domChanged = false
 
         # Sockets that have connected before the browser has loaded its first page.
         @queuedSockets = []
@@ -83,6 +92,7 @@ class VirtualBrowser extends EventEmitter
                 @browser.on event, () ->
                     handler.apply(weakRefToThis, arguments)
 
+        # referenced in api.getLogger, for client code only
         @_logger = debug("cloudbrowser:worker:browser:#{@id}")
         #@initLogs() if !@server.config.noLogs
 
@@ -198,6 +208,10 @@ class VirtualBrowser extends EventEmitter
         @_broadcastHelper(socket, name, args)
 
     _broadcastHelper : (except, name, args) ->
+        if not @domChanged and ['pauseRendering', 'resumeRendering'].indexOf(name) is -1
+            @domChanged=true
+            @_broadcastHelper(except, 'pauseRendering', [])
+
         if @server.config.traceProtocol
             @logRPCMethod(name, args)
         if @server.config.compression
@@ -214,7 +228,7 @@ class VirtualBrowser extends EventEmitter
     addSocket : (socket) ->
         address = socket.request.connection.remoteAddress
         {user} = socket.request
-        # if it is not issued from web browser, address is empty 
+        # if it is not issued from web browser, address is empty
         if address
             address = "#{address.address}:#{address.port}"
         userInfo =
@@ -391,11 +405,16 @@ DOMEventHandlers =
 
     EnteredTimer : () ->
         return if @browserLoading
-        @broadcastEvent 'pauseRendering'
+        @domChanged = false
 
+    # TODO DOM updates in timers should be batched,
+    # there is no point to send any events to client if
+    # there's no DOM updates happened in the timer
     ExitedTimer :  () ->
         return if @browserLoading
-        @broadcastEvent 'resumeRendering'
+        if @domChanged
+            @broadcastEvent 'resumeRendering'
+            @domChanged = false
 
     ConsoleLog : (event) ->
         @consoleLog?.write(event.msg + '\n')
@@ -447,18 +466,24 @@ DOMEventHandlers =
 RPCMethods =
     setAttribute : (targetId, attribute, value, socket) ->
         if !@browserLoading
+            @setByClient = socket
+            # do not trigger pause rendering in this case
+            @domChanged = true
+
             target = @nodes.get(targetId)
             if attribute == 'src'
                 return
             if attribute == 'selectedIndex'
                 return target[attribute] = value
-            @setByClient = socket
+
             # Hack for textarea, as it doesn't have a value attribute
             # in the DOM.
             if target.tagName.toLowerCase() is "textarea" and
             attribute is "value" then target.value = value
             else target.setAttribute(attribute, value)
             @setByClient = null
+
+            @domChanged = false
 
     # pan : to my knowledge, this id is used in benchmark tools to track which client instance
     # triggered 'processEvent', a better naming would be clientId
@@ -470,9 +495,7 @@ RPCMethods =
             # can't handle clicks on the server anyway).
             # Need something more elegant.
             return if !event.target
-
-            @broadcastEvent('pauseRendering')
-
+            @domChanged = false
             # Swap nodeIDs with nodes
             clientEv = @nodes.unscrub(event)
 
@@ -486,7 +509,10 @@ RPCMethods =
             console.log("bubbling: #{clientEv.bubbles}")
             ###
             clientEv.target.dispatchEvent(serverEv)
-            @broadcastEvent('resumeRendering', id)
+            if @domChanged
+                @broadcastEvent('resumeRendering', id)
+                @domChanged = false
+
             if @server.config.traceMem
                 gc()
             @server.eventTracker.inc()
@@ -547,11 +573,26 @@ RPCMethods =
             throw new Error("No component on node: #{nodeID}")
         for own key, val of params.attrs
             component.attrs?[key] = val
-        @broadcastEvent('pauseRendering')
+        @domChanged = false
         event = @browser.window.document.createEvent('HTMLEvents')
         event.initEvent(params.event.type, false, false)
         event.info = params.event
         node.dispatchEvent(event)
-        @broadcastEvent('resumeRendering')
+        if @domChanged
+            @domChanged = false
+            @broadcastEvent('resumeRendering')
+
+renderControlEvents = ['pauseRendering', 'resumeRendering']
+
+domEventHandlerNames = lodash.keys(DOMEventHandlers)
+# put frequent occurred events in front
+domEventHandlerNames = lodash.sortBy(domEventHandlerNames, (name)->
+    if name.indexOf('DOM') is 0
+        return 0
+    return 1
+    )
+
+keywordsList = renderControlEvents.concat(domEventHandlerNames)
+
 
 module.exports = VirtualBrowser

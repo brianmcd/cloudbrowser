@@ -18,14 +18,17 @@ exports.getLocalHostName = (callback)->
             try
                 dns.reverse(address, (err, names)->
                     #console.log "#{address} #{names}"
-                    return next(err) if err?
+                    return next() if err?
                     if names? and names.length>0
                         return callback(null, names[0])
+                    else
+                        next()
                 )
             catch e
-                next e
+                next null
         ,(err)->
-            return callback(err,null) if err?
+            if ipAddresses.length >0
+                return callback(null, ipAddresses[0])
             callback(new Error("no names found for localhost"),null)
         )            
     catch e

@@ -26,7 +26,7 @@ class DOMWindowFactory
         # This gives us a Location class that is aware of our
         # DOMWindow and Browser.
         @Location = LocationBuilder(@browser)
-        @logger = debug("cloudbrowser:worker:browser:#{@browser.id}")
+        @logger = debug("cloudbrowser:worker:dom:#{@browser.id}")
 
     create : (url) ->
         window = @jsdom.createWindow(@jsdom.dom.level3.html)
@@ -67,7 +67,7 @@ class DOMWindowFactory
     patchImage : (window) ->
         # TODO MEM
         self = this
-        # Thanks Zombie for Image code 
+        # Thanks Zombie for Image code
         window.Image = (width, height) ->
             img = new self.jsdom
                       .dom
@@ -76,7 +76,7 @@ class DOMWindowFactory
             img.width = width
             img.height = height
             img
-    
+
     patchNavigator : (window) ->
         window.navigator.javaEnabled = false
         window.navigator.language = 'en-US'
@@ -95,14 +95,29 @@ class DOMWindowFactory
         # window.setTimeout and setInterval piggyback off of Node's functions,
         # but emit events before/after calling the supplied function.
         ['setTimeout', 'setInterval'].forEach (timer) ->
-            old = window[timer]
+            # FIXME: using native node's implement temporarily, there is a memory leak in jsdom's implementation
+            old = global[timer]
             window[timer] = (fn, interval, args...) ->
-                old () ->
+                fnWrap = ()->
                     self.logger("trigger #{timer}")
                     self.browser.emit('EnteredTimer')
-                    fn.apply(this, args)
+                    fn.apply(window, args)
                     self.browser.emit('ExitedTimer')
-                , interval
+                #optimize for setTimeout(fn, 0)
+                if (not interval? or interval is 0) and timer is 'setTimeout'
+                    return setImmediate(fnWrap)
+
+                return old(fnWrap, interval)
+        # expose setImmediate
+        window.setImmediate = (fn, args...)->
+            setImmediate(()->
+                self.logger("trigger setImmediate")
+                # need to trigger pauseRendering, resumeRendering in case
+                # there are DOM updates in fn
+                self.browser.emit('EnteredTimer')
+                fn.apply(window, args)
+                self.browser.emit('ExitedTimer')
+            )
 
     patchConsole : (window) ->
         self = this

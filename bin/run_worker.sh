@@ -1,5 +1,7 @@
 #!/bin/bash
+# --configPath=[config path]
 i_scriptDir=$(cd "$(dirname "$0")"; pwd)
+source $i_scriptDir/node_env.sh
 cd $i_scriptDir/..
 echo "starting worker with $@"
-node_modules/coffee-script/bin/coffee src/server/newbin.coffee $@
+$i_coffee --nodejs "$CB_NODE_ARGS" src/server/newbin.coffee $@

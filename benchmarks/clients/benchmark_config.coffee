@@ -31,7 +31,7 @@ class TextInputEventGroup
         {@descriptor, @context} = options
         @text = ''
         if @descriptor.textType is 'random'
-            @text = "#{@context.clientId} want #{@context.counter}"
+            @text = "#{@context.clientId} want #{@context.counter}c"
             @context.counter++
         if @descriptor.textType is 'clientId'
             @text = "#{@context.clientId}"
@@ -39,10 +39,35 @@ class TextInputEventGroup
         @upperCaseText = @text.toUpperCase()
         @textInputDefinition = getTextInputDefinition()
         @textIndex = 0
+        # skip keyboard input events for characters
+        @textIndex = @text.length-1 if @descriptor.keyEvent is 'basic'
         @_initializeEventQueue()
 
     _initializeEventQueue : ()->
         eventDescriptors = []
+        @_inputKeyEvents(eventDescriptors)
+        if @textIndex == @text.length-1 and @descriptor.endEvent
+            endEventDescriptors = @textInputDefinition.endEvent[@descriptor.endEvent]
+            if endEventDescriptors
+                for eventDescriptor in endEventDescriptors
+                    newEventDescriptor = lodash.clone(eventDescriptor, true)
+                    if newEventDescriptor.event is 'setAttribute'
+                        newEventDescriptor.args = [@descriptor.target, "value", @text]
+                        newEventDescriptor.previousInputValue = @text
+                    else
+                        #for change event and keydown keyup of enter
+                        keyEvent = newEventDescriptor.args[0]
+                        keyEvent.target = @descriptor.target
+                    eventDescriptors.push(newEventDescriptor)
+
+        @eventQueue = new EventQueue({
+            descriptors : eventDescriptors
+            context : @context
+            })
+
+    _inputKeyEvents : (eventDescriptors)->
+        return if @descriptor.keyEvent is 'basic'
+        #logger("input full events")
         for eventDescriptor in @textInputDefinition.eventGroup
             newEventDescriptor = null
             if eventDescriptor.event is 'setAttribute'
@@ -66,24 +91,7 @@ class TextInputEventGroup
                 keyEvent.which = curCharCode
                 keyEvent.keyCode = curCharCode
             eventDescriptors.push(newEventDescriptor)
-        if @textIndex == @text.length-1 and @descriptor.endEvent
-            endEventDescriptors = @textInputDefinition.endEvent[@descriptor.endEvent]
-            if endEventDescriptors
-                for eventDescriptor in endEventDescriptors
-                    newEventDescriptor = lodash.clone(eventDescriptor, true)
-                    if newEventDescriptor.event is 'setAttribute'
-                        newEventDescriptor.args = [@descriptor.target, "value", @text]
-                        newEventDescriptor.previousInputValue = @text
-                    else
-                        #for change event and keydown keyup of enter
-                        keyEvent = newEventDescriptor.args[0]
-                        keyEvent.target = @descriptor.target
-                    eventDescriptors.push(newEventDescriptor)
 
-        @eventQueue = new EventQueue({
-            descriptors : eventDescriptors
-            context : @context
-            })
 
     poll :()->
         if @textIndex >= @text.length
@@ -112,6 +120,11 @@ class RegularEvent
             return null
         @polled = true
         return @
+
+    getExpectingEventName : ()->
+        if @expectIndex >= @descriptor.expect.length
+            return null
+        return @descriptor.expect[@expectIndex].event
 
     # 1 means waiting, 2 means fully matched
     # we are not reject anything, if the expected event
@@ -170,6 +183,17 @@ class RegularEvent
             else
                 emitArgs.push(i)
         emitter.emit.apply(emitter, emitArgs)
+
+    getWaitDuration : ()->
+        if @descriptor.wait?
+            return @descriptor.wait if typeof @descriptor.wait is 'number'
+            waitType = @descriptor.wait.type
+            if waitType is 'random'
+                max = @descriptor.wait.max
+                min = if @descriptor.wait.min? then @descriptor.wait.min else 0
+                return Math.random()*(max-min) + min
+        return 0
+        
 
 # the difference between EventGroup and ActionQueue is that EventGroup
 # iterates over the same events over and over again

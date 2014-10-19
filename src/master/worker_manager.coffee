@@ -6,7 +6,7 @@ debug  = require('debug')
 
 routes = require('../server/application_manager/routes')
 
-logger = debug('cloudbrowser:master:proxy')
+logger = debug('cloudbrowser:master:worker')
 
 # return the index of next char that is not skipChar
 strSkip = (str, startIndex, skipChar) ->
@@ -193,7 +193,7 @@ routers = {
     addRoute : (appInfo) ->
         {mountPoint} = appInfo
         if @routersMap[mountPoint]?
-            console.log "route for #{mountPoint} was registered before"
+            logger "route for #{mountPoint} was registered before"
             return
 
         r = new AppPathMather(mountPoint)
@@ -222,7 +222,7 @@ routers = {
                     mountPoint: matchResult.data.mountPoint,
                     appInstanceId: matchResult.params.appInstanceID
                 }
-        console.log "cannot match #{path} to any app, defaulting to root"
+        logger "cannot match #{path} to any app, defaulting to root"
         return {mountPoint:'/'}
 }
 
@@ -232,20 +232,19 @@ class WokerManager
     constructor : (dependencies, callback) ->
         @_rmiService = dependencies.rmiService
         @workersMap = {}
-        # a list of workers, this is for getMostFreeWorker
-        @_workerList = []
-        # counter for getMostFreeWorker
-        @_counter = 0
         @appInstanceMap = {}
         @_workerStubs = {}
         callback null, this
 
-    # pick a worker in round robin
+    # pick a worker with smallest weight
     getMostFreeWorker : () ->
-        if @_workerList.length>0
-            @_counter++
-            return @_workerList[@_counter%@_workerList.length]
-        return null
+        freeWorker = null
+        for id, worker of @workersMap
+            if not freeWorker?
+                freeWorker = worker
+            else if worker.weight < freeWorker.weight
+                freeWorker = worker
+        return freeWorker
 
     # like .jpg .html ...
     isStaticFileRequest : (path) ->
@@ -256,22 +255,19 @@ class WokerManager
 
     # may have slots in the future
     registerWorker : (worker, callback) ->
-        console.log "register worker #{worker.id}"
+        logger "register worker #{worker.id}"
         workerInfo = {
             id : worker.id
             host : worker.host
             httpPort : worker.httpPort
             rmiPort : worker.rmiPort
+            # set initial weight
+            weight : 10
         }
         if @workersMap[worker.id]?
-            console.log "worker exists, updating with new info"
-            @_workerList = lodash.filter(@_workerList, (oldWorker)->
-                return oldWorker.id isnt worker.id
-                );
-
-        console.log "register #{JSON.stringify(workerInfo)}"
-        @workersMap[worker.id]=workerInfo
-        @_workerList.push(workerInfo)
+            logger "worker exists, updating with new info"
+        logger "register #{JSON.stringify(workerInfo)}"
+        @workersMap[worker.id] = workerInfo
         if callback?
             callback null
 
@@ -288,11 +284,25 @@ class WokerManager
         return null
 
     registerAppInstance : (appInstance) ->
-        console.log "register appInstance #{appInstance.id} from #{appInstance.workerId}"
+        workerId = appInstance.workerId
+        logger "register appInstance #{appInstance.id} from #{workerId}"
+        if @workersMap[workerId]?
+            @workersMap[workerId].weight += 10
         @appInstanceMap[appInstance.id] = appInstance
 
     unregisterAppInstance : (appInstanceId) ->
-        delete @appInstanceMap[appInstanceId]
+        appInstance = @appInstanceMap[appInstanceId]
+        if appInstance?
+            workerId = appInstance.workerId
+            if @workersMap[workerId]?
+                @workersMap[workerId].weight -= 10
+            delete @appInstanceMap[appInstanceId]
+
+    heartBeat : (workerId, memroyInBytes)->
+        if @workersMap[workerId]?
+            @workersMap[workerId].weight = parseInt(memroyInBytes/1000000)
+        else
+            logger "worker #{workerId} not registered."
 
 
     ###
@@ -315,7 +325,7 @@ class WokerManager
                 query = querystring.parse(urlObj.query)
                 referer = query.referer
                 if not referer?
-                    console.log "#{path} has no referer"
+                    logger "#{path} has no referer"
                     return {worker : @getMostFreeWorker()}
 
             result = @_getWorkerByUrlPath(urlModule.parse(referer).pathname)
@@ -348,7 +358,8 @@ class WokerManager
                 port : worker.rmiPort
                 }, (err, stub)=>
                     return callback(err) if err?
-                    @_workerStubs[worker.id] = stub
+                    # put worker's stub into cache when the worker is ready
+                    @_workerStubs[worker.id] = stub if stub.appManager?
                     callback null, stub
                 )
         else

@@ -37,7 +37,7 @@ class Config
             console.log "config initialized for #{@serverConfig.id}"
             if not obj.host?
                 # the host is not specified, try to get the ip address
-                serverUtils.getLocalHostIpAddress((err, address)=>
+                serverUtils.getLocalHostName((err, address)=>
                     if err?
                         console.log "Get ip address for localhost failed, applying default value."
                         console.log err
@@ -56,7 +56,7 @@ class Config
             host : masterConfig.host
             port : masterConfig.rmiPort
         }, (err, stub)=>
-            if err? or not stub.config? or not stub.config.workerConfig? or not stub.config.proxyConfig
+            if err? or not stub.config? or not stub.config.workerConfig? or not stub.config.proxyConfig? or not stub.appManager?
                 console.log "Failed to get config from master, retry later..."
                 if err?
                     console.log "error #{err}"

@@ -48,7 +48,7 @@ class AppInstanceManager extends EventEmitter
         else if @app.isSingleInstancePerUser()
             if not user?
                 # the application is configured wrong, create a new instance anyway
-                console.log "__filename: App #{@app.mountPoint} is SingleInstancePerUser but 
+                applogger "App #{@app.mountPoint} is SingleInstancePerUser but 
                         did not provide user when calling createAppInstance"
                 return @_createAppInstance(user, callback)
             if not @userToAppInstances[user]?
@@ -77,8 +77,7 @@ class AppInstanceManager extends EventEmitter
     _createAppInstance :(user, callback) ->
         owner = user
         if user?
-            if typeof user is 'string'
-                owner = new User(user)
+            owner = User.toUser(user)
         else
             owner = @app.getOwner()
 
@@ -95,12 +94,18 @@ class AppInstanceManager extends EventEmitter
             (next)->
                 appInstance.createBrowser(user, next)
             (next)=>
-                @permissionManager.addAppInstancePermRec
-                    user        : owner
-                    mountPoint  : @app.getMountPoint()
-                    permission  : 'own'
-                    appInstanceID : id
-                    callback : next
+                if not user?
+                    # skip permission manager if we do not have user info
+                    next()
+                else
+                    applogger("go through permissionManager")
+                    # FIXME it is crazily slow under some concurrent access
+                    @permissionManager.addAppInstancePermRec
+                        user        : owner
+                        mountPoint  : @app.getMountPoint()
+                        permission  : 'own'
+                        appInstanceID : id
+                        callback : next
             ],(err)=>
                 return callback(err) if err
                 @appInstances[id] = appInstance
@@ -111,9 +116,22 @@ class AppInstanceManager extends EventEmitter
             )
 
         
-    # called by api, need to register the new appInstance to master
+    # called by api, forward the request to master, the master will either find
+    # a existing appInstance or create a new one.
+    # master will register the created appInstance before
+    # invoking this callback
     create :(user, callback) ->
         @_masterApp.createUserAppInstance(user, callback)
+
+    # create a new appInstance in local and register it with master
+    # can only be called by multiInstance apps
+    createAndRegister : (user, callback)->
+        if @app.isSingleInstance() or @app.isSingleInstancePerUser()
+            return callback(new Error("createAndRegister only support multiIntance"))
+        @_createAppInstance(user, (err, appInstance)=>
+            return callback(err) if err?
+            @_masterApp.regsiterAppInstance(@server.config.id, appInstance, callback)
+        )
         
         
     _removeAppInstance : (appInstanceId) ->

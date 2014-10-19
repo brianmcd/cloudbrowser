@@ -6,10 +6,10 @@ path           = require('path')
 async          = require('async')
 config         = require('./config')
 
-process.on 'uncaughtException', (err) ->
-    console.log("Uncaught Exception:")
-    console.log(err)
-    console.log(err.stack)
+#require('webkit-devtools-agent').start()
+
+require('ofe').call()
+require('../server/profiler')
 
 class Runner
     constructor: (argv, postConstruct) ->
@@ -73,8 +73,18 @@ class Runner
                     if postConstruct?
                         postConstruct null
                     # notify parent process if it is a child process
-                    process.send?({type : 'ready'})                
-                )
+                    process.send?({type : 'ready'})
+                    process.on 'uncaughtException', (err) ->
+                        console.log("Master Node Uncaught Exception")
+                        console.log(err)
+                        console.log(err.stack)
+                    # monitoring resource usage
+                    require('../server/sys_mon').createSysMon({
+                        id : 'master'
+                        interval : 5000
+                        printTime : true
+                    })
+        )
             
 if require.main is module
     new Runner(null)

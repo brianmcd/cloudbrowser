@@ -2,21 +2,31 @@ debug = require('debug')
 
 logger = debug('cloudbrowser:master:proxy')
 
+infoLogger = debug('cloudbrowser:master:proxyInfo')
+
 class HttpProxy
     constructor: (dependencies, callback) ->
         @config = dependencies.config.proxyConfig
         @workerManager = dependencies.workerManager
         httpProxy = require('http-proxy')
         @proxy = httpProxy.createProxyServer({})
-        server = require('http').createServer((req, res) =>
+        http = require('http')
+        http.globalAgent.maxSockets = 65535
+        server = http.createServer((req, res) =>
             @proxyRequest req, res
         )
         server.on('upgrade', (req, socket, head) =>
             @proxyWebSocketRequest req, socket, head
         )
-        console.log "starting proxy server listening on #{@config.httpPort}"
-        server.listen(@config.httpPort, ()=>
-            callback null, this
+        @proxy.on('error', (err, req, res, target)=>
+            infoLogger "Proxy error #{err.message} #{target?.host}:#{target?.port} #{req.url}"
+            infoLogger err.stack
+            res.writeHead(500, "Proxy Error.")
+            res.end()
+        )
+        infoLogger "starting proxy server listening on #{@config.httpPort}"
+        server.listen(@config.httpPort, 2048, (err)=>
+            callback err, this
         )
 
     proxyWebSocketRequest : (req, socket, head) ->
@@ -45,6 +55,8 @@ class HttpProxy
             res.writeHead(404)
             return res.end("The url is no longer valid.")
         logger("proxy reqeust #{req.url} to #{worker.id}")
+        # increase worker's weight
+        worker.weight += 5
         @proxy.web(req, res, {
             target:
                 {
