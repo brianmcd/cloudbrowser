@@ -52,7 +52,7 @@ class Browser extends EventEmitter
         @removeAllListeners()
 
     # Loads the application
-    load : (arg) ->
+    load : (arg, callback) ->
         url = null
         app = null
         if arg.entryURL?
@@ -65,30 +65,31 @@ class Browser extends EventEmitter
             url : url
 
         @window.close if @window?
-        @window = @DOMWindowFactory.create(url)
-        # The first time we call this, it won't navigate. 
-        {domain} = @config
+        
+        location = null
         # TODO : Implement node.baseURI to resolve relative
         # paths instead of using this hack
         if not URL.parse(url).protocol
-            @window.location = "file://#{url}"
+            location = "file://#{url}"
         else
-            @window.location = url
-        @document = @window.document
-        @initializeApplication(app) if app? && !app.remoteBrowsing
-
-        @window.addEventListener 'load', () =>
-            @emit('PageLoaded')
-            process.nextTick(() => @emit('afterload'))
+            location = url
 
         initDoc = (html) =>
-            # Fire window load event once document is loaded.
-            @document.addEventListener 'load', (ev) =>
-                ev = @document.createEvent('HTMLEvents')
-                ev.initEvent('load', false, false)
-                @window.dispatchEvent(ev)
-            @document.innerHTML = html
-            @document.close()
+            @DOMWindowFactory.create({
+                html : html
+                location : location
+                url : url
+                callback : (err, window)=>
+                    if err?
+                        logger("Error in creating document")
+                        logger(err)
+                        return callback(err)
+                    @window = window
+                    {@document} = window
+                    @initializeApplication(app) if app? and !app.remoteBrowsing
+                    @emit('PageLoaded')
+                    callback null
+            })
 
         if url?.indexOf('/') is 0
             logger("reading file: #{url}")

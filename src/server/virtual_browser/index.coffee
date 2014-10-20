@@ -78,8 +78,8 @@ class VirtualBrowser extends EventEmitter
         # If so, we don't process client events/updates.
         @browserLoading = false
 
-        # flag inicate that dom has not changed yet
-        @domChanged = false
+        # control if we need to fire a pauseRender event
+        @domChanged = true
 
         # Sockets that have connected before the browser has loaded its first page.
         @queuedSockets = []
@@ -145,11 +145,15 @@ class VirtualBrowser extends EventEmitter
         mongoInterface.getSession(sessionID, callback)
 
     # arg can be an Application or URL string.
-    load : (arg) ->
+    load : (arg, callback) ->
         if not arg then arg = @server.applicationManager.find(@mountPoint)
-        @browser.load(arg)
-        weakRefToThis = Weak(this, cleanupBserver(@id))
-        EmbedAPI(weakRefToThis)
+        self = this
+        @browser.load(arg, (err)->
+            return callback(err) if err?
+            weakRefToThis = Weak(self, cleanupBserver(@id))
+            EmbedAPI(weakRefToThis)
+            callback null
+        )
 
     # For testing purposes, return an emulated client for this browser.
     createTestClient : () ->
@@ -208,7 +212,7 @@ class VirtualBrowser extends EventEmitter
         @_broadcastHelper(socket, name, args)
 
     _broadcastHelper : (except, name, args) ->
-        if not @domChanged and ['pauseRendering', 'resumeRendering'].indexOf(name) is -1
+        if not @domChanged and renderControlEvents.indexOf(name) < 0
             @domChanged=true
             @_broadcastHelper(except, 'pauseRendering', [])
 
@@ -366,6 +370,8 @@ DOMEventHandlers =
     DOMNodeRemovedFromDocument : (event) ->
         return if @browserLoading
         event = @nodes.scrub(event)
+        return if not event.relatedNode?
+        # nodes use weak to auto reclaim garbage nodes
         @broadcastEvent('DOMNodeRemovedFromDocument',
                         event.relatedNode,
                         event.target)
@@ -414,7 +420,8 @@ DOMEventHandlers =
         return if @browserLoading
         if @domChanged
             @broadcastEvent 'resumeRendering'
-            @domChanged = false
+        else
+            @domChanged = true
 
     ConsoleLog : (event) ->
         @consoleLog?.write(event.msg + '\n')
@@ -462,6 +469,7 @@ DOMEventHandlers =
         throw new Error() if @browserLoading
         @broadcastEvent('TestDone')
 
+inputTags = ['INPUT', 'TEXTAREA']
 
 RPCMethods =
     setAttribute : (targetId, attribute, value, socket) ->
@@ -476,14 +484,13 @@ RPCMethods =
             if attribute == 'selectedIndex'
                 return target[attribute] = value
 
-            # Hack for textarea, as it doesn't have a value attribute
-            # in the DOM.
-            if target.tagName.toLowerCase() is "textarea" and
-            attribute is "value" then target.value = value
-            else target.setAttribute(attribute, value)
+            if inputTags.indexOf(target.tagName) >= 0 and attribute is "value"  
+                target.value = value
+                target.setAttribute(attribute, value)
+            else 
+                target.setAttribute(attribute, value)
             @setByClient = null
 
-            @domChanged = false
 
     # pan : to my knowledge, this id is used in benchmark tools to track which client instance
     # triggered 'processEvent', a better naming would be clientId
@@ -511,7 +518,8 @@ RPCMethods =
             clientEv.target.dispatchEvent(serverEv)
             if @domChanged
                 @broadcastEvent('resumeRendering', id)
-                @domChanged = false
+            else
+                @domChanged = true
 
             if @server.config.traceMem
                 gc()
@@ -579,8 +587,9 @@ RPCMethods =
         event.info = params.event
         node.dispatchEvent(event)
         if @domChanged
-            @domChanged = false
             @broadcastEvent('resumeRendering')
+        else
+            @domChanged = true
 
 renderControlEvents = ['pauseRendering', 'resumeRendering']
 

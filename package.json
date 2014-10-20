@@ -18,7 +18,7 @@
     "postinstall": "bin/make-links.sh && mkdir -p logs && bin/instructions.sh"
   },
   "dependencies": {
-    "jsdom": "0.6.5",
+    "jsdom": "git://github.com/bladepan/jsdom.git",
     "html5": "0.3.13",
     "knockout-node": "git+https://github.com/brianmcd/cloudbrowser-knockout.git#81e4cfc792a2cabf40a15e31c6bcbbbbe4c84244",
     "browserify": "1.4.2",

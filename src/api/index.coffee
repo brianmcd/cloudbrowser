@@ -103,10 +103,10 @@ class CloudBrowser
         PageManager : require('./page_manager')
 
 module.exports = (bserver) ->
-    bserver.browser.window.cloudbrowser = new CloudBrowser(bserver)
+    cloudbrowser = new CloudBrowser(bserver)
     {window} = bserver.browser
+    window.cloudbrowser = cloudbrowser
     {server} = bserver
-    {cloudbrowser} = window
 
     app = bserver.server.applicationManager.find(bserver.mountPoint)
     if app.localState?

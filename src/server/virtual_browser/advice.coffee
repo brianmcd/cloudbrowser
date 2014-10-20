@@ -1,8 +1,15 @@
+debug = require('debug')
+
 ClientEvents      = require('../../shared/event_lists').clientEvents
 {isVisibleOnClient} = require('../../shared/utils')
 
+logger=debug("cloudbrowser:domadvice")
+
+
 adviseMethod = (obj, name, func) ->
     originalMethod = obj.prototype[name]
+    logger("#{name} in #{obj} does not exsit") if not originalMethod?
+    logger("invalidate func") if typeof func isnt 'function'
     obj.prototype[name] = () ->
         rv = originalMethod.apply(this, arguments)
         func(this, arguments, rv)
@@ -40,9 +47,11 @@ getBrowser = (node) ->
 
 # Adds advice to a number of DOM methods so we can emit events when the DOM
 # changes.
-exports.addAdvice = (dom) ->
-    dom.cloudBrowserAugmentation = true
-    {html, events} = dom
+exports.addAdvice = () ->
+    jsdom = require('jsdom')
+    html = jsdom.level('3', 'html')
+    events = jsdom.level('3', 'events')
+    core = jsdom.level('3', 'core')
 
     # Advice for: HTMLDocument constructor
     #
@@ -60,74 +69,61 @@ exports.addAdvice = (dom) ->
                 target : this
         html.HTMLDocument.prototype = oldDoc.prototype
 
-    # Advice for: Node.insertBefore
-    #
-    # var insertedNode = parentNode.insertBefore(newNode, referenceNode);
-    adviseMethod html.Node, 'insertBefore', (parent, args, rv) ->
-        elem = args[0]
-        browser = getBrowser(parent)
-        browser.emit 'DOMNodeInserted',
-            target : elem
-            relatedNode : parent
-        # Note: unlike the DOM, we only emit DOMNodeInsertedIntoDocument
-        # on the root of a removed subtree, meaning the handler should check
-        # to see if it has children.
-        # TODO : Must fire for each element in the subtree of elem
-        if isVisibleOnClient(parent, browser)
-            browser.emit 'DOMNodeInsertedIntoDocument',
-                target : elem
-                relatedNode : parent
 
-    # Advice for: Node.removeChild
-    #
-    # var oldChild = node.removeChild(child);
-    adviseMethod html.Node, 'removeChild', (parent, args, rv) ->
-        # Note: Unlike DOM, we only emit DOMNodeRemovedFromDocument on the root
-        # of the removed subtree.
-        browser = getBrowser(parent)
-        if isVisibleOnClient(parent, browser)
-            elem = args[0]
-            browser.emit 'DOMNodeRemovedFromDocument',
-                target : elem
-                relatedNode : parent
+
+    interceptDomEvents = ['DOMNodeRemoved','DOMAttrModified', 
+    'DOMNodeInserted']
+    attrChangeCodeMap = {
+        '2' : 'ADDITION'
+        '3' : 'REMOVAL'
+    }
+
     
-    # Advice for AttrNodeMap.[set|remove]NamedItem
-    #
-    # This catches changes to node attributes.
-    # type : either 'ADDITION' or 'REMOVAL'
-    do () ->
-        attributeHandler = (type) ->
-            return (map, args, rv) ->
-                attr = if type == 'ADDITION'
-                    args[0]
-                else
-                    rv
-                if !attr then return
-
-                target = map._parentNode
-                browser = getBrowser(target)
+    eventDispatchInterceptor = (ev)->
+        target = this
+        {attrChange, type} = ev
+        if not target? or interceptDomEvents.indexOf(type) < 0
+            return
+        try
+            if type is 'DOMAttrModified'
+                browser = getBrowser(target)    
+                attrChangeText = attrChangeCodeMap[attrChange]
+                if not attrChangeText?
+                    return
                 if isVisibleOnClient(target, browser)
-                    browser.emit 'DOMAttrModified',
+                    browser.emit('DOMAttrModified',{
                         target : target
-                        attrName : attr.name
-                        newValue : attr.value
-                        attrChange : type
-                    ###
-                    if /input|textarea|select/.test(target.tagName?.toLowerCase())
-                        process.nextTick () ->
-                            doc = target._ownerDocument
-                            ev = doc.createEvent('HTMLEvents')
-                            ev.initEvent('change', false, false)
-                            target.dispatchEvent(ev)
-                    ###
-        # setNamedItem(node)
-        adviseMethod html.AttrNodeMap,
-                          'setNamedItem',
-                          attributeHandler('ADDITION')
-        # attr = removeNamedItem(string)
-        adviseMethod html.AttrNodeMap,
-                     'removeNamedItem',
-                     attributeHandler('REMOVAL')
+                        attrName : ev.attrName
+                        newValue : ev.newValue
+                        attrChange : attrChangeText
+                    })
+            if type is 'DOMNodeInserted'
+                parent = ev.relatedNode
+                browser = getBrowser(parent)
+                evParam = {
+                    target : target
+                    relatedNode : parent
+                }
+                browser.emit 'DOMNodeInserted', evParam
+                if isVisibleOnClient(parent, browser)
+                    browser.emit 'DOMNodeInsertedIntoDocument', evParam
+            if type is 'DOMNodeRemoved'
+                parent = ev.relatedNode
+                browser = getBrowser(parent)
+                if isVisibleOnClient(parent, browser)
+                    browser.emit 'DOMNodeRemovedFromDocument',
+                        target : target
+                        relatedNode : parent           
+        catch e
+            logger(e)
+            logger(e.stack)
+
+    oldEventDispatcher = html.Node.prototype.dispatchEvent
+    html.Node.prototype.dispatchEvent = (ev)->
+        oldEventDispatcher.apply(this, arguments)
+        if null != ev
+            eventDispatchInterceptor.apply(this, arguments)
+        
 
     # Advice for: HTMLOptionElement.selected property.
     #
@@ -146,6 +142,7 @@ exports.addAdvice = (dom) ->
                     target   : elem
                     property : 'selected'
                     value    : value
+
 
     # Advice for: CharacterData._nodeValue
     #
@@ -209,15 +206,19 @@ exports.addAdvice = (dom) ->
     adviseMethod html.HTMLFrameElement, 'setAttribute', createFrameAttrHandler(false)
     adviseMethod html.HTMLFrameElement, 'setAttributeNS', createFrameAttrHandler(true)
 
-    adviseMethod html.CSSStyleDeclaration, 'setProperty', (elem, args, rv) ->
-      parent = elem._parentElement
-      return if !parent
-      browser = getBrowser(parent)
-      if isVisibleOnClient(parent, browser)
-        browser.emit 'DOMStyleChanged',
-          target:parent
-          attribute:args[0]
-          value:args[1]
+    interceptChangeStyle = (elem, args, rv) ->
+        parent = elem._parentElement
+        return if !parent
+        browser = getBrowser(parent)
+        if isVisibleOnClient(parent, browser)
+            browser.emit 'DOMStyleChanged',
+                target:parent
+                attribute:args[0]
+                value:args[1]
+
+    # TODO it is not safe to rely on a internal api
+    adviseMethod html.CSSStyleDeclaration, 'setProperty', interceptChangeStyle
+    adviseMethod html.CSSStyleDeclaration, '_setProperty', interceptChangeStyle
 
     # Advice for: HTMLElement.style
     #
