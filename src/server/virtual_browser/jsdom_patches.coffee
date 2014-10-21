@@ -14,34 +14,8 @@ exports.applyPatches = () ->
     addCustomCssPropertySupport('cloudbrowserRelativePosition', html.CSSStyleDeclaration)
 
 patchScriptTag = (html) ->
-    
-    oldInsertBefore = html.HTMLScriptElement.prototype.insertBefore
-    html.HTMLScriptElement.prototype.insertBefore = (newChild, refChild) ->
-        rv = oldInsertBefore.apply(this, arguments)
-        if newChild.nodeType == this.TEXT_NODE
-            if this._queueTrigger
-                this._queueTrigger(null, this.text)
-                this._queueTrigger = null
-        return rv
-    html.HTMLScriptElement._init = () ->
-        this.addEventListener 'DOMNodeInsertedIntoDocument', () ->
-            if this.src
-                html.resourceLoader.load(this, this.src, this._eval)
-            else
-                src = this.sourceLocation || {}
-                filename = src.file || this._ownerDocument.URL
-                if src
-                    filename += ':' + src.line + ':' + src.col
-                filename += '<script>'
-                # We need to reserve our spot in the queue, or else window
-                # could fire 'load' before our script runs.
-                this._queueTrigger = html.resourceLoader.enqueue(this, this._eval, filename)
-                if this.text
-                    this._queueTrigger(null, this.text)
-
     html.languageProcessors =
         javascript : (element, code, filename) ->
-            logger("execute #{filename}")
             window = element.ownerDocument?.parentWindow
             if window?
                 try

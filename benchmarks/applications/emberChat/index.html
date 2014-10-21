@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Open Chat Application</title>
+    <link href="css/bootstrap.min.css" rel="stylesheet" />
+</head>
+<body>
+
+<script type="text/x-handlebars">
+<!--main div -->
+<div class="container-fluid">
+   {{outlet}}
+</div> 
+</script>
+
+<script type="text/x-handlebars" data-template-name="index">
+ <div>
+      {{#each alertMessages}}
+        <div class="alert alert-warning alert-dismissible" role="alert">
+        <button type="button" class="close" data-dismiss="alert" {{action 'removeAlert' this}}>
+            <span aria-hidden="true">&times;</span><span class="sr-only">Close</span>
+        </button>
+        {{msg}}
+        </div> 
+      {{/each}}       
+    </div>
+    <h1>Chat Room</h1>
+
+    {{#if editingUserName}}
+    <div class="panel panel-info">
+    <div class="panel-body">
+        <label for="userNameInput">Input a new name : </label>
+        {{input type="text" value=draftUserName placeholder="Plese input a user name" id="userNameInput" insert-newline="changeName" }}
+    </div>
+    </div>
+      
+    {{/if}}
+
+    <!-- chat window-->
+    <div class="panel panel-primary">
+        <div class="panel-heading">
+        <div {{action "enableEditUserName" on="doubleClick"}}>
+            <span title="double click to change user name">Welcome {{userName}}</span>
+        </div>
+        </div>
+        <div class="panel-body" style="max-height: 350px;overflow: scroll;" id="chatMessageBox">
+        {{#each model}}
+          {{msg-item userName=userName msg=msg time=time type=type}}
+        {{/each}}
+        </div>
+        <div class="panel-footer">
+            {{textarea value=currentMessage id="chat-text" cols="100" rows="2" insert-newline="postMessage"}}
+            
+            <button {{action "postMessage"}} class="btn btn-primary">Send</button>
+            
+        </div>
+    </div>
+</script>
+<script type="text/x-handlebars" data-template-name="components/msg-item">
+    {{userName}} : {{msg}} <span class="small">{{format-date time}}</span>
+</script>
+
+<script src="js/libs/jquery-1.10.2.js"></script>
+<script src="js/libs/handlebars-1.1.2.js"></script>
+<script src="js/libs/moment-2.8.3.min.js"></script>
+<script src="js/libs/ember-1.7.0.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
