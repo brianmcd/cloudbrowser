@@ -61,21 +61,9 @@ App.Router.map(function() {
 
 App.IndexRoute = Ember.Route.extend({
   model: function() {
-    console.log("ask for model.");
-
     return chatManager.messages;
   }
 });
-/*
-setInterval(function(){
-    console.log($('.btn-primary').length);
-    msg = '';
-    $('script').each(function(i, ele){
-        msg += "src "+ ele.src + " type " + ele.type + ' name '+ $(ele).attr('data-template-name') + '\n';
-    });
-    console.log("script tags " + msg);
-}, 3000);
-*/
 
 // 'Oct 21, 2014 3:24:31 PM'
 Ember.Handlebars.helper('format-date', function(date) {
@@ -157,7 +145,6 @@ App.IndexController = Ember.ArrayController.extend({
             var alertMessages = this.get('alertMessages');
             var index = alertMessages.indexOf(alert);
             if (index >= 0) {
-                console.log("find "+index);
                 alertMessages.removeAt(index, 1);
             }
         }
