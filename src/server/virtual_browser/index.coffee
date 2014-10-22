@@ -568,6 +568,7 @@ RPCMethods =
                                         clientEv.cancelable, window,
                                         char, char, clientEv.keyLocation,
                                         modifiersList, repeat, locale)
+                event.keyCode = clientEv.keyCode
                 event.which = clientEv.which
         return event
 
