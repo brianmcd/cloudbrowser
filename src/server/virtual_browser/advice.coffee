@@ -105,12 +105,16 @@ exports.addAdvice = () ->
                     relatedNode : parent
                 }
                 browser.emit 'DOMNodeInserted', evParam
+                ###
+                do not check visibility on child because child is
+                 not on dom yet
+                ###
                 if isVisibleOnClient(parent, browser)
                     browser.emit 'DOMNodeInsertedIntoDocument', evParam
             if type is 'DOMNodeRemoved'
                 parent = ev.relatedNode
                 browser = getBrowser(parent)
-                if isVisibleOnClient(parent, browser)
+                if isVisibleOnClient(parent, browser) and isVisibleOnClient(target, browser)
                     browser.emit 'DOMNodeRemovedFromDocument',
                         target : target
                         relatedNode : parent           

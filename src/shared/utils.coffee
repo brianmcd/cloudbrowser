@@ -28,7 +28,8 @@ exports.isVisibleOnClient = (node, browser) ->
         doc = node
     else
         doc = node._ownerDocument
-        if !doc || !node._attachedToDocument || node.nodeType == 11
+        # text node do not have _attachedToDocument
+        if node.nodeType isnt 3 and (!doc || !node._attachedToDocument || node.nodeType == 11 )
             return false
 
     # Chase up the frames to see if the node is part of a document

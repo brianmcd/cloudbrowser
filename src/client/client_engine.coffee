@@ -88,8 +88,10 @@ class ClientEngine
             socket = @window.io(@host, { query: queryString })
             socket.on 'error', (err) ->
                 console.log("Error:"+err)
+                console.log(err.description) if err.description?
             socket.on 'cberror', (err) ->
                 console.log("Error:"+err)
+                console.log(err.description) if err.description?
             socket.on 'connect', () =>
                 console.log("Socket.IO connected")
                 socket.emit('auth', @window.__appID, @window.__appInstanceID, @window.__envSessionID)
