@@ -128,6 +128,11 @@ App.IndexController = Ember.ArrayController.extend({
                 }
             }
             var oldName = this.get('userName');
+            if (name === oldName) {
+                this.send('addAlert', 'The name is unchanged.');
+                this.set('editingUserName', false);
+                return;
+            };
             this.set('userName', name);
             users[browserId] = name;
             this.send('addMessage', oldName + " is now " + name, 'sys');
@@ -136,7 +141,7 @@ App.IndexController = Ember.ArrayController.extend({
 
         addAlert : function(alertMsg){
             alertObj = {
-                msg : 'one msg'
+                msg : alertMsg
             };
             this.get('alertMessages').pushObject(alertObj);
             setTimeout(
