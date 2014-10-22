@@ -72,7 +72,7 @@ exports.addAdvice = () ->
 
 
     interceptDomEvents = ['DOMNodeRemoved','DOMAttrModified', 
-    'DOMNodeInserted']
+    'DOMNodeInserted', 'DOMCharacterDataModified']
     attrChangeCodeMap = {
         '2' : 'ADDITION'
         '3' : 'REMOVAL'
@@ -117,7 +117,14 @@ exports.addAdvice = () ->
                 if isVisibleOnClient(parent, browser) and isVisibleOnClient(target, browser)
                     browser.emit 'DOMNodeRemovedFromDocument',
                         target : target
-                        relatedNode : parent           
+                        relatedNode : parent    
+            if type is 'DOMCharacterDataModified'
+                return if not target._parentNode?
+                browser = getBrowser(target)
+                if isVisibleOnClient(target._parentNode, browser)
+                    browser.emit 'DOMCharacterDataModified',
+                        target : target
+                        value  : ev.newValue
         catch e
             logger(e)
             logger(e.stack)
@@ -146,19 +153,6 @@ exports.addAdvice = () ->
                     target   : elem
                     property : 'selected'
                     value    : value
-
-
-    # Advice for: CharacterData._nodeValue
-    #
-    # This is the only way to detect changes to the text contained in a node.
-    adviseProperty html.CharacterData, '_nodeValue',
-        setter : (elem, value) ->
-            if elem._parentNode?
-                browser = getBrowser(elem)
-                if isVisibleOnClient(elem._parentNode, browser)
-                    browser.emit 'DOMCharacterDataModified',
-                        target : elem
-                        value  : value
 
     # Advice for: EventTarget.addEventListener
     #
