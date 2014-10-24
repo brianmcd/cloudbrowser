@@ -39,8 +39,11 @@
             </div>
         </div>
         <div class="panel-footer">
-            <input type="text" ng-model="currentMessage" id="chat-text" enter-submit="postMessage()"/>
+            <textarea ng-model="currentMessage" id="chat-text" enter-submit="postMessage()" cols="100" rows="2">
+            </textarea>
+            
             <button ng-click="postMessage()" class="btn btn-primary">Send</button>
+            
         </div>
     </div>
 </div>

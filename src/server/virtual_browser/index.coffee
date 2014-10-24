@@ -353,7 +353,8 @@ DOMEventHandlers =
     # TODO: consider doctypes.
     DOMNodeInsertedIntoDocument : (event) ->
         return if @browserLoading
-        {target} = event
+        {target} = event    
+        
         nodes = serialize(target,
                           @resources,
                           @browser.window.document,
@@ -488,7 +489,6 @@ RPCMethods =
 
             if inputTags.indexOf(target.tagName) >= 0 and attribute is "value"
                 target.value = value
-                target.setAttribute(attribute, value)
             else
                 target.setAttribute(attribute, value)
             @setByClient = null

@@ -80,7 +80,7 @@ exports.addAdvice = () ->
         '2' : 'ADDITION'
         '3' : 'REMOVAL'
     }
-
+    inputTags = ['TEXTAREA', 'INPUT']
 
     eventDispatchInterceptor = (ev)->
         target = this
@@ -104,6 +104,8 @@ exports.addAdvice = () ->
             if type is 'DOMNodeInserted'
                 parent = ev.relatedNode
                 browser = getBrowser(parent)
+                return if not browser?
+                
                 evParam = {
                     target : target
                     relatedNode : parent
@@ -113,12 +115,35 @@ exports.addAdvice = () ->
                 do not check visibility on child because child is
                  not on dom yet
                 ###
-                if isVisibleOnClient(parent, browser)
-                    browser.emit 'DOMNodeInsertedIntoDocument', evParam
+                if not isVisibleOnClient(parent, browser)
+                        return
+                # parent is textarea and the child node is text type
+                if inputTags.indexOf(parent.tagName) >= 0 and target.nodeType is 3
+                    val = target.data
+                    browser.emit('DOMAttrModified',{
+                        target : parent
+                        attrName : 'value'
+                        newValue : val
+                        attrChange : 'ADDITION'
+                    })
+                    return
+
+                 browser.emit 'DOMNodeInsertedIntoDocument', evParam
+
             if type is 'DOMNodeRemoved'
                 parent = ev.relatedNode
                 browser = getBrowser(parent)
-                if isVisibleOnClient(parent, browser) and isVisibleOnClient(target, browser)
+                return if not browser? or not isVisibleOnClient(parent, browser)
+                if inputTags.indexOf(parent.tagName) >= 0 and target.nodeType is 3
+                    browser.emit('DOMAttrModified',{
+                        target : parent
+                        attrName : 'value'
+                        newValue : null
+                        attrChange : 'ADDITION'
+                    })
+                    return
+
+                if  isVisibleOnClient(target, browser)
                     browser.emit 'DOMNodeRemovedFromDocument',
                         target : target
                         relatedNode : parent
