@@ -92,7 +92,7 @@ addDefaultHandlers = (html) ->
         ev = @_ownerDocument.createEvent('HTMLEvents')
         ev.initEvent('click', true, true)
         @dispatchEvent(ev)
-        
+
 
 
 # Note: the actual KeyboardEvent implementation in browsers seems to vary

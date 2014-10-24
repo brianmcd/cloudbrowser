@@ -74,6 +74,9 @@ exports.addAdvice = () ->
     interceptDomEvents = ['DOMNodeRemoved','DOMAttrModified',
     'DOMNodeInserted', 'DOMCharacterDataModified']
     attrChangeCodeMap = {
+        # 1 is actually MODIFICATION, as we only care about new value,
+        # so we treat it as an addition
+        '1' : 'ADDITION'
         '2' : 'ADDITION'
         '3' : 'REMOVAL'
     }
@@ -89,6 +92,7 @@ exports.addAdvice = () ->
                 browser = getBrowser(target)
                 attrChangeText = attrChangeCodeMap[attrChange]
                 if not attrChangeText?
+                    logger("illega attrChange value #{attrChange}")
                     return
                 if isVisibleOnClient(target, browser)
                     browser.emit('DOMAttrModified',{
@@ -229,6 +233,22 @@ exports.addAdvice = () ->
     adviseProperty html.HTMLElement, 'style',
         getter : (elem, rv) ->
             rv._parentElement = elem
+
+    adviseProperty html.HTMLInputElement, 'value', 
+        setter : (elem, val)->
+            browser = getBrowser(elem)
+            return if not browser?
+            if val? and typeof val isnt 'string'
+                val = String(val)
+            # it is not part of standard to emit DOMAttrModified after set value
+            browser.emit('DOMAttrModified',{
+                target : elem
+                attrName : 'value'
+                newValue : val
+                attrChange : 'ADDITION'
+            })
+            
+            
 
 
 patchOnEventProperty = (obj, type)->

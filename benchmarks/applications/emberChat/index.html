@@ -46,7 +46,7 @@
         {{/each}}
         </div>
         <div class="panel-footer">
-            {{textarea value=currentMessage id="chat-text" cols="100" rows="2" insert-newline="postMessage"}}
+            {{input type="text" value=currentMessage id="chat-text" placeholder="Say something" insert-newline="postMessage"}}
             
             <button {{action "postMessage"}} class="btn btn-primary">Send</button>
             
