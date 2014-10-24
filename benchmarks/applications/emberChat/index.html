@@ -26,15 +26,12 @@
     </div>
     <h1>Chat Room</h1>
 
-    {{#if editingUserName}}
-    <div class="panel panel-info">
+    <div class="panel panel-info" style="display:none" id="nameInput">
     <div class="panel-body">
         <label for="userNameInput">Input a new name : </label>
         {{input type="text" value=draftUserName placeholder="Plese input a user name" id="userNameInput" insert-newline="changeName" }}
     </div>
     </div>
-      
-    {{/if}}
 
     <!-- chat window-->
     <div class="panel panel-primary">

@@ -40,9 +40,7 @@ if (!chatManager.addMessage) {
 }
 
 
-App = Ember.Application.create({
-    LOG_VIEW_LOOKUPS: true
-});
+App = Ember.Application.create();
 
 App.MsgItemComponent = Ember.Component.extend({
     classNameBindings: ['msgClass'],
@@ -73,14 +71,13 @@ Ember.Handlebars.helper('format-date', function(date) {
 
 App.IndexController = Ember.ArrayController.extend({
     alertMessages : [],
-    editingUserName : false,
     currentMessage : '',
     userName : "Goose_" + browserId,
     draftUserName : '',
       
     actions: {
         enableEditUserName: function() {
-            this.set('editingUserName', true);
+            $("#nameInput").show();
         },
 
         addMessage: function(msg, type){
@@ -118,16 +115,17 @@ App.IndexController = Ember.ArrayController.extend({
             var oldName = this.get('userName');
             if (name === oldName) {
                 this.send('addAlert', 'The name is unchanged.');
-                this.set('editingUserName', false);
+                $("#nameInput").hide();
                 return;
             };
             this.set('userName', name);
             users[browserId] = name;
             this.send('addMessage', oldName + " is now " + name, 'sys');
-            this.set('editingUserName', false);
+            $("#nameInput").hide();
         },
 
         addAlert : function(alertMsg){
+            console.log("altertMsg "+ alertMsg);
             alertObj = {
                 msg : alertMsg
             };
