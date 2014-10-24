@@ -511,13 +511,6 @@ RPCMethods =
             # Create an event we can dispatch on the server.
             serverEv = RPCMethods._createEvent(clientEv, @browser.window)
 
-            if serverEv.type is 'change'
-                logger("Dispatching #{serverEv.type}\t" +
-                            "[#{eventTypeToGroup[clientEv.type]}] on " +
-                            "#{clientEv.target.__nodeID} [#{clientEv.target.tagName}]")
-
-                logger("bubbling: #{clientEv.bubbles}")
-
             clientEv.target.dispatchEvent(serverEv)
             if @domChanged
                 @broadcastEvent('resumeRendering', id)
@@ -528,8 +521,6 @@ RPCMethods =
                 gc()
             @server.eventTracker.inc()
 
-            if serverEv.type is 'change'
-                logger("Finished processing event: #{serverEv.type}")
 
     # Takes a clientEv (an event generated on the client and sent over DNode)
     # and creates a corresponding event for the server's DOM.
