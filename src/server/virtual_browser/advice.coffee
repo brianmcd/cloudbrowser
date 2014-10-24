@@ -71,14 +71,14 @@ exports.addAdvice = () ->
 
 
 
-    interceptDomEvents = ['DOMNodeRemoved','DOMAttrModified', 
+    interceptDomEvents = ['DOMNodeRemoved','DOMAttrModified',
     'DOMNodeInserted', 'DOMCharacterDataModified']
     attrChangeCodeMap = {
         '2' : 'ADDITION'
         '3' : 'REMOVAL'
     }
 
-    
+
     eventDispatchInterceptor = (ev)->
         target = this
         {attrChange, type} = ev
@@ -86,7 +86,7 @@ exports.addAdvice = () ->
             return
         try
             if type is 'DOMAttrModified'
-                browser = getBrowser(target)    
+                browser = getBrowser(target)
                 attrChangeText = attrChangeCodeMap[attrChange]
                 if not attrChangeText?
                     return
@@ -117,7 +117,7 @@ exports.addAdvice = () ->
                 if isVisibleOnClient(parent, browser) and isVisibleOnClient(target, browser)
                     browser.emit 'DOMNodeRemovedFromDocument',
                         target : target
-                        relatedNode : parent    
+                        relatedNode : parent
             if type is 'DOMCharacterDataModified'
                 return if not target._parentNode?
                 browser = getBrowser(target)
@@ -131,10 +131,17 @@ exports.addAdvice = () ->
 
     oldEventDispatcher = html.Node.prototype.dispatchEvent
     html.Node.prototype.dispatchEvent = (ev)->
-        oldEventDispatcher.apply(this, arguments)
-        if null != ev
-            eventDispatchInterceptor.apply(this, arguments)
-        
+        try
+            oldEventDispatcher.apply(this, arguments)
+            if null != ev
+                eventDispatchInterceptor.apply(this, arguments)
+        catch e
+            logger("event dispath err #{e}")
+            logger(e.stack)
+            throw e
+
+
+
 
     # Advice for: HTMLOptionElement.selected property.
     #
@@ -153,6 +160,7 @@ exports.addAdvice = () ->
                     target   : elem
                     property : 'selected'
                     value    : value
+
 
     # Advice for: EventTarget.addEventListener
     #
@@ -173,17 +181,10 @@ exports.addAdvice = () ->
     do () ->
         for type of ClientEvents
             do (type) ->
-                name = "on#{type}"
                 # TODO: remove listener if this is set to something not a function
                 for eventTarget in [html.HTMLElement, html.HTMLDocument]
-                    eventTarget.prototype.__defineSetter__ name, (func) ->
-                        rv = this["__#{name}"] = func
-                        getBrowser(this).emit 'AddEventListener',
-                            target      : this
-                            type        : type
-                        return rv
-                    eventTarget.prototype.__defineGetter__ name, () ->
-                        return this["__#{name}"]
+                    patchOnEventProperty(eventTarget.prototype, type)
+
 
     createFrameAttrHandler = (namespace) ->
         return (elem, args, rv) ->
@@ -220,7 +221,7 @@ exports.addAdvice = () ->
 
     # Advice for: HTMLElement.style
     #
-    # JSDOM level2/style.js uses the style getter to lazily create the 
+    # JSDOM level2/style.js uses the style getter to lazily create the
     # CSSStyleDeclaration object for the element.  To be able to emit
     # the right instruction in the style object advice, we need to have
     # a pointer to the element that owns the style object, so we create it
@@ -228,3 +229,24 @@ exports.addAdvice = () ->
     adviseProperty html.HTMLElement, 'style',
         getter : (elem, rv) ->
             rv._parentElement = elem
+
+
+patchOnEventProperty = (obj, type)->
+    name = "on#{type}"
+    Object.defineProperty(obj, name, {
+        configurable:true
+        get : ()->
+            @["__#{name}"]
+        set : (func)->
+            try
+                @["__#{name}"] = func
+                getBrowser(@).emit('AddEventListener', {
+                    target : this
+                    type : type
+                })
+            catch e
+                logger(e)
+            return
+    })
+
+exports.patchOnEventProperty = patchOnEventProperty

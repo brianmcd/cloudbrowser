@@ -31,6 +31,7 @@ cleanupBserver = (id) ->
     return () ->
         console.log "[Virtual Browser] - Garbage collected virtual browser #{id}"
 
+logger = debug("cloudbrowser:virtualbrowser")
 
 # Serves 1 Browser to n clients.
 class VirtualBrowser extends EventEmitter
@@ -402,6 +403,7 @@ DOMEventHandlers =
 
     AddEventListener : (event) ->
         {target, type} = event
+        # click and change are always listened
         return if !clientEvents[type] || defaultEvents[type]
         idx = @registeredEventTypes.indexOf(type)
         return if idx != -1
@@ -484,10 +486,10 @@ RPCMethods =
             if attribute == 'selectedIndex'
                 return target[attribute] = value
 
-            if inputTags.indexOf(target.tagName) >= 0 and attribute is "value"  
+            if inputTags.indexOf(target.tagName) >= 0 and attribute is "value"
                 target.value = value
                 target.setAttribute(attribute, value)
-            else 
+            else
                 target.setAttribute(attribute, value)
             @setByClient = null
 
@@ -508,13 +510,14 @@ RPCMethods =
 
             # Create an event we can dispatch on the server.
             serverEv = RPCMethods._createEvent(clientEv, @browser.window)
-            ###
-            console.log("Dispatching #{serverEv.type}\t" +
-                        "[#{eventTypeToGroup[clientEv.type]}] on " +
-                        "#{clientEv.target.__nodeID} [#{clientEv.target.tagName}]")
 
-            console.log("bubbling: #{clientEv.bubbles}")
-            ###
+            if serverEv.type is 'change'
+                logger("Dispatching #{serverEv.type}\t" +
+                            "[#{eventTypeToGroup[clientEv.type]}] on " +
+                            "#{clientEv.target.__nodeID} [#{clientEv.target.tagName}]")
+
+                logger("bubbling: #{clientEv.bubbles}")
+
             clientEv.target.dispatchEvent(serverEv)
             if @domChanged
                 @broadcastEvent('resumeRendering', id)
@@ -524,7 +527,9 @@ RPCMethods =
             if @server.config.traceMem
                 gc()
             @server.eventTracker.inc()
-            #console.log("Finished processing event: #{serverEv.type}")
+
+            if serverEv.type is 'change'
+                logger("Finished processing event: #{serverEv.type}")
 
     # Takes a clientEv (an event generated on the client and sent over DNode)
     # and creates a corresponding event for the server's DOM.
@@ -539,6 +544,7 @@ RPCMethods =
             when 'HTMLEvents'
                 event.initEvent(clientEv.type, clientEv.bubbles,
                                 clientEv.cancelable)
+
             when 'MouseEvents'
                 event.initMouseEvent(clientEv.type, clientEv.bubbles,
                                      clientEv.cancelable, window,

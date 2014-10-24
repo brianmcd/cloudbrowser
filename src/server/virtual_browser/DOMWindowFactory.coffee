@@ -1,7 +1,7 @@
 HTML5                  = require('html5')
 {LocationBuilder}      = require('./location')
 {XMLHttpRequest}       = require('./XMLHttpRequest')
-{addAdvice}            = require('./advice')
+{addAdvice, patchOnEventProperty} = require('./advice')
 {applyPatches}         = require('./jsdom_patches')
 
 jsdom = require('jsdom')
@@ -35,6 +35,10 @@ class DOMWindowFactory
                 MutationEvents : '2.0'
             created : (error, window)=>
                 window.history = {}
+                # to make onchange property visible on window, so the jquery think this browser
+                # supports bubble change, bubble submit, see 
+                patchOnEventProperty(window, 'change')
+                patchOnEventProperty(window, 'submit')
                 # This sets window.XMLHttpRequest, and gives the XHR code access to
                 # the window object.
                 window.XMLHttpRequest = XMLHttpRequest
@@ -47,14 +51,12 @@ class DOMWindowFactory
                     window.browser = @browser
                 #FIXME patch location does not work
                 window.location = new @Location(options.location)
-                @logger("set window location #{typeof window.location} #{Object.isFrozen(window)}")
-                @logger("created event triggered ")
 
             loaded : (errors, window)=>
-                @logger("loaded event triggered")
+                # never triggers
                 @logger(errors) if errors?
             done : (errors, window)=>
-                @logger("done event triggered")
+                # never triggers
                 @logger(errors) if errors?
         )
         # created fired before this line execute
@@ -80,7 +82,6 @@ class DOMWindowFactory
                 #logger("set href "+href)
                 @__location = new Location(href)
             })
-        @logger("window location patched")
 
     patchTimers : (window) ->
         self = this
@@ -117,8 +118,8 @@ class DOMWindowFactory
             log : () ->
                 #console.log new Error().stack
                 for a in arguments
-                    console.log a
-                    if a.stack
+                    self.logger a
+                    if a? and a.stack
                         self.logger a.stack
 
                 args = Array.prototype.slice.call(arguments)
@@ -126,7 +127,6 @@ class DOMWindowFactory
                 msg = args.join(' ')
                 self.browser.emit 'ConsoleLog',
                     msg : msg
-                self.logger(msg)
 
     patchWindowMethods : (window) ->
         self = this
@@ -136,6 +136,8 @@ class DOMWindowFactory
                 self.browser.emit 'WindowMethodCalled',
                     method : method
                     args : Array.prototype.slice.call(arguments)
+
+
 
 
 module.exports = DOMWindowFactory
