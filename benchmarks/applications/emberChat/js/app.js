@@ -42,20 +42,11 @@ if (!chatManager.addMessage) {
 
 App = Ember.Application.create();
 
-App.MsgItemComponent = Ember.Component.extend({
-    classNameBindings: ['msgClass'],
-    msgClass:  Ember.computed(function() {
-        var type = this.get('type');
-        if(type==='sys'){
-            return 'alert alert-success';
-        }
-        return '';
-    })
-});
-
 App.Router.map(function() {
     
 });
+
+
 
 App.IndexRoute = Ember.Route.extend({
   model: function() {
@@ -64,9 +55,19 @@ App.IndexRoute = Ember.Route.extend({
 });
 
 // 'Oct 21, 2014 3:24:31 PM'
-Ember.Handlebars.helper('format-date', function(date) {
+Handlebars.registerHelper('format-date', function(date) {
   return moment(date).format('MMM DD, YYYY h:mm:ss A');
 });
+
+Handlebars.registerHelper('msg-class', function(type) {
+    if(type==='sys'){
+        return 'class="alert alert-success"';
+    }
+    return '';
+});
+
+//trim to remove unnessary text elements
+var msgItemTplFunc = Handlebars.compile($("#msgItemTmpl").html().trim());
 
 
 App.IndexController = Ember.ArrayController.extend({
@@ -148,3 +149,45 @@ App.IndexController = Ember.ArrayController.extend({
         }
     }
 });
+
+App.IndexView = Ember.View.extend({
+  didInsertElement: function(){
+    var chatMsgBox = $('#chatMessageBox');
+    var msgObserver = {
+        arrayWillChange : function(observedObj, start, removeCount, addCount){},
+        arrayDidChange : function(observedObj, start, removeCount, addCount){
+            if (addCount > 0) {
+                var content = '';
+                for (var i = 0; i < addCount; i++) {
+                    content += msgItemTplFunc(observedObj[start+i])
+                };
+                chatMsgBox.append(content);
+            }
+            if (removeCount>0) {
+                var removed = [];
+                var msgBox = chatMsgBox[0];
+                var childNodes = msgBox.childNodes;
+                var childrenCount = childNodes.length;
+                var toRemove = 0;
+                for (var i = start; i<childrenCount; i++) {
+                    var child = childNodes[i];
+                    if (child.tagName === 'DIV') {
+                        toRemove++;
+                    }
+                    removed.push(childNodes[i]);
+                    if (toRemove===removeCount) {
+                        break;
+                    }
+                }
+                for (var i = 0; i < removed.length; i++) {
+                    msgBox.removeChild(removed[i]);
+                }
+            }
+        }
+    };
+    msgObserver.arrayDidChange(chatManager.messages, 0, 0, chatManager.messages.length);
+    chatManager.messages.addArrayObserver(msgObserver);
+  }
+
+});
+
