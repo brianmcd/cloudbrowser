@@ -16,21 +16,4 @@ node_modules/coffee-script/bin/coffee benchmarks/analysis/logdata_extractor.coff
 
 $i_scriptDir/plot_benchmark_data.sh $i_dir
 
-cd $i_dir
-
-for line in $(ls *worker*.log); do
-    echo $line createBrowser count
-    grep createBrowser $line | wc -l
-done
-
-for line in $(ls *master*.log); do
-    echo $line register appInstance count
-    grep "register appInstance" $line | wc -l
-done
-
-for line in $(ls *client*.log); do
-    # some processing maybe
-    echo $line open inital html count
-    grep opened $line | wc -l
-done
-
+$i_scriptDir/simple_log_analysis.sh

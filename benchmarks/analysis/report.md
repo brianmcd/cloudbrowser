@@ -20,15 +20,6 @@ Config file : ${clientSetting.configFile}
 | ---- | ---- | ---- | ---- |
 | ${clientSetting.total.appInstanceCount} | ${clientSetting.total.browserCount} | ${clientSetting.total.clientCount} | ${clientSetting.total.batchSize}
 
-<% if(clientSetting.processCount > 1) { %>
-### For each client process
-
-| app instance | browser | client | batch size |
-| ----         | ----    | ----   | ----       |
-| ${clientSetting.total.appInstanceCount} | ${clientSetting.total.browserCount} | ${clientSetting.total.clientCount} | ${clientSetting.total.batchSize}
-
-<% } %>
-
 ## Stats
 
 ### Process Event
@@ -50,6 +41,8 @@ server event count: ${cstats.count}
 ${resourceUsageTable}
 
 <% for(var i=0; i< imgFiles.length; i++) {%>
+
+##### ${imgFiles[i]}
 ![${imgFiles[i]}](${imgFiles[i]} "${imgFiles[i]}")
 
 <% } %>
