@@ -53,7 +53,7 @@ class ResourceProxy
                 throw err if err
                 sendResponse(data)
         else
-            utils.readCachedFile path, (err, data) ->
+            FS.readFile path, (err, data) ->
                 throw err if err
                 sendResponse(data)
         #console.log("Fetching resource: #{id} [type=#{type}] [path=#{path}]")
