@@ -4,6 +4,17 @@ lodash = require('lodash')
 
 logger = debug("cloudbrowser:sysmon")
 
+gcfunc = ()->
+    logger("gc is not defined, plese specify --expose-gc flag")
+
+if typeof gc is 'function'
+    gcfunc = gc
+
+gcThreshold = 1024*1024*900
+lastGcTs = 0
+# do not gc too often
+gcTimeThreshold = 30*1000
+
 class SysMon
     constructor: (opts) ->
         @pid = process.pid
@@ -23,6 +34,15 @@ class SysMon
         usage.lookup(@pid, options, (err, data)=>
             logger("get process usage error #{err.message}") if err?
             result = process.memoryUsage()
+                      
+            if result.heapUsed > gcThreshold
+                now = Date.now()
+                return if (now-lastGcTs)<= gcTimeThreshold
+                logger("trigger gc begin")
+                gcfunc()
+                logger("trigger gc end")
+                lastGcTs=Date.now()
+
             lodash.merge(result, data) if data?
             result.cpu = result.cpu.toFixed(2) if result.cpu?
             result.memoryInMB = (result.memory/1000000).toFixed(2) if result.memory?
