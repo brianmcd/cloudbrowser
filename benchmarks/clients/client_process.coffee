@@ -329,9 +329,15 @@ class Client extends EventEmitter
             @expect = nextEvent
             @expectStartTime = Date.now()
         else
-            @stats.addCounter('clientEvent')
-            nextEvent.emitEvent(@socket)
-            @_nextEvent()
+            waitDuration = nextEvent.getWaitDuration()
+            fireNextEvent = ()=>
+                @stats.addCounter('clientEvent')
+                nextEvent.emitEvent(@socket)
+                @_nextEvent()
+            if waitDuration <= 0
+                setImmediate(fireNextEvent)
+            else
+                setTimeout(fireNextEvent, waitDuration)
 
     _serverEventHandler : (eventName, args)->
         @stats.addCounter('serverEvent')
@@ -344,7 +350,7 @@ class Client extends EventEmitter
                 @expect = null
                 @expectStartTime = null
                 if waitDuration <=0
-                    timers.setImmediate(@_nextEvent.bind(@))
+                    setImmediate(@_nextEvent.bind(@))
                 else
                     @waitStart = now
                     setTimeout(@_nextEvent.bind(@), waitDuration)
