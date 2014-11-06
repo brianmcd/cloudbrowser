@@ -1,0 +1,11 @@
+{
+    "authenticationInterface": false,
+    "name": "emberChat",
+    "isPublic": true,
+    "owner": "panxiaozhong@gmail.com",
+    "description": "A multi user chat application written in JQuery",
+    "mountOnStartup": true,
+    "mountPoint": "/jqueryChat",
+    "collectionName": "jqueryChat.users",
+    "keyboardEvent" : "basic"
+}

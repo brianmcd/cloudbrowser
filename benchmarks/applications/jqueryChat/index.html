@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Open Chat Application</title>
+    <link href="css/bootstrap.min.css" rel="stylesheet" />
+</head>
+<body>
+<!--main div -->
+<div class="container-fluid">
+   <div id="alertMsgsDiv"></div>
+    <h1>Chat Room</h1>
+    <div class="panel panel-info" style="display:none" id="userNameInputDiv">
+    <div class="panel-body">
+        <label for="userNameInput">Input a new name : </label>
+        <input type="text" placeholder="Plese input a user name" id="userNameInput" onkeyup="userNameInputKeyEvents(event)" />
+    </div>
+    </div>
+
+    <!-- chat window-->
+    <div class="panel panel-primary">
+        <div class="panel-heading">
+        <div id="welcomePanel" ondblclick="toggleUserNameInput()">
+            <span title="double click to change user name" id="welcomeSpan">Welcome {{userName}}</span>
+        </div>
+        </div>
+        <div class="panel-body" style="max-height: 350px;overflow: scroll;" id="chatMessageBox">
+        </div>
+        <div class="panel-footer">
+        <textarea id="chatText" placeholder="Say something" cols="100" rows="2" onkeyup="chatBoxKeyEvents(event)"></textarea>
+        <button class="btn btn-primary" onclick="sendChatMsg()">Send</button>
+        </div>
+    </div>
+</div> 
+
+<script type="text/x-handlebars" id="msgItemTmpl">
+<div {{{msg-class type}}}>
+    {{userName}} : {{msg}} <span class="small">{{format-date time}}</span>
+</div>
+</script>
+
+<script type="text/x-handlebars" id="alertMsgTmpl">
+<div class="alert alert-warning alert-dismissible" role="alert">
+    <button type="button" class="close" data-dismiss="alert">
+        <span aria-hidden="true">&times;</span><span class="sr-only">Close</span>
+    </button>
+    {{msg}}
+</div>
+</script>
+
+<script src="js/libs/jquery-2.1.1.min.js"></script>
+<script src="js/libs/handlebars-1.1.2.js"></script>
+<script src="js/libs/moment-2.8.3.min.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
