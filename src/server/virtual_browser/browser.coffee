@@ -87,7 +87,6 @@ class Browser extends EventEmitter
                     @window = window
                     {@document} = window
                     @initializeApplication(app) if app? and !app.remoteBrowsing
-                    @emit('PageLoaded')
                     callback null
             })
 

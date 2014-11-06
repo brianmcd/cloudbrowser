@@ -62,7 +62,13 @@ class DOMWindowFactory
         # created fired before this line execute
         document.close()
         w = document.parentWindow
+        w.onload=()=>
+            # return after the scripts are loaded
+            @browser.emit('PageLoaded')
+        # embed API object to window in this callback;
+        # it must not execute before all other javascript
         options.callback(null, w)
+        
 
 
     patchNavigator : (window) ->
