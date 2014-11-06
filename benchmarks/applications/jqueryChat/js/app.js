@@ -79,7 +79,7 @@ Handlebars.registerHelper('msg-class', function(type) {
 });
 
 //trim to remove unnessary text elements
-var msgItemTplFunc = Handlebars.compile($("#msgItemTmpl").html().trim());
+var msgItemTplFunc = Handlebars.templates['messageItem.tmpl'];
 
 var chatMsgBox = $('#chatMessageBox');
 var msgObserver = {
