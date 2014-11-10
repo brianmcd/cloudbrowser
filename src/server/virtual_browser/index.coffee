@@ -35,7 +35,7 @@ logger = debug("cloudbrowser:virtualbrowser")
 
 # Serves 1 Browser to n clients.
 class VirtualBrowser extends EventEmitter
-    __r_skip :['server','browser','sockets','compressor','registeredEventTypes','queuedSockets',
+    __r_skip :['server','browser','sockets','compressor','registeredEventTypes',
                 'localState','consoleLog','rpcLog', 'nodes', 'resources']
 
     constructor : (vbInfo) ->
@@ -81,9 +81,6 @@ class VirtualBrowser extends EventEmitter
 
         # control if we need to fire a pauseRender event
         @domChanged = true
-
-        # Sockets that have connected before the browser has loaded its first page.
-        @queuedSockets = []
 
         # Indicates whether the browser has loaded its first page.
         @browserInitialized = false
@@ -176,12 +173,10 @@ class VirtualBrowser extends EventEmitter
     close : () ->
         return if @closed
         @closed = true
-        @sockets = @sockets.concat(@queuedSockets)
         socket.disconnect() for socket in @sockets
         socket.removeAllListeners for socket in @sockets
         @compressor.removeAllListeners()
         @sockets = []
-        @queuedSockets = []
         @browser.close()
         @browser = null
         @emit('BrowserClose')
@@ -257,15 +252,14 @@ class VirtualBrowser extends EventEmitter
 
         socket.on 'disconnect', () =>
             @sockets       = (s for s in @sockets       when s != socket)
-            @queuedSockets = (s for s in @queuedSockets when s != socket)
             @emit('disconnect', address)
-            if not (@sockets.length or @queuedSockets.length)
+            if not @sockets.length
                 @emit 'NoClients'
 
         socket.emit('SetConfig', @_clientEngineConfig)
 
         if !@browserInitialized
-            return @queuedSockets.push(socket)
+            return @sockets.push(socket)
         # the socket is added after the first pageloaded event emitted
         nodes = serialize(@browser.window.document,
                           @resources,
@@ -304,8 +298,6 @@ DOMEventHandlers =
         compressionTable = undefined
         if @server.config.compression
             compressionTable = @compressor.textToSymbol
-        @sockets = @sockets.concat(@queuedSockets)
-        @queuedSockets = []
         if @server.config.traceProtocol
             @logRPCMethod('PageLoaded', [nodes, @browser.clientComponents, compressionTable])
         for socket in @sockets
