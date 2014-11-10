@@ -26,7 +26,9 @@ class ClientProcess extends EventEmitter
             console.log(msg)
             throw new Error(msg)
         @clientGroups = []
-        @stats = new StatProvider()
+        @stats = new StatProvider({
+                eventProcess : "percentile"
+            })
         clientsPerGroup = @clientCount/@appInstanceCount
         browsersPerGroup = @browserCount/@appInstanceCount
         talkersPerGroup = options.talkerCount/@appInstanceCount
@@ -502,9 +504,11 @@ simpleStatTempFunc = (statsObj)->
     {eventProcess, serverEvent, clientEvent} = statsObj
     msg = ''
     if eventProcess?
-        msg += "eventProcess: rate #{eventProcess.rate}, avg #{eventProcess.avg},count #{eventProcess.count}, 
-        totalRate #{eventProcess.totalRate}, totalAvg #{eventProcess.totalAvg},current #{eventProcess.current}, 
-        max #{eventProcess.max}, min #{eventProcess.min};\n"
+        msg += "eventProcess: rate #{eventProcess.rate}, avg #{eventProcess.avg} , current #{eventProcess.current}\n
+        eventProcess: totalRate #{eventProcess.totalRate}, totalAvg #{eventProcess.totalAvg}, count #{eventProcess.count}\n
+        eventProcess: max #{eventProcess.max}, min #{eventProcess.min}\n"
+        if eventProcess['100%']?
+            msg += "eventProcess: 90% #{eventProcess['90%']}, 95% #{eventProcess['95%']}, 99% #{eventProcess['99%']}\n"
 
     if serverEvent?
         msg += "serverEvent: rate #{serverEvent.rate}, count #{serverEvent.count};\n"
@@ -517,7 +521,7 @@ reportStats = (statsObj)->
     resultLogger(JSON.stringify(statsObj))
     
     resultLogger(simpleStatTempFunc(statsObj))
-    
+  
 
 async.waterfall([
     (next)->
@@ -532,7 +536,7 @@ async.waterfall([
         clientProcess.startBenchmark()
         intervalObj = setInterval(()->
             benchmarkFinished = clientProcess.isStopped()
-            reportStats(clientProcess.stats.report())
+            reportStats(clientProcess.stats.report2())
             if not benchmarkFinished
                 clientProcess.timeOutCheck()
             if benchmarkFinished
@@ -549,7 +553,7 @@ async.waterfall([
 
 process.on('SIGTERM',()->
     if clientProcess and not benchmarkFinished
-        reportStats(clientProcess.stats.report())
+        reportStats(clientProcess.stats.report2())
         resultLogger "terminated"
         process.exit(1)
 )
