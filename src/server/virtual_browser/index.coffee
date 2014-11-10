@@ -266,20 +266,19 @@ class VirtualBrowser extends EventEmitter
 
         if !@browserInitialized
             return @queuedSockets.push(socket)
-
-        if not @browserLoading
-            nodes = serialize(@browser.window.document,
-                              @resources,
-                              @browser.window.document,
-                              @server.config)
-            compressionTable = undefined
-            if @server.config.compression
-                compressionTable = @compressor.textToSymbol
-            socket.emit('PageLoaded',
-                        nodes,
-                        @registeredEventTypes,
-                        @browser.clientComponents,
-                        compressionTable)
+        # the socket is added after the first pageloaded event emitted
+        nodes = serialize(@browser.window.document,
+                          @resources,
+                          @browser.window.document,
+                          @server.config)
+        compressionTable = undefined
+        if @server.config.compression
+            compressionTable = @compressor.textToSymbol
+        socket.emit('PageLoaded',
+                    nodes,
+                    @registeredEventTypes,
+                    @browser.clientComponents,
+                    compressionTable)
 
         @sockets.push(socket)
         gc() if @server.config.traceMem
