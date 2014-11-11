@@ -16,4 +16,4 @@ node_modules/coffee-script/bin/coffee benchmarks/analysis/logdata_extractor.coff
 
 $i_scriptDir/plot_benchmark_data.sh $i_dir
 
-$i_scriptDir/simple_log_analysis.sh
+$i_scriptDir/simple_log_analysis.sh $i_dir
