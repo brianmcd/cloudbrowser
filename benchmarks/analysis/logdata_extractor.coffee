@@ -412,6 +412,7 @@ class DataFileBuffer extends EventEmitter
     read : ()->
         return null if @position >= @buffer.length
         record = @buffer[@position]
+        @currentRecord = record
         @position++
         return record
 
@@ -472,7 +473,13 @@ class DataFileAggregator extends EventEmitter
         return @writer.lastStat
 
     aggregate: ()->
-        aggregateRecords = []
+        # records that are in the range of current
+        # aggregate time window
+        inRangeRecords = []
+        # hold previous records from those data files that do
+        # not have inRangeRecords
+        previouRecords = []
+
         allEmpty = true
         for dataFile, dataFileBuffer of @buffer.dataFileBuffers
             record = dataFileBuffer.peek()
@@ -490,8 +497,12 @@ class DataFileAggregator extends EventEmitter
             while @inRange(record)
                 inRangeRecord = dataFileBuffer.read()
                 record = dataFileBuffer.peek()
-            aggregateRecords.push(inRangeRecord.content) if inRangeRecord?
-        @doAggregate(aggregateRecords)
+            if inRangeRecord?
+                inRangeRecords.push(inRangeRecord.content)
+            else
+                if dataFileBuffer.currentRecord?
+                    previouRecords.push(dataFileBuffer.currentRecord)
+        @doAggregate(inRangeRecords, previouRecords)
         if allEmpty
             @writeAggregateData()
         else
@@ -511,7 +522,10 @@ class DataFileAggregator extends EventEmitter
         time = record.content[@timeColumn]
         return time >= @startTime and time < @endTime
 
-    doAggregate : (records)->
+    # we need records(in range) to caculate stats like currentRate,
+    # currentLatency, previousRecords are needed to calculate totalCount,
+    # totalRate, etc.
+    doAggregate : (records, previouRecords)->
         return if records.length is 0
         #logger("aggregate #{records.length} records")
         lodash.sortBy(records, @timeColumn)
@@ -536,6 +550,12 @@ class DataFileAggregator extends EventEmitter
                     continue
                 continue if k is 'current'
                 aggregated[k] += v if k isnt @timeColumn
+
+        totalFields = ['count', 'total']
+        for i in previouRecords
+            for k, v of i
+                if totalFields.indexOf(k) >= 0
+                    aggregated[k] += v
 
         if @type is 'sysmon'
             @calculateAvg(aggregated)
