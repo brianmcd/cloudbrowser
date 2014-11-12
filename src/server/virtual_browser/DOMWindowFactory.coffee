@@ -59,12 +59,15 @@ class DOMWindowFactory
                 # never triggers
                 @logger(errors) if errors?
         )
+        
+        w = document.parentWindow
+        w.addEventListener('load', ()=>
+            # return after the scripts are loaded
+            @browser.window = w
+            @browser.emit('PageLoaded')
+        )
         # created fired before this line execute
         document.close()
-        w = document.parentWindow
-        w.onload=()=>
-            # return after the scripts are loaded
-            @browser.emit('PageLoaded')
         # embed API object to window in this callback;
         # it must not execute before all other javascript
         options.callback(null, w)
