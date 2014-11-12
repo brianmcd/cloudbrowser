@@ -117,7 +117,7 @@ class LogExtractorGroup extends EventEmitter
         for logExtractor in @logExtractors
             pushAll(dataFiles, logExtractor.getDataFiles())
 
-        @metaData.dataFiles=lodash.pluck(dataFiles, 'fileName') 
+        @metaData.dataFiles=lodash.pluck(dataFiles, 'fileName')
 
         logger("data files #{dataFiles}")
         fileGroup = lodash.groupBy(dataFiles, (dataFile)->
@@ -243,7 +243,7 @@ class LogStartTimeExtractor extends EventEmitter
 appendArrayToFile = (fileName, arr)->
     fs.appendFileSync(fileName, arr.join(' ') + '\n')
 
-statsColumns = ['updateTime', 'rate', 'totalRate', 'avg', 'totalAvg', 
+statsColumns = ['updateTime', 'rate', 'totalRate', 'avg', 'totalAvg',
 'current', 'count', 'total', 'max', 'min',  'errorCount', 'startTime']
 
 sysMonColumns = ['time', 'cpu', 'memory', 'heapTotal', 'heapUsed']
@@ -485,7 +485,7 @@ class DataFileAggregator extends EventEmitter
             record = dataFileBuffer.peek()
             allEmpty=false if record?
             if record? and not record.content[@timeColumn]?
-                throw new Error("#{@timeColumn} is empty for #{JSON.stringify(record)} from #{dataFile}") 
+                throw new Error("#{@timeColumn} is empty for #{JSON.stringify(record)} from #{dataFile}")
             while @belowRange(record)
                 # highly unlikely
                 logger("record #{JSON.stringify(record)} from #{dataFile} fell below range
@@ -501,7 +501,7 @@ class DataFileAggregator extends EventEmitter
                 inRangeRecords.push(inRangeRecord.content)
             else
                 if dataFileBuffer.currentRecord?
-                    previouRecords.push(dataFileBuffer.currentRecord)
+                    previouRecords.push(dataFileBuffer.currentRecord.content)
         @doAggregate(inRangeRecords, previouRecords)
         if allEmpty
             @writeAggregateData()
@@ -511,7 +511,7 @@ class DataFileAggregator extends EventEmitter
             timers.setImmediate(()=>
                 @aggregate()
             )
-            
+
 
     belowRange : (record)->
         return false if not record?
