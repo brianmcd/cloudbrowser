@@ -474,7 +474,7 @@ class DataFileAggregator extends EventEmitter
 
     aggregate: ()->
         # records that are in the range of current
-        # aggregate time window
+        # aggregate time window, from multiple data files
         inRangeRecords = []
         # hold previous records from those data files that do
         # not have inRangeRecords
@@ -492,7 +492,7 @@ class DataFileAggregator extends EventEmitter
                     #{@startTime} #{@endTime}")
                 dataFileBuffer.read()
                 record = dataFileBuffer.peek()
-            # only take one record for one data file
+            # for one data file only pick last one record in the time range
             inRangeRecord = null
             while @inRange(record)
                 inRangeRecord = dataFileBuffer.read()
