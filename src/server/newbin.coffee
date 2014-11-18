@@ -40,16 +40,15 @@ class EventTracker
 
 class HeartBeater
     constructor: (dependencies)->
-        {@sysMonitor, @masterStub} = dependencies
+        {@masterStub} = dependencies
         {@id} = dependencies.config.serverConfig
         setInterval(()=>
             @heartBeat()
-        , 5000)
+        , 3000)
 
     heartBeat : ()->
-        monitorResult = @sysMonitor.getResult()
-        if monitorResult?
-            @masterStub.workerManager.heartBeat(@id, monitorResult.rss)
+        memoryUsage = process.memoryUsage()
+        @masterStub.workerManager.heartBeat(@id, memoryUsage.heapUsed)
 
 
 class Runner
