@@ -10,17 +10,15 @@ fi
 cd $i_baseDir
 
 for line in $(ls *worker*.log); do
-    echo $line createBrowser count
-    grep createBrowser $line | wc -l
+    echo $line createBrowser count $(grep createBrowser $line | wc -l)
+    
 done
 
 for line in $(ls *master*.log); do
-    echo $line register appInstance count
-    grep "register appInstance" $line | wc -l
+    echo $line register appInstance count $(grep "register appInstance" $line | wc -l)
 done
 
 for line in $(ls *client*.log); do
     # some processing maybe
-    echo $line open inital html count
-    grep opened $line | wc -l
+    echo $line open inital html count $(grep opened $line | wc -l)
 done
