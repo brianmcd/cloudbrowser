@@ -255,7 +255,8 @@ class ColumnedDataWriter
         appendArrayToFile(@fileName, @columns)
 
     writeLine : (stat) ->
-        # compact
+        # compact, if the last line has the same count and errorCount, do not 
+        # write
         if @lastStat? and @lastStat.count?
             return if @lastStat.count is stat.count and @lastStat.errorCount is stat.errorCount
         @lastStat = stat
@@ -274,7 +275,7 @@ class ColumnedDataWriter
 # ordered by importance of the metrics
 clientMetrics = ['eventProcess', 'clientEvent', 'serverEvent', 'wait',
 'createBrowser', 'createAppInstance', 'initialPage', 'socketCreateTime',
-'socketIoConnect', 'pageLoaded']
+'socketIoConnect', 'pageLoaded', 'fatalError']
 
 
 # one logExtractor one log file

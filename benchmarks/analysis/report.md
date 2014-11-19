@@ -25,10 +25,11 @@ Config file : ${clientSetting.configFile}
 ### Process Event
 <% cstats=stats.total['client_request_eventProcess'] %>
 <% waitstats=stats.total['client_request_wait'] %>
+<% errorstats=stats.total['client_request_fatalError'] %>
 
 | Rate | Latency | Count | Error Count | Wait(ms) |
 | ---- | ----    | ----  | ----        | ----     |
-| ${ cstats.totalRate } | ${cstats.totalAvg} | ${cstats.count} |${cstats.errorCount} | ${waitstats==null ? 0 : waitstats.totalAvg} |
+| ${ cstats.totalRate } | ${cstats.totalAvg} | ${cstats.count} |${errorstats==null ? 0 : errorstats.count} | ${waitstats==null ? 0 : waitstats.totalAvg} |
 
 #### Event Count
 
