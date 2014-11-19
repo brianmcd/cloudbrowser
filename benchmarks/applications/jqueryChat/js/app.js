@@ -87,8 +87,8 @@ var msgObserver = {
         if (addCount > 0) {
             var content = '';
             for (var i = 0; i < addCount; i++) {
-                content += msgItemTplFunc(observedObj[start+i])
-            };
+                content += msgItemTplFunc(observedObj[start+i]);
+            }
             chatMsgBox.append(content);
         }
         if (removeCount>0) {
