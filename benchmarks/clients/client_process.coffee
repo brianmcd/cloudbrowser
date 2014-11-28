@@ -359,6 +359,10 @@ class Client extends EventEmitter
 
 
     timeOutCheck : (time)->
+        return if not @started
+        if not @clientEngineReady and @startTs? and time-@startTs > @options.timeout
+            return @_fatalErrorHandler("Timeout while bootstrap clientengine")
+        
         if @expectStartTime? and time - @expectStartTime > @options.timeout
             @_fatalErrorHandler("Timeout while expecting #{@expect.getExpectingEventName()}")
 
@@ -531,9 +535,6 @@ async.waterfall([
         clientProcess = new ClientProcess(opts)
         clientProcess.start()
         clientProcess.once("started", next)
-    (next)->
-        resultLogger("start benchmark...")
-        clientProcess.startBenchmark()
         intervalObj = setInterval(()->
             benchmarkFinished = clientProcess.isStopped()
             reportStats(clientProcess.stats.report2())
@@ -546,6 +547,9 @@ async.waterfall([
                 process.exit(1)
         , 3000
         )
+    (next)->
+        resultLogger("start benchmark...")
+        clientProcess.startBenchmark()
         next()
     ], (err)->
         console.log("clientProcess #{opts.processId} error #{err}") if err?
