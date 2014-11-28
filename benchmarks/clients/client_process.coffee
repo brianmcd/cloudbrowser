@@ -530,7 +530,7 @@ async.waterfall([
         opts.eventDescriptors = eventDescriptors
         clientProcess = new ClientProcess(opts)
         clientProcess.start()
-        clientProcess.once("started", next)
+        next()
     (next)->
         resultLogger("start benchmark...")
         clientProcess.startBenchmark()
