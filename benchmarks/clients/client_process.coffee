@@ -444,6 +444,7 @@ options = {
         help : 'benchmark application address'
     },
     timeout : {
+        env : 'CB_TIMEOUT'
         default : 1000*30
         type : 'number'
         help : 'connection timeout in ms'
@@ -477,6 +478,17 @@ options = {
         help : 'how many clients actually send events, by default it equals clientCount'
     }
 }
+
+# if we define env option, use the enviroment variable as default
+for k, v of options
+    if v.env? and v.default? and process.env[v.env]?
+        defaultVal = process.env[v.env]
+        if v.type isnt 'string'
+            try
+                defaultVal = JSON.parse(defaultVal)
+            catch e
+                # ...
+        v.default = defaultVal
 
 opts = require('nomnom').options(options).script(process.argv[1]).parse()
 

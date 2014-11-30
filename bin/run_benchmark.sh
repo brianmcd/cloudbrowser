@@ -14,16 +14,19 @@ fi
 # print all the env variables set for test
 env | grep CB
 
+# how many test process
 i_processes=1
 if [[ "X$1" != "X" ]]; then
     i_processes=$1
 fi
 
+# test id
 i_prefix=benchmark"$i_time"
 if [[ "X$2" != "X" ]]; then
     i_prefix=$2
 fi
 
+# benchmark client process id prefix
 i_group_prefix=p
 if [[ "X$3" != "X" ]]; then
     i_group_prefix=$3
