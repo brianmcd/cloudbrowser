@@ -218,9 +218,13 @@ class Client extends EventEmitter
         }
         if @createBrowser
             if not @options.createAppInstance
+                if not @browserConfig? or not @browserConfig.appInstanceId?
+                    return @_fatalErrorHandler("No appInstanceId received, maybe parent died.")   
                 # create a browser under an app instance
                 opts.url = routes.buildAppInstancePath(@appAddress, @browserConfig.appInstanceId)
         else
+            if not @browserConfig? or not @browserConfig.url?
+                return @_fatalErrorHandler("No url received, maybe parent died.")
             opts.url = @browserConfig.url
 
         logger("#{@id} requests #{opts.url}")
@@ -395,7 +399,9 @@ class Client extends EventEmitter
 
 
     _fatalErrorHandler : (@error)->
-        @stats.addCounter('fatalError', "#{@id} #{error}")
+        errorMsg="#{@id} #{error}"
+        logger(errorMsg)
+        @stats.addCounter('fatalError', errorMsg)
         if not @clientEngineReady
             # the clientEngineReady will always be triggered,
             # so the benchmark could go on even some clients fail
