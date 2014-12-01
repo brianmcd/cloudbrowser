@@ -30,6 +30,6 @@ config/worker2/server_config.json
 
 *.heapsnapshot
 
-stacks.out
+*.out
 
-stacks.svg
+*.svg

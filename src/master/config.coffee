@@ -329,7 +329,7 @@ class WorkerConfigGenerator
         else
             serverUtils.getLocalHostName((err, hostName)=>
                 @host = hostName
-                _readOtherOptions()
+                @_readOtherOptions()
             )
 
 
