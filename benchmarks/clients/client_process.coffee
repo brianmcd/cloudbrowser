@@ -487,7 +487,7 @@ options = {
 
 # if we define env option, use the enviroment variable as default
 for k, v of options
-    if v.env? and v.default? and process.env[v.env]?
+    if v.env? and v.default? and process.env[v.env]? and process.env[v.env].trim().length > 0
         defaultVal = process.env[v.env]
         if v.type isnt 'string'
             try
