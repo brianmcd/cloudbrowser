@@ -147,18 +147,14 @@ class RegularEvent
         return 1
 
     _matchText : (args, matchRules)->
+        str = JSON.stringify(args)
         for matchRule in matchRules
+            pattern = ''
             if typeof matchRule is 'string'
-                matchIndex = lodash.findIndex(args, (arg)->
-                    return arg.indexOf(matchRule) >= 0
-                    )
-                return false if matchIndex is -1
+                pattern = matchRule
             else
-                if matchRule.type is 'previousInputValue'
-                    matchIndex = lodash.findIndex(args, (arg)->
-                        return arg.indexOf(@context.previousInputValue) >= 0
-                    , @)
-                    return false if matchIndex is -1
+                pattern = @context.previousInputValue
+            return false if str.indexOf(pattern) is -1
         return true
 
     _matchArgs : (args, expectArgs)->

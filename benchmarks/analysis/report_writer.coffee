@@ -37,6 +37,7 @@ class ReportWriter
                 clientConfigTotal[k] = 0 if not clientConfigTotal[k]?
                 clientConfigTotal[k] += clientConfig[k]
         reportObj.clientSetting.total = clientConfigTotal
+        
 
         reportObj.baseTime = formatTime(baseTime)
         reportObj.clientStart = clientStart

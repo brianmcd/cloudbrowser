@@ -1,37 +1,19 @@
 Util = require('util')
 
-exports.applyPatches = (level3) ->
-    addDefaultHandlers(level3.html)
-    addKeyboardEvents(level3)
-    patchScriptTag(level3)
-    addCustomCssPropertySupport('cloudbrowserRelativePosition', level3.html.CSSStyleDeclaration)
+debug = require('debug')
+logger = debug("cloudbrowser:jsdompatch")
 
-patchScriptTag = (level3) ->
-    html = level3.html
-    oldInsertBefore = html.HTMLScriptElement.prototype.insertBefore
-    html.HTMLScriptElement.prototype.insertBefore = (newChild, refChild) ->
-        rv = oldInsertBefore.apply(this, arguments)
-        if newChild.nodeType == this.TEXT_NODE
-            if this._queueTrigger
-                this._queueTrigger(null, this.text)
-                this._queueTrigger = null
-        return rv
-    html.HTMLScriptElement._init = () ->
-        this.addEventListener 'DOMNodeInsertedIntoDocument', () ->
-            if this.src
-                html.resourceLoader.load(this, this.src, this._eval)
-            else
-                # We need to reserve our spot in the queue, or else window
-                # could fire 'load' before our script runs.
-                this._queueTrigger = html.resourceLoader.enqueue(this, this._eval, filename)
-                src = this.sourceLocation || {}
-                filename = src.file || this._ownerDocument.URL
-                if src
-                    filename += ':' + src.line + ':' + src.col
-                filename += '<script>'
-                if this.text
-                    this._queueTrigger(null, this.text)
+exports.applyPatches = () ->
+    jsdom = require('jsdom')
+    html = jsdom.level('3', 'html')
+    events = jsdom.level('3', 'events')
+    core = jsdom.level('3', 'core')
+    addDefaultHandlers(html)
+    addKeyboardEvents(core, events)
+    patchScriptTag(html)
+    addCustomCssPropertySupport('cloudbrowserRelativePosition', html.CSSStyleDeclaration)
 
+patchScriptTag = (html) ->
     html.languageProcessors =
         javascript : (element, code, filename) ->
             window = element.ownerDocument?.parentWindow
@@ -40,9 +22,12 @@ patchScriptTag = (level3) ->
                     window.run(code, filename)
                 catch e
                     # TODO: log this based on debug flag.
-                    console.log(e.stack)
+                    logger(e.stack)
                     # TODO: JSDOM swallows this exception.
-                    throw e
+                    element.raise(
+                        'error', 'Running ' + filename + ' failed.',
+                        {error: e, filename: filename}
+                    )
 
 addDefaultHandlers = (html) ->
     html.HTMLAnchorElement.prototype._eventDefaults =
@@ -107,7 +92,7 @@ addDefaultHandlers = (html) ->
         ev = @_ownerDocument.createEvent('HTMLEvents')
         ev.initEvent('click', true, true)
         @dispatchEvent(ev)
-        
+
 
 
 # Note: the actual KeyboardEvent implementation in browsers seems to vary
@@ -115,8 +100,7 @@ addDefaultHandlers = (html) ->
 # to this level 3 event implementation.
 #
 # http://dev.w3.org/2006/webapi/DOM-Level-3-Events/html/DOM3-Events.html
-addKeyboardEvents = (level3) ->
-    {core, events} = level3
+addKeyboardEvents = (core, events) ->
 
     events.KeyboardEvent = (eventType) ->
         events.UIEvent.call(this, eventType)

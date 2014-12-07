@@ -117,7 +117,7 @@ class LogExtractorGroup extends EventEmitter
         for logExtractor in @logExtractors
             pushAll(dataFiles, logExtractor.getDataFiles())
 
-        @metaData.dataFiles=lodash.pluck(dataFiles, 'fileName') 
+        @metaData.dataFiles=lodash.pluck(dataFiles, 'fileName')
 
         logger("data files #{dataFiles}")
         fileGroup = lodash.groupBy(dataFiles, (dataFile)->
@@ -243,7 +243,7 @@ class LogStartTimeExtractor extends EventEmitter
 appendArrayToFile = (fileName, arr)->
     fs.appendFileSync(fileName, arr.join(' ') + '\n')
 
-statsColumns = ['updateTime', 'rate', 'totalRate', 'avg', 'totalAvg', 
+statsColumns = ['updateTime', 'rate', 'totalRate', 'avg', 'totalAvg',
 'current', 'count', 'total', 'max', 'min',  'errorCount', 'startTime']
 
 sysMonColumns = ['time', 'cpu', 'memory', 'heapTotal', 'heapUsed']
@@ -255,7 +255,8 @@ class ColumnedDataWriter
         appendArrayToFile(@fileName, @columns)
 
     writeLine : (stat) ->
-        # compact
+        # compact, if the last line has the same count and errorCount, do not 
+        # write
         if @lastStat? and @lastStat.count?
             return if @lastStat.count is stat.count and @lastStat.errorCount is stat.errorCount
         @lastStat = stat
@@ -274,7 +275,7 @@ class ColumnedDataWriter
 # ordered by importance of the metrics
 clientMetrics = ['eventProcess', 'clientEvent', 'serverEvent', 'wait',
 'createBrowser', 'createAppInstance', 'initialPage', 'socketCreateTime',
-'socketIoConnect', 'pageLoaded']
+'socketIoConnect', 'pageLoaded', 'fatalError']
 
 
 # one logExtractor one log file
@@ -412,6 +413,7 @@ class DataFileBuffer extends EventEmitter
     read : ()->
         return null if @position >= @buffer.length
         record = @buffer[@position]
+        @currentRecord = record
         @position++
         return record
 
@@ -472,26 +474,36 @@ class DataFileAggregator extends EventEmitter
         return @writer.lastStat
 
     aggregate: ()->
-        aggregateRecords = []
+        # records that are in the range of current
+        # aggregate time window, from multiple data files
+        inRangeRecords = []
+        # hold previous records from those data files that do
+        # not have inRangeRecords
+        previouRecords = []
+
         allEmpty = true
         for dataFile, dataFileBuffer of @buffer.dataFileBuffers
             record = dataFileBuffer.peek()
             allEmpty=false if record?
             if record? and not record.content[@timeColumn]?
-                throw new Error("#{@timeColumn} is empty for #{JSON.stringify(record)} from #{dataFile}") 
+                throw new Error("#{@timeColumn} is empty for #{JSON.stringify(record)} from #{dataFile}")
             while @belowRange(record)
                 # highly unlikely
                 logger("record #{JSON.stringify(record)} from #{dataFile} fell below range
                     #{@startTime} #{@endTime}")
                 dataFileBuffer.read()
                 record = dataFileBuffer.peek()
-            # only take one record for one data file
+            # for one data file only pick last one record in the time range
             inRangeRecord = null
             while @inRange(record)
                 inRangeRecord = dataFileBuffer.read()
                 record = dataFileBuffer.peek()
-            aggregateRecords.push(inRangeRecord.content) if inRangeRecord?
-        @doAggregate(aggregateRecords)
+            if inRangeRecord?
+                inRangeRecords.push(inRangeRecord.content)
+            else
+                if dataFileBuffer.currentRecord?
+                    previouRecords.push(dataFileBuffer.currentRecord.content)
+        @doAggregate(inRangeRecords, previouRecords)
         if allEmpty
             @writeAggregateData()
         else
@@ -500,7 +512,7 @@ class DataFileAggregator extends EventEmitter
             timers.setImmediate(()=>
                 @aggregate()
             )
-            
+
 
     belowRange : (record)->
         return false if not record?
@@ -511,7 +523,10 @@ class DataFileAggregator extends EventEmitter
         time = record.content[@timeColumn]
         return time >= @startTime and time < @endTime
 
-    doAggregate : (records)->
+    # we need records(in range) to caculate stats like currentRate,
+    # currentLatency, previousRecords are needed to calculate totalCount,
+    # totalRate, etc.
+    doAggregate : (records, previouRecords)->
         return if records.length is 0
         #logger("aggregate #{records.length} records")
         lodash.sortBy(records, @timeColumn)
@@ -536,6 +551,12 @@ class DataFileAggregator extends EventEmitter
                     continue
                 continue if k is 'current'
                 aggregated[k] += v if k isnt @timeColumn
+
+        totalFields = ['count', 'total']
+        for i in previouRecords
+            for k, v of i
+                if totalFields.indexOf(k) >= 0
+                    aggregated[k] += v
 
         if @type is 'sysmon'
             @calculateAvg(aggregated)

@@ -4,7 +4,6 @@
     It provides the CloudBrowser API to the instance.
     @namespace cloudbrowser
 ###
-Ko             = require('./ko')
 Util           = require('./util')
 ServerConfig   = require('./server_config')
 User           = require('../server/user')
@@ -103,10 +102,10 @@ class CloudBrowser
         PageManager : require('./page_manager')
 
 module.exports = (bserver) ->
-    bserver.browser.window.cloudbrowser = new CloudBrowser(bserver)
+    cloudbrowser = new CloudBrowser(bserver)
     {window} = bserver.browser
+    window.cloudbrowser = cloudbrowser
     {server} = bserver
-    {cloudbrowser} = window
 
     app = bserver.server.applicationManager.find(bserver.mountPoint)
     if app.localState?
@@ -119,16 +118,17 @@ module.exports = (bserver) ->
                 bserver.setLocalState(property, localState)
             else console.log(cloudbrowserError('PROPERTY_EXISTS', "- #{property}"))
 
-    # TODO : Fix ko
-    cloudbrowser.ko = Ko
+    
 
     # If an app needs server-side knockout, we have to monkey patch
     # some ko functions.
     if server.config.knockout
+        # TODO : Fix ko
+        cloudbrowser.ko = require('./ko')
         Browser = require('../server/virtual_browser/browser')
-        window.run(Browser.jQScript, "jquery-1.6.2.js")
-        window.run(Browser.koScript, "knockout-latest.debug.js")
-        window.run(Browser.koPatch, "ko-patch.js")
+        window.run(Browser.jQScript(), "jquery-1.6.2.js")
+        window.run(Browser.koScript(), "knockout-latest.debug.js")
+        window.run(Browser.koPatch(), "ko-patch.js")
 
 # TODO : Put the documentation of these callbacks somewhere else.
 ###*

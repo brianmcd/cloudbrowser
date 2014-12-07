@@ -52,7 +52,7 @@ class Browser extends EventEmitter
         @removeAllListeners()
 
     # Loads the application
-    load : (arg) ->
+    load : (arg, callback) ->
         url = null
         app = null
         if arg.entryURL?
@@ -65,34 +65,34 @@ class Browser extends EventEmitter
             url : url
 
         @window.close if @window?
-        @window = @DOMWindowFactory.create(url)
-        # The first time we call this, it won't navigate. 
-        {domain} = @config
+        
+        location = null
         # TODO : Implement node.baseURI to resolve relative
         # paths instead of using this hack
         if not URL.parse(url).protocol
-            @window.location = "file://#{url}"
+            location = "file://#{url}"
         else
-            @window.location = url
-        @document = @window.document
-        @initializeApplication(app) if app? && !app.remoteBrowsing
-
-        @window.addEventListener 'load', () =>
-            @emit('PageLoaded')
-            process.nextTick(() => @emit('afterload'))
+            location = url
 
         initDoc = (html) =>
-            # Fire window load event once document is loaded.
-            @document.addEventListener 'load', (ev) =>
-                ev = @document.createEvent('HTMLEvents')
-                ev.initEvent('load', false, false)
-                @window.dispatchEvent(ev)
-            @document.innerHTML = html
-            @document.close()
+            @DOMWindowFactory.create({
+                html : html
+                location : location
+                url : url
+                callback : (err, window)=>
+                    if err?
+                        logger("Error in creating document")
+                        logger(err)
+                        return callback(err)
+                    @window = window
+                    {@document} = window
+                    @initializeApplication(app) if app? and !app.remoteBrowsing
+                    callback null
+            })
 
         if url?.indexOf('/') is 0
             logger("reading file: #{url}")
-            utils.readCachedFile url, 'utf8', (err, data) =>
+            FS.readFile url, 'utf8', (err, data) =>
                 throw err if err
                 initDoc(data)
         else
@@ -108,16 +108,22 @@ class Browser extends EventEmitter
         @window.process = process
         @window.__dirname = app.path
 
-    @koPatch : do () ->
-        koPatchPath = Path.resolve(__dirname, 'knockout', 'ko-patch.js')
-        FS.readFileSync(koPatchPath, 'utf8')
+    @koPatch = () ->
+        if not @_koPatch?
+            koPatchPath = Path.resolve(__dirname, 'knockout', 'ko-patch.js')
+            @_koPatch = FS.readFileSync(koPatchPath, 'utf8')
+        return @_koPatch
 
-    @koScript = do () ->
-        koPath = Path.resolve(__dirname, 'knockout', 'knockout-latest.debug.js')
-        FS.readFileSync(koPath, 'utf8')
+    @koScript = () ->
+        if not @_koScript?
+            koPath = Path.resolve(__dirname, 'knockout', 'knockout-latest.debug.js')
+            @_koScript = FS.readFileSync(koPath, 'utf8')
+        return @_koScript
 
-    @jQScript = do () ->
-        jQueryPath = Path.resolve(__dirname, 'knockout', 'jquery-1.6.2.js')
-        FS.readFileSync(jQueryPath, 'utf8')
+    @jQScript = () ->
+        if not @_jQScript?
+            jQueryPath = Path.resolve(__dirname, 'knockout', 'jquery-1.6.2.js')
+            @_jQScript = FS.readFileSync(jQueryPath, 'utf8')
+        return @_jQScript
 
 module.exports = Browser

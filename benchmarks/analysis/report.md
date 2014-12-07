@@ -20,23 +20,16 @@ Config file : ${clientSetting.configFile}
 | ---- | ---- | ---- | ---- |
 | ${clientSetting.total.appInstanceCount} | ${clientSetting.total.browserCount} | ${clientSetting.total.clientCount} | ${clientSetting.total.batchSize}
 
-<% if(clientSetting.processCount > 1) { %>
-### For each client process
-
-| app instance | browser | client | batch size |
-| ----         | ----    | ----   | ----       |
-| ${clientSetting.total.appInstanceCount} | ${clientSetting.total.browserCount} | ${clientSetting.total.clientCount} | ${clientSetting.total.batchSize}
-
-<% } %>
-
 ## Stats
 
 ### Process Event
 <% cstats=stats.total['client_request_eventProcess'] %>
+<% waitstats=stats.total['client_request_wait'] %>
+<% errorstats=stats.total['client_request_fatalError'] %>
 
-| Rate | Latency | Count | Error Count |
-| ---- | ----    | ----  | ----        |
-| ${ cstats.totalRate } | ${cstats.totalAvg} | ${cstats.count} |${cstats.errorCount} |
+| Rate | Latency | Count | Error Count | Wait(ms) |
+| ---- | ----    | ----  | ----        | ----     |
+| ${ cstats.totalRate } | ${cstats.totalAvg} | ${cstats.count} |${errorstats==null ? 0 : errorstats.count} | ${waitstats==null ? 0 : waitstats.totalAvg} |
 
 #### Event Count
 
@@ -50,6 +43,8 @@ server event count: ${cstats.count}
 ${resourceUsageTable}
 
 <% for(var i=0; i< imgFiles.length; i++) {%>
+
+##### ${imgFiles[i]}
 ![${imgFiles[i]}](${imgFiles[i]} "${imgFiles[i]}")
 
 <% } %>

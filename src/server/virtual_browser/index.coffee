@@ -31,10 +31,11 @@ cleanupBserver = (id) ->
     return () ->
         console.log "[Virtual Browser] - Garbage collected virtual browser #{id}"
 
+logger = debug("cloudbrowser:virtualbrowser")
 
 # Serves 1 Browser to n clients.
 class VirtualBrowser extends EventEmitter
-    __r_skip :['server','browser','sockets','compressor','registeredEventTypes','queuedSockets',
+    __r_skip :['server','browser','sockets','compressor','registeredEventTypes',
                 'localState','consoleLog','rpcLog', 'nodes', 'resources']
 
     constructor : (vbInfo) ->
@@ -78,11 +79,8 @@ class VirtualBrowser extends EventEmitter
         # If so, we don't process client events/updates.
         @browserLoading = false
 
-        # flag inicate that dom has not changed yet
-        @domChanged = false
-
-        # Sockets that have connected before the browser has loaded its first page.
-        @queuedSockets = []
+        # control if we need to fire a pauseRender event
+        @domChanged = true
 
         # Indicates whether the browser has loaded its first page.
         @browserInitialized = false
@@ -145,11 +143,15 @@ class VirtualBrowser extends EventEmitter
         mongoInterface.getSession(sessionID, callback)
 
     # arg can be an Application or URL string.
-    load : (arg) ->
+    load : (arg, callback) ->
         if not arg then arg = @server.applicationManager.find(@mountPoint)
-        @browser.load(arg)
-        weakRefToThis = Weak(this, cleanupBserver(@id))
-        EmbedAPI(weakRefToThis)
+        self = this
+        @browser.load(arg, (err)->
+            return callback(err) if err?
+            weakRefToThis = Weak(self, cleanupBserver(@id))
+            EmbedAPI(weakRefToThis)
+            callback null
+        )
 
     # For testing purposes, return an emulated client for this browser.
     createTestClient : () ->
@@ -171,12 +173,10 @@ class VirtualBrowser extends EventEmitter
     close : () ->
         return if @closed
         @closed = true
-        @sockets = @sockets.concat(@queuedSockets)
         socket.disconnect() for socket in @sockets
         socket.removeAllListeners for socket in @sockets
         @compressor.removeAllListeners()
         @sockets = []
-        @queuedSockets = []
         @browser.close()
         @browser = null
         @emit('BrowserClose')
@@ -208,7 +208,7 @@ class VirtualBrowser extends EventEmitter
         @_broadcastHelper(socket, name, args)
 
     _broadcastHelper : (except, name, args) ->
-        if not @domChanged and ['pauseRendering', 'resumeRendering'].indexOf(name) is -1
+        if not @domChanged and renderControlEvents.indexOf(name) < 0
             @domChanged=true
             @_broadcastHelper(except, 'pauseRendering', [])
 
@@ -252,16 +252,15 @@ class VirtualBrowser extends EventEmitter
 
         socket.on 'disconnect', () =>
             @sockets       = (s for s in @sockets       when s != socket)
-            @queuedSockets = (s for s in @queuedSockets when s != socket)
             @emit('disconnect', address)
-            if not (@sockets.length or @queuedSockets.length)
+            if not @sockets.length
                 @emit 'NoClients'
 
         socket.emit('SetConfig', @_clientEngineConfig)
 
         if !@browserInitialized
-            return @queuedSockets.push(socket)
-
+            return @sockets.push(socket)
+        # the socket is added after the first pageloaded event emitted
         nodes = serialize(@browser.window.document,
                           @resources,
                           @browser.window.document,
@@ -274,6 +273,7 @@ class VirtualBrowser extends EventEmitter
                     @registeredEventTypes,
                     @browser.clientComponents,
                     compressionTable)
+
         @sockets.push(socket)
         gc() if @server.config.traceMem
         @emit('ClientAdded')
@@ -298,8 +298,6 @@ DOMEventHandlers =
         compressionTable = undefined
         if @server.config.compression
             compressionTable = @compressor.textToSymbol
-        @sockets = @sockets.concat(@queuedSockets)
-        @queuedSockets = []
         if @server.config.traceProtocol
             @logRPCMethod('PageLoaded', [nodes, @browser.clientComponents, compressionTable])
         for socket in @sockets
@@ -348,7 +346,8 @@ DOMEventHandlers =
     # TODO: consider doctypes.
     DOMNodeInsertedIntoDocument : (event) ->
         return if @browserLoading
-        {target} = event
+        {target} = event    
+        
         nodes = serialize(target,
                           @resources,
                           @browser.window.document,
@@ -366,6 +365,8 @@ DOMEventHandlers =
     DOMNodeRemovedFromDocument : (event) ->
         return if @browserLoading
         event = @nodes.scrub(event)
+        return if not event.relatedNode?
+        # nodes use weak to auto reclaim garbage nodes
         @broadcastEvent('DOMNodeRemovedFromDocument',
                         event.relatedNode,
                         event.target)
@@ -396,6 +397,7 @@ DOMEventHandlers =
 
     AddEventListener : (event) ->
         {target, type} = event
+        # click and change are always listened
         return if !clientEvents[type] || defaultEvents[type]
         idx = @registeredEventTypes.indexOf(type)
         return if idx != -1
@@ -414,7 +416,8 @@ DOMEventHandlers =
         return if @browserLoading
         if @domChanged
             @broadcastEvent 'resumeRendering'
-            @domChanged = false
+        else
+            @domChanged = true
 
     ConsoleLog : (event) ->
         @consoleLog?.write(event.msg + '\n')
@@ -462,6 +465,7 @@ DOMEventHandlers =
         throw new Error() if @browserLoading
         @broadcastEvent('TestDone')
 
+inputTags = ['INPUT', 'TEXTAREA']
 
 RPCMethods =
     setAttribute : (targetId, attribute, value, socket) ->
@@ -476,14 +480,12 @@ RPCMethods =
             if attribute == 'selectedIndex'
                 return target[attribute] = value
 
-            # Hack for textarea, as it doesn't have a value attribute
-            # in the DOM.
-            if target.tagName.toLowerCase() is "textarea" and
-            attribute is "value" then target.value = value
-            else target.setAttribute(attribute, value)
+            if inputTags.indexOf(target.tagName) >= 0 and attribute is "value"
+                target.value = value
+            else
+                target.setAttribute(attribute, value)
             @setByClient = null
 
-            @domChanged = false
 
     # pan : to my knowledge, this id is used in benchmark tools to track which client instance
     # triggered 'processEvent', a better naming would be clientId
@@ -501,22 +503,17 @@ RPCMethods =
 
             # Create an event we can dispatch on the server.
             serverEv = RPCMethods._createEvent(clientEv, @browser.window)
-            ###
-            console.log("Dispatching #{serverEv.type}\t" +
-                        "[#{eventTypeToGroup[clientEv.type]}] on " +
-                        "#{clientEv.target.__nodeID} [#{clientEv.target.tagName}]")
 
-            console.log("bubbling: #{clientEv.bubbles}")
-            ###
             clientEv.target.dispatchEvent(serverEv)
             if @domChanged
                 @broadcastEvent('resumeRendering', id)
-                @domChanged = false
+            else
+                @domChanged = true
 
             if @server.config.traceMem
                 gc()
             @server.eventTracker.inc()
-            #console.log("Finished processing event: #{serverEv.type}")
+
 
     # Takes a clientEv (an event generated on the client and sent over DNode)
     # and creates a corresponding event for the server's DOM.
@@ -531,6 +528,7 @@ RPCMethods =
             when 'HTMLEvents'
                 event.initEvent(clientEv.type, clientEv.bubbles,
                                 clientEv.cancelable)
+
             when 'MouseEvents'
                 event.initMouseEvent(clientEv.type, clientEv.bubbles,
                                      clientEv.cancelable, window,
@@ -560,6 +558,7 @@ RPCMethods =
                                         clientEv.cancelable, window,
                                         char, char, clientEv.keyLocation,
                                         modifiersList, repeat, locale)
+                event.keyCode = clientEv.keyCode
                 event.which = clientEv.which
         return event
 
@@ -579,8 +578,9 @@ RPCMethods =
         event.info = params.event
         node.dispatchEvent(event)
         if @domChanged
-            @domChanged = false
             @broadcastEvent('resumeRendering')
+        else
+            @domChanged = true
 
 renderControlEvents = ['pauseRendering', 'resumeRendering']
 

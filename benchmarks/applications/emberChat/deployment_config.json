@@ -1,0 +1,11 @@
+{
+    "authenticationInterface": false,
+    "name": "emberChat",
+    "isPublic": true,
+    "owner": "panxiaozhong@gmail.com",
+    "description": "A multi user chat application written using Ember",
+    "mountOnStartup": true,
+    "mountPoint": "/emberChat",
+    "collectionName": "emberChat.users",
+    "keyboardEvent" : "basic"
+}

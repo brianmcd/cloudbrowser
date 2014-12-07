@@ -26,7 +26,9 @@ class ClientProcess extends EventEmitter
             console.log(msg)
             throw new Error(msg)
         @clientGroups = []
-        @stats = new StatProvider()
+        @stats = new StatProvider({
+                eventProcess : "percentile"
+            })
         clientsPerGroup = @clientCount/@appInstanceCount
         browsersPerGroup = @browserCount/@appInstanceCount
         talkersPerGroup = options.talkerCount/@appInstanceCount
@@ -216,9 +218,13 @@ class Client extends EventEmitter
         }
         if @createBrowser
             if not @options.createAppInstance
+                if not @browserConfig? or not @browserConfig.appInstanceId?
+                    return @_fatalErrorHandler("No appInstanceId received, maybe parent died.")   
                 # create a browser under an app instance
                 opts.url = routes.buildAppInstancePath(@appAddress, @browserConfig.appInstanceId)
         else
+            if not @browserConfig? or not @browserConfig.url?
+                return @_fatalErrorHandler("No url received, maybe parent died.")
             opts.url = @browserConfig.url
 
         logger("#{@id} requests #{opts.url}")
@@ -329,9 +335,15 @@ class Client extends EventEmitter
             @expect = nextEvent
             @expectStartTime = Date.now()
         else
-            @stats.addCounter('clientEvent')
-            nextEvent.emitEvent(@socket)
-            @_nextEvent()
+            waitDuration = nextEvent.getWaitDuration()
+            fireNextEvent = ()=>
+                @stats.addCounter('clientEvent')
+                nextEvent.emitEvent(@socket)
+                @_nextEvent()
+            if waitDuration <= 0
+                setImmediate(fireNextEvent)
+            else
+                setTimeout(fireNextEvent, waitDuration)
 
     _serverEventHandler : (eventName, args)->
         @stats.addCounter('serverEvent')
@@ -344,13 +356,17 @@ class Client extends EventEmitter
                 @expect = null
                 @expectStartTime = null
                 if waitDuration <=0
-                    timers.setImmediate(@_nextEvent.bind(@))
+                    setImmediate(@_nextEvent.bind(@))
                 else
                     @waitStart = now
                     setTimeout(@_nextEvent.bind(@), waitDuration)
 
 
     timeOutCheck : (time)->
+        return if not @started
+        if not @clientEngineReady and @startTs? and time-@startTs > @options.timeout
+            return @_fatalErrorHandler("Timeout while bootstrap clientengine")
+        
         if @expectStartTime? and time - @expectStartTime > @options.timeout
             @_fatalErrorHandler("Timeout while expecting #{@expect.getExpectingEventName()}")
 
@@ -383,7 +399,9 @@ class Client extends EventEmitter
 
 
     _fatalErrorHandler : (@error)->
-        @stats.addCounter('fatalError', "#{@id} #{error}")
+        errorMsg="#{@id} #{error}"
+        logger(errorMsg)
+        @stats.addCounter('fatalError', errorMsg)
         if not @clientEngineReady
             # the clientEngineReady will always be triggered,
             # so the benchmark could go on even some clients fail
@@ -432,6 +450,7 @@ options = {
         help : 'benchmark application address'
     },
     timeout : {
+        env : 'CB_TIMEOUT'
         default : 1000*30
         type : 'number'
         help : 'connection timeout in ms'
@@ -466,6 +485,17 @@ options = {
     }
 }
 
+# if we define env option, use the enviroment variable as default
+for k, v of options
+    if v.env? and v.default? and process.env[v.env]? and process.env[v.env].trim().length > 0
+        defaultVal = process.env[v.env]
+        if v.type isnt 'string'
+            try
+                defaultVal = JSON.parse(defaultVal)
+            catch e
+                # ...
+        v.default = defaultVal
+
 opts = require('nomnom').options(options).script(process.argv[1]).parse()
 
 if opts.appAddress?
@@ -496,9 +526,11 @@ simpleStatTempFunc = (statsObj)->
     {eventProcess, serverEvent, clientEvent} = statsObj
     msg = ''
     if eventProcess?
-        msg += "eventProcess: rate #{eventProcess.rate}, avg #{eventProcess.avg},count #{eventProcess.count}, 
-        totalRate #{eventProcess.totalRate}, totalAvg #{eventProcess.totalAvg},current #{eventProcess.current}, 
-        max #{eventProcess.max}, min #{eventProcess.min};\n"
+        msg += "eventProcess: rate #{eventProcess.rate}, avg #{eventProcess.avg} , current #{eventProcess.current}\n
+        eventProcess: totalRate #{eventProcess.totalRate}, totalAvg #{eventProcess.totalAvg}, count #{eventProcess.count}\n
+        eventProcess: max #{eventProcess.max}, min #{eventProcess.min}\n"
+        if eventProcess['100%']?
+            msg += "eventProcess: 90% #{eventProcess['90%']}, 95% #{eventProcess['95%']}, 99% #{eventProcess['99%']}\n"
 
     if serverEvent?
         msg += "serverEvent: rate #{serverEvent.rate}, count #{serverEvent.count};\n"
@@ -511,7 +543,7 @@ reportStats = (statsObj)->
     resultLogger(JSON.stringify(statsObj))
     
     resultLogger(simpleStatTempFunc(statsObj))
-    
+  
 
 async.waterfall([
     (next)->
@@ -521,12 +553,9 @@ async.waterfall([
         clientProcess = new ClientProcess(opts)
         clientProcess.start()
         clientProcess.once("started", next)
-    (next)->
-        resultLogger("start benchmark...")
-        clientProcess.startBenchmark()
         intervalObj = setInterval(()->
             benchmarkFinished = clientProcess.isStopped()
-            reportStats(clientProcess.stats.report())
+            reportStats(clientProcess.stats.report2())
             if not benchmarkFinished
                 clientProcess.timeOutCheck()
             if benchmarkFinished
@@ -536,6 +565,9 @@ async.waterfall([
                 process.exit(1)
         , 3000
         )
+    (next)->
+        resultLogger("start benchmark...")
+        clientProcess.startBenchmark()
         next()
     ], (err)->
         console.log("clientProcess #{opts.processId} error #{err}") if err?
@@ -543,7 +575,7 @@ async.waterfall([
 
 process.on('SIGTERM',()->
     if clientProcess and not benchmarkFinished
-        reportStats(clientProcess.stats.report())
+        reportStats(clientProcess.stats.report2())
         resultLogger "terminated"
         process.exit(1)
 )

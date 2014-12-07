@@ -18,9 +18,15 @@ if [[ "X$2" != "X" ]]; then
     i_prefix=$2
 fi
 
+i_apps="examples src/server/applications"
+
+if [[ "X$3" != "X" ]]; then
+    i_apps=$3
+fi
+
 i_master_log=$i_prefix"_master.log"
 
-nohup bin/run_master.sh examples src/server/applications --disable-logging=false >$i_master_log  2>&1 &
+nohup bin/run_master.sh $i_apps --disable-logging=false >$i_master_log  2>&1 &
 echo master log write to $i_master_log
 
 

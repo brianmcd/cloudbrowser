@@ -19,7 +19,7 @@ cleanupBserver = (id) ->
 logger = debug("cloudbrowser:worker:appins")
 
 class AppInstance extends EventEmitter
-    __r_skip :['app','browsers','weakrefsToBrowsers', 'browser', 
+    __r_skip :['app','browsers','weakrefsToBrowsers', 'browser',
                 'weakrefToBrowser', 'server', 'obj', 'uuidService']
     constructor : (options) ->
         {@app
@@ -48,12 +48,12 @@ class AppInstance extends EventEmitter
 
     findBrowser : (id) ->
         @weakrefsToBrowsers[id]
-        
+
     addBrowser : (vbrowser) ->
         id = vbrowser.id
         weakrefToBrowser = Weak(vbrowser, cleanupBserver(id))
         # the appinstance is just contianer of browsers, we are interested in getting
-        # browser id as soon as we create an appInstance. 
+        # browser id as soon as we create an appInstance.
         # for singleAppInstance and singleUserInstance, there would be only one browser
         # in appInstance, it is convenient to fileds for the first browser created
         if not @browserId?
@@ -71,11 +71,12 @@ class AppInstance extends EventEmitter
         user = User.toUser(user)
         id = @uuidService.getId()
         if not user?
-            vbrowser = @_createVirtualBrowser
+            @_createVirtualBrowser
                 type : VirtualBrowser
                 id   : id
-            return callback null, @addBrowser(vbrowser)
-        
+                callback : callback
+            return
+
         Async.series([
             (cb)=>
                 @server.permissionManager.addBrowserPermRec
@@ -83,24 +84,24 @@ class AppInstance extends EventEmitter
                     mountPoint  : @app.getMountPoint()
                     browserID   : id
                     permission  : 'own'
-                    callback    : cb    
+                    callback    : cb
             ,
-            (cb)=>                
-                vbrowser = @_createVirtualBrowser
+            (cb)=>
+                @_createVirtualBrowser
                     type        : SecureVirtualBrowser
                     id          : id
                     creator     : user
                     permission  : 'own'
-                return callback null, @addBrowser(vbrowser)       
+                    callback : callback
             ],(err)->
                 callback(err)
         )
-        
-        
 
-    _createVirtualBrowser : (browserInfo) ->
+
+
+    _createVirtualBrowser : (options) ->
         startTime = Date.now()
-        {id, type, creator, permission} = browserInfo
+        {id, type, creator, permission, callback} = options
         vbrowser = new type
             id          : id
             server      : @server
@@ -108,9 +109,12 @@ class AppInstance extends EventEmitter
             creator     : creator
             permission  : permission
             appInstance : this
-        vbrowser.load(@app)
-        logger("createBrowser #{@id}:#{id} for #{Date.now()-startTime}ms")
-        return vbrowser
+        vbrowser.load(@app, (err)=>
+            return callback(err) if err?
+            logger("createBrowser #{@id}:#{id} for #{Date.now()-startTime}ms")
+            @addBrowser(vbrowser)
+            callback null, vbrowser
+        )
 
     # user: the user try to create browser, callback(err, browser)
     createBrowser : (user, callback) ->
@@ -123,7 +127,7 @@ class AppInstance extends EventEmitter
                 callback null, @weakrefToBrowser
         else
             @_create(user, callback)
-            
+
 
     _findReaderWriter : (user) ->
         return c for c in @readerwriters when c.getEmail() is user.getEmail()
@@ -158,7 +162,7 @@ class AppInstance extends EventEmitter
                 name : 'shareAppInstance'
                 id : @id
                 args : [this, user]
-                })            
+                })
         else
             callback(null)
 
@@ -172,12 +176,12 @@ class AppInstance extends EventEmitter
                 result = 'own'
             else if @isReaderWriter(user)
                 result = 'readwrite'
-                
+
         if callback?
             callback null, result
         else
-            return result      
-        
+            return result
+
 
     removeBrowser : (browserId, user, callback) ->
         console.log "appInstance #{@id} : removeBrowser #{browserId}"
@@ -199,7 +203,7 @@ class AppInstance extends EventEmitter
             @weakrefToBrowser = null
         delete @browsers[browserId]
         delete @weakrefsToBrowsers[browserId]
-                        
+
 
     close : (user, callback) ->
         # the user could be a remote object
@@ -211,10 +215,10 @@ class AppInstance extends EventEmitter
             @removeAllListeners()
             callback null
             for browserId, browser of @browsers
-                browser.close()    
+                browser.close()
             )
-        
-        
+
+
 
     store : (getStorableObj, callback) ->
         console.log "store not implemented"
@@ -229,7 +233,7 @@ class AppInstance extends EventEmitter
     getAllBrowsers : (callback) ->
         if callback?
             return callback null, @weakrefsToBrowsers
-        
+
         return @weakrefsToBrowsers
 
     getBrowsers : (idList, callback)->

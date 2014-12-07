@@ -29,3 +29,7 @@ config/worker2/server_config.json
 *_data
 
 *.heapsnapshot
+
+*.out
+
+*.svg
