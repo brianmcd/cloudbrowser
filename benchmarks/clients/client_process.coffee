@@ -76,6 +76,7 @@ class ClientProcess extends EventEmitter
 
 
     timeOutCheck : ()->
+        return if @stopped
         time = Date.now()
         for clientGroup in @clientGroups
             clientGroup.timeOutCheck(time)
@@ -159,6 +160,7 @@ class ClientGroup extends EventEmitter
         return true
 
     timeOutCheck : (time)->
+        return if @stopped
         for client in @clients
             client.timeOutCheck(time)
 
@@ -314,10 +316,6 @@ class Client extends EventEmitter
             @clientEngineReady=true
             @emit("clientEngineReady")
 
-        @socket.on('disconnect', ()=>
-            @stop()
-        )
-
     _nextEvent : ()->
         if @stopped
             return
@@ -363,7 +361,7 @@ class Client extends EventEmitter
 
 
     timeOutCheck : (time)->
-        return if not @started
+        return if not @started or @stopped
         if not @clientEngineReady and @startTs? and time-@startTs > @options.timeout
             return @_fatalErrorHandler("Timeout while bootstrap clientengine")
         
@@ -396,6 +394,9 @@ class Client extends EventEmitter
         @socket.on('cberror',(err)=>
             @_fatalErrorHandler("cberror #{err}")
         )
+        @socket.on('disconnect', ()=>
+            @_fatalErrorHandler("disconnected at the other end")
+        )
 
 
     _fatalErrorHandler : (@error)->
@@ -412,8 +413,8 @@ class Client extends EventEmitter
         clearTimeout(@timeoutObj) if @timeoutObj?
         @expectStartTime = null
         @stopped = true
-        @socket?.disconnect()
         @socket?.removeAllListeners()
+        @socket?.disconnect()
         @emit('stopped')
 
     toJSON : ()->

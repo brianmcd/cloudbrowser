@@ -41,9 +41,6 @@ ObservableArray.prototype.addArrayObserver = function(observer){
 ObservableArray.prototype.val = function(){return this._arr;};
 
 if (!chatManager.addMessage) {
-    /* it seems Ember modified array.prototype, arrays constructed
-    else where does not work, at least for ArrayController
-    */
     chatManager.messages = new ObservableArray();
     chatManager.users = {};
     chatManager.addMessage = function(msgObj){
