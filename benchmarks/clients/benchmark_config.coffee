@@ -1,4 +1,5 @@
 fs = require('fs')
+util = require('util')
 
 lodash = require('lodash')
 debug = require('debug')
@@ -124,8 +125,13 @@ class RegularEvent
     getExpectingEventName : ()->
         if @expectIndex >= @descriptor.expect.length
             return null
-        return @descriptor.expect[@expectIndex].event
-
+        expectedEvent = @descriptor.expect[@expectIndex].event
+        if typeof expectedEvent is 'string'
+            return expectedEvent
+        if util.isArray(expectedEvent)
+            return expectedEvent.join(' or ')
+        return null
+        
     # 1 means waiting, 2 means fully matched
     # we are not reject anything, if the expected event
     # does not showup, we will detect a timeout for waiting
@@ -133,7 +139,7 @@ class RegularEvent
         if @expectIndex >= @descriptor.expect.length
             return 2
         currentExpect = @descriptor.expect[@expectIndex]
-        if eventName isnt currentExpect.event
+        if not @_matchEventName(eventName,currentExpect)
             return 1
         if currentExpect.containsText
             if not @_matchText(args, currentExpect.containsText)
@@ -145,6 +151,13 @@ class RegularEvent
         if @expectIndex is @descriptor.expect.length
             return 2
         return 1
+
+    _matchEventName : (eventName, expect) ->
+        expectedEvent = expect.event
+        return true if eventName is expectedEvent
+        if util.isArray(expectedEvent)
+            return expectedEvent.indexOf(eventName) >= 0
+        return false
 
     _matchText : (args, matchRules)->
         str = JSON.stringify(args)
