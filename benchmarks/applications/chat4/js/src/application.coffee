@@ -15,7 +15,8 @@ app.directive 'enterSubmit', () ->
 app.controller "ChatCtrl", ($scope, $timeout, $rootScope) ->
     {currentBrowser} = cloudbrowser
     browserId = currentBrowser.getID()
-    chatManager = cloudbrowser.currentAppInstanceConfig.getObj()
+    appInstance = cloudbrowser.currentAppInstanceConfig
+    chatManager = appInstance.getObj()
     messageId = 0
     # how often does the application render newMessage event, 0 indicates 
     # immediately
@@ -59,7 +60,7 @@ app.controller "ChatCtrl", ($scope, $timeout, $rootScope) ->
         setInterval(checkUpdate, checkUpdateInterval)
     
 
-    eventbus = cloudbrowser.currentAppInstanceConfig.getEventBus()
+    eventbus = appInstance.getEventBus()
     eventbus.on('newMessage', (fromBrowser, version)->
         # trigger handler asynchronsly
         setImmediate(newMessageHandler, fromBrowser, version)
@@ -85,13 +86,11 @@ app.controller "ChatCtrl", ($scope, $timeout, $rootScope) ->
     addMessage = (msg, type)->
         # set hash key, or Error: ngRepeat:dupes
         # Duplicate Key in Repeater.
-        msgObj = {
-            browserId : browserId
+        msgObj = currentBrowser.createSharedObject({
             msg : msg
             userName : $scope.userName
             time : Date.now()
-            $$hashKey : "#{browserId}_#{messageId++}"
-        }
+        })
         msgObj.type = type if type?
         version = chatManager.addMessage(msgObj)
 
