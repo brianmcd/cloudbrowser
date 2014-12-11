@@ -174,6 +174,10 @@ class Client extends EventEmitter
         @appAddress, @cbhost, @socketioUrl, @stats,
         @id, @serverLogging, @optimizeConnection} = options
         @stopped = false
+        # some local stats
+        @eventSent = 0
+        @eventReceived = 0
+        @expectMet = 0
         @eventContext = new benchmarkConfig.EventContext({clientId:@id})
         return if @silent
         @eventQueue = new benchmarkConfig.EventQueue({
@@ -337,6 +341,7 @@ class Client extends EventEmitter
             fireNextEvent = ()=>
                 @stats.addCounter('clientEvent')
                 nextEvent.emitEvent(@socket)
+                @eventSent++
                 @_nextEvent()
             if waitDuration <= 0
                 setImmediate(fireNextEvent)
@@ -345,11 +350,13 @@ class Client extends EventEmitter
 
     _serverEventHandler : (eventName, args)->
         @stats.addCounter('serverEvent')
+        @eventReceived++
         if @expect?
             expectResult = @expect.expect(eventName, args)
             if expectResult is 2
                 now = Date.now()
                 @stats.add('eventProcess', now - @expectStartTime)
+                @expectMet++
                 waitDuration = @expect.getWaitDuration()
                 @expect = null
                 @expectStartTime = null
@@ -366,7 +373,8 @@ class Client extends EventEmitter
             return @_fatalErrorHandler("Timeout while bootstrap clientengine")
         
         if @expectStartTime? and time - @expectStartTime > @options.timeout
-            @_fatalErrorHandler("Timeout while expecting #{@expect.getExpectingEventName()}")
+            @_fatalErrorHandler("Timeout while expecting #{@expect.getExpectingEventName()}, 
+                eventSent #{@eventSent}, eventReceived #{@eventReceived}, expectMet #{@expectMet}")
 
     _createSocket : ()->
         @_initStartTs()
