@@ -75,8 +75,8 @@ Handlebars.registerHelper('msg-class', function(type) {
     return '';
 });
 
-//trim to remove unnessary text elements
 var msgItemTplFunc = Handlebars.templates['messageItem.tmpl'];
+var alertMsgTplFunc = Handlebars.templates['alertItem.tmpl'];
 
 var chatMsgBox = $('#chatMessageBox');
 var msgObserver = {
@@ -113,6 +113,31 @@ var msgObserver = {
 msgObserver.arrayDidChange(chatManager.messages.val(), 0, 0, chatManager.messages.length);
 chatManager.messages.addArrayObserver(msgObserver);
 
+var alertManager = {
+    ele : $('#alertMsgsDiv'),
+    alerts : [],
+    uuid : 0,
+    alert : function(msg){
+        var self=this;
+        var id = id++;
+        var alertObj = {
+            id : id,
+            msg : msg
+        };
+        this.alerts.push(alertObj);
+        this.ele.append(alertMsgTplFunc(alertObj));
+        setTimeout(function(){
+            self.remove(id);
+        }, 3000);
+    },
+    remove : function(id){
+        $('#alertMsgItem'+id).remove();
+    }
+};
+
+function removeAlert(id){
+    alertManager.remove(id);
+}
 
 var userName = "Goose_" + browserId;
 
@@ -130,20 +155,28 @@ function toggleUserNameInput(){
 
 function userNameInputKeyEvents(evt){
     if (evt.which == 13) {
-        toggleUserNameInput();
         setUserName($("#userNameInput").val());
     }
 }
 
 function setUserName(name){
+    if (!name || name=='') {
+        return alertManager.alert("The user name must not be empty.");
+    }
+    name = name.trim();
+    if (name=='') {
+        return alertManager.alert("The user name must not be empty.");
+    }
     if (!chatManager.isNameTaken(browserId, name)) {
         var oldName = userName;
         userName = name;
         chatManager.addUser(browserId, userName);
         showUserName();
+        // only hide when successfully changed name
+        toggleUserNameInput();
         sendMessage(oldName+" is now "+name, 'sys');
     }else{
-        //TODO implement alert messages
+        alertManager.alert("There is already a user called "+name);
         $("#userNameInput").val('');
     }
 }
