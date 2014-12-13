@@ -343,8 +343,11 @@ class Client extends EventEmitter
                 nextEvent.emitEvent(@socket)
                 @eventSent++
                 @_nextEvent()
-            if waitDuration <= 0
-                setImmediate(fireNextEvent)
+            if waitDuration <=0
+                # do not put fireNextEvent to the event loop,
+                # or the server response might come earlier than expect setting up.
+                # a better way to do this would be setting up expect first.
+                fireNextEvent()
             else
                 setTimeout(fireNextEvent, waitDuration)
 

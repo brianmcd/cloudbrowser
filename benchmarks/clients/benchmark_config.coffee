@@ -32,6 +32,8 @@ class TextInputEventGroup
         {@descriptor, @context} = options
         @text = ''
         if @descriptor.textType is 'random'
+            # random means generating a unique string, these strings cannot be
+            # substring to each other
             @text = "#{@context.clientId} want #{@context.counter}c"
             @context.counter++
         if @descriptor.textType is 'clientId'
@@ -40,7 +42,8 @@ class TextInputEventGroup
         @upperCaseText = @text.toUpperCase()
         @textInputDefinition = getTextInputDefinition()
         @textIndex = 0
-        # skip keyboard input events for characters
+        # skip keyboard input events for individual characters, 
+        # only the final string is sent to the server
         @textIndex = @text.length-1 if @descriptor.keyEvent is 'basic'
         @_initializeEventQueue()
 
@@ -48,6 +51,9 @@ class TextInputEventGroup
         eventDescriptors = []
         @_inputKeyEvents(eventDescriptors)
         if @textIndex == @text.length-1 and @descriptor.endEvent
+            # user specified what could happen at the end of the input task.
+            # right now only one kind of endEvent is defined, that is hitting Enter key.
+            # see text_input_rule for details
             endEventDescriptors = @textInputDefinition.endEvent[@descriptor.endEvent]
             if endEventDescriptors
                 for eventDescriptor in endEventDescriptors
@@ -66,6 +72,8 @@ class TextInputEventGroup
             context : @context
             })
 
+    # create key events for individule characters in a input task.
+    # input "abc" in a text input includes keydown and keyup for "a", "b", "c"
     _inputKeyEvents : (eventDescriptors)->
         return if @descriptor.keyEvent is 'basic'
         #logger("input full events")
