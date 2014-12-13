@@ -13,7 +13,7 @@ fi
 
 for i in $(ps ax|grep $i_node| grep -e newbin -e master| grep -v grep | awk '{split($0,a," "); print a[1]}'); do
     echo kill $i_flag $i
-    kill $i
+    kill $i_flag $i
 done
 
 echo "kill complete"
