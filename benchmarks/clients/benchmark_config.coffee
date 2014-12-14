@@ -116,8 +116,6 @@ class TextInputEventGroup
                 @eventQueue = null
             return @poll()
 
-# for debug purpose ~
-normalEvents = ["DOMCharacterDataModified","DOMNodeInsertedIntoDocument"]
 
 class RegularEvent
     constructor: (options) ->
@@ -157,9 +155,7 @@ class RegularEvent
         if currentExpect.args
             if not @_matchArgs(args, currentExpect.args)
                 return 1
-        if normalEvents.indexOf(eventName) is -1
-            console.log "#{eventName} matched #{currentEvent}"
-        
+
         @expectIndex++
         if @expectIndex is @descriptor.expect.length
             return 2
