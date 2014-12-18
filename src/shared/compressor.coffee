@@ -20,6 +20,7 @@ class Compressor extends EventEmitter
         decompressed = @symbolToText[symbol]
         if not decompressed?
             throw new Error("Can't decompress: #{symbol}")
+        return decompressed
 
     register : (text, compressed) ->
         if @symbolToText[compressed]? or @textToSymbol[text]?

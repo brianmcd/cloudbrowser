@@ -288,6 +288,21 @@ RPCMethods =
         @eventQueue = []
         @renderingPaused = false
 
+    batch : (events, id) ->
+        for eventArgs in events
+            eventName = eventArgs[0]
+            if not RPCMethods[eventName]?
+                eventName = @compressor.decompress(eventName)
+            rpcMethodArgs = []
+            index = 1
+            # eventArgs is a object
+            while typeof eventArgs[index] isnt 'undefined'
+                rpcMethodArgs.push(eventArgs[index])
+                index++
+
+            RPCMethods[eventName].apply(this, rpcMethodArgs)
+
+
     # If params given, clear the document of the specified frame.
     # Otherwise, clear the global window's document.
     clear : (params) ->

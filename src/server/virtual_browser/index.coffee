@@ -9,8 +9,8 @@ lodash               = require('lodash')
 
 Browser              = require('./browser')
 ResourceProxy        = require('./resource_proxy')
+SocketAdvice         = require('./socket_advice')
 
-DebugClient          = require('./debug_client')
 TestClient           = require('./test_client')
 {serialize}          = require('./serializer')
 routes               = require('../application_manager/routes')
@@ -78,9 +78,6 @@ class VirtualBrowser extends EventEmitter
         # Indicates whether @browser is currently loading a page.
         # If so, we don't process client events/updates.
         @browserLoading = false
-
-        # control if we need to fire a pauseRender event
-        @domChanged = true
 
         # Indicates whether the browser has loaded its first page.
         @browserInitialized = false
@@ -208,24 +205,22 @@ class VirtualBrowser extends EventEmitter
         @_broadcastHelper(socket, name, args)
 
     _broadcastHelper : (except, name, args) ->
-        if not @domChanged and renderControlEvents.indexOf(name) < 0
-            @domChanged=true
-            @_broadcastHelper(except, 'pauseRendering', [])
-
         if @server.config.traceProtocol
             @logRPCMethod(name, args)
-        if @server.config.compression
-            name = @compressor.compress(name)
+
         args.unshift(name)
-        if except?
-            for socket in @sockets
-                if socket != except
-                    socket.emit.apply(socket, args)
-        else
-            for socket in @sockets
-                socket.emit.apply(socket, args)
+        
+        for socket in @sockets
+            socket.emitCompressed.apply(socket, args) if socket != except
+    
 
     addSocket : (socket) ->
+        socket = SocketAdvice.adviceSocket({
+            socket : socket
+            buffer : true
+            compression : @server.config.compression
+            compressor : @compressor
+            })
         address = socket.request.connection.remoteAddress
         {user} = socket.request
         # if it is not issued from web browser, address is empty
@@ -235,8 +230,7 @@ class VirtualBrowser extends EventEmitter
             address : address
             email : user
         @emit('connect', userInfo)
-        if @server.config.monitorTraffic
-            socket = new DebugClient(socket, @id)
+        
         for own type, func of RPCMethods
             do (type, func) =>
                 socket.on type, () =>
@@ -407,17 +401,15 @@ DOMEventHandlers =
 
     EnteredTimer : () ->
         return if @browserLoading
-        @domChanged = false
+        @broadcastEvent 'pauseRendering'
 
     # TODO DOM updates in timers should be batched,
     # there is no point to send any events to client if
     # there's no DOM updates happened in the timer
     ExitedTimer :  () ->
         return if @browserLoading
-        if @domChanged
-            @broadcastEvent 'resumeRendering'
-        else
-            @domChanged = true
+        @broadcastEvent 'resumeRendering'
+        
 
     ConsoleLog : (event) ->
         @consoleLog?.write(event.msg + '\n')
@@ -471,8 +463,6 @@ RPCMethods =
     setAttribute : (targetId, attribute, value, socket) ->
         if !@browserLoading
             @setByClient = socket
-            # do not trigger pause rendering in this case
-            @domChanged = true
 
             target = @nodes.get(targetId)
             if attribute == 'src'
@@ -497,18 +487,18 @@ RPCMethods =
             # can't handle clicks on the server anyway).
             # Need something more elegant.
             return if !event.target
-            @domChanged = false
+            
             # Swap nodeIDs with nodes
             clientEv = @nodes.unscrub(event)
 
             # Create an event we can dispatch on the server.
             serverEv = RPCMethods._createEvent(clientEv, @browser.window)
 
+            @broadcastEvent('pauseRendering', id)
+
             clientEv.target.dispatchEvent(serverEv)
-            if @domChanged
-                @broadcastEvent('resumeRendering', id)
-            else
-                @domChanged = true
+            
+            @broadcastEvent('resumeRendering', id)
 
             if @server.config.traceMem
                 gc()
@@ -572,17 +562,13 @@ RPCMethods =
             throw new Error("No component on node: #{nodeID}")
         for own key, val of params.attrs
             component.attrs?[key] = val
-        @domChanged = false
+        @broadcastEvent('pauseRendering')
         event = @browser.window.document.createEvent('HTMLEvents')
         event.initEvent(params.event.type, false, false)
         event.info = params.event
         node.dispatchEvent(event)
-        if @domChanged
-            @broadcastEvent('resumeRendering')
-        else
-            @domChanged = true
-
-renderControlEvents = ['pauseRendering', 'resumeRendering']
+        @broadcastEvent('resumeRendering')
+        
 
 domEventHandlerNames = lodash.keys(DOMEventHandlers)
 # put frequent occurred events in front
@@ -592,7 +578,6 @@ domEventHandlerNames = lodash.sortBy(domEventHandlerNames, (name)->
     return 1
     )
 
-keywordsList = renderControlEvents.concat(domEventHandlerNames)
-
+keywordsList = ['pauseRendering', 'resumeRendering', 'batch'].concat(domEventHandlerNames)
 
 module.exports = VirtualBrowser
