@@ -23,7 +23,10 @@ bufferEmit = ()->
         # only send message if we have real messages
         if @buffer.length > 0
             logger("buffer send #{@buffer.length} events")
-            @doEmit('batch', @buffer, @clientId)
+            if @buffer.length > 1
+                @doEmit('batch', @buffer, @clientId)
+            else
+                @doEmit.apply(@, @buffer[0])
             @buffer=[]
         else
             logger("skip send events")

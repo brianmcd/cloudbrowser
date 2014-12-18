@@ -12,6 +12,7 @@ async            = require('async')
 benchmarkConfig = require('./benchmark_config')
 routes = require('../../src/server/application_manager/routes')
 {StatProvider} = require('../../src/shared/stats')
+Compressor = require('../../src/shared/compressor')
 
 logger = debug('cloudbrowser:benchmark')
 
@@ -123,7 +124,7 @@ class ClientGroup extends EventEmitter
                 # co browsing clients
                 bootstrapClient.addChild(client)
             @clients.push(client)
-            
+
 
     start : ()->
         if not @optimizeConnection
@@ -170,10 +171,12 @@ class ClientGroup extends EventEmitter
 class Client extends EventEmitter
     constructor : (@options) ->
         # id is a unique client identifier in all client processes
-        {@eventDescriptors, @createBrowser, @silent, 
+        {@eventDescriptors, @createBrowser, @silent,
         @appAddress, @cbhost, @socketioUrl, @stats,
         @id, @serverLogging, @optimizeConnection} = options
         @stopped = false
+
+        @compressor = new Compressor()
         # some local stats
         @eventSent = 0
         @eventReceived = 0
@@ -225,7 +228,7 @@ class Client extends EventEmitter
         if @createBrowser
             if not @options.createAppInstance
                 if not @browserConfig? or not @browserConfig.appInstanceId?
-                    return @_fatalErrorHandler("No appInstanceId received, maybe parent died.")   
+                    return @_fatalErrorHandler("No appInstanceId received, maybe parent died.")
                 # create a browser under an app instance
                 opts.url = routes.buildAppInstancePath(@appAddress, @browserConfig.appInstanceId)
         else
@@ -293,14 +296,16 @@ class Client extends EventEmitter
         )
         @socket.once 'PageLoaded', (nodes, registeredEventTypes, clientComponents, compressionTable) =>
             @stats.add('pageLoaded', @_timpeElapsed())
-            @compressionTable = if compressionTable? then compressionTable else {}
-            for k, v of @compressionTable
-                do (k, v)=>
-                    @socket.on(v, ()=>
-                        @_serverEventHandler(k, arguments)
-                    )
+            if compressionTable?
+                for k, v of compressionTable
+                    @compressor.register(k, v)
+                    do (k, v)=>
+                        @socket.on(v, ()=>
+                            @_serverEventHandler(k, arguments)
+                        )
+
             @socket.on('newSymbol', (original, compressed)=>
-                @compressionTable[original] = compressed
+                @compressor.register(original, compressed)
                 do (original, compressed) =>
                     @socket.on(compressed, ()=>
                         @_serverEventHandler(original, arguments)
@@ -331,7 +336,7 @@ class Client extends EventEmitter
         if @waitStart?
             @stats.add('wait', Date.now()- @waitStart)
             @waitStart = null
-        
+
         # stop and expect
         if nextEvent.type is 'expect'
             @expect = nextEvent
@@ -353,6 +358,29 @@ class Client extends EventEmitter
 
     _serverEventHandler : (eventName, args)->
         @stats.addCounter('serverEvent')
+        # dosomething special for batch events....
+        if eventName is 'batch'
+            batchedEvents = args[0]
+            clientId = args[1]
+            # add artificial pauseRendering, resume Rendering event.
+            @_matchExpect('pauseRendering', [])
+            for ievent in batchedEvents
+                ieventName = ievent[0]
+                original = @compressor.decompress(ieventName)
+                if original?
+                    ieventName = original
+                eventArgs = []
+                index = 1
+                while typeof ievent[index] isnt 'undefined'
+                    eventArgs.push(ievent[index])
+                    index++
+                @_matchExpect(ieventName, eventArgs)
+            @_matchExpect('resumeRendering', [clientId])
+        else
+            @_matchExpect(eventName, args)
+
+
+    _matchExpect : (eventName, args)->
         @eventReceived++
         if @expect?
             expectResult = @expect.expect(eventName, args)
@@ -370,13 +398,14 @@ class Client extends EventEmitter
                     setTimeout(@_nextEvent.bind(@), waitDuration)
 
 
+
     timeOutCheck : (time)->
         return if not @started or @stopped
         if not @clientEngineReady and @startTs? and time-@startTs > @options.timeout
             return @_fatalErrorHandler("Timeout while bootstrap clientengine")
-        
+
         if @expectStartTime? and time - @expectStartTime > @options.timeout
-            @_fatalErrorHandler("Timeout while expecting #{@expect.getExpectingEventName()}, 
+            @_fatalErrorHandler("Timeout while expecting #{@expect.getExpectingEventName()},
                 eventSent #{@eventSent}, eventReceived #{@eventReceived}, expectMet #{@expectMet}")
 
     _createSocket : ()->
@@ -546,16 +575,16 @@ simpleStatTempFunc = (statsObj)->
 
     if serverEvent?
         msg += "serverEvent: rate #{serverEvent.rate}, count #{serverEvent.count};\n"
-    
+
     if clientEvent?
         msg += "clientEvent: rate #{clientEvent.rate}, count #{clientEvent.count};\n"
     return msg
 
 reportStats = (statsObj)->
     resultLogger(JSON.stringify(statsObj))
-    
+
     resultLogger(simpleStatTempFunc(statsObj))
-  
+
 
 async.waterfall([
     (next)->
