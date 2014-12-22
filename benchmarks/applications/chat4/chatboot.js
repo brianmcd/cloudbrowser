@@ -6,7 +6,7 @@ function ChatManager(){
 ChatManager.prototype.addMessage = function(msgObj) {
     this.messages.push(msgObj)
     // performance is really bad when the cap is 500, 1000
-    if(this.messages.length > 100){
+    if(this.messages.length >= 100){
         this.messages.splice(0, 50)
     }
     this.version++;

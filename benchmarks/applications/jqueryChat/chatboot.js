@@ -39,7 +39,7 @@ function ChatManager(){
 
 ChatManager.prototype.addMessage = function(msgObj){
     this.messages.pushObject(msgObj);
-    if(this.messages.length > 100){
+    if(this.messages.length >= 100){
         this.messages.removeAt(0, 50);
     }
 };

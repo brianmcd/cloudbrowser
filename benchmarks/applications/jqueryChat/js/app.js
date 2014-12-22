@@ -32,6 +32,7 @@ var msgObserver = {
             for (var i = 0; i < addCount; i++) {
                 content += msgItemTplFunc(observedObj[start+i]);
             }
+            // only generate one DOM insert event
             chatMsgBox.append(content);
         }
         if (removeCount>0) {
@@ -50,9 +51,12 @@ var msgObserver = {
                     break;
                 }
             }
-            for (var i = 0; i < removed.length; i++) {
-                msgBox.removeChild(removed[i]);
-            }
+            // put it into setImmediate to batch these update
+            setImmediate(function(){
+                for (var i = 0; i < removed.length; i++) {
+                    msgBox.removeChild(removed[i]);
+                }    
+            });
         }
     }
 };
