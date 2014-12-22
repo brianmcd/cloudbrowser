@@ -12,7 +12,7 @@ bufferEmit = ()->
         @buffering = true
         return
     
-    if not @buffering
+    if not @buffering and eventName isnt 'resumeRendering'
         logger("send event without buffering")
         @doEmit.apply(@, arguments)
         return

@@ -450,7 +450,6 @@ class Client extends EventEmitter
         @stop()
 
     stop : () ->
-        clearTimeout(@timeoutObj) if @timeoutObj?
         @expectStartTime = null
         @stopped = true
         @socket?.removeAllListeners()
@@ -460,7 +459,7 @@ class Client extends EventEmitter
     toJSON : ()->
         result = {}
         for k, v of @
-            if typeof v is 'function' or k is 'socket' or k is 'timeoutObj' or k.indexOf('_') is 0
+            if typeof v is 'function' or k is 'socket' or k.indexOf('_') is 0
                 continue
             result[k] = v
         return result
