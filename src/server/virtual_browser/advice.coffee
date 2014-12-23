@@ -110,13 +110,14 @@ exports.addAdvice = () ->
                     target : target
                     relatedNode : parent
                 }
+                # assign node ids
                 browser.emit 'DOMNodeInserted', evParam
                 ###
                 do not check visibility on child because child is
                  not on dom yet
                 ###
                 if not isVisibleOnClient(parent, browser)
-                        return
+                    return
                 # parent is textarea and the child node is text type
                 if inputTags.indexOf(parent.tagName) >= 0 and target.nodeType is 3
                     val = target.data
@@ -128,7 +129,7 @@ exports.addAdvice = () ->
                     })
                     return
 
-                 browser.emit 'DOMNodeInsertedIntoDocument', evParam
+                browser.emit 'DOMNodeInsertedIntoDocument', evParam
 
             if type is 'DOMNodeRemoved'
                 parent = ev.relatedNode
@@ -259,20 +260,24 @@ exports.addAdvice = () ->
         getter : (elem, rv) ->
             rv._parentElement = elem
 
-    adviseProperty html.HTMLInputElement, 'value', 
-        setter : (elem, val)->
-            browser = getBrowser(elem)
-            return if not browser?
-            if val? and typeof val isnt 'string'
-                val = String(val)
-            # it is not part of standard to emit DOMAttrModified after set value
-            browser.emit('DOMAttrModified',{
-                target : elem
-                attrName : 'value'
-                newValue : val
-                attrChange : 'ADDITION'
-            })
-            
+    inputTagsValueSetter = (elem, val)->
+        browser = getBrowser(elem)
+        return if not browser?
+        if val? and typeof val isnt 'string'
+            val = String(val)
+        # it is not part of standard to emit DOMAttrModified after set value
+        browser.emit('DOMAttrModified',{
+            target : elem
+            attrName : 'value'
+            newValue : val
+            attrChange : 'ADDITION'
+        })
+
+    adviseProperty(html.HTMLInputElement, 'value', {setter : inputTagsValueSetter})
+        
+    # textarea is really messy, it has textContent and value properties and they are
+    # not in sync. 
+    adviseProperty(html.HTMLTextAreaElement, 'value', {setter : inputTagsValueSetter})    
             
 
 

@@ -137,10 +137,11 @@ function chatBoxKeyEvents(evt){
     }
 }
 
+var chatBox = $('#chatText');
 function sendChatMsg(){
-    var msg = $('#chatText').val();
+    var msg = chatBox.val();
     sendMessage(msg);
-    $('#chatText').val('');
+    chatBox.val('');
 }
 
 function sendMessage(msg, type){
