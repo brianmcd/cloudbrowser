@@ -189,22 +189,24 @@ class Client extends EventEmitter
             })
 
     addChild : (child) ->
+        # stop child if it is not started yet
+        @once('stopped', ()->
+            if not child.started
+                child.stop()
+        )
+        # if optimizeConnection, do not start child 
         if @optimizeConnection
             @once('browserconfig', (browserConfig)->
                 child.browserConfig = browserConfig
             )
             return
 
+        # start child when browserconfig is ready
         @once('browserconfig', (browserConfig)->
             logger("#{child.id} starting")
             child.browserConfig = browserConfig
             child.start()
         )
-        @once('stopped', ()->
-            if not child.started
-                child.stop()
-        )
-
 
     start : ()->
         @started = true
