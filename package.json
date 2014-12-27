@@ -63,7 +63,8 @@
     "longjohn" : "0.2.4",
     "usage" : "0.4.13",
     "line-by-line" : "git://github.com/johanlindberg/line-by-line",
-    "moment" : "2.8.3"
+    "moment" : "2.8.3",
+    "fast-stats" : "0.0.2"
   },
   "devDependencies": {
     "nodeunit": "0.8.6",

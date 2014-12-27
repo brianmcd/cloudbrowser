@@ -4,6 +4,7 @@ util = require('util')
 
 lodash = require('lodash')
 debug = require('debug')
+Stats = require('fast-stats').Stats
 
 utils = require('../../src/shared/utils')
 fileHelper = require('./file_helper')
@@ -31,7 +32,7 @@ compare = (a, b)->
 class ResultExtractor extends EventEmitter
     constructor: (options) ->
         {@dir} = options
-        
+
 
     extract : ()->
         benchmarkResults = []
@@ -49,20 +50,60 @@ class ResultExtractor extends EventEmitter
                         return false
                 )
         )
-        benchmarkResults.sort((a, b)->
-            for i in ['endPoint', 'workerCount', 'clientCount', 'id']
-                result = compare(a[i], b[i])
-                return result if result isnt 0
-            return 0
-        )
+        groupIdenfiers = ['endPoint', 'workerCount', 'clientCount']
+
+        # strores first element in group
+        groupIds = []
+        # use first element in group as key
+        groups = {}
+        statColumns = ['throughput', 'latency', 'errorCount']
+        defaultObj = {errorCount : 0}
+        for currentResult in benchmarkResults
+            # preprocessing
+            # assign default errorCount as 0
+            lodash.defaults(currentResult, defaultObj)
+            currentResult.app = utils.substringAfterLast(currentResult.endPoint, '/')
+            found = lodash.find(groupIds, (g)->
+                for k in groupIdenfiers
+                    result = compare(currentResult[k], g[k])
+                    return false if result isnt 0
+                return true
+            )
+            if found
+                groups[found.id].push(currentResult)
+            else
+                groupIds.push(currentResult)
+                groups[currentResult.id] = [currentResult]
+
+        for k, groupData of groups
+            # do not need to calculate mean and stdev if there is only one record
+            continue if groupData.length == 1
+            # aggregate row has some common properties
+            aggregate = lodash.clone(groupData[0])
+            aggregate.id = "#{groupData[0].id} - #{groupData[groupData.length-1].id}"
+            # calculate mean and stdev
+            for column in statColumns
+                columnData = lodash.pluck(groupData, column)
+                stats = new Stats()
+                stats.push(columnData)
+                aggregate[column] = stats.amean()
+                aggregate["#{column}_dev"] = stats.stddev()
+            groupData.push(aggregate)
+
+        columns = ['id', 'app', 'workerCount', 'clientCount', 'throughput', 'latency', 'errorCount',
+        'throughput_dev','latency_dev','errorCount_dev']
+
         csvWriter = new CsvWriter({
-            columns : ['id', 'endPoint', 'workerCount', 'clientCount', 'throughput', 'latency', 'errorCount']
+            columns : columns
             fileName : "#{@dir}/result.csv"
             })
-        for i in benchmarkResults
-            logger("write result #{i}")
-            csvWriter.appendRow(i)
-        @emit('complete')
+
+        # write in order of id
+        lodash.sortBy(groupIds, "id")
+
+        for i in groupIds
+            groupData = groups[i.id]
+            csvWriter.appendRows(groupData)
 
 
 class CsvWriter
@@ -77,11 +118,20 @@ class CsvWriter
             return
         arr=[]
         for i in @columns
-            arr.push(data[i])
+            rawData = data[i]
+            if typeof rawData is 'number'
+                arr.push(rawData.toFixed(2))
+            else
+                arr.push(rawData)
         @appendRow(arr)
-    
 
-        
+    appendRows : (arr)->
+        for i in arr
+            @appendRow(i)
+
+
+
+
 if require.main is module
     options = {
         dir : {
