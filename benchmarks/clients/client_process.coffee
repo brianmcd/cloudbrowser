@@ -359,7 +359,9 @@ class Client extends EventEmitter
                 setTimeout(fireNextEvent, waitDuration)
 
     _serverEventHandler : (eventName, args)->
+        logger("eventName #{eventName} #{JSON.stringify(args)}")
         @stats.addCounter('serverEvent')
+        return if @stopped
         # dosomething special for batch events....
         if eventName is 'batch'
             batchedEvents = args[0]
@@ -452,10 +454,10 @@ class Client extends EventEmitter
         @stop()
 
     stop : () ->
+        @expect = null
         @expectStartTime = null
         @stopped = true
-        @socket?.removeAllListeners()
-        @socket?.disconnect()
+        # do not disconnect right away, continue counting server side events
         @emit('stopped')
 
     toJSON : ()->
@@ -596,15 +598,20 @@ async.waterfall([
         clientProcess.start()
         clientProcess.once("started", next)
         intervalObj = setInterval(()->
-            benchmarkFinished = clientProcess.isStopped()
             reportStats(clientProcess.stats.report2())
+            return if benchmarkFinished
+            benchmarkFinished = clientProcess.isStopped()
             if not benchmarkFinished
                 clientProcess.timeOutCheck()
-            if benchmarkFinished
-                clearInterval(intervalObj)
-                sysMon.stop()
-                resultLogger "stopped"
-                process.exit(1)
+            else
+                logger("benchmark finished, wait #{opts.timeout}ms to exit.")
+                # receive all the server side events
+                setTimeout(()->
+                    clearInterval(intervalObj)
+                    sysMon.stop()
+                    resultLogger "stopped"
+                    process.exit(1)
+                , opts.timeout)
         , 3000
         )
     (next)->
@@ -618,6 +625,6 @@ async.waterfall([
 process.on('SIGTERM',()->
     if clientProcess and not benchmarkFinished
         reportStats(clientProcess.stats.report2())
-        resultLogger "terminated"
-        process.exit(1)
+    resultLogger "terminated"
+    process.exit(1)
 )
