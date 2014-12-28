@@ -359,7 +359,6 @@ class Client extends EventEmitter
                 setTimeout(fireNextEvent, waitDuration)
 
     _serverEventHandler : (eventName, args)->
-        logger("eventName #{eventName} #{JSON.stringify(args)}")
         @stats.addCounter('serverEvent')
         return if @stopped
         # dosomething special for batch events....
