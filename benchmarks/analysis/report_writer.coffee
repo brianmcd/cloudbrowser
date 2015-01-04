@@ -26,6 +26,10 @@ class ReportWriter
 
         reportObj = lodash.clone(@options)
         clientConfigs = metaData.clientConfigs
+        if not reportObj.clientSetting?
+            logger("No benchmark client data detected, skip report")
+            return
+
         reportObj.clientSetting = lodash.clone(clientConfigs[0])
         reportObj.clientSetting.processCount = clientConfigs.length
 
