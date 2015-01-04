@@ -26,7 +26,7 @@ class ReportWriter
 
         reportObj = lodash.clone(@options)
         clientConfigs = metaData.clientConfigs
-        if not reportObj.clientSetting?
+        if not clientConfigs? or not clientConfigs[0]?
             logger("No benchmark client data detected, skip report")
             return
 
