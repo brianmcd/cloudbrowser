@@ -155,9 +155,12 @@ class LogExtractorGroup extends EventEmitter
 
     generateReport : ()->
         logger("#{@testId} generating report...")
-        options = lodash.clone(@options)
-        options.metaData = @metaData
-        new ReportWriter(options)
+        try
+            options = lodash.clone(@options)
+            options.metaData = @metaData
+            new ReportWriter(options)
+        catch e
+            logger("#{@testId} failed in generating report, #{e} : #{e.stack}")
         @emit('complete')
 
 
