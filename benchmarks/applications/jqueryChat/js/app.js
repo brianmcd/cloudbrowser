@@ -9,31 +9,61 @@ if (typeof cloudbrowser !== 'undefined') {
     chatManager = {};
 }
 
-// 'Oct 21, 2014 3:24:31 PM'
-Handlebars.registerHelper('format-date', function(date) {
-  return moment(date).format('MMM DD, YYYY h:mm:ss A');
-});
-
-Handlebars.registerHelper('msg-class', function(type) {
-    if(type==='sys'){
-        return 'class="alert alert-success"';
+function msgItemTplFunc(msgObj){
+    var div = document.createElement('DIV');
+    if(msgObj.type==='sys'){
+        div.className = 'alert alert-success';
     }
-    return '';
-});
+    // 'Oct 21, 2014 3:24:31 PM'
+    var timeStr = moment(msgObj.time).format('MMM DD, YYYY h:mm:ss A');
+    var timeSpan = createElement('SPAN', {className:'small'}, timeStr);
+    
+    div.appendChild(document.createTextNode(msgObj.userName+' : '+msgObj.msg+' '));
+    div.appendChild(timeSpan);
+    return div;
+}
 
-var msgItemTplFunc = Handlebars.templates['messageItem.tmpl'];
-var alertMsgTplFunc = Handlebars.templates['alertItem.tmpl'];
+function createElement(tagName, attrs, text){
+    var ele=document.createElement(tagName);
+    if (attrs) {
+        for(var k in attrs){
+            if (k ==='className') {
+                ele.className=attrs[k];
+            }else{
+                ele.setAttribute(k, attrs[k]);    
+            }
+        }
+    }
+    if (text) {
+        ele.textContent = text;
+    }
+    return ele;
+}
+
+function alertMsgTplFunc(alertObj){
+    var id = alertObj.id;
+    var div = document.createElement('DIV');
+    div.className="alert alert-warning alert-dismissible"
+    div.id="alertMsgItem"+id;
+    var closeBtn = document.createElement('BUTTON');
+    closeBtn.className = 'close';
+    closeBtn.onclick=function(){
+        removeAlert(id);
+    };
+    closeBtn.appendChild(createElement('SPAN',{'aria-hidden': 'true'},'×'));
+    closeBtn.appendChild(createElement('SPAN',{className: 'sr-only'},'Close'));
+    div.appendChild(closeBtn);
+    div.appendChild(document.createTextNode(alertObj.msg));
+    return div;
+}
 
 var chatMsgBox = $('#chatMessageBox');
 var msgObserver = {
     arrayDidChange : function(observedObj, start, removeCount, addCount){
         if (addCount > 0) {
-            var content = '';
             for (var i = 0; i < addCount; i++) {
-                content += msgItemTplFunc(observedObj[start+i]);
+                chatMsgBox.append(msgItemTplFunc(observedObj[start+i]));
             }
-            // only generate one DOM insert event
-            chatMsgBox.append(content);
         }
         if (removeCount>0) {
             var removed = [];
@@ -69,7 +99,7 @@ var alertManager = {
     uuid : 0,
     alert : function(msg){
         var self=this;
-        var id = id++;
+        var id = this.uuid++;
         var alertObj = {
             id : id,
             msg : msg
