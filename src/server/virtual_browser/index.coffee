@@ -471,6 +471,9 @@ RPCMethods =
                 return target[attribute] = value
 
             if inputTags.indexOf(target.tagName) >= 0 and attribute is "value"
+                # this is to coping the implementation of textarea
+                if target.tagName is 'TEXTAREA'
+                    target.textContent = value
                 target.value = value
             else
                 target.setAttribute(attribute, value)
