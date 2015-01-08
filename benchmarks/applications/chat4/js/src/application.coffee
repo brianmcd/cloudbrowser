@@ -29,7 +29,7 @@ dateFormatCache ={
 angular.module('utilService', []).filter('mydate',['dateFilter', ($filter) ->
   return (input, format) ->
     cached = dateFormatCache.get(input, format)
-    if not chached?
+    if not cached?
         cached = $filter(input, format)
         dateFormatCache.put(input, format, cached)
     return cached

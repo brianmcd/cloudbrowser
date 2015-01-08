@@ -42,7 +42,7 @@
       return function(input, format) {
         var cached;
         cached = dateFormatCache.get(input, format);
-        if (typeof chached === "undefined" || chached === null) {
+        if (cached == null) {
           cached = $filter(input, format);
           dateFormatCache.put(input, format, cached);
         }
