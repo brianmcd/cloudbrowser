@@ -60,13 +60,24 @@ class MemoryWeightLB extends WeightedLB
     heartBeat : (workerId, memroyInBytes)->
         @_updateWeight(workerId, parseInt(memroyInBytes/1000000))
 
-exports.newLoadbalancer=(type)->
-    if type is 'appinsWeighted'
-        return new WeightedLB({
+class RoundRobinLB extends WeightedLB
+    constructor: ()->
+        super({
             defaultWeight : 0
-            appinsWeight : 1
+            appinsWeight : 0
             requestWeight : 0
-            })
+        })
+
+    getMostFreeWorker: ()->
+        worker = super()
+        if worker?
+            worker._weight += 1
+        return worker
+        
+
+exports.newLoadbalancer=(type)->
+    if type is 'roundrobin'
+        return new RoundRobinLB()
     if type is 'memoryWeighted'
         return new MemoryWeightLB()
     errorMsg = "unknown lb type #{type}"

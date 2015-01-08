@@ -243,7 +243,7 @@ options= {
     loadbalanceStrategy:
         full    : 'loadbalance-strategy'
         default : 'memoryWeighted'
-        help    : 'The strategy of how the master spread the load to the workers. Available options are appinsWeighted, memoryWeighted'
+        help    : 'The strategy of how the master spread the load to the workers. Available options are roundrobin, memoryWeighted'
         env     : 'CB_LBTYPE'
 }
 
