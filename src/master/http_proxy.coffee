@@ -55,8 +55,7 @@ class HttpProxy
             res.writeHead(404)
             return res.end("The url is no longer valid.")
         logger("proxy reqeust #{req.url} to #{worker.id}")
-        # increase worker's weight
-        worker.weight += 5
+        @workerManager.registerRequest(worker.id)
         @proxy.web(req, res, {
             target:
                 {

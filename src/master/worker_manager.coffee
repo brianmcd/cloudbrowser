@@ -231,20 +231,17 @@ routers = {
 class WokerManager
     constructor : (dependencies, callback) ->
         @_rmiService = dependencies.rmiService
-        @workersMap = {}
         @appInstanceMap = {}
+
+        {loadbalanceStrategy} = dependencies.config.workerConfig
+        @loadbalancer = require("./load_balancer").newLoadbalancer(loadbalanceStrategy)
+
         @_workerStubs = {}
         callback null, this
 
-    # pick a worker with smallest weight
     getMostFreeWorker : () ->
-        freeWorker = null
-        for id, worker of @workersMap
-            if not freeWorker?
-                freeWorker = worker
-            else if worker.weight < freeWorker.weight
-                freeWorker = worker
-        return freeWorker
+        return @loadbalancer.getMostFreeWorker()
+        
 
     # like .jpg .html ...
     isStaticFileRequest : (path) ->
@@ -261,13 +258,8 @@ class WokerManager
             host : worker.host
             httpPort : worker.httpPort
             rmiPort : worker.rmiPort
-            # set initial weight
-            weight : 10
         }
-        if @workersMap[worker.id]?
-            logger "worker exists, updating with new info"
-        logger "register #{JSON.stringify(workerInfo)}"
-        @workersMap[worker.id] = workerInfo
+        @loadbalancer.registerWorker(workerInfo)
         if callback?
             callback null
 
@@ -280,29 +272,27 @@ class WokerManager
     getWorkerByAppInstanceId : (appInstanceId) ->
         appInstance = @appInstanceMap[appInstanceId]
         if appInstance?
-            return @workersMap[appInstance.workerId]
+            return @loadbalancer.getWorkerById(appInstance.workerId)
         return null
 
     registerAppInstance : (appInstance) ->
         workerId = appInstance.workerId
         logger "register appInstance #{appInstance.id} from #{workerId}"
-        if @workersMap[workerId]?
-            @workersMap[workerId].weight += 10
+        @loadbalancer.registerAppInstance(workerId)
         @appInstanceMap[appInstance.id] = appInstance
 
     unregisterAppInstance : (appInstanceId) ->
         appInstance = @appInstanceMap[appInstanceId]
         if appInstance?
             workerId = appInstance.workerId
-            if @workersMap[workerId]?
-                @workersMap[workerId].weight -= 10
+            @loadbalancer.unregisterAppInstance(workerId)
             delete @appInstanceMap[appInstanceId]
 
-    heartBeat : (workerId, memroyInBytes)->
-        if @workersMap[workerId]?
-            @workersMap[workerId].weight = parseInt(memroyInBytes/1000000)
-        else
-            logger "worker #{workerId} not registered."
+    registerRequest : (workerId)->
+        @loadbalancer.registerRequest(workerId)
+
+    heartBeat : ()->
+        @loadbalancer.apply(@loadbalancer, arguments)
 
 
     ###

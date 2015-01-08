@@ -87,6 +87,11 @@ class Runner
                     callback null, sysMonitor
             ],
             'heartBeat' : ['sysMonitor', 'appConfigs', (callback, results)->
+                    {loadbalanceStrategy} = results.config.serverConfig
+                    if loadbalanceStrategy isnt 'memoryWeighted'
+                        # create heart beat if only needed
+                        logger("no hearbeat for #{loadbalanceStrategy} loadbalancer")
+                        return callback(null)
                     heartBeater = new HeartBeater(results)
                     callback null, heartBeater
                     logger("hearbeat initiated")
