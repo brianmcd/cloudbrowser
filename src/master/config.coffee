@@ -244,12 +244,13 @@ options= {
         full    : 'loadbalance-strategy'
         default : 'memoryWeighted'
         help    : 'The strategy of how the master spread the load to the workers. Available options are appinsWeighted, memoryWeighted'
+        env     : 'CB_LBTYPE'
 }
 
 parseCommandLineOptions = (argv) ->
     if not argv?
         argv = process.argv
-    require('nomnom').script(argv[1]).options(options).parse(argv.slice(2))
+    require('../shared/commandline_parser').parse(options, argv)
 
 
 

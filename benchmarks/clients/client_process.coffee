@@ -528,18 +528,7 @@ options = {
     }
 }
 
-# if we define env option, use the enviroment variable as default
-for k, v of options
-    if v.env? and v.default? and process.env[v.env]? and process.env[v.env].trim().length > 0
-        defaultVal = process.env[v.env]
-        if v.type isnt 'string'
-            try
-                defaultVal = JSON.parse(defaultVal)
-            catch e
-                # ...
-        v.default = defaultVal
-
-opts = require('nomnom').options(options).script(process.argv[1]).parse()
+opts = require('../../src/shared/commandline_parser').parse(options, process.argv)
 
 if opts.appAddress?
     parsedUrl = parseUrl(opts.appAddress)
