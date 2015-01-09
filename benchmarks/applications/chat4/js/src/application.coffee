@@ -1,41 +1,4 @@
-dateFormatCache ={
-    capacity : 200,
-    evicationSize : 100,
-    keys : [],
-    cache : {},
-    getKey : (val, format)->
-        if angular.isDate(val)
-            return val.getTime()+"_#{format}"
-        return val+"_#{format}"
-    
-    get : (input, format)->
-        key = @getKey(input, format)
-        return @cache[key]
-    
-    put : (input, format, val)->
-        key = @getKey(input, format)
-        if @cache[key]?
-            @cache[key] = val
-            return
-        if @keys.length >= @capacity
-            deleted = @keys.splice(0, @evicationSize)
-            for i in deleted
-                delete @cache[i]
-        @keys.push(key)
-        @cache[key]=val
-        return
-}
-
-angular.module('utilService', []).filter('mydate',['dateFilter', ($filter) ->
-  return (input, format) ->
-    cached = dateFormatCache.get(input, format)
-    if not cached?
-        cached = $filter(input, format)
-        dateFormatCache.put(input, format, cached)
-    return cached
-])
-
-app = angular.module("Chat4", ['utilService'])
+app = angular.module("Chat4", [])
 
 app.directive 'enterSubmit', () ->
     return {

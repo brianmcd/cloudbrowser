@@ -35,7 +35,7 @@
         </div>
         <div class="panel-body" style="max-height: 350px;overflow: scroll;" id="chatMessageBox">
             <div ng-repeat="message in chatManager.messages" ng-class="getMsgClass(message)">
-                {{message.userName}} : {{message.msg}} <span class="small">{{message.time | mydate: 'medium'}}</span>
+                {{message.userName}} : {{message.msg}} <span class="small">{{message.time | date: 'medium'}}</span>
             </div>
         </div>
         <div class="panel-footer">
