@@ -4,10 +4,10 @@ debug = require('debug')
 logger = debug("cloudbrowser:jsdompatch")
 
 exports.applyPatches = () ->
-    jsdom = require('jsdom')
-    html = jsdom.level('3', 'html')
-    events = jsdom.level('3', 'events')
-    core = jsdom.level('3', 'core')
+    jsdom = require('jsdom').dom
+    html = jsdom
+    events = jsdom
+    core = jsdom
     addDefaultHandlers(html)
     addKeyboardEvents(core, events)
     patchScriptTag(html)

@@ -48,10 +48,10 @@ getBrowser = (node) ->
 # Adds advice to a number of DOM methods so we can emit events when the DOM
 # changes.
 exports.addAdvice = () ->
-    jsdom = require('jsdom')
-    html = jsdom.level('3', 'html')
-    events = jsdom.level('3', 'events')
-    core = jsdom.level('3', 'core')
+    jsdom = require('jsdom').dom
+    html = jsdom
+    events = jsdom
+    core = jsdom
 
     # Advice for: HTMLDocument constructor
     #
