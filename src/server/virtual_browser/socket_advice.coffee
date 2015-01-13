@@ -23,16 +23,46 @@ bufferEmit = ()->
         # only send message if we have real messages
         if @buffer.length > 0
             logger("buffer send #{@buffer.length} events")
-            if @buffer.length > 1
-                @doEmit('batch', @buffer, @clientId)
+            buffer = deduplicateBuffer(@buffer)
+            if buffer.length > 1
+                @doEmit('batch', buffer, @clientId)
             else
-                @doEmit.apply(@, @buffer[0])
+                @doEmit.apply(@, buffer[0])
             @buffer=[]
         else
             logger("skip send events")
     else
         @buffer.push(arguments)
     return
+
+deduplicateBuffer = (buffer)->
+    if buffer.length<=1
+        return buffer
+    finalEvts = {}
+    hasDuplicates = false
+    for evt in buffer
+        if evt[0] is 'DOMAttrModified'
+            nodeId = evt[1]
+            attrName = evt[2]
+            if not finalEvts[nodeId]?
+                finalEvts[nodeId] = {}
+            
+            if finalEvts[nodeId][attrName]?
+                finalEvts[nodeId][attrName]['_duplicate']=true
+                hasDuplicates=true
+            finalEvts[nodeId][attrName] = evt
+
+    return buffer if not hasDuplicates
+
+    newBuffer = []
+    for evt in buffer
+        newBuffer.push(evt) if not evt._duplicate
+    return newBuffer
+    
+
+    
+
+    
 
 normalEmit = ()->
     @socket.emit.apply(@socket, arguments)

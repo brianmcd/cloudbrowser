@@ -221,9 +221,9 @@ RPCMethods =
             if /^selected$|^selectedIndex$|^value$|^checked$/.test(name)
                 # Calling setAttribute doesn't cause the displayed value to change,
                 # but setting it as a property does.
-                target[name] = value
+                RPCMethods._setPropertyIfChanges(target, name, value)
             else
-                target.setAttribute(name, value)
+                RPCMethods._setAttrIfChanges(target, name, value)
         else if attrChange == 'REMOVAL'
             if /^checked$/.test(name)
                 target[name] = false
@@ -231,6 +231,16 @@ RPCMethods =
                 target.removeAttribute(name)
         else
             throw new Error("Invalid attrChange: #{attrChange}")
+
+    _setPropertyIfChanges : (target, propName, propVal)->
+        if target[propName] isnt propVal
+            target[propName] = propVal
+
+    _setAttrIfChanges : (target, attrName, attrVal)->
+        if target.getAttribute(attrName) isnt attrVal
+            target.setAttribute(attrName, attrVal)
+        
+        
 
     DOMCharacterDataModified : (targetId, value) ->
         target = @nodes.get(targetId)
