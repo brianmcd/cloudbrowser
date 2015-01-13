@@ -540,7 +540,7 @@ RPCMethods =
         
     _dispatchEvent : (vbrowser, clientEv)->
         browser = vbrowser.browser
-        if vbrowser.registeredEventTypes.indexOf(clientEv.type) >=0
+        if vbrowser.registeredEventTypes.indexOf(clientEv.type) >=0 or defaultEvents[clientEv.type]?
             serverEv = RPCMethods._createEvent(clientEv, browser.window)
             clientEv.target.dispatchEvent(serverEv)
             return serverEv
