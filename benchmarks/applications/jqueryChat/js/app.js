@@ -164,6 +164,7 @@ function setUserName(name){
 function chatBoxKeyEvents(evt){
     if (evt.which == 13) {
         sendChatMsg();
+        evt.preventDefault();
     }
 }
 

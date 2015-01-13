@@ -26,7 +26,7 @@
         <div class="panel-body" style="max-height: 350px;overflow: scroll;" id="chatMessageBox">
         </div>
         <div class="panel-footer">
-        <textarea id="chatText" placeholder="Say something" cols="100" rows="2" onkeyup="chatBoxKeyEvents(event)"></textarea>
+        <textarea id="chatText" placeholder="Say something" cols="100" rows="2" onkeydown="chatBoxKeyEvents(event)"></textarea>
         <button class="btn btn-primary" onclick="sendChatMsg()">Send</button>
         </div>
     </div>
