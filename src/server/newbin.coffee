@@ -12,7 +12,7 @@ HTTPServer         = require('./http_server')
 RmiService         = require('./rmi_service')
 UuidService        = require('./uuid_service')
 
-#require('webkit-devtools-agent').start()
+# require('webkit-devtools-agent').start()
 
 # https://github.com/trevnorris/node-ofe
 # This will overwrite OnFatalError to create a heapdump when your app fatally crashes.
