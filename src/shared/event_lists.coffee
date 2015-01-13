@@ -29,6 +29,7 @@ exports.clientEvents =
     'keydown'     : true
     'keypress'    : true
     'keyup'       : true
+    'input'       : true
     'select'      : true
     'submit'      : true
     #'scroll'
@@ -37,7 +38,6 @@ exports.clientEvents =
     #'wheel'
     # HTMLEvents
     #'drag' - we could echo this to all clients. also dragend etc
-    #'input' - what's this?
 
 groups =
     'UIEvents' : [
@@ -60,9 +60,6 @@ groups =
         'mouseup'
         'mousewheel'
     ]
-    'TextEvent' : [
-        'textinput'
-    ]
     'KeyboardEvent' : [
         'keydown'
         'keypress'
@@ -75,6 +72,7 @@ groups =
         'submit'
         'select'
         'focusin'
+        'input'
     ]
 
 # Maps an event type (like 'click') to an event group (like 'MouseEvents')

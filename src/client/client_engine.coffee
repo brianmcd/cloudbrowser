@@ -59,6 +59,7 @@ class ClientEngine
         # to let the master know how to route this request
         console.log "referer #{encodedUrl}"
         queryString = "referer=#{encodedUrl}"
+        # open server side logging
         if localStorage?.cblogging is "true"
             queryString += "&logging=true&browserId=#{@window.__envSessionID}"
         

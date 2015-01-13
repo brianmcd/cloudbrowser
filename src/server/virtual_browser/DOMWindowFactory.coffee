@@ -1,4 +1,3 @@
-HTML5                  = require('html5')
 {LocationBuilder}      = require('./location')
 {XMLHttpRequest}       = require('./XMLHttpRequest')
 {addAdvice, patchOnEventProperty} = require('./advice')
@@ -10,6 +9,7 @@ debug = require('debug')
 logger = debug("cloudbrowser:worker:dom")
 
 # patches for jsdom
+# event attributes like 'onchange' 'oninput' is patched here
 addAdvice()
 applyPatches()
 
@@ -35,10 +35,6 @@ class DOMWindowFactory
                 MutationEvents : '2.0'
             created : (error, window)=>
                 window.history = {}
-                # to make onchange property visible on window, so the jquery think this browser
-                # supports bubble change, bubble submit, see 
-                patchOnEventProperty(window, 'change')
-                patchOnEventProperty(window, 'submit')
                 # This sets window.XMLHttpRequest, and gives the XHR code access to
                 # the window object.
                 window.XMLHttpRequest = XMLHttpRequest

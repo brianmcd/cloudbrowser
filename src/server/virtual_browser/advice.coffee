@@ -208,12 +208,10 @@ exports.addAdvice = () ->
     # the corresponding "on" property on each node.
     # TODO: really, this should emit on all event types and shouldn't know
     #       about ClientEvents.
-    do () ->
-        for type of ClientEvents
-            do (type) ->
-                # TODO: remove listener if this is set to something not a function
-                for eventTarget in [html.HTMLElement, html.HTMLDocument]
-                    patchOnEventProperty(eventTarget.prototype, type)
+    for type of ClientEvents
+        # TODO: remove listener if this is set to something not a function
+        for eventTarget in [html.HTMLElement, html.HTMLDocument]
+            patchOnEventProperty(eventTarget.prototype, type)
 
 
     createFrameAttrHandler = (namespace) ->

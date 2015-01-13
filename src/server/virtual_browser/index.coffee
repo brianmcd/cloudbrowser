@@ -471,13 +471,16 @@ RPCMethods =
                 return target[attribute] = value
 
             if inputTags.indexOf(target.tagName) >= 0 and attribute is "value"
-                # this is to coping the implementation of textarea
-                if target.tagName is 'TEXTAREA'
-                    target.textContent = value
-                target.value = value
+                RPCMethods._setInputElementValue(target, value)
             else
                 target.setAttribute(attribute, value)
             @setByClient = null
+
+    _setInputElementValue : (target, value)->
+        # coping the implementation of textarea
+        if target.tagName is 'TEXTAREA'
+            target.textContent = value
+        target.value = value
 
 
     # pan : to my knowledge, this id is used in benchmark tools to track which client instance
@@ -506,6 +509,41 @@ RPCMethods =
             if @server.config.traceMem
                 gc()
             @server.eventTracker.inc()
+
+    input : (events, id)->
+        return if @browserLoading
+
+        @broadcastEvent('pauseRendering', id)
+        skipInputEvent = false
+        for clientEv in events
+            @nodes.unscrub(clientEv)
+            switch clientEv.type
+                when 'input'
+                    # it is always the last event
+                    if not skipInputEvent
+                        RPCMethods._setInputElementValue(clientEv.target, clientEv._newValue)
+                        RPCMethods._dispatchEvent(@, clientEv)
+                    break
+                when 'keydown'
+                    serverEv = RPCMethods._dispatchEvent(@, clientEv)
+                    if serverEv
+                        skipInputEvent = serverEv._preventDefault
+                    break
+                when 'keypress'
+                    if not skipInputEvent
+                        RPCMethods._dispatchEvent(@, clientEv)
+                    break
+                else
+                    logger("unexpected event #{clientEv.type}")
+
+        @broadcastEvent('resumeRendering', id)
+        
+    _dispatchEvent : (vbrowser, clientEv)->
+        browser = vbrowser.browser
+        if vbrowser.registeredEventTypes.indexOf(clientEv.type) >=0
+            serverEv = RPCMethods._createEvent(clientEv, browser.window)
+            clientEv.target.dispatchEvent(serverEv)
+            return serverEv
 
 
     # Takes a clientEv (an event generated on the client and sent over DNode)

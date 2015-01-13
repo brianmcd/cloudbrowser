@@ -7,6 +7,14 @@ EventTypeToGroup    = EventLists.eventTypeToGroup
 # here to prevent the default action of the client's browser.
 DefaultEvents = EventLists.defaultEvents
 
+keyboardRelatedEvents = [
+    'keydown'
+    'keypress'
+    'keyup'
+    'input'
+]
+
+
 class EventMonitor
     constructor : (@client) ->
         @document = @client.document
@@ -15,16 +23,36 @@ class EventMonitor
 
         # A lookup table of all of the events we have a listener registered on.
         @registeredEvents = {}
+        @clientRegisteredEvents = []
 
         for type, bool of DefaultEvents
-            @registeredEvents[type] = true
-            @document.addEventListener(type, @_handler, true)
+            @_add(type)
+            @_addClientRegisteredEvents(type)
 
     add : (type) ->
         console.log("Client adding listener for: #{type}")
+        @_addClientRegisteredEvents(type)
+        if keyboardRelatedEvents.indexOf(type) >= 0
+            # add all keyboardRelatedEvents if it is listened by client
+            for i in keyboardRelatedEvents
+                @_add(i)
+        else
+            @_add(type)
+        return
+
+    _addClientRegisteredEvents : (type)->
+        if @clientRegisteredEvents.indexOf(type) < 0
+            @clientRegisteredEvents.push(type)
+        return
+
+    _inClientRegisteredEvents : (type)->
+        return @clientRegisteredEvents.indexOf(type) >= 0
+
+    _add : (type) ->
         if !@registeredEvents[type]
-                @document.addEventListener(type, @_handler, true)
+            @document.addEventListener(type, @_handler, true)
             @registeredEvents[type] = true
+            console.log("add event listener for: #{type}")
 
     _handler : (event) =>
         targetID = event.target.__nodeID
