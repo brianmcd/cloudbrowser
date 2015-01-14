@@ -40,10 +40,15 @@ class SpecialEventHandler
         @socket.emit('processEvent', remoteEvent, id)
 
     keyup : (rEvent, event, id) ->
+        {target} = event
+        if target.getAttribute('cb-keyevents') is 'basic'
+            return if rEvent.which isnt 13
+
         for ev in @_queuedKeyEvents
-            @socket.emit('processEvent',
-                         ev, # event
-                         id) # id
+            if @monitor._inClientRegisteredEvents(ev.type)
+                @socket.emit('processEvent',
+                             ev, # event
+                             id) # id
         if @monitor._inClientRegisteredEvents(rEvent.type)
             @socket.emit('processEvent', rEvent, id)
         @_queuedKeyEvents = []
@@ -57,8 +62,7 @@ class SpecialEventHandler
     _keyHelper : (remoteEvent, id) ->
         {target} = remoteEvent
         # should probably clear the queue if it is too long
-        if @monitor._inClientRegisteredEvents(remoteEvent.type)
-            @_queuedKeyEvents.push(remoteEvent)
+        @_queuedKeyEvents.push(remoteEvent)
 
     focusin : (remoteEvent, clientEvent, id) ->
         # do nothing for now
@@ -68,8 +72,26 @@ class SpecialEventHandler
         # keydown keypress always happen before input
         {target} = clientEvent
         remoteEvent._newValue = target.value
-        @_queuedKeyEvents.push(remoteEvent)
-        @socket.emit('input', @_queuedKeyEvents, id)
+        # if the input box is configured as basic, we only send input
+        # event upon enter key
+        if target.getAttribute('cb-keyevents') is 'basic'
+            lastEvent = @_queuedKeyEvents[0]
+            if lastEvent? and lastEvent.which isnt 13
+                @_queuedKeyEvents = []
+                target._previousInputEvent = remoteEvent
+                return
+
+        allEvents = []
+        if target._previousInputEvent?
+            allEvents.push(target._previousInputEvent)
+            target._previousInputEvent = null
+        
+        for i in @_queuedKeyEvents
+            if @monitor._inClientRegisteredEvents(i.type)
+                allEvents.push(i)
+        
+        allEvents.push(remoteEvent)
+        @socket.emit('input', allEvents, id)
 
         @_queuedKeyEvents = []
 

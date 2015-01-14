@@ -263,6 +263,10 @@ exports.addAdvice = () ->
         return if not browser?
         if val? and typeof val isnt 'string'
             val = String(val)
+        # it is a mess
+        if elem.tagName is 'TEXTAREA'
+            elem.textContent = val
+        
         # it is not part of standard to emit DOMAttrModified after set value
         browser.emit('DOMAttrModified',{
             target : elem

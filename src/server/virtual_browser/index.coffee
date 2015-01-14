@@ -471,8 +471,6 @@ RPCMethods =
 
     _setInputElementValue : (target, value)->
         # coping the implementation of textarea
-        if target.tagName is 'TEXTAREA'
-            target.textContent = value
         target.value = value
 
 
