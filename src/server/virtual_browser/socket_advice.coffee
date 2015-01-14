@@ -1,4 +1,5 @@
 debug = require('debug')
+lodash = require('lodash')
 
 logger = debug('cloudbrowser:worker:browser')
 
@@ -6,36 +7,41 @@ logger = debug('cloudbrowser:worker:browser')
 renderControlEvents = ['pauseRendering', 'resumeRendering']
 
 
-bufferEmit = ()->
-    eventName = arguments[0]
+bufferEmit = (args, context)->
+    # cannot change the event directly, it might be shared by multiple sockets
+    args = lodash.clone(args)
+    eventName = args[0]
     if eventName is 'pauseRendering'
         @buffering = true
         return
     
     if not @buffering and eventName isnt 'resumeRendering'
         logger("send event without buffering")
-        @doEmit.apply(@, arguments)
+        @doEmit(args)
         return
     # buffering
     if eventName is 'resumeRendering'
-        @clientId = arguments[1]
+        @clientId = args[1]
         @buffering=false
         # only send message if we have real messages
         if @buffer.length > 0
-            logger("buffer send #{@buffer.length} events")
-            buffer = deduplicateBuffer(@buffer)
+            buffer = deduplicateBuffer(@buffer, this, context)
             if buffer.length > 1
-                @doEmit('batch', buffer, @clientId)
+                logger("buffer send #{buffer.length} events")
+                @doEmit(['batch', buffer, @clientId])
+            else if buffer.length == 1
+                logger("buffer send #{buffer.length} events")
+                @doEmit(buffer[0])
             else
-                @doEmit.apply(@, buffer[0])
+                logger("skip send events after deduplication")    
             @buffer=[]
         else
             logger("skip send events")
     else
-        @buffer.push(arguments)
+        @buffer.push(args)
     return
 
-deduplicateBuffer = (buffer)->
+deduplicateBuffer = (buffer, socket, context)->
     if buffer.length<=1
         return buffer
     finalEvts = {}
@@ -51,7 +57,11 @@ deduplicateBuffer = (buffer)->
                 finalEvts[nodeId][attrName]['_duplicate']=true
                 hasDuplicates=true
             finalEvts[nodeId][attrName] = evt
-
+            # if the value sending to client is already there. evt[3] is the attribute value
+            if context and context.from is socket and context.target is nodeId and context.value is evt[3]
+                evt._duplicate = true
+                hasDuplicates=true
+            
     return buffer if not hasDuplicates
 
     newBuffer = []
@@ -59,22 +69,27 @@ deduplicateBuffer = (buffer)->
         newBuffer.push(evt) if not evt._duplicate
     return newBuffer
     
-
     
 
-    
+normalEmit = (args)->
+    @socket.emit.apply(@socket, args)
 
-normalEmit = ()->
-    @socket.emit.apply(@socket, arguments)
-
-compressedEmit = ()->
-    eventName = arguments[0]
-    arguments[0]=@compressor.compress(eventName)
+compressedEmit = (args)->
+    # do not change events directly, shared by multiple sockets
+    args = lodash.clone(args)
+    eventName = args[0]
+    args[0]=@compressor.compress(eventName)
     if eventName is 'batch'
-        events = arguments[1]
-        for eventArgs in events
-            eventArgs[0] =@compressor.compress(eventArgs[0])
-    @socket.emit.apply(@socket, arguments)
+        events = args[1]
+        # clone the events array
+        clonedEvents = []
+        for event in events
+            clonedEvent = lodash.clone(event)
+            clonedEvent[0] =@compressor.compress(clonedEvent[0])
+            clonedEvents.push(clonedEvent)
+        args[1] = clonedEvents
+    @socket.emit.apply(@socket, args)
+
 
 
 class Socket 

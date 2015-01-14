@@ -199,20 +199,14 @@ class VirtualBrowser extends EventEmitter
                 @rpcLog.write(', ')
 
     broadcastEvent : (name, args...) ->
-        @_broadcastHelper(null, name, args)
-
-    broadcastEventExcept : (socket, name, args...) ->
-        @_broadcastHelper(socket, name, args)
-
-    _broadcastHelper : (except, name, args) ->
         if @server.config.traceProtocol
             @logRPCMethod(name, args)
 
         args.unshift(name)
         
         for socket in @sockets
-            socket.emitCompressed.apply(socket, args) if socket != except
-    
+            socket.emitCompressed(args, @clientContext)
+        return
 
     addSocket : (socket) ->
         socket = SocketAdvice.adviceSocket({
@@ -375,19 +369,12 @@ DOMEventHandlers =
             newValue = @resources.addURL(newValue)
         if @browserLoading
             return
-        if @setByClient
-            @broadcastEventExcept(@setByClient,
-                                  'DOMAttrModified',
-                                  target.__nodeID,
-                                  attrName,
-                                  newValue,
-                                  attrChange)
-        else
-            @broadcastEvent('DOMAttrModified',
-                            target.__nodeID,
-                            attrName,
-                            newValue,
-                            attrChange)
+        
+        @broadcastEvent('DOMAttrModified',
+                        target.__nodeID,
+                        attrName,
+                        newValue,
+                        attrChange)
 
     AddEventListener : (event) ->
         {target, type} = event
@@ -461,20 +448,26 @@ inputTags = ['INPUT', 'TEXTAREA']
 
 RPCMethods =
     setAttribute : (targetId, attribute, value, socket) ->
-        if !@browserLoading
-            @setByClient = socket
+        return if @browserLoading
+            
+        @clientContext={
+            from : socket
+            target : targetId
+            value : value
+        }
 
-            target = @nodes.get(targetId)
-            if attribute == 'src'
-                return
-            if attribute == 'selectedIndex'
-                return target[attribute] = value
+        target = @nodes.get(targetId)
+        if attribute == 'src'
+            return
+        if attribute == 'selectedIndex'
+            return target[attribute] = value
 
-            if inputTags.indexOf(target.tagName) >= 0 and attribute is "value"
-                RPCMethods._setInputElementValue(target, value)
-            else
-                target.setAttribute(attribute, value)
-            @setByClient = null
+        if inputTags.indexOf(target.tagName) >= 0 and attribute is "value"
+            RPCMethods._setInputElementValue(target, value)
+        else
+            target.setAttribute(attribute, value)
+        
+        @clientContext=null
 
     _setInputElementValue : (target, value)->
         # coping the implementation of textarea
@@ -510,9 +503,14 @@ RPCMethods =
                 gc()
             @server.eventTracker.inc()
 
-    input : (events, id)->
+    input : (events, id, socket)->
         return if @browserLoading
-
+        inputEvent = events[events.length-1]
+        @clientContext={
+            from : socket
+            target : inputEvent.target
+            value : inputEvent._newValue
+        }
         @broadcastEvent('pauseRendering', id)
         skipInputEvent = false
         for clientEv in events
@@ -537,6 +535,7 @@ RPCMethods =
                     logger("unexpected event #{clientEv.type}")
 
         @broadcastEvent('resumeRendering', id)
+        @clientContext=null
         
     _dispatchEvent : (vbrowser, clientEv)->
         browser = vbrowser.browser
