@@ -136,6 +136,7 @@ function toggleUserNameInput(){
 function userNameInputKeyEvents(evt){
     if (evt.which == 13) {
         setUserName($("#userNameInput").val());
+        evt.preventDefault()
     }
 }
 
