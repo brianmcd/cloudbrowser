@@ -189,6 +189,7 @@ class RegularEvent
     # we are not reject anything, if the expected event
     # does not showup, we will detect a timeout for waiting
     expect : (eventName, args)->
+        # logger("match #{eventName} #{JSON.stringify(args)}")
         if @expectIndex >= @descriptor.expect.length
             return 2
         currentExpect = @descriptor.expect[@expectIndex]
@@ -212,7 +213,11 @@ class RegularEvent
         if util.isArray(expectedEvent)
             return expectedEvent.indexOf(eventName) >= 0
         # this would be extremely slow
-        return true if expectedEvent.type is 'any'
+        if expectedEvent.type is 'any'
+            return true
+        else if expectedEvent.type?
+            throw new Error("unsupported expectedEvent type #{expectedEvent.type}")
+        
         return false
 
     _matchText : (args, matchRules)->
@@ -223,6 +228,7 @@ class RegularEvent
                 pattern = matchRule
             else
                 pattern = @context.previousInputValue
+            # logger("match #{pattern} with #{str}")
             return false if str.indexOf(pattern) is -1
         return true
 
