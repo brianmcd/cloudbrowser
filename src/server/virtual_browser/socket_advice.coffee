@@ -9,7 +9,6 @@ renderControlEvents = ['pauseRendering', 'resumeRendering']
 
 bufferEmit = (args, context)->
     # cannot change the event directly, it might be shared by multiple sockets
-    args = lodash.clone(args)
     eventName = args[0]
     if eventName is 'pauseRendering'
         @buffering = true
@@ -76,18 +75,12 @@ normalEmit = (args)->
 
 compressedEmit = (args)->
     # do not change events directly, shared by multiple sockets
-    args = lodash.clone(args)
     eventName = args[0]
     args[0]=@compressor.compress(eventName)
     if eventName is 'batch'
         events = args[1]
-        # clone the events array
-        clonedEvents = []
         for event in events
-            clonedEvent = lodash.clone(event)
-            clonedEvent[0] =@compressor.compress(clonedEvent[0])
-            clonedEvents.push(clonedEvent)
-        args[1] = clonedEvents
+            event[0] =@compressor.compress(event[0])
     @socket.emit.apply(@socket, args)
 
 

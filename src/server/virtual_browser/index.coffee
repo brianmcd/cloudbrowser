@@ -203,9 +203,20 @@ class VirtualBrowser extends EventEmitter
             @logRPCMethod(name, args)
 
         args.unshift(name)
+        if @sockets.length is 1
+            @sockets[0].emitCompressed(args, @clientContext)
+            return
         
-        for socket in @sockets
-            socket.emitCompressed(args, @clientContext)
+
+        allArgs = [args]
+        # the emitCompressed would modify args in deduplication/compression.
+        # only clone things when needed
+        for i in [1...@sockets.length] by 1
+            allArgs.push(lodash.cloneDeep(args))
+        
+        for i in [0...@sockets.length] by 1
+            socket = @sockets[i]
+            socket.emitCompressed(allArgs[i], @clientContext)
         return
 
     addSocket : (socket) ->
