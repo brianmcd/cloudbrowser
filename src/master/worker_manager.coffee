@@ -296,6 +296,13 @@ class WokerManager
 
 
     ###
+    request 
+    {
+        url :url of the request,
+        headers {
+            referer 
+        }
+    }
     the response is an object indicating the worker, a redirect page
     {
         worker : workerObj,
@@ -308,7 +315,7 @@ class WokerManager
         {path} = urlObj
 
         if @isStaticFileRequest(path) or @isSocketIoRequest(path)
-            referer = request.headers.referer
+            referer = request.headers?.referer
             # todo /favicon.ico do not have referer
             if not referer?
                 # get the referer from query string
