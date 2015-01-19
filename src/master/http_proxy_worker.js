@@ -93,22 +93,14 @@ if (require.main === module){
     infoLogger("Proxy worker "+pid+" started.");
 
     var msgId = 0;
-    var requestQueue = [];
+    var requestQueue = {};
 
     function getWorkerResHandler(msg){
         var id = msg.id;
-        var index = -1;
-        for (var i = requestQueue.length - 1; i >= 0; i--) {
-            if (requestQueue[i].id === id) {
-                index = i;
-                break;
-            }
-        }
-        if (index>=0) {
-            var queued = requestQueue[i];
-            requestQueue.splice(index,1);
-            var worker = msg.worker;
-            if (queued.socket) {
+        var queued = requestQueue[id];
+        if (queued != null) {
+            delete requestQueue[id];
+            if (queued.socket != null) {
                 httpProxyWorker.proxyWebSocketRequest(queued.req, queued.socket, queued.head, worker);
             }else{
                 var redirect = msg.redirect;
@@ -136,15 +128,24 @@ if (require.main === module){
         };
     }
 
+
+    function RequestQueueEle(id, req, res, socket, head){
+        this.id = id;
+        this.req = req;
+        this.res = res;
+        this.socket = socket;
+        this.head = head;
+    }
+
+    function putNewRequestQueueEle(id, req, res, socket, head){
+        requestQueue[id] = new RequestQueueEle(id, req, res, socket, head);
+    }
+
     function proxyRequest(req, res){
         logger("ProxyWorker #"+workerId+" get a request "+req.url);
         var getWorkerReq = createGetWorkerReq(req);
         process.send(getWorkerReq);
-        requestQueue.push({
-            id : getWorkerReq.id,
-            req : req,
-            res : res
-        });
+        putNewRequestQueueEle(getWorkerReq.id, req, res);
     }
 
     function proxyWebSocketRequest(req, socket, head){
@@ -153,13 +154,7 @@ if (require.main === module){
         // indicate this is from websocket request
         getWorkerReq.websocket = true;
         process.send(getWorkerReq);
-        requestQueue.push({
-            id : getWorkerReq.id,
-            req : req,
-            socket : socket,
-            head : head
-        });
-
+        putNewRequestQueueEle(getWorkerReq.id, req, null, socket, head);
     }
 
     var httpProxyWorker = new HttpProxyWorker({
