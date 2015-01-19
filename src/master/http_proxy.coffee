@@ -44,7 +44,7 @@ class HttpProxy
                 )
 
     childMessageHandler : (childProcess, msg)->
-        {req, id} = msg
+        {req, id, websocket} = msg
         {worker, redirect} = @workerManager.getWorker(req)
         childProcess.send({
             type : 'getWorkerRes'
@@ -52,6 +52,10 @@ class HttpProxy
             worker : worker
             redirect : redirect
         })
+        # for load balance purpose
+        if not websocket
+            @workerManager.registerRequest(worker.id)
+        
 
     proxyWebSocketRequest : (req, socket, head) ->
         {worker} = @workerManager.getWorker(req)

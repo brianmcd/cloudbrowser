@@ -48,7 +48,7 @@ lodash.assign(HttpProxyWorker.prototype, {
     // return if it is successfully proxied
     proxyRequest : function(req, res, worker, redirect){
         if(!worker){
-            this.logger('cannot find a worker');
+            this.infoLogger('cannot find a worker');
             res.writeHead(404);
             res.end("The url is no longer valid.");
             return false
@@ -90,7 +90,7 @@ if (require.main === module){
     var infoLogger = debug('cloudbrowser:master:proxyInfo');
     var pid = process.pid;
     var workerId = -1;
-    logger("Proxy worker "+pid+" started.");
+    infoLogger("Proxy worker "+pid+" started.");
 
     var msgId = 0;
     var requestQueue = [];
@@ -115,7 +115,7 @@ if (require.main === module){
                 httpProxyWorker.proxyRequest(queued.req, queued.res, worker, redirect);
             }
         }else{
-            logger("cannot find matched request for "+JSON.stringify(msg));
+            infoLogger("cannot find matched request for "+JSON.stringify(msg));
         }
     }
 
@@ -181,7 +181,7 @@ if (require.main === module){
             getWorkerResHandler(msg);
             return;
         }
-        logger("unknown type of message "+JSON.stringify(msg));
+        infoLogger("unknown type of message "+JSON.stringify(msg));
     });
 }
 
