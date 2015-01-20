@@ -100,6 +100,7 @@ if (require.main === module){
         var queued = requestQueue[id];
         if (queued != null) {
             delete requestQueue[id];
+            var worker = msg.worker;
             if (queued.socket != null) {
                 httpProxyWorker.proxyWebSocketRequest(queued.req, queued.socket, queued.head, worker);
             }else{
