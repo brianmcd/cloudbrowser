@@ -10,20 +10,32 @@ infoLogger = debug('cloudbrowser:master:proxyInfo')
 class HttpProxy
     constructor: (options) ->
         {@config, callback, @workerManager } = options
+        socketServer = require('net').createServer()
+        socketServer.listen(@config.httpPort, 2048, ()=>
+            infoLogger "starting proxy server listening on #{@config.httpPort}"
+            if @config.workers? and @config.workers > 0
+                @createWorkers(@config.workers, socketServer)
+                if @config.childOnly
+                    infoLogger("close proxy port in main process, use child process only")
+                    socketServer.close()
+                else
+                    infoLogger("proxy enabled in main process")
+                    @createInprocessWorker(socketServer)    
+            else
+                infoLogger("proxy enabled in main process")
+                @createInprocessWorker(socketServer)
+            callback(null, this)
+        )
+
+    createInprocessWorker :(socketServer)->
         @worker = new HttpProxyWorker({
             requestHandler : @proxyRequest.bind(this)
             wsReqestHandler : @proxyWebSocketRequest.bind(this)
             logger : logger
             infoLogger : infoLogger
-        });
-        socketServer = require('net').createServer()
-        socketServer.listen(@config.httpPort, 2048, ()=>
-            infoLogger "starting proxy server listening on #{@config.httpPort}"
-            @worker.listen(socketServer)
-            if @config.workers? and @config.workers > 0
-                @createWorkers(@config.workers, socketServer)
-            callback(null, this)
-        )
+        })
+        @worker.listen(socketServer)
+
 
     # create proxy processes
     createWorkers: (count, socketServer)->
