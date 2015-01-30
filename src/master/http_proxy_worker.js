@@ -28,7 +28,7 @@ function HttpProxyWorker(options){
         }else{
             errorMsg = "Proxy error "+ err.message + " @null " + req.url;
         }
-        infoLogger("Proxy error #{err.message} #{target?.host}:#{target?.port} #{req.url}");
+        infoLogger(errorMsg);
         infoLogger(err.stack);
         res.writeHead(500, "Proxy Error.");
         res.end();
