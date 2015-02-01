@@ -130,7 +130,13 @@ function showUserName(){
 showUserName();
 
 function toggleUserNameInput(){
-    $("#userNameInputDiv").toggle();
+    if($("#userNameInputDiv").hasClass("hidden")){
+        $("#userNameInputDiv").removeClass("hidden");
+        $("#userNameInputDiv").addClass("show");
+    }else{
+        $("#userNameInputDiv").removeClass("show");
+        $("#userNameInputDiv").addClass("hidden");
+    }
 }
 
 function userNameInputKeyEvents(evt){
