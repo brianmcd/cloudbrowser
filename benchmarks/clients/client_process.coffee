@@ -276,14 +276,16 @@ class Client extends EventEmitter
                     # creating socket after children clients send initial requests
                     @emit('browserconfig', @browserConfig)
                 )
-
-            timers.setImmediate(()=>
-                @_createSocket()
-                @_initialSocketIo()
-            )
             logger("#{@id} opened #{@browserConfig.url}")
 
             @stats.add('initialPage', timeElapsed)
+            if not @options.createBrowserOnly
+                timers.setImmediate(()=>
+                    @_createSocket()
+                    @_initialSocketIo()
+                )
+            else
+                @stopped = true
 
     _initialSocketIo : ()->
         @_initStartTs()
@@ -525,6 +527,12 @@ options = {
         full : 'talkerCount'
         type : 'number'
         help : 'how many clients actually send events, by default it equals clientCount'
+    },
+    createBrowserOnly : {
+        env : 'CB_CREATEVBONLY'
+        default : false
+        type : 'boolean'
+        help : 'stop after the initial page loaded'
     }
 }
 
