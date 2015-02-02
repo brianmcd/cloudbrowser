@@ -285,6 +285,7 @@ class Client extends EventEmitter
                     @_initialSocketIo()
                 )
             else
+                @emit("clientEngineReady")
                 @stopped = true
 
     _initialSocketIo : ()->
