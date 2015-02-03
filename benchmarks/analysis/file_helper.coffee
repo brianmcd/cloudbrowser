@@ -31,18 +31,30 @@ exports.parse = (fileName)->
             break
     return result
 
+# if func returns false, end earlier
+exports.walkDir = (dirName, func)->
+    files = fs.readdirSync(dirName)
+    for file in files
+        fullName = path.join(dirName, file)
+        fileObj = {
+            fullName : fullName
+            baseName : file
+            }
+        return if func(fileObj) is false
+            
 
 exports.parseDir = (dirName)->
-    files = fs.readdirSync(dirName)
     result = []
-    for file in files
-        fullname = path.join(dirName, file)
-        fstat = fs.statSync(fullname)
-        continue if not fstat.isFile()
-        fileMeta = exports.parse(fullname)
-        result.push(fileMeta) if fileMeta.type?
+    exports.walkDir(dirName, (fileObj)->
+        fileName = fileObj.fullName
+        fstat = fs.statSync(fileName)
+        if fstat.isFile()
+            fileMeta = exports.parse(fileName)
+            result.push(fileMeta) if fileMeta.type?
+        return true
+    )
     return result
-    
+  
 
 if require.main is module        
     console.log exports.parse('test_client_p0.log')

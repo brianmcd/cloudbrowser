@@ -12,9 +12,7 @@ class SpecialEventHandler
         if clientEvent.target.getAttribute('type') is 'file' then return
 
         clientEvent.preventDefault()
-        @socket.emit('processEvent',
-                     remoteEvent,
-                     id)
+        @socket.emit('processEvent', remoteEvent, id)
 
     # Valid targets:
     #   input, select, textarea
@@ -41,26 +39,19 @@ class SpecialEventHandler
                          clientEvent.target.value)
         @socket.emit('processEvent', remoteEvent, id)
 
-    keyup : (rEvent, event, id) =>
-        @_pendingKeyup = false
-        # Called directly as an event listener.
-        if arguments.length != 3
-            event = rEvent
-            rEvent = {}
-            @monitor.eventInitializers[EventTypeToGroup[event.type]](rEvent, event)
+    keyup : (rEvent, event, id) ->
         {target} = event
-        @socket.emit('setAttribute',
-                     target.__nodeID,
-                     'value',
-                     target.value)
-        @_queuedKeyEvents.push([rEvent, id])
+        if target.getAttribute('cb-keyevents') is 'basic'
+            return if rEvent.which isnt 13
+
         for ev in @_queuedKeyEvents
-            @socket.emit('processEvent',
-                         ev[0], # event
-                         ev[1]) # id
+            if @monitor._inClientRegisteredEvents(ev.type)
+                @socket.emit('processEvent',
+                             ev, # event
+                             id) # id
+        if @monitor._inClientRegisteredEvents(rEvent.type)
+            @socket.emit('processEvent', rEvent, id)
         @_queuedKeyEvents = []
-        if !@monitor.registeredEvents['keyup']
-            @monitor.document.removeEventListener('keyup', @keyup, true)
 
     keydown : (remoteEvent, clientEvent, id) ->
         @_keyHelper(remoteEvent, id)
@@ -69,13 +60,40 @@ class SpecialEventHandler
         @_keyHelper(remoteEvent, id)
 
     _keyHelper : (remoteEvent, id) ->
-        if !@_pendingKeyup && !@monitor.registeredEvents['keyup']
-            @_pendingKeyup = true
-            @monitor.document.addEventListener('keyup', @keyup, true)
-        @_queuedKeyEvents.push([remoteEvent, id])
+        {target} = remoteEvent
+        # should probably clear the queue if it is too long
+        @_queuedKeyEvents.push(remoteEvent)
 
     focusin : (remoteEvent, clientEvent, id) ->
         # do nothing for now
+
+    input : (remoteEvent, clientEvent, id) ->
+        # send keydown keypress keyups now.
+        # keydown keypress always happen before input
+        {target} = clientEvent
+        remoteEvent._newValue = target.value
+        # if the input box is configured as basic, we only send input
+        # event upon enter key
+        if target.getAttribute('cb-keyevents') is 'basic'
+            lastEvent = @_queuedKeyEvents[0]
+            if lastEvent? and lastEvent.which isnt 13
+                @_queuedKeyEvents = []
+                target._previousInputEvent = remoteEvent
+                return
+
+        allEvents = []
+        if target._previousInputEvent?
+            allEvents.push(target._previousInputEvent)
+            target._previousInputEvent = null
+        
+        for i in @_queuedKeyEvents
+            if @monitor._inClientRegisteredEvents(i.type)
+                allEvents.push(i)
+        
+        allEvents.push(remoteEvent)
+        @socket.emit('input', allEvents, id)
+
+        @_queuedKeyEvents = []
 
 
 module.exports = SpecialEventHandler

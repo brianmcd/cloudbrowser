@@ -56,14 +56,15 @@
     "http-auth": "1.2.7",
     "nwglobal": "0.0.1",
     "lodash" : "2.4.1",
-    "http-proxy" : "1.6.2",
+    "http-proxy" : "1.8.1",
     "nodermi" : "git://github.com/bladepan/nodermi.git",
     "debug" : "2.0.0",
     "heapdump" : "0.2.10",
     "longjohn" : "0.2.4",
     "usage" : "0.4.13",
     "line-by-line" : "git://github.com/johanlindberg/line-by-line",
-    "moment" : "2.8.3"
+    "moment" : "2.8.3",
+    "fast-stats" : "0.0.2"
   },
   "devDependencies": {
     "nodeunit": "0.8.6",

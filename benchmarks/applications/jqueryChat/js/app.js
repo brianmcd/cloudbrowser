@@ -9,87 +9,61 @@ if (typeof cloudbrowser !== 'undefined') {
     chatManager = {};
 }
 
-function ObservableArray(){
-    this._arr=[];
-    this._observers=[];
-    Object.defineProperty(this, 'length', {
-        get : function(){
-            return this._arr.length;
-        }
-    });
+function msgItemTplFunc(msgObj){
+    var div = document.createElement('DIV');
+    if(msgObj.type==='sys'){
+        div.className = 'alert alert-success';
+    }
+    // 'Oct 21, 2014 3:24:31 PM'
+    var timeStr = moment(msgObj.time).format('MMM DD, YYYY h:mm:ss A');
+    var timeSpan = createElement('SPAN', {className:'small'}, timeStr);
+    
+    div.appendChild(document.createTextNode(msgObj.userName+' : '+msgObj.msg+' '));
+    div.appendChild(timeSpan);
+    return div;
 }
-ObservableArray.prototype.pushObject = function(obj){
-    var oldLen = this._arr.length;
-    this._arr.push(obj);
-    for (var i = 0; i < this._observers.length; i++) {
-        this._observers[i].arrayDidChange(this._arr, oldLen, 0, 1);
-    }
-};
 
-ObservableArray.prototype.removeAt = function(start, len){
-    if (len<=0) {
-        return;
-    }
-    this._arr.splice(start, len);
-    for (var i = 0; i < this._observers.length; i++) {
-        this._observers[i].arrayDidChange(this._arr, start, len, 0);
-    }
-};
-ObservableArray.prototype.addArrayObserver = function(observer){
-    this._observers.push(observer);
-};
-ObservableArray.prototype.val = function(){return this._arr;};
-
-if (!chatManager.addMessage) {
-    /* it seems Ember modified array.prototype, arrays constructed
-    else where does not work, at least for ArrayController
-    */
-    chatManager.messages = new ObservableArray();
-    chatManager.users = {};
-    chatManager.addMessage = function(msgObj){
-        this.messages.pushObject(msgObj);
-        if(this.messages.length > 100){
-            this.messages.removeAt(0, 50);
-        }
-    };
-    chatManager.addUser = function(browserId, name){
-        this.users[browserId] = name;
-    };
-    chatManager.isNameTaken = function(browserId, name){
-        var taken = false;
-        for (var k in this.users) {
-            if (k != browserId && this.users[k] == name) {
-                return true;
+function createElement(tagName, attrs, text){
+    var ele=document.createElement(tagName);
+    if (attrs) {
+        for(var k in attrs){
+            if (k ==='className') {
+                ele.className=attrs[k];
+            }else{
+                ele.setAttribute(k, attrs[k]);    
             }
         }
-        return taken;
-    };
+    }
+    if (text) {
+        ele.textContent = text;
+    }
+    return ele;
 }
 
-// 'Oct 21, 2014 3:24:31 PM'
-Handlebars.registerHelper('format-date', function(date) {
-  return moment(date).format('MMM DD, YYYY h:mm:ss A');
-});
-
-Handlebars.registerHelper('msg-class', function(type) {
-    if(type==='sys'){
-        return 'class="alert alert-success"';
-    }
-    return '';
-});
-
-//trim to remove unnessary text elements
-var msgItemTplFunc = Handlebars.templates['messageItem.tmpl'];
+function alertMsgTplFunc(alertObj){
+    var id = alertObj.id;
+    var div = document.createElement('DIV');
+    div.className="alert alert-warning alert-dismissible"
+    div.id="alertMsgItem"+id;
+    var closeBtn = document.createElement('BUTTON');
+    closeBtn.className = 'close';
+    closeBtn.onclick=function(){
+        removeAlert(id);
+    };
+    closeBtn.appendChild(createElement('SPAN',{'aria-hidden': 'true'},'×'));
+    closeBtn.appendChild(createElement('SPAN',{className: 'sr-only'},'Close'));
+    div.appendChild(closeBtn);
+    div.appendChild(document.createTextNode(alertObj.msg));
+    return div;
+}
 
 var chatMsgBox = $('#chatMessageBox');
 var msgObserver = {
     arrayDidChange : function(observedObj, start, removeCount, addCount){
         if (addCount > 0) {
-            var content = '';
             for (var i = 0; i < addCount; i++) {
-                content += msgItemTplFunc(observedObj[start+i]);
+                chatMsgBox.append(msgItemTplFunc(observedObj[start+i]));
             }
-            chatMsgBox.append(content);
         }
         if (removeCount>0) {
             var removed = [];
@@ -107,15 +81,43 @@ var msgObserver = {
                     break;
                 }
             }
-            for (var i = 0; i < removed.length; i++) {
-                msgBox.removeChild(removed[i]);
-            }
+            // put it into setImmediate to batch these update
+            setImmediate(function(){
+                for (var i = 0; i < removed.length; i++) {
+                    msgBox.removeChild(removed[i]);
+                }    
+            });
         }
     }
 };
 msgObserver.arrayDidChange(chatManager.messages.val(), 0, 0, chatManager.messages.length);
 chatManager.messages.addArrayObserver(msgObserver);
 
+var alertManager = {
+    ele : $('#alertMsgsDiv'),
+    alerts : [],
+    uuid : 0,
+    alert : function(msg){
+        var self=this;
+        var id = this.uuid++;
+        var alertObj = {
+            id : id,
+            msg : msg
+        };
+        this.alerts.push(alertObj);
+        this.ele.append(alertMsgTplFunc(alertObj));
+        setTimeout(function(){
+            self.remove(id);
+        }, 3000);
+    },
+    remove : function(id){
+        $('#alertMsgItem'+id).remove();
+    }
+};
+
+function removeAlert(id){
+    alertManager.remove(id);
+}
 
 var userName = "Goose_" + browserId;
 
@@ -128,25 +130,40 @@ function showUserName(){
 showUserName();
 
 function toggleUserNameInput(){
-    $("#userNameInputDiv").toggle();
+    if($("#userNameInputDiv").hasClass("hidden")){
+        $("#userNameInputDiv").removeClass("hidden");
+        $("#userNameInputDiv").addClass("show");
+    }else{
+        $("#userNameInputDiv").removeClass("show");
+        $("#userNameInputDiv").addClass("hidden");
+    }
 }
 
 function userNameInputKeyEvents(evt){
     if (evt.which == 13) {
-        toggleUserNameInput();
         setUserName($("#userNameInput").val());
+        evt.preventDefault()
     }
 }
 
 function setUserName(name){
+    if (!name || name=='') {
+        return alertManager.alert("The user name must not be empty.");
+    }
+    name = name.trim();
+    if (name=='') {
+        return alertManager.alert("The user name must not be empty.");
+    }
     if (!chatManager.isNameTaken(browserId, name)) {
         var oldName = userName;
         userName = name;
         chatManager.addUser(browserId, userName);
         showUserName();
+        // only hide when successfully changed name
+        toggleUserNameInput();
         sendMessage(oldName+" is now "+name, 'sys');
     }else{
-        //TODO implement alert messages
+        alertManager.alert("There is already a user called "+name);
         $("#userNameInput").val('');
     }
 }
@@ -154,13 +171,15 @@ function setUserName(name){
 function chatBoxKeyEvents(evt){
     if (evt.which == 13) {
         sendChatMsg();
+        evt.preventDefault();
     }
 }
 
+var chatBox = $('#chatText');
 function sendChatMsg(){
-    var msg = $('#chatText').val();
+    var msg = chatBox.val();
     sendMessage(msg);
-    $('#chatText').val('');
+    chatBox.val('');
 }
 
 function sendMessage(msg, type){

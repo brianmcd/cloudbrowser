@@ -4,6 +4,7 @@
 exports.defaultEvents =
     'click'  : true
     'change' : true
+    'input'  : true
 
 # These are events that are eligible for listening on the client.  We need
 # this because we need to know which events we should ignore inside our
@@ -17,7 +18,7 @@ exports.clientEvents =
     'focus'       : true
     'focusin'     : true
     'focusout'    : true
-    'dblclick'    : true # TODO: does our capturing click prevent dblclicks?
+    'dblclick'    : true
     'mousedown'   : true
     'mouseenter'  : true
     'mouseleave'  : true
@@ -29,6 +30,7 @@ exports.clientEvents =
     'keydown'     : true
     'keypress'    : true
     'keyup'       : true
+    'input'       : true
     'select'      : true
     'submit'      : true
     #'scroll'
@@ -37,7 +39,6 @@ exports.clientEvents =
     #'wheel'
     # HTMLEvents
     #'drag' - we could echo this to all clients. also dragend etc
-    #'input' - what's this?
 
 groups =
     'UIEvents' : [
@@ -60,9 +61,6 @@ groups =
         'mouseup'
         'mousewheel'
     ]
-    'TextEvent' : [
-        'textinput'
-    ]
     'KeyboardEvent' : [
         'keydown'
         'keypress'
@@ -75,6 +73,7 @@ groups =
         'submit'
         'select'
         'focusin'
+        'input'
     ]
 
 # Maps an event type (like 'click') to an event group (like 'MouseEvents')

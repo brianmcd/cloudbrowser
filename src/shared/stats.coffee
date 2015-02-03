@@ -5,13 +5,13 @@ logger = debug("cloudbrowser:stat")
 
 class Stat
     constructor: () ->
-        @startTime = Date.now()
         @count = 0
         @total = 0
 
 
     add : (num) ->
         @updateTime = Date.now()
+        @startTime = @updateTime if @count is 0
         if not @min?
             @min = num
         if not @max?
@@ -94,8 +94,8 @@ class PercentileStat extends Stat
                 break
             if valuesIndex >=0
                 runningCount += @values[valuesIndex]
-            
-            while countLimitIndex<countLimits.length 
+
+            while countLimitIndex<countLimits.length
                 countLimit = countLimits[countLimitIndex]
                 if runningCount < countLimit.val
                     break
@@ -113,16 +113,16 @@ class PercentileStat extends Stat
             countLimitIndex++
         @["100%"] = @max
         logger("compute percentile: "+(Date.now()-startTs)+"ms")
-        
+
 
 class Counter
     constructor: () ->
-        @startTime = Date.now()
         @count = 0
 
 
     add:(desc)->
         @updateTime = Date.now()
+        @startTime = @updateTime if @count is 0
         if desc?
             @desc = desc
         @count++
@@ -193,7 +193,7 @@ class StatProvider
         for k, v of @stats
             v.report?()
         @report()
-        
+
 
 
 
@@ -219,5 +219,4 @@ if require.main is module
     report = statProvider.report()
     console.log(report.p)
     console.log(report.p.values)
-    
-    
+

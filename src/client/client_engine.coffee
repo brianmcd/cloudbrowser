@@ -59,6 +59,7 @@ class ClientEngine
         # to let the master know how to route this request
         console.log "referer #{encodedUrl}"
         queryString = "referer=#{encodedUrl}"
+        # open server side logging
         if localStorage?.cblogging is "true"
             queryString += "&logging=true&browserId=#{@window.__envSessionID}"
         
@@ -220,9 +221,9 @@ RPCMethods =
             if /^selected$|^selectedIndex$|^value$|^checked$/.test(name)
                 # Calling setAttribute doesn't cause the displayed value to change,
                 # but setting it as a property does.
-                target[name] = value
+                RPCMethods._setPropertyIfChanges(target, name, value)
             else
-                target.setAttribute(name, value)
+                RPCMethods._setAttrIfChanges(target, name, value)
         else if attrChange == 'REMOVAL'
             if /^checked$/.test(name)
                 target[name] = false
@@ -230,6 +231,16 @@ RPCMethods =
                 target.removeAttribute(name)
         else
             throw new Error("Invalid attrChange: #{attrChange}")
+
+    _setPropertyIfChanges : (target, propName, propVal)->
+        if target[propName] isnt propVal
+            target[propName] = propVal
+
+    _setAttrIfChanges : (target, attrName, attrVal)->
+        if target.getAttribute(attrName) isnt attrVal
+            target.setAttribute(attrName, attrVal)
+        
+        
 
     DOMCharacterDataModified : (targetId, value) ->
         target = @nodes.get(targetId)
@@ -287,6 +298,21 @@ RPCMethods =
             event.func.apply(this, event.args)
         @eventQueue = []
         @renderingPaused = false
+
+    batch : (events, id) ->
+        for eventArgs in events
+            eventName = eventArgs[0]
+            if not RPCMethods[eventName]?
+                eventName = @compressor.decompress(eventName)
+            rpcMethodArgs = []
+            index = 1
+            # eventArgs is a object
+            while typeof eventArgs[index] isnt 'undefined'
+                rpcMethodArgs.push(eventArgs[index])
+                index++
+
+            RPCMethods[eventName].apply(this, rpcMethodArgs)
+
 
     # If params given, clear the document of the specified frame.
     # Otherwise, clear the global window's document.

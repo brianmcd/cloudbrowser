@@ -9,8 +9,8 @@ lodash               = require('lodash')
 
 Browser              = require('./browser')
 ResourceProxy        = require('./resource_proxy')
+SocketAdvice         = require('./socket_advice')
 
-DebugClient          = require('./debug_client')
 TestClient           = require('./test_client')
 {serialize}          = require('./serializer')
 routes               = require('../application_manager/routes')
@@ -78,9 +78,6 @@ class VirtualBrowser extends EventEmitter
         # Indicates whether @browser is currently loading a page.
         # If so, we don't process client events/updates.
         @browserLoading = false
-
-        # control if we need to fire a pauseRender event
-        @domChanged = true
 
         # Indicates whether the browser has loaded its first page.
         @browserInitialized = false
@@ -202,30 +199,33 @@ class VirtualBrowser extends EventEmitter
                 @rpcLog.write(', ')
 
     broadcastEvent : (name, args...) ->
-        @_broadcastHelper(null, name, args)
-
-    broadcastEventExcept : (socket, name, args...) ->
-        @_broadcastHelper(socket, name, args)
-
-    _broadcastHelper : (except, name, args) ->
-        if not @domChanged and renderControlEvents.indexOf(name) < 0
-            @domChanged=true
-            @_broadcastHelper(except, 'pauseRendering', [])
-
         if @server.config.traceProtocol
             @logRPCMethod(name, args)
-        if @server.config.compression
-            name = @compressor.compress(name)
+
         args.unshift(name)
-        if except?
-            for socket in @sockets
-                if socket != except
-                    socket.emit.apply(socket, args)
-        else
-            for socket in @sockets
-                socket.emit.apply(socket, args)
+        if @sockets.length is 1
+            @sockets[0].emitCompressed(args, @clientContext)
+            return
+        
+
+        allArgs = [args]
+        # the emitCompressed would modify args in deduplication/compression.
+        # only clone things when needed
+        for i in [1...@sockets.length] by 1
+            allArgs.push(lodash.cloneDeep(args))
+        
+        for i in [0...@sockets.length] by 1
+            socket = @sockets[i]
+            socket.emitCompressed(allArgs[i], @clientContext)
+        return
 
     addSocket : (socket) ->
+        socket = SocketAdvice.adviceSocket({
+            socket : socket
+            buffer : true
+            compression : @server.config.compression
+            compressor : @compressor
+            })
         address = socket.request.connection.remoteAddress
         {user} = socket.request
         # if it is not issued from web browser, address is empty
@@ -235,8 +235,7 @@ class VirtualBrowser extends EventEmitter
             address : address
             email : user
         @emit('connect', userInfo)
-        if @server.config.monitorTraffic
-            socket = new DebugClient(socket, @id)
+        
         for own type, func of RPCMethods
             do (type, func) =>
                 socket.on type, () =>
@@ -381,19 +380,12 @@ DOMEventHandlers =
             newValue = @resources.addURL(newValue)
         if @browserLoading
             return
-        if @setByClient
-            @broadcastEventExcept(@setByClient,
-                                  'DOMAttrModified',
-                                  target.__nodeID,
-                                  attrName,
-                                  newValue,
-                                  attrChange)
-        else
-            @broadcastEvent('DOMAttrModified',
-                            target.__nodeID,
-                            attrName,
-                            newValue,
-                            attrChange)
+        
+        @broadcastEvent('DOMAttrModified',
+                        target.__nodeID,
+                        attrName,
+                        newValue,
+                        attrChange)
 
     AddEventListener : (event) ->
         {target, type} = event
@@ -407,17 +399,15 @@ DOMEventHandlers =
 
     EnteredTimer : () ->
         return if @browserLoading
-        @domChanged = false
+        @broadcastEvent 'pauseRendering'
 
     # TODO DOM updates in timers should be batched,
     # there is no point to send any events to client if
     # there's no DOM updates happened in the timer
     ExitedTimer :  () ->
         return if @browserLoading
-        if @domChanged
-            @broadcastEvent 'resumeRendering'
-        else
-            @domChanged = true
+        @broadcastEvent 'resumeRendering'
+        
 
     ConsoleLog : (event) ->
         @consoleLog?.write(event.msg + '\n')
@@ -469,22 +459,30 @@ inputTags = ['INPUT', 'TEXTAREA']
 
 RPCMethods =
     setAttribute : (targetId, attribute, value, socket) ->
-        if !@browserLoading
-            @setByClient = socket
-            # do not trigger pause rendering in this case
-            @domChanged = true
+        return if @browserLoading
+            
+        @clientContext={
+            from : socket
+            target : targetId
+            value : value
+        }
 
-            target = @nodes.get(targetId)
-            if attribute == 'src'
-                return
-            if attribute == 'selectedIndex'
-                return target[attribute] = value
+        target = @nodes.get(targetId)
+        if attribute == 'src'
+            return
+        if attribute == 'selectedIndex'
+            return target[attribute] = value
 
-            if inputTags.indexOf(target.tagName) >= 0 and attribute is "value"
-                target.value = value
-            else
-                target.setAttribute(attribute, value)
-            @setByClient = null
+        if inputTags.indexOf(target.tagName) >= 0 and attribute is "value"
+            RPCMethods._setInputElementValue(target, value)
+        else
+            target.setAttribute(attribute, value)
+        
+        @clientContext=null
+
+    _setInputElementValue : (target, value)->
+        # coping the implementation of textarea
+        target.value = value
 
 
     # pan : to my knowledge, this id is used in benchmark tools to track which client instance
@@ -497,22 +495,63 @@ RPCMethods =
             # can't handle clicks on the server anyway).
             # Need something more elegant.
             return if !event.target
-            @domChanged = false
+            
             # Swap nodeIDs with nodes
             clientEv = @nodes.unscrub(event)
 
             # Create an event we can dispatch on the server.
             serverEv = RPCMethods._createEvent(clientEv, @browser.window)
 
+            @broadcastEvent('pauseRendering', id)
+
             clientEv.target.dispatchEvent(serverEv)
-            if @domChanged
-                @broadcastEvent('resumeRendering', id)
-            else
-                @domChanged = true
+            
+            @broadcastEvent('resumeRendering', id)
 
             if @server.config.traceMem
                 gc()
             @server.eventTracker.inc()
+
+    input : (events, id, socket)->
+        return if @browserLoading
+        inputEvent = events[events.length-1]
+        @clientContext={
+            from : socket
+            target : inputEvent.target
+            value : inputEvent._newValue
+        }
+        @broadcastEvent('pauseRendering', id)
+        skipInputEvent = false
+        for clientEv in events
+            @nodes.unscrub(clientEv)
+            switch clientEv.type
+                when 'input'
+                    # it is always the last event
+                    if not skipInputEvent
+                        RPCMethods._setInputElementValue(clientEv.target, clientEv._newValue)
+                        RPCMethods._dispatchEvent(@, clientEv)
+                    break
+                when 'keydown'
+                    serverEv = RPCMethods._dispatchEvent(@, clientEv)
+                    if serverEv
+                        skipInputEvent = serverEv._preventDefault
+                    break
+                when 'keypress'
+                    if not skipInputEvent
+                        RPCMethods._dispatchEvent(@, clientEv)
+                    break
+                else
+                    logger("unexpected event #{clientEv.type}")
+
+        @broadcastEvent('resumeRendering', id)
+        @clientContext=null
+        
+    _dispatchEvent : (vbrowser, clientEv)->
+        browser = vbrowser.browser
+        if vbrowser.registeredEventTypes.indexOf(clientEv.type) >=0 or defaultEvents[clientEv.type]?
+            serverEv = RPCMethods._createEvent(clientEv, browser.window)
+            clientEv.target.dispatchEvent(serverEv)
+            return serverEv
 
 
     # Takes a clientEv (an event generated on the client and sent over DNode)
@@ -572,17 +611,13 @@ RPCMethods =
             throw new Error("No component on node: #{nodeID}")
         for own key, val of params.attrs
             component.attrs?[key] = val
-        @domChanged = false
+        @broadcastEvent('pauseRendering')
         event = @browser.window.document.createEvent('HTMLEvents')
         event.initEvent(params.event.type, false, false)
         event.info = params.event
         node.dispatchEvent(event)
-        if @domChanged
-            @broadcastEvent('resumeRendering')
-        else
-            @domChanged = true
-
-renderControlEvents = ['pauseRendering', 'resumeRendering']
+        @broadcastEvent('resumeRendering')
+        
 
 domEventHandlerNames = lodash.keys(DOMEventHandlers)
 # put frequent occurred events in front
@@ -592,7 +627,6 @@ domEventHandlerNames = lodash.sortBy(domEventHandlerNames, (name)->
     return 1
     )
 
-keywordsList = renderControlEvents.concat(domEventHandlerNames)
-
+keywordsList = ['pauseRendering', 'resumeRendering', 'batch'].concat(domEventHandlerNames)
 
 module.exports = VirtualBrowser

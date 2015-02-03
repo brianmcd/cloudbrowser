@@ -7,6 +7,7 @@ cloudbrowserError = require('../shared/cloudbrowser_error')
 {areArgsValid} = require('./utils')
 routes = require('../server/application_manager/routes')
 
+uuid = 0
 # Permission checks are included wherever possible and a note is made if
 # missing. Details like name, id, url etc. are available to everybody.
 
@@ -32,7 +33,7 @@ routes = require('../server/application_manager/routes')
 ###
 class Browser
 
-    # Private Properties inside class closure
+    # Private Properties inside class closure; how to reclaim if browser get destroyed?
     _pvts = []
 
     constructor : (options) ->
@@ -603,5 +604,9 @@ class Browser
     getLogger : ()->
         {bserver} = _pvts[@_idx]
         return bserver._logger
+
+    createSharedObject : (obj)->
+        obj.$$hashKey="cb_#{uuid++}"
+        return obj
 
 module.exports = Browser

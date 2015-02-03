@@ -7,7 +7,7 @@ async  = require('async')
 debug  = require('debug')
 LineByLineReader = require('line-by-line')
 
-fileNameParser = require('./filename_parser')
+fileHelper = require('./file_helper')
 ReportWriter = require('./report_writer')
 utils = require('../../src/shared/utils')
 {StatProvider} = require('../../src/shared/stats')
@@ -18,7 +18,7 @@ logger = debug("cloudbrowser:analysis")
 
 class Runner extends EventEmitter
     constructor: (@options) ->
-        @logfiles = fileNameParser.parseDir(@options.dir)
+        @logfiles = fileHelper.parseDir(@options.dir)
 
     extract : ()->
         @logGroups = lodash.groupBy(@logfiles, 'testId')
@@ -155,9 +155,12 @@ class LogExtractorGroup extends EventEmitter
 
     generateReport : ()->
         logger("#{@testId} generating report...")
-        options = lodash.clone(@options)
-        options.metaData = @metaData
-        new ReportWriter(options)
+        try
+            options = lodash.clone(@options)
+            options.metaData = @metaData
+            new ReportWriter(options)
+        catch e
+            logger("#{@testId} failed in generating report, #{e} : #{e.stack}")
         @emit('complete')
 
 

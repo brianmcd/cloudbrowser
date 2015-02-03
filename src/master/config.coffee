@@ -43,6 +43,7 @@ class MasterConfig
             
             # merge command line options to obj
             for own k, v of @_cmdOptions
+                # see options definition below, masterConfig is a flag to indicate it is a master only option
                 if options[k]? and not options[k].masterConfig
                     # merge things to workerConfig if the option does not belong to master
                     obj.workerConfig[k] = v
@@ -239,13 +240,17 @@ options= {
         full    : 'simulate-latency'
         default : false
         help    : "Simulate latency for clients in ms (if not given assign uniform randomly in 20-120 ms range."
-
+    loadbalanceStrategy:
+        full    : 'loadbalance-strategy'
+        default : 'memoryWeighted'
+        help    : 'The strategy of how the master spread the load to the workers. Available options are roundrobin, memoryWeighted'
+        env     : 'CB_LBTYPE'
 }
 
 parseCommandLineOptions = (argv) ->
     if not argv?
         argv = process.argv
-    require('nomnom').script(argv[1]).options(options).parse(argv.slice(2))
+    require('../shared/commandline_parser').parse(options, argv)
 
 
 

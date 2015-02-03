@@ -26,6 +26,10 @@ class ReportWriter
 
         reportObj = lodash.clone(@options)
         clientConfigs = metaData.clientConfigs
+        if not clientConfigs? or not clientConfigs[0]?
+            logger("No benchmark client data detected, skip report")
+            return
+
         reportObj.clientSetting = lodash.clone(clientConfigs[0])
         reportObj.clientSetting.processCount = clientConfigs.length
 
@@ -71,8 +75,11 @@ class ReportWriter
             head : usageTableColumns
             body : dataRows
             })
-
-        reportObj.configFileContent = fs.readFileSync(reportObj.clientSetting.configFile)
+        try
+            reportObj.configFileContent = fs.readFileSync(reportObj.clientSetting.configFile)
+        catch e
+            reportObj.configFileContent = "#{e} \n #{e?.stack}"
+        
 
         reportObj.serverSetting = {
             workerCount : metaData.workerCount
@@ -92,7 +99,23 @@ class ReportWriter
         
         fs.writeFileSync(@fileName, templateFunc(reportObj))
 
+        @jsonFileName = "#{baseDir}/#{testId}.json"
+        eventProcessStats = reportObj.stats.total['client_request_eventProcess']
+        errorstats = reportObj.stats.total['client_request_fatalError']
+        # a small object that has data interesting for futher analysis
+        resultObj = {
+            id : testId
+            clientCount : reportObj.clientSetting.total.clientCount
+            workerCount : reportObj.serverSetting.workerCount
+            endPoint : reportObj.clientSetting.appAddress
+            throughput : eventProcessStats.totalRate
+            latency : eventProcessStats.totalAvg
+            errorCount : errorstats?.count
+        }
 
+        fs.writeFileSync(@jsonFileName, JSON.stringify(resultObj))
+
+    # generate a Markdown table
     genTable:(data)->
         headerRow = @genTableRow(data.head)
         seperators = []

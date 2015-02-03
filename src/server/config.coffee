@@ -120,10 +120,7 @@ parseOptionsFromCmd = (argv) ->
     options =
         configPath :
             help : 'configuration path, default [ProjectRoot]'
-    #parse the command line arguments 
-    if not argv?
-        argv = process.argv
-    require('nomnom').script(argv[1]).options(options).parse(argv.slice(2))
+    require('../shared/commandline_parser').parse(options, argv)
 
 
 

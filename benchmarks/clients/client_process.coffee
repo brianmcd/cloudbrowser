@@ -12,6 +12,7 @@ async            = require('async')
 benchmarkConfig = require('./benchmark_config')
 routes = require('../../src/server/application_manager/routes')
 {StatProvider} = require('../../src/shared/stats')
+Compressor = require('../../src/shared/compressor')
 
 logger = debug('cloudbrowser:benchmark')
 
@@ -76,6 +77,7 @@ class ClientProcess extends EventEmitter
 
 
     timeOutCheck : ()->
+        return if @stopped
         time = Date.now()
         for clientGroup in @clientGroups
             clientGroup.timeOutCheck(time)
@@ -122,7 +124,7 @@ class ClientGroup extends EventEmitter
                 # co browsing clients
                 bootstrapClient.addChild(client)
             @clients.push(client)
-            
+
 
     start : ()->
         if not @optimizeConnection
@@ -159,6 +161,7 @@ class ClientGroup extends EventEmitter
         return true
 
     timeOutCheck : (time)->
+        return if @stopped
         for client in @clients
             client.timeOutCheck(time)
 
@@ -168,10 +171,16 @@ class ClientGroup extends EventEmitter
 class Client extends EventEmitter
     constructor : (@options) ->
         # id is a unique client identifier in all client processes
-        {@eventDescriptors, @createBrowser, @silent, 
+        {@eventDescriptors, @createBrowser, @silent,
         @appAddress, @cbhost, @socketioUrl, @stats,
         @id, @serverLogging, @optimizeConnection} = options
         @stopped = false
+
+        @compressor = new Compressor()
+        # some local stats
+        @eventSent = 0
+        @eventReceived = 0
+        @expectMet = 0
         @eventContext = new benchmarkConfig.EventContext({clientId:@id})
         return if @silent
         @eventQueue = new benchmarkConfig.EventQueue({
@@ -180,22 +189,24 @@ class Client extends EventEmitter
             })
 
     addChild : (child) ->
+        # stop child if it is not started yet
+        @once('stopped', ()->
+            if not child.started
+                child.stop()
+        )
+        # if optimizeConnection, do not start child 
         if @optimizeConnection
             @once('browserconfig', (browserConfig)->
                 child.browserConfig = browserConfig
             )
             return
 
+        # start child when browserconfig is ready
         @once('browserconfig', (browserConfig)->
             logger("#{child.id} starting")
             child.browserConfig = browserConfig
             child.start()
         )
-        @once('stopped', ()->
-            if not child.started
-                child.stop()
-        )
-
 
     start : ()->
         @started = true
@@ -219,7 +230,7 @@ class Client extends EventEmitter
         if @createBrowser
             if not @options.createAppInstance
                 if not @browserConfig? or not @browserConfig.appInstanceId?
-                    return @_fatalErrorHandler("No appInstanceId received, maybe parent died.")   
+                    return @_fatalErrorHandler("No appInstanceId received, maybe parent died.")
                 # create a browser under an app instance
                 opts.url = routes.buildAppInstancePath(@appAddress, @browserConfig.appInstanceId)
         else
@@ -265,14 +276,19 @@ class Client extends EventEmitter
                     # creating socket after children clients send initial requests
                     @emit('browserconfig', @browserConfig)
                 )
-
-            timers.setImmediate(()=>
-                @_createSocket()
-                @_initialSocketIo()
-            )
             logger("#{@id} opened #{@browserConfig.url}")
 
             @stats.add('initialPage', timeElapsed)
+            if not @options.createBrowserOnly
+                timers.setImmediate(()=>
+                    @_createSocket()
+                    @_initialSocketIo()
+                )
+            else
+                timers.setImmediate(()=>
+                    @emit("clientEngineReady")
+                    @stopped = true
+                )
 
     _initialSocketIo : ()->
         @_initStartTs()
@@ -287,14 +303,16 @@ class Client extends EventEmitter
         )
         @socket.once 'PageLoaded', (nodes, registeredEventTypes, clientComponents, compressionTable) =>
             @stats.add('pageLoaded', @_timpeElapsed())
-            @compressionTable = if compressionTable? then compressionTable else {}
-            for k, v of @compressionTable
-                do (k, v)=>
-                    @socket.on(v, ()=>
-                        @_serverEventHandler(k, arguments)
-                    )
+            if compressionTable?
+                for k, v of compressionTable
+                    @compressor.register(k, v)
+                    do (k, v)=>
+                        @socket.on(v, ()=>
+                            @_serverEventHandler(k, arguments)
+                        )
+
             @socket.on('newSymbol', (original, compressed)=>
-                @compressionTable[original] = compressed
+                @compressor.register(original, compressed)
                 do (original, compressed) =>
                     @socket.on(compressed, ()=>
                         @_serverEventHandler(original, arguments)
@@ -314,10 +332,6 @@ class Client extends EventEmitter
             @clientEngineReady=true
             @emit("clientEngineReady")
 
-        @socket.on('disconnect', ()=>
-            @stop()
-        )
-
     _nextEvent : ()->
         if @stopped
             return
@@ -329,7 +343,7 @@ class Client extends EventEmitter
         if @waitStart?
             @stats.add('wait', Date.now()- @waitStart)
             @waitStart = null
-        
+
         # stop and expect
         if nextEvent.type is 'expect'
             @expect = nextEvent
@@ -339,19 +353,49 @@ class Client extends EventEmitter
             fireNextEvent = ()=>
                 @stats.addCounter('clientEvent')
                 nextEvent.emitEvent(@socket)
+                @eventSent++
                 @_nextEvent()
-            if waitDuration <= 0
-                setImmediate(fireNextEvent)
+            if waitDuration <=0
+                # do not put fireNextEvent to the event loop,
+                # or the server response might come earlier than expect setting up.
+                # a better way to do this would be setting up expect first.
+                fireNextEvent()
             else
                 setTimeout(fireNextEvent, waitDuration)
 
     _serverEventHandler : (eventName, args)->
         @stats.addCounter('serverEvent')
+        return if @stopped
+        # dosomething special for batch events....
+        if eventName is 'batch'
+            batchedEvents = args[0]
+            clientId = args[1]
+            # add artificial pauseRendering, resume Rendering event.
+            @_matchExpect('pauseRendering', [])
+            for ievent in batchedEvents
+                ieventName = ievent[0]
+                original = @compressor.decompress(ieventName)
+                if original?
+                    ieventName = original
+                eventArgs = []
+                index = 1
+                while typeof ievent[index] isnt 'undefined'
+                    eventArgs.push(ievent[index])
+                    index++
+                @_matchExpect(ieventName, eventArgs)
+            @_matchExpect('resumeRendering', [clientId])
+        else
+            @_matchExpect(eventName, args)
+
+
+    _matchExpect : (eventName, args)->
+        @eventReceived++
         if @expect?
             expectResult = @expect.expect(eventName, args)
             if expectResult is 2
                 now = Date.now()
                 @stats.add('eventProcess', now - @expectStartTime)
+                @expectMet++
                 waitDuration = @expect.getWaitDuration()
                 @expect = null
                 @expectStartTime = null
@@ -362,13 +406,15 @@ class Client extends EventEmitter
                     setTimeout(@_nextEvent.bind(@), waitDuration)
 
 
+
     timeOutCheck : (time)->
-        return if not @started
+        return if not @started or @stopped
         if not @clientEngineReady and @startTs? and time-@startTs > @options.timeout
             return @_fatalErrorHandler("Timeout while bootstrap clientengine")
-        
+
         if @expectStartTime? and time - @expectStartTime > @options.timeout
-            @_fatalErrorHandler("Timeout while expecting #{@expect.getExpectingEventName()}")
+            @_fatalErrorHandler("Timeout while expecting #{@expect.getExpectingEventName()},
+                eventSent #{@eventSent}, eventReceived #{@eventReceived}, expectMet #{@expectMet}")
 
     _createSocket : ()->
         @_initStartTs()
@@ -396,6 +442,9 @@ class Client extends EventEmitter
         @socket.on('cberror',(err)=>
             @_fatalErrorHandler("cberror #{err}")
         )
+        @socket.on('disconnect', ()=>
+            @_fatalErrorHandler("disconnected at the other end")
+        )
 
 
     _fatalErrorHandler : (@error)->
@@ -409,17 +458,16 @@ class Client extends EventEmitter
         @stop()
 
     stop : () ->
-        clearTimeout(@timeoutObj) if @timeoutObj?
+        @expect = null
         @expectStartTime = null
         @stopped = true
-        @socket?.disconnect()
-        @socket?.removeAllListeners()
+        # do not disconnect right away, continue counting server side events
         @emit('stopped')
 
     toJSON : ()->
         result = {}
         for k, v of @
-            if typeof v is 'function' or k is 'socket' or k is 'timeoutObj' or k.indexOf('_') is 0
+            if typeof v is 'function' or k is 'socket' or k.indexOf('_') is 0
                 continue
             result[k] = v
         return result
@@ -482,21 +530,16 @@ options = {
         full : 'talkerCount'
         type : 'number'
         help : 'how many clients actually send events, by default it equals clientCount'
+    },
+    createBrowserOnly : {
+        env : 'CB_CREATEVBONLY'
+        default : false
+        type : 'boolean'
+        help : 'stop after the initial page loaded'
     }
 }
 
-# if we define env option, use the enviroment variable as default
-for k, v of options
-    if v.env? and v.default? and process.env[v.env]? and process.env[v.env].trim().length > 0
-        defaultVal = process.env[v.env]
-        if v.type isnt 'string'
-            try
-                defaultVal = JSON.parse(defaultVal)
-            catch e
-                # ...
-        v.default = defaultVal
-
-opts = require('nomnom').options(options).script(process.argv[1]).parse()
+opts = require('../../src/shared/commandline_parser').parse(options, process.argv)
 
 if opts.appAddress?
     parsedUrl = parseUrl(opts.appAddress)
@@ -534,16 +577,16 @@ simpleStatTempFunc = (statsObj)->
 
     if serverEvent?
         msg += "serverEvent: rate #{serverEvent.rate}, count #{serverEvent.count};\n"
-    
+
     if clientEvent?
         msg += "clientEvent: rate #{clientEvent.rate}, count #{clientEvent.count};\n"
     return msg
 
 reportStats = (statsObj)->
     resultLogger(JSON.stringify(statsObj))
-    
+
     resultLogger(simpleStatTempFunc(statsObj))
-  
+
 
 async.waterfall([
     (next)->
@@ -554,15 +597,20 @@ async.waterfall([
         clientProcess.start()
         clientProcess.once("started", next)
         intervalObj = setInterval(()->
-            benchmarkFinished = clientProcess.isStopped()
             reportStats(clientProcess.stats.report2())
+            return if benchmarkFinished
+            benchmarkFinished = clientProcess.isStopped()
             if not benchmarkFinished
                 clientProcess.timeOutCheck()
-            if benchmarkFinished
-                clearInterval(intervalObj)
-                sysMon.stop()
-                resultLogger "stopped"
-                process.exit(1)
+            else
+                logger("benchmark finished, wait #{opts.timeout}ms to exit.")
+                # receive all the server side events
+                setTimeout(()->
+                    clearInterval(intervalObj)
+                    sysMon.stop()
+                    resultLogger "stopped"
+                    process.exit(1)
+                , opts.timeout)
         , 3000
         )
     (next)->
@@ -576,6 +624,6 @@ async.waterfall([
 process.on('SIGTERM',()->
     if clientProcess and not benchmarkFinished
         reportStats(clientProcess.stats.report2())
-        resultLogger "terminated"
-        process.exit(1)
+    resultLogger "terminated"
+    process.exit(1)
 )

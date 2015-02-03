@@ -48,10 +48,10 @@ getBrowser = (node) ->
 # Adds advice to a number of DOM methods so we can emit events when the DOM
 # changes.
 exports.addAdvice = () ->
-    jsdom = require('jsdom')
-    html = jsdom.level('3', 'html')
-    events = jsdom.level('3', 'events')
-    core = jsdom.level('3', 'core')
+    jsdom = require('jsdom').dom
+    html = jsdom
+    events = jsdom
+    core = jsdom
 
     # Advice for: HTMLDocument constructor
     #
@@ -110,13 +110,14 @@ exports.addAdvice = () ->
                     target : target
                     relatedNode : parent
                 }
+                # assign node ids
                 browser.emit 'DOMNodeInserted', evParam
                 ###
                 do not check visibility on child because child is
                  not on dom yet
                 ###
                 if not isVisibleOnClient(parent, browser)
-                        return
+                    return
                 # parent is textarea and the child node is text type
                 if inputTags.indexOf(parent.tagName) >= 0 and target.nodeType is 3
                     val = target.data
@@ -128,7 +129,7 @@ exports.addAdvice = () ->
                     })
                     return
 
-                 browser.emit 'DOMNodeInsertedIntoDocument', evParam
+                browser.emit 'DOMNodeInsertedIntoDocument', evParam
 
             if type is 'DOMNodeRemoved'
                 parent = ev.relatedNode
@@ -207,12 +208,10 @@ exports.addAdvice = () ->
     # the corresponding "on" property on each node.
     # TODO: really, this should emit on all event types and shouldn't know
     #       about ClientEvents.
-    do () ->
-        for type of ClientEvents
-            do (type) ->
-                # TODO: remove listener if this is set to something not a function
-                for eventTarget in [html.HTMLElement, html.HTMLDocument]
-                    patchOnEventProperty(eventTarget.prototype, type)
+    for type of ClientEvents
+        # TODO: remove listener if this is set to something not a function
+        for eventTarget in [html.HTMLElement, html.HTMLDocument]
+            patchOnEventProperty(eventTarget.prototype, type)
 
 
     createFrameAttrHandler = (namespace) ->
@@ -259,20 +258,28 @@ exports.addAdvice = () ->
         getter : (elem, rv) ->
             rv._parentElement = elem
 
-    adviseProperty html.HTMLInputElement, 'value', 
-        setter : (elem, val)->
-            browser = getBrowser(elem)
-            return if not browser?
-            if val? and typeof val isnt 'string'
-                val = String(val)
-            # it is not part of standard to emit DOMAttrModified after set value
-            browser.emit('DOMAttrModified',{
-                target : elem
-                attrName : 'value'
-                newValue : val
-                attrChange : 'ADDITION'
-            })
-            
+    inputTagsValueSetter = (elem, val)->
+        browser = getBrowser(elem)
+        return if not browser?
+        if val? and typeof val isnt 'string'
+            val = String(val)
+        # it is a mess
+        if elem.tagName is 'TEXTAREA'
+            elem.textContent = val
+        
+        # it is not part of standard to emit DOMAttrModified after set value
+        browser.emit('DOMAttrModified',{
+            target : elem
+            attrName : 'value'
+            newValue : val
+            attrChange : 'ADDITION'
+        })
+
+    adviseProperty(html.HTMLInputElement, 'value', {setter : inputTagsValueSetter})
+        
+    # textarea is really messy, it has textContent and value properties and they are
+    # not in sync. 
+    adviseProperty(html.HTMLTextAreaElement, 'value', {setter : inputTagsValueSetter})    
             
 
 

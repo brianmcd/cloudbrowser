@@ -158,10 +158,19 @@ exports.substringAfter = (str, val)->
     return str if index <= 0
     return str.substr(index)
 
+# substringAfterLast('ababcc', 'b') --> 'cc'
+# substringAfterLast('ababcc', 'd') --> 'ababcc'
 exports.substringAfterLast = (str, val)->
     lastIndex = exports.lastIndexOf(str, val)
     return str if lastIndex is -1
     return str.substr(lastIndex+1)
+
+# substringBeforeLast('ababcc', 'b') --> 'aba'
+# substringBeforeLast('ababcc', 'd') --> 'ababcc'
+exports.substringBeforeLast = (str, val)->
+    lastIndex = exports.lastIndexOf(str, val)
+    return str if lastIndex is -1
+    return str.substr(0, lastIndex)
 
 class StringReader
     constructor: (@str) ->

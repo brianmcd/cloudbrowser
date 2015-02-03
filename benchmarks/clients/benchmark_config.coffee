@@ -1,4 +1,5 @@
 fs = require('fs')
+util = require('util')
 
 lodash = require('lodash')
 debug = require('debug')
@@ -31,15 +32,23 @@ class TextInputEventGroup
         {@descriptor, @context} = options
         @text = ''
         if @descriptor.textType is 'random'
-            @text = "#{@context.clientId} want #{@context.counter}c"
+            # random means generating a unique string, these strings cannot be
+            # substring to each other
+            @text = "#{@context.clientId} says #{@context.counter}c"
             @context.counter++
         if @descriptor.textType is 'clientId'
             @text = "#{@context.clientId}"
+
+        @endText = @text
+        if @descriptor.endEvent is 'enterKey' and @descriptor.tag is 'textarea'
+            @endText = "#{@text}\n"
+        
         # to obtain charCode and which
         @upperCaseText = @text.toUpperCase()
         @textInputDefinition = getTextInputDefinition()
         @textIndex = 0
-        # skip keyboard input events for characters
+        # skip keyboard input events for individual characters,
+        # only the final string is sent to the server
         @textIndex = @text.length-1 if @descriptor.keyEvent is 'basic'
         @_initializeEventQueue()
 
@@ -47,50 +56,95 @@ class TextInputEventGroup
         eventDescriptors = []
         @_inputKeyEvents(eventDescriptors)
         if @textIndex == @text.length-1 and @descriptor.endEvent
-            endEventDescriptors = @textInputDefinition.endEvent[@descriptor.endEvent]
-            if endEventDescriptors
-                for eventDescriptor in endEventDescriptors
-                    newEventDescriptor = lodash.clone(eventDescriptor, true)
-                    if newEventDescriptor.event is 'setAttribute'
-                        newEventDescriptor.args = [@descriptor.target, "value", @text]
-                        newEventDescriptor.previousInputValue = @text
-                    else
-                        #for change event and keydown keyup of enter
-                        keyEvent = newEventDescriptor.args[0]
-                        keyEvent.target = @descriptor.target
-                    eventDescriptors.push(newEventDescriptor)
+            # user specified what could happen at the end of the input task.
+            # right now only one kind of endEvent is defined, that is hitting Enter key.
+            # see text_input_rule for details
+            endEventDescriptors = @_getEndEventDescriptors()
+
+            for eventDescriptor in endEventDescriptors
+                newEventDescriptor = @_createTopLayerEvent(eventDescriptor, @text, @endText)
+                eventDescriptors.push(newEventDescriptor)
 
         @eventQueue = new EventQueue({
             descriptors : eventDescriptors
             context : @context
             })
 
+    _getEndEventDescriptors : ()->
+        if not @endEventDescriptors?
+            # find tag specific end event descriptor first
+            result = @textInputDefinition.endEvent["#{@descriptor.endEvent}_#{@descriptor.tag}"]
+            if not result?
+                result = @textInputDefinition.endEvent["#{@descriptor.endEvent}"]
+            if not result?
+                errorMsg = "cannot find endEvent for #{JSON.stringify(@descriptor)}"
+                logger(errorMsg)
+                throw new Error(errorMsg)
+            @endEventDescriptors = result
+        return @endEventDescriptors
+
+
+    # create key events for individule characters in a input task.
+    # input "abc" in a text input includes keydown and keyup for "a", "b", "c"
     _inputKeyEvents : (eventDescriptors)->
         return if @descriptor.keyEvent is 'basic'
         #logger("input full events")
         for eventDescriptor in @textInputDefinition.eventGroup
-            newEventDescriptor = null
-            if eventDescriptor.event is 'setAttribute'
-                curString = @text.substring(0, @textIndex+1)
+            curString = @text.substring(0, @textIndex+1)
+            newEventDescriptor = @_createTopLayerEvent(eventDescriptor, curString)
+            eventDescriptors.push(newEventDescriptor)
+
+    _createTopLayerEvent : (eventDescriptor, curString, nextString)->
+        newEventDescriptor = null
+        switch eventDescriptor.event
+            when 'setAttribute'
                 newEventDescriptor = {
                     "event":"setAttribute",
-                    "args":[@descriptor.target, "value" , curString],
-                    previousInputValue : curString
+                    "args":[@descriptor.target, "value" , curString]
                 }
-            else
-                # deep clone the thing
+                break
+            when 'input'
                 newEventDescriptor = lodash.clone(eventDescriptor, true)
+                inputEvents = newEventDescriptor.args[0]
+                for i in [0...inputEvents.length] by 1
+                    inputEvent = inputEvents[i]
+                    # nextString is for simulating hitting enter key on a textarea, the following events will be batched and sent
+                    # by client engine
+                    # {input, [{type : input, _newValue : "a"}, {type : keydown, key : "enter"}, {type : input, _newValue : "a\n"}]}
+                    if i is inputEvents.length-1 and nextString?
+                        @_createLayer2Event(inputEvent, nextString)
+                    else
+                        @_createLayer2Event(inputEvent, curString)
+                break
+            when 'processEvent'
+                newEventDescriptor = lodash.clone(eventDescriptor, true)
+                @_createLayer2Event(newEventDescriptor.args[0], curString)
+                break
+            else
+                errorMsg = "unknown evnet #{eventDescriptor.event}"
+                logger(errorMsg)
+                throw new Error(errorMsg)
+        # curString will be used to check server side echoed message
+        newEventDescriptor.previousInputValue = curString
+        return newEventDescriptor
+
+
+    _createLayer2Event : (eventDescriptor, curString)->
+        switch eventDescriptor.type
+            when 'input'
+                eventDescriptor._newValue = curString
+                eventDescriptor.target = @descriptor.target
+                break
+            when 'keydown', 'keypress', 'keyup'
                 curChar = @text.charAt(@textIndex)
-                
-                keyEvent = newEventDescriptor.args[0]
-                keyEvent.target = @descriptor.target
-                keyEvent.key = curChar
-                # the keycode and which are not relevant for the test,
-                # keep them to make it same with a real browser
-                curCharCode = @upperCaseText.charCodeAt(@textIndex)
-                keyEvent.which = curCharCode
-                keyEvent.keyCode = curCharCode
-            eventDescriptors.push(newEventDescriptor)
+                eventDescriptor.target = @descriptor.target
+                # do not fill key codes if it is defined
+                if not eventDescriptor.which?
+                    eventDescriptor.key = curChar
+                    curCharCode = @upperCaseText.charCodeAt(@textIndex)
+                    eventDescriptor.which = curCharCode
+                    eventDescriptor.keyCode = curCharCode
+                break
 
 
     poll :()->
@@ -124,16 +178,22 @@ class RegularEvent
     getExpectingEventName : ()->
         if @expectIndex >= @descriptor.expect.length
             return null
-        return @descriptor.expect[@expectIndex].event
+        expectedEvent = @descriptor.expect[@expectIndex].event
+        if typeof expectedEvent is 'string'
+            return expectedEvent
+        if util.isArray(expectedEvent)
+            return expectedEvent.join(' or ')
+        return null
 
     # 1 means waiting, 2 means fully matched
     # we are not reject anything, if the expected event
     # does not showup, we will detect a timeout for waiting
     expect : (eventName, args)->
+        # logger("match #{eventName} #{JSON.stringify(args)}")
         if @expectIndex >= @descriptor.expect.length
             return 2
         currentExpect = @descriptor.expect[@expectIndex]
-        if eventName isnt currentExpect.event
+        if not @_matchEventName(eventName,currentExpect)
             return 1
         if currentExpect.containsText
             if not @_matchText(args, currentExpect.containsText)
@@ -141,10 +201,24 @@ class RegularEvent
         if currentExpect.args
             if not @_matchArgs(args, currentExpect.args)
                 return 1
+
         @expectIndex++
         if @expectIndex is @descriptor.expect.length
             return 2
         return 1
+
+    _matchEventName : (eventName, expect) ->
+        expectedEvent = expect.event
+        return true if eventName is expectedEvent
+        if util.isArray(expectedEvent)
+            return expectedEvent.indexOf(eventName) >= 0
+        # this would be extremely slow
+        if expectedEvent.type is 'any'
+            return true
+        else if expectedEvent.type?
+            throw new Error("unsupported expectedEvent type #{expectedEvent.type}")
+        
+        return false
 
     _matchText : (args, matchRules)->
         str = JSON.stringify(args)
@@ -154,6 +228,7 @@ class RegularEvent
                 pattern = matchRule
             else
                 pattern = @context.previousInputValue
+            # logger("match #{pattern} with #{str}")
             return false if str.indexOf(pattern) is -1
         return true
 
@@ -172,12 +247,14 @@ class RegularEvent
         emitArgs = [@descriptor.event]
         if @descriptor.previousInputValue?
             @context.previousInputValue = @descriptor.previousInputValue
-        
+            # logger("set context previousInputValue #{@context.previousInputValue}")
+
         for i in @descriptor.args
             if i._type is 'clientId'
                 emitArgs.push(@context.clientId)
             else
                 emitArgs.push(i)
+        # logger("emit #{JSON.stringify(emitArgs)}")
         emitter.emit.apply(emitter, emitArgs)
 
     getWaitDuration : ()->
@@ -189,7 +266,7 @@ class RegularEvent
                 min = if @descriptor.wait.min? then @descriptor.wait.min else 0
                 return Math.random()*(max-min) + min
         return 0
-        
+
 
 # the difference between EventGroup and ActionQueue is that EventGroup
 # iterates over the same events over and over again

@@ -12,7 +12,7 @@ HTTPServer         = require('./http_server')
 RmiService         = require('./rmi_service')
 UuidService        = require('./uuid_service')
 
-#require('webkit-devtools-agent').start()
+# require('webkit-devtools-agent').start()
 
 # https://github.com/trevnorris/node-ofe
 # This will overwrite OnFatalError to create a heapdump when your app fatally crashes.
@@ -87,6 +87,11 @@ class Runner
                     callback null, sysMonitor
             ],
             'heartBeat' : ['sysMonitor', 'appConfigs', (callback, results)->
+                    {loadbalanceStrategy} = results.config.serverConfig
+                    if loadbalanceStrategy isnt 'memoryWeighted'
+                        # create heart beat if only needed
+                        logger("no hearbeat for #{loadbalanceStrategy} loadbalancer")
+                        return callback(null)
                     heartBeater = new HeartBeater(results)
                     callback null, heartBeater
                     logger("hearbeat initiated")

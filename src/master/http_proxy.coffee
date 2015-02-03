@@ -1,72 +1,93 @@
 debug = require('debug')
+lodash = require('lodash')
+
+{HttpProxyWorker} = require('./http_proxy_worker')
 
 logger = debug('cloudbrowser:master:proxy')
-
 infoLogger = debug('cloudbrowser:master:proxyInfo')
 
+
 class HttpProxy
-    constructor: (dependencies, callback) ->
-        @config = dependencies.config.proxyConfig
-        @workerManager = dependencies.workerManager
-        httpProxy = require('http-proxy')
-        @proxy = httpProxy.createProxyServer({})
-        http = require('http')
-        http.globalAgent.maxSockets = 65535
-        server = http.createServer((req, res) =>
-            @proxyRequest req, res
+    constructor: (options) ->
+        {@config, callback, @workerManager } = options
+        socketServer = require('net').createServer()
+        socketServer.listen(@config.httpPort, 2048, ()=>
+            infoLogger "starting proxy server listening on #{@config.httpPort}"
+            if @config.workers? and @config.workers > 0
+                @createWorkers(@config.workers, socketServer)
+                if @config.childOnly
+                    infoLogger("close proxy port in main process, use child process only")
+                    socketServer.close()
+                else
+                    infoLogger("proxy enabled in main process")
+                    @createInprocessWorker(socketServer)    
+            else
+                infoLogger("proxy enabled in main process")
+                @createInprocessWorker(socketServer)
+            callback(null, this)
         )
-        server.on('upgrade', (req, socket, head) =>
-            @proxyWebSocketRequest req, socket, head
-        )
-        @proxy.on('error', (err, req, res, target)=>
-            infoLogger "Proxy error #{err.message} #{target?.host}:#{target?.port} #{req.url}"
-            infoLogger err.stack
-            res.writeHead(500, "Proxy Error.")
-            res.end()
-        )
-        infoLogger "starting proxy server listening on #{@config.httpPort}"
-        server.listen(@config.httpPort, 2048, (err)=>
-            callback err, this
-        )
+
+    createInprocessWorker :(socketServer)->
+        @worker = new HttpProxyWorker({
+            requestHandler : @proxyRequest.bind(this)
+            wsReqestHandler : @proxyWebSocketRequest.bind(this)
+            logger : logger
+            infoLogger : infoLogger
+        })
+        @worker.listen(socketServer)
+
+
+    # create proxy processes
+    createWorkers: (count, socketServer)->
+        @childProcesses = []
+        for i in [0...count] by 1
+            childProcess = require('child_process').fork('src/master/http_proxy_worker.js')
+            @childProcesses.push(childProcess)
+            childConfig = lodash.clone(@config)
+            childConfig.id = i
+            childProcess.send({
+                type : 'config'
+                config : childConfig
+            }, socketServer)
+            do(childProcess)=>
+                childProcess.on('message', (msg)=>
+                    if msg? and msg.type is 'getWorkerReq'
+                        @childMessageHandler(childProcess, msg)
+                )
+
+    childMessageHandler : (childProcess, msg)->
+        {req, id, websocket} = msg
+        {worker, redirect} = @workerManager.getWorker(req)
+        childProcess.send({
+            type : 'getWorkerRes'
+            id : id
+            worker : worker
+            redirect : redirect
+        })
+        # for load balance purpose
+        if not websocket
+            @workerManager.registerRequest(worker.id)
+        
 
     proxyWebSocketRequest : (req, socket, head) ->
         {worker} = @workerManager.getWorker(req)
-        if not worker?
-            # TODO integrate with socket.io to send useful
-            # error info back to client
-            return socket.close()
+        @worker.proxyWebSocketRequest(req, socket, head,worker)
         
-        logger "proxy ws request #{req.url} to #{worker.id}"
-        @proxy.ws(req, socket, head, {
-            target:
-                {
-                    host : worker.host,
-                    port : worker.httpPort
-                }
-        })
 
     proxyRequest : (req, res) ->
         {worker, redirect} = @workerManager.getWorker(req)
-        if redirect?
-            logger "Redirect #{req.url} to #{redirect}"
-            req.url = redirect
-        if not worker?
-            logger 'cannot find a worker'
-            res.writeHead(404)
-            return res.end("The url is no longer valid.")
-        logger("proxy reqeust #{req.url} to #{worker.id}")
-        # increase worker's weight
-        worker.weight += 5
-        @proxy.web(req, res, {
-            target:
-                {
-                    host : worker.host,
-                    port : worker.httpPort
-                }
-         })
+        ret = @worker.proxyRequest(req, res, worker, redirect)
+        if ret
+            @workerManager.registerRequest(worker.id)
 
 module.exports = (dependencies,callback) ->
-    new HttpProxy(dependencies,callback)
+    config = dependencies.config.proxyConfig
+    {workerManager} = dependencies
+    return new HttpProxy({
+        config : config
+        workerManager : workerManager
+        callback : callback
+    })
 
 ###
 httpProxy = require('http-proxy')

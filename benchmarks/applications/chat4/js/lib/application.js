@@ -5,8 +5,7 @@
   app = angular.module("Chat4", []);
 
   app.directive('enterSubmit', function() {
-    var directive;
-    return directive = {
+    return {
       restrict: 'A',
       link: function(scope, element, attrs) {
         return element.bind('keydown', function(e) {
@@ -22,10 +21,11 @@
   });
 
   app.controller("ChatCtrl", function($scope, $timeout, $rootScope) {
-    var addMessage, browserId, chatManager, checkUpdate, checkUpdateInterval, currentBrowser, eventbus, messageId, newMessageHandler, newMessageVersion, safeApply, scrollDown;
+    var addMessage, appInstance, browserId, chatManager, checkUpdate, checkUpdateInterval, currentBrowser, eventbus, messageId, newMessageHandler, newMessageVersion, safeApply, scrollDown;
     currentBrowser = cloudbrowser.currentBrowser;
     browserId = currentBrowser.getID();
-    chatManager = cloudbrowser.currentAppInstanceConfig.getObj();
+    appInstance = cloudbrowser.currentAppInstanceConfig;
+    chatManager = appInstance.getObj();
     messageId = 0;
     checkUpdateInterval = 0;
     newMessageVersion = null;
@@ -63,7 +63,7 @@
     if (checkUpdateInterval > 0) {
       setInterval(checkUpdate, checkUpdateInterval);
     }
-    eventbus = cloudbrowser.currentAppInstanceConfig.getEventBus();
+    eventbus = appInstance.getEventBus();
     eventbus.on('newMessage', function(fromBrowser, version) {
       return setImmediate(newMessageHandler, fromBrowser, version);
     });
@@ -91,13 +91,11 @@
     };
     addMessage = function(msg, type) {
       var msgObj, version;
-      msgObj = {
-        browserId: browserId,
+      msgObj = currentBrowser.createSharedObject({
         msg: msg,
         userName: $scope.userName,
-        time: Date.now(),
-        $$hashKey: "" + browserId + "_" + (messageId++)
-      };
+        time: Date.now()
+      });
       if (type != null) {
         msgObj.type = type;
       }
@@ -131,7 +129,7 @@
     };
     $scope.postMessage = function() {
       addMessage($scope.currentMessage);
-      return $scope.currentMessage = '';
+      $scope.currentMessage = '';
     };
     return $scope.getMsgClass = function(msg) {
       if (msg.type === 'sys') {
