@@ -1,7 +1,7 @@
 debug = require('debug')
 lodash = require('lodash')
 
-logger = debug('cloudbrowser:worker:browser')
+logger = debug('cloudbrowser:worker:socket')
 
 
 renderControlEvents = ['pauseRendering', 'resumeRendering']

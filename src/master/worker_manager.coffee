@@ -292,7 +292,7 @@ class WokerManager
         @loadbalancer.registerRequest(workerId)
 
     heartBeat : ()->
-        @loadbalancer.apply(@loadbalancer, arguments)
+        @loadbalancer.heartBeat.apply(@loadbalancer, arguments)
 
 
     ###
