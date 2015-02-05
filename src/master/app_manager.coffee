@@ -149,6 +149,12 @@ class Application extends EventEmitter
         @on(eventObj.name, eventObj.callback)
         callback?(null)
 
+    removeEventListeners: (listeners)->
+        for k, listenerArray of listeners
+            for listener in listenerArray
+                applogger "app #{@mountPoint} remove a #{k} listener"
+                @removeListener(k, listener)
+        
     enable : (callback)->
         @mounted = true
         @setMountOnStartup(true, callback)

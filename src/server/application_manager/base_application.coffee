@@ -377,6 +377,10 @@ class BaseApplication extends EventEmitter
             callback: eventcallback
             })
 
+    removeEventListeners : (listeners)->
+        @_masterApp.removeEventListeners(listeners)
+        
+
     emitAppEvent :(eventObj)->
         @_masterApp.emitEvent(eventObj)
 
