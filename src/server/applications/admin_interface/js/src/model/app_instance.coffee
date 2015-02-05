@@ -7,7 +7,7 @@ class AppInstance
         @name          = appInstanceConfig.getName()
         @owner         = appInstanceConfig.getOwner()
         @browserIDMgr  = new PrimitiveListManager()
-        @dateCreated   = @format.date(appInstanceConfig.getDateCreated())
+        @dateCreated   = @format(appInstanceConfig.getDateCreated())
         @updateUsers()
 
     updateUsers : () ->

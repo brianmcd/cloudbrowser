@@ -7,7 +7,7 @@ class Browser
         @workerId      = browserConfig.getWorkerID()
         @api           = browserConfig
         @name          = browserConfig.getName()
-        @dateCreated   = format.date(browserConfig.getDateCreated())
+        @dateCreated   = format(browserConfig.getDateCreated())
         @appInstanceID = browserConfig.getAppInstanceId()
         @connectedClientMgr = new POJOListManager(null, 'address')
         # Note: assignment not equality check

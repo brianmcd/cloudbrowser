@@ -2,6 +2,15 @@ Async    = require('async')
 NwGlobal = require('nwglobal')
 
 CBAdminInterface = angular.module("CBAdminInterface.controller", ['CBAdminInterface.models'])
+.config(($sceDelegateProvider) ->
+  $sceDelegateProvider.resourceUrlWhitelist([
+    # Allow same origin resource loads.
+    'self',
+    # loading templates from file system
+    "file://"
+  ])
+)
+
 
 CBAdminInterface.controller "AppCtrl", [
     '$scope'
@@ -20,7 +29,7 @@ CBAdminInterface.controller "AppCtrl", [
             selectedAppTable : "selected_app_table.html"
 
         for name, path of $scope.templates
-            $scope.templates[name] = "#{__dirname}/partials/#{path}"
+            $scope.templates[name] = "file://#{__dirname}/partials/#{path}"
 
         $scope.safeApply = (fn) ->
             phase = this.$root.$$phase

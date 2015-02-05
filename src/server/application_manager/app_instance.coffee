@@ -178,6 +178,7 @@ class AppInstance extends EventEmitter
                 result = 'readwrite'
 
         if callback?
+            logger("appinstance #{@id} getUserPrevilege: #{user.getEmail()} is #{result}")
             callback null, result
         else
             return result

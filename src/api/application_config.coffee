@@ -534,7 +534,7 @@ class AppConfig
                         #maybe we could omit the check here
                         appInstance.getUserPrevilege(userCtx, (err, result)->
                             return callback(err) if err?
-                            return if not result
+                            return if not result?
                             options =
                                 cbServer : cbServer
                                 cbCtx   : cbCtx
