@@ -7,4 +7,11 @@ CBLandingPage = angular.module('CBLandingPage', [
         'CBLandingPage.controllers.appInstance',
         'CBLandingPage.controllers.browser'
     ]
+).config(($sceDelegateProvider) ->
+  $sceDelegateProvider.resourceUrlWhitelist([
+    # Allow same origin resource loads.
+    'self',
+    # loading templates from file system
+    "file://"
+  ])
 )
