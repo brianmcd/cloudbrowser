@@ -24,14 +24,16 @@ TaggedNodeCollection = require('../../shared/tagged_node_collection')
  clientEvents,
  defaultEvents} = require('../../shared/event_lists')
 
+logger = debug("cloudbrowser:worker:browser")
+
 # Defining callback at the highest level
 # see https://github.com/TooTallNate/node-weak#weak-callback-function-best-practices
 # Dummy callback, does nothing
 cleanupBserver = (id) ->
     return () ->
-        console.log "[Virtual Browser] - Garbage collected virtual browser #{id}"
+        logger "[Virtual Browser] - Garbage collected virtual browser #{id}"
 
-logger = debug("cloudbrowser:virtualbrowser")
+
 
 # Serves 1 Browser to n clients.
 class VirtualBrowser extends EventEmitter

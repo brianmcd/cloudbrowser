@@ -42,6 +42,43 @@ class CloudBrowser
         # the absence of the authentication interface
         else creator = new User("public")
 
+        listeners = []
+        logger = bserver._logger
+        bookkeepListener = (entity, event, listener)->
+            for i in listeners
+                # if find an existing entry, return
+                if entity is i.entity
+                    if not i.listeners[event]? 
+                        i.listeners[event] = []
+                    i.listeners[event].push(listener)
+                    return
+            
+            item = {
+                entity : entity
+                listeners : {}
+            }
+            item.listeners[event] = [listener]
+            return
+
+        @addEventListener = (entity, event, listener)->
+            bookkeepListener(entity, event, listener)
+            if not entity.addEventListener?
+                throw new Error("addEventListener failed: entity do't have method addEventListener")
+            
+            entity.addEventListener(event, listener)
+            return
+
+        @close = ()->
+            # release all event listeners
+            for i in listeners
+                try
+                    i.entity.removeEventListeners?(i.listeners)
+                catch e
+                    logger("error when remove listener")
+                    logger(e)
+            listeners = null
+            return
+
         @util = new Util(bserver.server.config.emailerConfig)
 
         app = bserver.appInstance.app
@@ -83,9 +120,13 @@ class CloudBrowser
         # we only use Authentication object in subsidiary apps like landing page and login page.
         # this object only cares the information from the 'real' app
         if app.isAuthConfigured() or app.isAuthApp()
+            realApp = app.parentApp
+            if app.isStandalone()
+                realApp = app
+
             @auth = new Authentication
                 bserver : bserver
-                app     : app.parentApp
+                app     : realApp
                 cbCtx   : this
 
         @serverConfig = new ServerConfig

@@ -36,6 +36,7 @@ class Browser extends EventEmitter
 
     close : () ->
         if @window?
+            @window.cloudbrowser.close()
             @window.cloudbrowser = null
             @window.browser = null
             if @window.document?

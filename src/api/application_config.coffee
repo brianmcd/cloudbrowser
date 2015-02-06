@@ -40,7 +40,7 @@ cloudbrowserError = require('../shared/cloudbrowser_error')
 ###*
     API for applications (constructed internally).
     Provides access to application configuration details.
-    @param {Object}       options 
+    @param {Object}       options
     @param {User}         options.userCtx The current user.
     @param {Application}  options.app     The application.
     @param {Cloudbrowser} options.cbCtx   The cloudbrowser API object.
@@ -55,8 +55,6 @@ cloudbrowserError = require('../shared/cloudbrowser_error')
 class AppConfig
 
     constructor : (options) ->
-        listeners = {}
-        listenerCount = 0
         {cbServer, app, userCtx, cbCtx} = options
         self = this
 
@@ -83,7 +81,7 @@ class AppConfig
 
         ###*
             Gets the description of the application as provided in the
-            deployment_config.json configuration file.    
+            deployment_config.json configuration file.
             @method getDescription
             @return {String}
             @instance
@@ -96,7 +94,7 @@ class AppConfig
 
         ###*
             Gets the name of the application as provided in the
-            deployment_config.json configuration file.    
+            deployment_config.json configuration file.
             @method getName
             @return {String}
             @instance
@@ -139,7 +137,7 @@ class AppConfig
 
         ###*
             Sets the description of the application in the deployment_config.json
-            configuration file.    
+            configuration file.
             @method setDescription
             @param {String} Description
             @instance
@@ -148,10 +146,10 @@ class AppConfig
         @setDescription = (description) ->
             if typeof description isnt "string" then return
             else _call('setDescription', description)
-            
+
         ###*
             Sets the name of the application in the deployment_config.json
-            configuration file.    
+            configuration file.
             @method setName
             @param {String} name
             @instance
@@ -160,7 +158,7 @@ class AppConfig
         @setName = (name) ->
             if typeof name isnt "string" then return
             else _call('setName', name)
-            
+
         ###*
             Gets the path relative to the root URL at which the application
             was mounted.
@@ -240,11 +238,11 @@ class AppConfig
         ###
         @disableAuthentication = (callback) ->
             _call('disableAuthentication', callback)
-            
+
         ###*
             Gets the instantiation strategy configured in the app_config.json file.
             @method getInstantiationStrategy
-            return {String} 
+            return {String}
             @instance
             @memberOf AppConfig
         ###
@@ -254,7 +252,7 @@ class AppConfig
         ###*
             Gets the browser limit configured in the deployment_config.json file.
             @method getBrowserLimit
-            return {Number} 
+            return {Number}
             @instance
             @memberOf AppConfig
         ###
@@ -264,7 +262,7 @@ class AppConfig
         ###*
             Sets the browser limit in the deployment_config.json file.
             @method setBrowserLimit
-            @param {Number} limit 
+            @param {Number} limit
             @instance
             @memberOf AppConfig
         ###
@@ -272,7 +270,7 @@ class AppConfig
             if typeof limit isnt "number" then return
 
             _call('setBrowserLimit', limit)
-            
+
         ###*
             Mounts the routes for the application
             @method mount
@@ -290,9 +288,9 @@ class AppConfig
         ###
         @disable = (callback) ->
             _call('disable', callback)
-            
+
         ###*
-            Gets a list of all the registered users of the application. 
+            Gets a list of all the registered users of the application.
             @method getUsers
             @param {userListCallback} callback
             @instance
@@ -300,7 +298,7 @@ class AppConfig
         ###
         @getUsers = (callback) ->
             if typeof callback isnt "function" then return
-            
+
             userList = []
             # There will be no users if authentication is disabled
             if not app.isAuthConfigured() then return callback(null, userList)
@@ -319,7 +317,7 @@ class AppConfig
         @isMounted = () ->
             return app.isMounted()
         ###*
-            Creates a new browser instance of this application.    
+            Creates a new browser instance of this application.
             @method createBrowser
             @param {browserCallback} callback
             @instance
@@ -356,7 +354,7 @@ class AppConfig
                     if not areArgsValid [
                         {item : callback, type : "function"}
                     ] then return
-                    
+
                 # User and callback
                 when 2
                     callback = arguments[1]
@@ -368,7 +366,7 @@ class AppConfig
                         return callback(cloudbrowserError("PERM_DENIED"))
                     userCtx = new User(arguments[0])
                 else return
-            
+
             permissionManager = cbServer.permissionManager
             mountPoint = app.getMountPoint()
             Browser = require('./browser')
@@ -392,8 +390,8 @@ class AppConfig
                                 cbServer : cbServer
                             callback(null, browsers)
                     )
-                    
-                    
+
+
 
         ###*
             Gets all the browsers of the application.
@@ -406,8 +404,8 @@ class AppConfig
             browsers     = []
             if not @isOwner() then return browsers
 
-            
-            
+
+
             Browser      = require('./browser')
             AppInstance = require('./app_instance')
             options = {
@@ -439,7 +437,7 @@ class AppConfig
         @getAppInstances = (callback) ->
             if typeof callback isnt "function" then return
 
-            
+
             permissionManager = cbServer.permissionManager
             mountPoint = app.getMountPoint()
             AppInstance = require('./app_instance')
@@ -451,7 +449,7 @@ class AppConfig
                     return callback(err) if err?
                     if not appInstanceRecs?
                         return callback(null, [])
-                    
+
                     appInstances = []
                     # todo, make findinstance by batch
                     # appInstanceRecs is a id to rec map
@@ -478,18 +476,13 @@ class AppConfig
                                     cbCtx   : cbCtx
                             callback null, result
                         )
-        _addEventListener = (event, listener)->
-            if not listeners[event]?
-                listeners[event] = []
-            listeners[event].push(listener)
-            listenerCount++
 
         ###*
             Registers a listener for an event on an application.
             Returns a id to unregister later, or there would be
             a memory leak
             @method addEventListener
-            @param {String} event 
+            @param {String} event
             @param {applicationConfigEventCallback} callback
             @instance
             @memberOf AppConfig
@@ -510,14 +503,14 @@ class AppConfig
 
             mountPoint = app.getMountPoint()
 
-            
+
             result = /([a-z]*)([A-Z].*)/g.exec(event)
             # Now event will be either 'add' or 'remove'
             # And entityName will be 'browser' or 'appInstance'
             action  = result[1]
             entityName = result[2].charAt(0).toLowerCase() + result[2].slice(1)
             className  = result[2]
-            
+
             AppInstance = require('./app_instance')
 
             switch className
@@ -530,7 +523,7 @@ class AppConfig
                         if action is 'remove'
                             # in this case, the parameter of callback is in fact appInstanceId
                             return callback(appInstance)
-                        
+
                         #maybe we could omit the check here
                         appInstance.getUserPrevilege(userCtx, (err, result)->
                             return callback(err) if err?
@@ -541,27 +534,18 @@ class AppConfig
                                 userCtx : userCtx
                                 appInstance : appInstance
                                 appConfig : self
-                            callback(new AppInstance(options))    
+                            callback(new AppInstance(options))
                         )
-
-                    app.addEventListener(event, appInstanceCallback)
-                    _addEventListener(event, appInstanceCallback)
+                    cbCtx.addEventListener(app, event, appInstanceCallback)
                 else
                     if @isOwner()
-                        app.addEventListener(event, callback)
-                        _addEventListener(event, callback)
+                        cbCtx.addEventListener(app, event, callback)
 
-        @removeEventListeners = ()->
-            if listenerCount>0
-                app.removeEventListeners(listeners)
-                listeners = {}
-                listenerCount = 0
-            
         ###*
             Checks if a user is already registered/signed up with the application.
             @method isUserRegistered
             @param {String} emailID
-            @param {booleanCallback} callback 
+            @param {booleanCallback} callback
             @instance
             @memberOf AppConfig
         ###
@@ -579,7 +563,7 @@ class AppConfig
             Checks if a user is locally registered with the application, i.e has a local password.
             @method isLocalUser
             @param {String} emailID
-            @param {booleanCallback} callback 
+            @param {booleanCallback} callback
             @instance
             @memberOf AppConfig
         ###
@@ -593,12 +577,12 @@ class AppConfig
         ###*
             Creates sharable application instance
             @method createAppInstance
-            @param {appInstanceCallback} callback 
+            @param {appInstanceCallback} callback
             @instance
             @memberOf AppConfig
         ###
         @createAppInstance = (callback) ->
-            
+
             permissionManager = cbServer.permissionManager
             AppInstance = require('./app_instance')
 
@@ -611,7 +595,7 @@ class AppConfig
                     appInstance : appInstance
                     appConfig : self
                 )
-                    
+
         ###*
             Gets the registered name of the application instance template
             for the current application
