@@ -29,7 +29,11 @@ class DOMWindowFactory
             url        : options.url
             browser    : @browser
             deferClose : true
-            features   :
+            resourceLoader : (resource, callback)->
+                # right now we do not do anything special
+                # logger("fetch resource #{resource.url.pathname}")
+                resource.defaultFetch(callback)
+            features :
                 FetchExternalResources : ['script', 'css', 'frame', 'link', 'iframe']
                 ProcessExternalResources : ['script']
                 MutationEvents : '2.0'
