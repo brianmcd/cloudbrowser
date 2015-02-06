@@ -6,25 +6,29 @@ Path    = require('path')
 
 utils   = require('../../shared/utils')
 
+###
+we never send scripts to client side. this is for css, images... only
+###
 class ResourceProxy
     constructor : (baseURL) ->
         @urlsByIndex = []
         @urlsByName = {}
-        @useFS = /^\//.test(baseURL)
+        parsed = URL.parse(baseURL)
+        @useFS = not parsed.protocol? or parsed.protocol is 'file:'
         @baseURL = if @useFS then Path.dirname(baseURL) else baseURL
     
     # url - a relative or absolute URL
     addURL : (url) ->
-        path = null
-        if /^http/.test(url)
-            path = url
-        else if @useFS
-            path = Path.resolve(@baseURL, url)
-        else
-            path = URL.resolve(@baseURL, url)
+        parsed = URL.parse(url)
+        if parsed.protocol? and parsed.protocol != 'file:'
+            return url
+        
+        path = Path.resolve(@baseURL, parsed.pathname)
+        
         return @urlsByName[path] if @urlsByName[path]?
         @urlsByIndex.push(path)
-        return @urlsByName[path] = @urlsByIndex.length - 1
+        @urlsByName[path] = @urlsByIndex.length - 1
+        return @urlsByName[path]
 
     # id - the resource ID to fetch
     # res - the response object to write to.
@@ -43,19 +47,10 @@ class ResourceProxy
                     return "url(\"#{newURL}\")"
             res.write(data)
             res.end()
-            
-        if /^http/.test(path) || !@useFS
-            if type? and type.indexOf('text/') isnt 0
-                # for non text type of data, just pipe it
-                Request(path).pipe(res)
-                return
-            Request {uri: path}, (err, response, data) ->
-                throw err if err
-                sendResponse(data)
-        else
-            FS.readFile path, (err, data) ->
-                throw err if err
-                sendResponse(data)
+                    
+        FS.readFile path, (err, data) ->
+            throw err if err
+            sendResponse(data)
         #console.log("Fetching resource: #{id} [type=#{type}] [path=#{path}]")
             
 module.exports = ResourceProxy
