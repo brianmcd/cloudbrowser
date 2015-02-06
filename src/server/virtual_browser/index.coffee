@@ -114,9 +114,10 @@ class VirtualBrowser extends EventEmitter
     getConnectedClients : () ->
         clients = []
         for socket in @sockets
-            {address, user} = socket.request
+            {address} = socket
+            {user} = socket.request
             clients.push
-                address : "#{address.address}:#{address.port}"
+                address : address
                 email : user
         return clients
 
@@ -221,14 +222,15 @@ class VirtualBrowser extends EventEmitter
             socket.emitCompressed(allArgs[i], @clientContext)
         return
 
-    addSocket : (socket) ->
+    addSocket : (s) ->
         socket = SocketAdvice.adviceSocket({
-            socket : socket
+            socket : s
             buffer : true
             compression : @server.config.compression
             compressor : @compressor
             })
         address = socket.request.connection.remoteAddress
+        socket.address = address
         {user} = socket.request
         # if it is not issued from web browser, address is empty
         if address
