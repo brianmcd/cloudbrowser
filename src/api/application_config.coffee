@@ -129,7 +129,7 @@ class AppConfig
             ]
             if typeof method isnt "string" or
             validMethods.indexOf(method) is -1 or
-            not @isOwner()
+            not self.isOwner()
                 return cloudbrowserError('PERM_DENIED')
 
             app[method].apply(app, args)
@@ -622,12 +622,5 @@ class AppConfig
             if not app.findUser(user)
                 app.addNewUser user, (err) -> callback?(null, user)
             else callback?(null, user)
-
-        # Freezing the prototype to protect from changes outside
-        # of the framework
-        # TODO : Do we have to freeze proto everytime an object is created?
-        Object.freeze(this.__proto__)
-        Object.freeze(this)
-
 
 module.exports = AppConfig
