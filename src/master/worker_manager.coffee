@@ -3,6 +3,7 @@ querystring = require('querystring')
 
 lodash = require('lodash')
 debug  = require('debug')
+async  = require('async')
 
 routes = require('../server/application_manager/routes')
 
@@ -170,6 +171,7 @@ class AppPathMather
         @_addPathElement(routes.concatRoute(mountPoint, routes.appInstanceRoute), 'appInstance')
         @_addPathElement(routes.concatRoute(mountPoint, routes.browserRoute), 'browser')
         @_addPathElement(routes.concatRoute(mountPoint, routes.resourceRoute), 'resource')
+        @_addPathElement(routes.concatRoute(mountPoint, routes.componentRoute), 'component')
         @_addPathElement(routes.concatRoute(mountPoint, '/*'),  'other')
         @_addPathElement(mountPoint, 'root')
 
@@ -195,7 +197,7 @@ routers = {
         if @routersMap[mountPoint]?
             logger "route for #{mountPoint} was registered before"
             return
-
+        logger("add route #{mountPoint}")
         r = new AppPathMather(mountPoint)
         @routersMap[mountPoint] = r
         @array.push(r)
@@ -207,7 +209,8 @@ routers = {
     removeRoute : (appInfo)->
         {mountPoint} = appInfo
         if @routersMap[mountPoint]?
-            delete @routersMap[mountPoint]?
+            logger("delete route #{mountPoint}")
+            delete @routersMap[mountPoint]
             arr = []
             for i in @array
                 if i.mountPoint isnt mountPoint
@@ -361,6 +364,24 @@ class WokerManager
                 )
         else
             callback null, @_workerStubs[worker.id]
+
+    getAllWorkerStubs : (callback)->
+        allWorkers = @loadbalancer.getAllWorkers()
+        stubs = []
+        async.each(allWorkers, 
+            (worker, next)=>
+                if not @_workerStubs[worker.id]?
+                    @_getWorkerStub(worker, (err, stub)->
+                        return next(err) if err?
+                        stubs.push(stub)
+                        next()
+                    )
+                else
+                    stubs.push(@_workerStubs[worker.id])
+                    next()
+            (err)->
+                callback(err, stubs)
+        )
 
 
 

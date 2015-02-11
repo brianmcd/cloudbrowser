@@ -15,6 +15,7 @@
       this.idProperty = idProperty != null ? idProperty : 'id';
       this.idMethod = idMethod != null ? idMethod : 'getID';
       this.items = [];
+      this.removed = [];
       this.setMaxListeners(500);
     }
 

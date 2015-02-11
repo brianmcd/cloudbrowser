@@ -3,7 +3,7 @@
   var CBLandingPage;
 
   CBLandingPage = angular.module('CBLandingPage', ['CBLandingPage.models', 'CBLandingPage.filters', 'CBLandingPage.services', 'CBLandingPage.directives', 'CBLandingPage.controllers.app', 'CBLandingPage.controllers.appInstance', 'CBLandingPage.controllers.browser']).config(function($sceDelegateProvider) {
-    return $sceDelegateProvider.resourceUrlWhitelist(['self', "file://"]);
+    return $sceDelegateProvider.resourceUrlWhitelist(['self', "file://**"]);
   });
 
 }).call(this);

@@ -4,6 +4,8 @@
     It provides the CloudBrowser API to the instance.
     @namespace cloudbrowser
 ###
+lodash         = require('lodash')
+
 Util           = require('./util')
 ServerConfig   = require('./server_config')
 User           = require('../server/user')
@@ -60,6 +62,17 @@ class CloudBrowser
             item.listeners[event] = [listener]
             return
 
+        doListenerRemove = (listenerEntity)->
+            try
+                listenerEntity.entity.removeEventListeners?(i.listeners)
+            catch e
+                logger("error when remove listener")
+                logger(e)
+
+        ###
+        add EventListener,
+        the event listners add here will be removed after virtualbrowser get closed
+        ###
         @addEventListener = (entity, event, listener)->
             bookkeepListener(entity, event, listener)
             if not entity.addEventListener?
@@ -67,15 +80,30 @@ class CloudBrowser
             
             entity.addEventListener(event, listener)
             return
+        ###
+        this interface makes sense because we want to remove some entity from view
+        or terminate some entity, like terminate a browser.
+        because application won't hold reference to any internal object, it is safe
+        to expose this method to application
+        ###
+        @removeEventListeners = (entity)->
+            removed = lodash.remove(listeners, (item)->
+                return item.entity is entity
+            )
+            for i in removed
+                doListenerRemove(i)
+            
 
+        ###
+        close the api object, after that, the api object would be defunct
+        ###
         @close = ()->
+            if not listeners?
+                return
+            
             # release all event listeners
             for i in listeners
-                try
-                    i.entity.removeEventListeners?(i.listeners)
-                catch e
-                    logger("error when remove listener")
-                    logger(e)
+                doListenerRemove(i)
             listeners = null
             return
 

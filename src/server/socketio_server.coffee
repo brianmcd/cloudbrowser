@@ -22,25 +22,32 @@ exports.events = [
 ###
 
 socketlogger = debug('cloudbrowser:worker:socket')
+logger = debug('cloudbrowser:worker:socketServer')
 
 class SocketIOServer
     constructor: (dependencies, callback) ->
         @config = dependencies.config.serverConfig
         @mongoInterface = dependencies.database
 
-        {@applicationManager, @permissionManager, @sessionManager} = dependencies
-        options = {}
+        {@applicationManager, @permissionManager, @sessionManager, @httpServer} = dependencies
+        @options = {}
         if @config.compressJS
-            options['browser client minification'] = true
-            options['browser client gzip'] = true
+            @options['browser client minification'] = true
+            @options['browser client gzip'] = true
+
+        # this dependency is messed up, it should be the other way around
+        @applicationManager.socketIOServer = this
             # log options are gone
-        
-        io = require('socket.io')(dependencies.httpServer.httpServer, options)
-        io.use((socket, next)=>
+        @start(callback)
+
+    start : (callback)->
+        logger("SocketIOServer starting...")
+        @io = require('socket.io')(@httpServer.httpServer, @options)
+        @io.use((socket, next)=>
             @socketIOAuthHandler(socket.request, next)
         )
         
-        io.sockets.on 'connection', (socket) =>
+        @io.sockets.on 'connection', (socket) =>
             @addLatencyToClient(socket) if @config.simulateLatency
             # logging if noLogs set to false and logging flag in url is set
             if not @config.noLogs
@@ -64,8 +71,8 @@ class SocketIOServer
             # Custom event emitted by socket on the client side
             socket.on 'auth', (mountPoint, appInstanceID, browserID) =>
                 @customAuthHandler(mountPoint, appInstanceID, browserID, socket)
-
         callback(null, this)
+
 
     _log : (logFileName, content)->
         data = null
@@ -205,6 +212,24 @@ class SocketIOServer
             setTimeout () ->
                 oldEmit.apply(socket, args)
             , latency
+
+    stop : (callback)->
+        #socket io relies on httpServer, not really much work to do here
+        @io = null
+        callback(null)
+        logger("SocketIOServer stopped")
+
+    restart : (callback)->
+        async.series([
+            (next)=>
+                @stop(next)
+            (next)=>
+                logger("SocketIOServer stopped")
+                @start(next)
+        ],(err)->
+            logger("SocketIOServer fail to restart #{err}") if err?
+            callback(err) if callback?
+        )
 
 
 module.exports = SocketIOServer

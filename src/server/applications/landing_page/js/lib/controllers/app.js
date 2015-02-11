@@ -3,7 +3,7 @@
   var app, appConfig, curVB;
 
   app = angular.module('CBLandingPage.controllers.app', ['CBLandingPage.services', 'CBLandingPage.models']).config(function($sceDelegateProvider) {
-    return $sceDelegateProvider.resourceUrlWhitelist(['self', "file://"]);
+    return $sceDelegateProvider.resourceUrlWhitelist(['self', "file://**"]);
   });
 
   curVB = cloudbrowser.currentBrowser;

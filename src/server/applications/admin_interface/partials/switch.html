@@ -1,7 +1,13 @@
-<input type="checkbox" id="switch-{{switchName}}" class="onoffswitch-checkbox"
-    ng-model="selectedApp[switchName]">
-<label class="onoffswitch-label" for="switch-{{switchName}}"
-ng-click="toggle(switchName)">
-    <div class="onoffswitch-inner"></div>
-    <div class="onoffswitch-switch"></div>
+<div class="checkbox">
+<label>
+<div class="toggle btn"  ng-class="switch.value(app)? 'btn-primary' : 'btn-default off'" 
+    style="width: 100px; height: 34px;" ng-click="switch.toggle(app)">
+<div class="toggle-group">
+    <label class="btn btn-primary toggle-on">{{switch.label.on}}</label>
+    <label class="btn btn-default toggle-off active">{{switch.label.off}}</label>
+    <span class="toggle-handle btn btn-default"></span>
+</div>
+</div>
+{{switch.title}}
 </label>
+</div>

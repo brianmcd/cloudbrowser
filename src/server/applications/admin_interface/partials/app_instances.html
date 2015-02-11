@@ -1,10 +1,10 @@
 <button class="btn btn-mini btn-inverse"
-    ng-click="selectedApp.appInstanceMgr.visible = !selectedApp.appInstanceMgr.visible">
-    <i class="icon-chevron-up" ng-show="selectedApp.appInstanceMgr.visible"></i>
-    <i class="icon-chevron-down" ng-hide="selectedApp.appInstanceMgr.visible"></i>
+    ng-click="app.appInstanceMgr.visible = !app.appInstanceMgr.visible">
+    <span class="glyphicon glyphicon-collapse-up" ng-show="app.appInstanceMgr.visible"></span>
+    <span class="glyphicon glyphicon-collapse-down" ng-hide="app.appInstanceMgr.visible"></span>
 </button>
 <span><strong>Application Instances</strong></span>
-<table ng-show="selectedApp.appInstanceMgr.visible" class="table table-bordered">
+<table ng-show="app.appInstanceMgr.visible" class="table table-bordered">
     <thead>
         <th>ID</th>
         <th>Worker</th>
@@ -15,7 +15,7 @@
         <th>Browsers</th>
     </thead>
     <tbody>
-        <tr ng-repeat="appInstance in selectedApp.appInstanceMgr.items">
+        <tr ng-repeat="appInstance in app.appInstanceMgr.items">
             <td>{{appInstance.id}}</td>
             <td>{{appInstance.workerId}}</td>
             <td>{{appInstance.name}}</td>

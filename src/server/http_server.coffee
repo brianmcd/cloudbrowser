@@ -8,6 +8,7 @@ Uglify         = require('uglify-js')
 Passport       = require('passport')
 lodash         = require('lodash')
 debug          = require('debug')
+async          = require('async')
 
 ###
 browserify will include a lower version of coffee-script wich will register it
@@ -27,8 +28,14 @@ class HTTPServer extends EventEmitter
         @config = dependencies.config.serverConfig
         {@sessionManager, @database, @permissionManager} = dependencies
         express = require('express')
+        @start(callback)
+
+    start : (callback)->
+        express = require('express')
         @server = express()
         @server.use(require('body-parser').urlencoded({extended:true, limit: '10mb'}))
+        multer  = require('multer')
+        @server.use(multer({ inMemory: true}))
         @server.use(require('cookie-parser')('secret'))
         session = require('express-session')
         @server.use(session(
@@ -56,6 +63,7 @@ class HTTPServer extends EventEmitter
             logger("listening #{@config.httpPort}")
             callback null, this
         )
+
 
     setupClientEngineRoutes : () ->
         @clientEngineModified = new Date().toString()
@@ -98,6 +106,7 @@ class HTTPServer extends EventEmitter
     mount : (mountPoint, handlers...) ->
         console.log "#{@config.id} : mount #{@config.getHttpAddr()}#{mountPoint}"
         @server.get(mountPoint,handlers)
+        @server.post(mountPoint,handlers)
 
     # need unmount old handler before register new handler.
     # this method is not documented on the expressjs 4.0.
@@ -105,10 +114,33 @@ class HTTPServer extends EventEmitter
     # TODO handle unmoung on master node or wrap handlers in a local
     # registry
     unmount : (path) ->
-        logger "unmount #{path}"
+        logger "unmount #{path} is not implemented!!!!!!"
 
     use : (middleware) ->
         @server.use(middleware)
+
+    stop : (callback)->
+        @httpServer.close((err)=>
+            logger("stop failed #{err}") if err?
+            @server = null
+            @httpServer = null
+            callback(err)
+        )
+        
+
+    restart : (callback)->
+        logger("httpServer restarting...")
+        async.series([
+            (next)=>
+                @stop(next)
+            (next)=>
+                logger("httpServer closed")
+                @start(next)
+            ],(err)->
+                if err?
+                    logger("Restart failed")
+                callback(err) if callback?   
+        )
 
 
 module.exports = HTTPServer

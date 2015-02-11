@@ -7,18 +7,27 @@ async  = require('async')
 debug  = require('debug')
 
 config = require('./config')
+AppWriter = require('./app_writer')
 routes = require('../server/application_manager/routes')
 utils = require('../shared/utils')
 User = require('../server/user')
+
 ###
 the master side counterpart of application manager
 ###
 
 applogger = debug('cloudbrowser:master:app')
 
+loggerCallback = (err, result)->
+    if err?
+        applogger(err)
+    else
+        applogger("return result #{typeof result}")
+    
+
 class AppInstance
     constructor: (@id, @workerId) ->
-        
+
 
     _waitForCreate : (func) ->
         if not @_waiting?
@@ -33,13 +42,13 @@ class AppInstance
             else
                 for i in @_waiting
                     i(null, @_remote)
-        @_waiting = null    
+        @_waiting = null
 
     _setRemoteInstance : (remote)->
         @_remote = remote
         {@id}= remote
         @_notifyWaiting()
-    
+
 
 class Application extends EventEmitter
     constructor: (@_appManager, @config) ->
@@ -49,8 +58,7 @@ class Application extends EventEmitter
         @mounted = true
         @url = "#{@_appManager._config.getHttpAddr()}#{@mountPoint}"
         #@workers = {}
-        @_appInstanceMap = {}
-        @_userToAppInstance = {}
+        @_initAppInstanceMap()
         # descripors of attibutes that need automactical getter/setter generation.
         # attr : path of the attribute
         # getter : the name of the getter function. default get[att name]
@@ -110,16 +118,20 @@ class Application extends EventEmitter
                             thisArg.emit('change',{
                                 attr: attrPath
                                 newVal : newVal
-                                })  
+                                })
 
-        
+    _initAppInstanceMap : ()->
+        # maps to look up for appinstances
+        @_appInstanceMap = {}
+        @_userToAppInstance = {}
+
     _getAttr : (attr)->
         parseResult = utils.parseAttributePath(this, attr)
         if not parseResult
             console.trace "cannot find #{attr} in app #{@mountPoint}"
             return
         return parseResult.dest
-        
+
 
     _setAttr : (attr, newVal)->
         parseResult = utils.parseAttributePath(this, attr)
@@ -128,7 +140,7 @@ class Application extends EventEmitter
             return false
         parseResult.obj[parseResult.attr] = newVal
         return true
-           
+
 
     _addAppInstance: (appInstance) ->
         @_appInstanceMap[appInstance.id] = appInstance
@@ -154,16 +166,93 @@ class Application extends EventEmitter
             for listener in listenerArray
                 applogger "app #{@mountPoint} remove a #{k} listener"
                 @removeListener(k, listener)
-        
+
+    # delete old app
     enable : (callback)->
-        @mounted = true
-        @setMountOnStartup(true, callback)
+        @_appManager._activateApp(this, callback)
+
 
     disable : (callback)->
         @mounted = false
-        @setMountOnStartup(false, callback)
-        
-   
+        @_workerManager.removeRoute(this)
+        self = this
+        # for standalone app, we need to disable this app on the worker nodes.
+        if not @parentApp?
+            async.series([
+                (next)=>
+                    @setMountOnStartup(false, next)
+                (next)=>
+                    @_disableOnWorkers(next)
+                (next)=>
+                    @_disableSubApps(next)
+                (next)=>
+                    @removeAllListeners()
+                    @_initAppInstanceMap()
+                    next()
+                ], callback)
+        else
+            async.series([
+                (next)=>
+                    @setMountOnStartup(false, next)
+                (next)=>
+                    @_disableSubApps(next)
+                (next)=>
+                    @removeAllListeners()
+                    @_initAppInstanceMap()
+                    next()
+            ], callback)
+
+    _disableOnWorkers : (callback)->
+        self = this
+        @_workerManager.getAllWorkerStubs((err, stubs)->
+            return callback(err) if err?
+            applogger("disable #{self.mountPoint} in #{stubs.length} workers")
+            if stubs? and stubs.length>0        
+                async.each(stubs,
+                    (stub, stubNext)->
+                        stub.appManager.disable(self.mountPoint, stubNext)
+                    , callback
+                )
+            else
+                callback()
+        )
+
+    _enableOnWorkers : (callback)->
+        self = this
+        @_workerManager.getAllWorkerStubs((err, stubs)->
+            return callback(err) if err?
+            applogger("enable #{self.mountPoint} in #{stubs.length} workers")
+            if stubs? and stubs.length>0
+                async.each(stubs,
+                    (stub, stubNext)->
+                        stub.appManager.enable(self, stubNext)
+                    , callback
+                )
+            else
+                callback()
+        )
+
+    _eanbleSubApps : (callback)->
+        subApps = lodash.values(@subApps)
+        applogger("enable subApps in #{@mountPoint}")
+        async.each(subApps,
+            (subApp, next)->
+                subApp.enable(next)
+            ,
+            callback
+        )
+
+    _disableSubApps : (callback)->
+        subApps = lodash.values(@subApps)
+        applogger("disable subApps in #{@mountPoint}")
+        async.each(subApps,
+            (subApp, next)->
+                subApp.disable(next)
+            ,
+            callback
+        )
+
+
     isOwner: (user, callback) ->
         eamil = if user._email? then user._email else user
         result = email is @config.deploymentConfig.owner
@@ -243,7 +332,7 @@ class Application extends EventEmitter
                 callback null, result
             )
         )
-    
+
     regsiterAppInstance : (workerId, appInstance, callback) ->
         applogger("get appInstance #{appInstance.id} from #{workerId}")
         localAppInstance = new AppInstance(null, workerId)
@@ -286,7 +375,7 @@ class Application extends EventEmitter
             for k, subApp of @subApps
                 if subApp.config.appType is 'auth'
                     return true
-        return false            
+        return false
 
     _setParent : (parentApp)->
         @parentApp=parentApp
@@ -331,7 +420,7 @@ class Application extends EventEmitter
         applogger("disableAuthentication #{@mountPoint}")
         @setAuthenticationInterface(false)
         callback null
-        
+
 
 
 class AppManager
@@ -339,42 +428,96 @@ class AppManager
         @_workerManager = dependencies.workerManager
         @_permissionManager = dependencies.permissionManager
         @_config = dependencies.config
-        @_workerAppMap = {}
         # a map of mountPoint to applications
         @_applications ={}
+        
         @_cbAppDir = path.resolve(__dirname,'..', 'server/applications')
+        deployDir = path.resolve(__dirname,'../..', 'deployment')
+        @_appWriter = new AppWriter({
+            deployDir : deployDir
+            appManager : this
+            })
         @_loadApps((err)=>
             callback err, this
         )
 
     _loadApps : (callback) ->
         appDescriptors = []
+        appConfigs = []
         for appPath in @_config._appPaths
             stat = fs.lstatSync(appPath)
             if stat.isFile()
                 appDescriptors.push({type:'file', path: appPath})
             if stat.isDirectory()
-                fromDir = @_getAppDescriptorsFromDir(appPath)
+                fromDir = @_createAppConfigFromDir(appPath)
                 for i in fromDir
-                    appDescriptors.push(i)
-
-        appConfigs = []
+                    appConfigs.push(i)
+        
         for appDescriptor in appDescriptors
-            if appDescriptor.type is 'file'
-                appConfig = config.newAppConfig()
-                appConfig.path = path.dirname(appDescriptor.path)
-                appConfig.appConfig.entryPoint = path.basename(appDescriptor.path)
-                appConfig.deploymentConfig.mountPoint = '/' + path.basename(appDescriptor.path)
-                appConfig.deploymentConfig.setOwner(@_config.workerConfig.defaultUser)
-            else
-                appConfig = config.newAppConfig(appDescriptor)
+            appConfig = @_createAppConfigFromDescriptor(appDescriptor)
             appConfigs.push(appConfig)
         async.each(appConfigs,(appConfig, eachCallback)=>
             @_loadApp(appConfig, eachCallback)
         ,(err)->
             callback err
         )
+
+    _createAppConfigFromDescriptor : (appDescriptor)->
+        if appDescriptor.type is 'file'
+            appConfig = config.newAppConfig()
+            appConfig.path = path.dirname(appDescriptor.path)
+            appConfig.appConfig.entryPoint = path.basename(appDescriptor.path)
+            appConfig.deploymentConfig.mountPoint = '/' + path.basename(appDescriptor.path)
+            appConfig.deploymentConfig.setOwner(@_config.workerConfig.defaultUser)
+        else
+            appConfig = config.newAppConfig(appDescriptor)
+        return appConfig
+
+
+    # destroy the app, reload configuration from its path and construct a new app
+    _activateApp : (app, callback)->
+        if not callback?
+            callback = loggerCallback
+
+        {mountPoint} = app
+
+        if app.mounted
+            return callback(new Error("the app #{mountPoint} is still mounted."))
         
+        appPath = app.config.path
+        if not appPath
+            return callback(new Error("Cannot find app config for #{mountPoint}"))
+        
+        applogger("relaod app from #{appPath}")
+        @_removeApp(app)
+        appConfigs = @_createAppConfigFromDir(appPath)
+        if appConfigs.length is 1
+            appConfig = appConfigs[0]
+            @_loadApp(appConfig, (err, newApp)->
+                if err?
+                    applogger("loadapp #{mountPoint} failed")
+                    return callback(err)
+                newApp._enableOnWorkers(callback)
+            )
+        else
+            applogger("failed to load appDescriptor from #{appPath}")
+            callback(new Error("reloadApp failed, illegal configuration in #{appPath}."))
+
+    _removeApp : (app)->
+        applogger("remove #{app.mountPoint}")
+        delete @_applications[app.mountPoint]
+        if app.subApps? and app.subApps.length > 0
+            lodash.each(app.subApps, @_removeApp, this)
+            
+    _createAppConfigFromDir: (dir)->
+        appDescriptors = @_getAppDescriptorsFromDir(dir)
+        appConfigs = []
+        if appDescriptors? and appDescriptors.length > 0
+            for appDescriptor in appDescriptors
+                appConfig =@_createAppConfigFromDescriptor(appDescriptor)
+                appConfigs.push(appConfig)
+        return appConfigs
+
     _getAppDescriptorsFromDir : (dir) ->
         result = []
         appConfigFile = path.resolve(dir,'app_config.json')
@@ -400,26 +543,28 @@ class AppManager
                     for i in fromSubDir
                         result.push(i)
         return result
-                    
-    # load standalone apps  
+
+    # load standalone apps
     _loadApp : (appConfig, callback) ->
         mountPoint = appConfig.deploymentConfig.mountPoint
         if @_applications[mountPoint]?
-            console.log "#{mountPoint} has already been registered. Skipping app #{appConfig.path}"
+            applogger "#{mountPoint} has already been registered. Skipping app #{appConfig.path}"
             callback null
         else
-            console.log "load #{mountPoint}"
+            applogger "load #{mountPoint}"
             app = new Application(@, appConfig)
             subAppConfigs = @_getSubAppConfigs(appConfig)
             for subAppConfig in subAppConfigs
                 subApp = new Application(@, subAppConfig)
                 subApp._setParent(app)
                 app._addSubApp(subApp)
-            @_addApp(app, callback)
-    
-            
+            @_addApp(app, (err)->
+                callback(err, app)
+            )
+
+
     _addApp : (app, callback) ->
-        # Add the permission record for this application's owner 
+        # Add the permission record for this application's owner
         @_permissionManager.addAppPermRec
             user        : app._getOwner()
             mountPoint  : app.mountPoint
@@ -439,7 +584,6 @@ class AppManager
                     )
                 else
                     callback null
-        
 
 
     _getSubAppConfigs : (appConfig) ->
@@ -456,12 +600,12 @@ class AppManager
                     landingPageAppConfig = @_getLandingAppConfig(appConfig)
                     result.push(landingPageAppConfig)
         return result
-        
+
     _getLandingAppConfig : (appConfig) ->
         configPath = "#{@_cbAppDir}/landing_page"
         appConfigFile = "#{configPath}/app_config.json"
         newConfig = config.newAppConfig({type:'dir', path:configPath, appConfigFile: appConfigFile})
-        newConfig.standalone = false        
+        newConfig.standalone = false
         newConfig.appType = 'landing'
         baseMountPoint = appConfig.deploymentConfig.mountPoint
         newConfig.deploymentConfig.mountPoint = routes.concatRoute(baseMountPoint, '/landing_page')
@@ -492,7 +636,7 @@ class AppManager
         newConfig.deploymentConfig.mountPoint = routes.concatRoute(baseMountPoint, '/password_reset')
         return newConfig
 
-    
+
     findApp : (mountPoint, callback) ->
         callback null, @_applications[mountPoint]
 
@@ -511,7 +655,38 @@ class AppManager
             callback null, standaloneApps
         )
 
-                
-    
+    uploadAppConfig : (buffer, callback)->
+        applogger("receive #{buffer.length} bytes buffer")
+        async.waterfall([
+            (next)=>
+                @_appWriter.write(buffer, next)
+            (dir, next)=>
+                appConfigs = @_createAppConfigFromDir(dir)
+                @_loadApp(appConfigs[0], next)
+            (app, next)->
+                app._enableOnWorkers(next)
+            ],(err)->
+                if err?
+                    applogger("uploadAppConfig failed #{err}")
+                callback(err)
+        )
+        
+        
+
+    # check if a folder contains a deployable application
+    deployable : (dir, callback)->
+        appConfigs = @_createAppConfigFromDir(dir)
+        if appConfigs.length is 1
+            appConfig = appConfigs[0]
+            mountPoint = appConfig.deploymentConfig.mountPoint
+            if @_applications[mountPoint]?
+                callback(new Error("#{mountPoint} is deployed."))
+                return
+            callback(null, mountPoint)
+        else
+            callback(new Error("Find #{appConfigs.length} app definitions in uploaded file."))
+
+
+
 module.exports = (dependencies, callback) ->
     new AppManager(dependencies, callback)

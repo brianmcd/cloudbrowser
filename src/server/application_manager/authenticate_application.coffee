@@ -17,53 +17,49 @@ class AuthApp extends BaseApplication
         @activateHandler = lodash.bind(@_activateHandler, this)
         @deactivateHandler = lodash.bind(@_deactivateHandler, this)
 
-        
+
     mount : () ->
         # authorized user do not need to be authorized again
-        @httpServer.mount(@mountPoint, @checkNotAuth, 
+        @_mount(@mountPoint, @checkNotAuth,
             @mountPointHandler)
-        @httpServer.mount(routes.concatRoute(@mountPoint,routes.browserRoute),
+        @_mount(routes.concatRoute(@mountPoint,routes.browserRoute),
             @checkNotAuth,
             @serveVirtualBrowserHandler)
-        @httpServer.mount(routes.concatRoute(@mountPoint, routes.resourceRoute), 
+        @_mount(routes.concatRoute(@mountPoint, routes.resourceRoute),
             @checkNotAuth,
             @serveResourceHandler)
+        @_mount(routes.concatRoute(@mountPoint, routes.componentRoute),
+            @checkNotAuth,
+            @serveComponentHandler)
         @mounted = true
 
-    mountAuthForParent : () ->
+    mountParent : () ->
         # authenticate root url
-        @httpServer.mount(@baseMountPoint, 
-            @checkAuth, 
+        @_mount(@baseMountPoint,
+            @checkAuth,
             @parentApp.mountPointHandler
         )
         # authenticate virtual browser
-        @httpServer.mount(routes.concatRoute(@baseMountPoint, routes.browserRoute), 
+        @_mount(routes.concatRoute(@baseMountPoint, routes.browserRoute),
             @checkAuth,
-            @isAuthorized, 
+            @isAuthorized,
             @parentApp.serveVirtualBrowserHandler)
-        @httpServer.mount(routes.concatRoute(@baseMountPoint, routes.resourceRoute), 
+        @_mount(routes.concatRoute(@baseMountPoint, routes.resourceRoute),
             @checkAuth,
             @parentApp.serveResourceHandler)
+        @_mount(routes.concatRoute(@baseMountPoint, routes.componentRoute),
+            @checkAuth,
+            @parentApp.serveComponentHandler)
         # handle logout, activate and deactivate
-        @httpServer.mount(routes.concatRoute(@baseMountPoint, '/logout'), 
+        @_mount(routes.concatRoute(@baseMountPoint, '/logout'),
             @logoutHandler)
-        @httpServer.mount(routes.concatRoute(@baseMountPoint,'/activate/:token'),
+        @_mount(routes.concatRoute(@baseMountPoint,'/activate/:token'),
             @activateHandler)
-        @httpServer.mount(routes.concatRoute(@baseMountPoint, '/deactivate/:token'), 
+        @_mount(routes.concatRoute(@baseMountPoint, '/deactivate/:token'),
             @deactivateHandler)
         # handle appInstance requests
-        @httpServer.mount(routes.concatRoute(@baseMountPoint,'/a/:appInstanceID'),
+        @_mount(routes.concatRoute(@baseMountPoint,'/a/:appInstanceID'),
             @parentApp.serveAppInstanceHandler)
-
-    unmount : () ->
-        super()
-        @httpServer.unmount(routes.concatRoute(@baseMountPoint, '/logout'))
-        @httpServer.unmount(routes.concatRoute(@baseMountPoint,'/activate/:token'))
-        @httpServer.unmount(routes.concatRoute(@baseMountPoint, '/deactivate/:token'))
-        # handle appInstance requests
-        @httpServer.unmount(routes.concatRoute(@baseMountPoint,'/a/:appInstanceID'))
-        
-
 
 
     _logoutHandler : (req, res, next) ->
@@ -106,7 +102,7 @@ class AuthApp extends BaseApplication
             browser = appInstance.findBrowser(browserID)
             if browser.getUserPrevilege?(user)?
                 return next()
-        
+
         if appInstance?.getUserPrevilege(user)?
             return next()
         else
@@ -118,14 +114,14 @@ class AuthApp extends BaseApplication
             else res.render('activate.jade', {url : @mountPoint})
 
     _deactivateHandler: (req, res, next) ->
-        @parentApp.deactivateUser(req.params.token, () -> 
+        @parentApp.deactivateUser(req.params.token, () ->
             res.render('deactivate.jade'))
 
     isAuthApp : () ->
         return true
 
-module.exports = AuthApp   
+module.exports = AuthApp
 
 
 
- 
+

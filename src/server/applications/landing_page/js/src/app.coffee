@@ -12,6 +12,6 @@ CBLandingPage = angular.module('CBLandingPage', [
     # Allow same origin resource loads.
     'self',
     # loading templates from file system
-    "file://"
+    "file://**"
   ])
 )

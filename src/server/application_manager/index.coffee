@@ -28,8 +28,9 @@ cleanupApp = (mountPoint) ->
 logger = debug("cloudbrowser:worker:appmanager")
 
 class ApplicationManager extends EventEmitter
+    __r_mode : 'methods'
     constructor : (dependencies, callback) ->
-        {@config, @database, 
+        {@config, @database,
         @permissionManager, @httpServer,
         @sessionManager, @masterStub} = dependencies
         @_appConfigs = dependencies.appConfigs
@@ -55,7 +56,7 @@ class ApplicationManager extends EventEmitter
             logger("all apps loaded")
             callback err,this
         )
-        
+
 
     #load applications after the routes on http_server is ready
     loadApplications : (callback)->
@@ -64,8 +65,21 @@ class ApplicationManager extends EventEmitter
             app = new Application(masterApp, @server)
             @addApplication(app)
             app.mount()
+            # FIXME : temp solution, should listen on the master's appManager
+            @emit('addApp', app)
+        # no point to keep reference at this point
+        @_appConfigs = null
         callback null
-            
+    ###
+    start existing apps
+    ###
+    start : (callback)->
+        logger("start existing apps")
+        for k, app of @applications
+            if app.isStandalone() and app.mounted
+                app.mount()
+        callback()
+
 
     addApplication : (app) ->
         mountPoint = app.mountPoint
@@ -74,10 +88,72 @@ class ApplicationManager extends EventEmitter
         if app.subApps
             for subApp in app.subApps
                 @addApplication(subApp)
-                    
-    remove : (mountPoint) ->
-        delete @applications[mountPoint]
-        delete @weakRefsToApps[mountPoint]
+
+    remove : (mountPoint, callback) ->
+        logger("remove #{mountPoint}")
+        app = @applications[mountPoint]
+        if app?
+            delete @applications[mountPoint]
+            delete @weakRefsToApps[mountPoint]
+            # FIXME : temp solution, should listen on the master's appManager
+            @emit('removeApp', app)
+            if app.subApps? and app.subApps.length>0
+                Async.each(app.subApps,
+                    (subApp, next)=>
+                        @remove(subApp.mountPoint, next)
+                    (err)->
+                        if err?
+                            logger("remove app #{mountPoint} failed:#{err}")
+                            return callback(err)
+                        app.close(callback)
+                    )
+            else
+                app.close(callback)
+        else
+            callback()
+
+    _setDisableFlag : (mountPoint)->
+        app = @applications[mountPoint]
+        if app?
+            app.mounted = false
+            if app.subApps? and app.subApps.length>0
+                lodash.each(app.subApps, @_setDisableFlag, this)
+
+    disable : (mountPoint, callback)->
+        @_setDisableFlag(mountPoint)
+        Async.series([
+            (next)=>
+                @stop(next)
+            (next)=>
+                # FIXME put this into httpServer
+                @socketIOServer.stop(next)
+            (next)=>
+                @httpServer.restart(next)
+            (next)=>
+                # this thing would return itself
+                @socketIOServer.start(next)
+            (next)=>
+                @start(next)
+            ],(err)->
+                logger("disable app #{mountPoint} failed : #{err}") if err?
+                callback(err)
+            )
+
+
+    enable : (masterApp, callback)->
+        logger("enable #{masterApp.mountPoint}")
+        @remove(masterApp.mountPoint, (err)=>
+            if err?
+                logger("remove old app failed #{err}")
+                return callback(err)
+            app = new Application(masterApp, @server)
+            @addApplication(app)
+            app.mount()
+            # FIXME : temp solution, should listen on the master's appManager
+            @emit('addApp', app)
+            callback()
+        )
+
 
     find : (mountPoint) ->
         # Hand out weak references to other modules
@@ -88,7 +164,7 @@ class ApplicationManager extends EventEmitter
         # Permission Check Required
         # for all apps and for only a particular user's apps
         return @weakRefsToApps
-        
+
 
     _setupGoogleAuthRoutes : () ->
         # TODO - config return url and realm
@@ -128,5 +204,18 @@ class ApplicationManager extends EventEmitter
         app = @applications[mountPoint]
         app.createAppInstanceForUser(user, callback)
 
+    stop :(callback)->
+        logger("stop all apps")
+        apps = lodash.values(@applications)
+        Async.each(apps,
+            (app, next)->
+                app.stop(next)
+            ,(err)->
+                logger("applicationManager stop failed: #{err}") if err?
+                callback(err) if callback?
+        )
+
+    uploadAppConfig : (buffer, callback)->
+        @masterStub.appManager.uploadAppConfig(buffer, callback)
 
 module.exports = ApplicationManager

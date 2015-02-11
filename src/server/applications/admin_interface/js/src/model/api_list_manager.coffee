@@ -4,6 +4,7 @@ class APIListManager extends EventEmitter
 
     constructor : (@TypeOfItems, @format, @idProperty='id', @idMethod='getID') ->
         @items = []
+        @removed = []
         @setMaxListeners(500)
 
     # Takes the ID of the object
@@ -23,8 +24,10 @@ class APIListManager extends EventEmitter
         # Getting the item from the ID
         if typeof item is "string" then item = @find(item)
         idx = @items.indexOf(item)
-        if idx isnt -1 then return @items.splice(idx, 1)[0]
-        else return null
+        if idx isnt -1
+            return @items.splice(idx, 1)[0]
+        else
+            return null
 
 # Exporting
 this.APIListManager = APIListManager

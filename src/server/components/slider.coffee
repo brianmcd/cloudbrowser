@@ -1,8 +1,8 @@
 Component = require('./component')
 
 class Slider extends Component
-    constructor : (@options, @rpcMethod, @container) ->
-        super
+    constructor : (@options, @container) ->
+        super(@options, @container)
         @attrs = {}
 
         @container.get = (attr) =>

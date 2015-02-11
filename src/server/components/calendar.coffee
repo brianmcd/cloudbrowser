@@ -2,7 +2,8 @@
 Component = require('./component')
 
 class Calendar extends Component
-    constructor : (@options, @rpcMethod, @container) ->
+    constructor : (@options, @container) ->
+        super(@options, @container)
         @attrs = {}
 
         @container.get = (attr) =>

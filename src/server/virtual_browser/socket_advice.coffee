@@ -90,7 +90,7 @@ class Socket
         {@socket, @compressor, @compression} = options
         socket = @socket
         self = @
-        for func in ['on', 'emit', 'close', 'removeAllListeners']
+        for func in ['on', 'emit', 'close', 'removeAllListeners', 'disconnect']
             do (func, socket, self)->
                 self[func] =()->
                     socket[func].apply(socket, arguments)

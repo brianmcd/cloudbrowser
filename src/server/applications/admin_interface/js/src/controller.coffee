@@ -7,7 +7,7 @@ CBAdminInterface = angular.module("CBAdminInterface.controller", ['CBAdminInterf
     # Allow same origin resource loads.
     'self',
     # loading templates from file system
-    "file://"
+    "file://**"
   ])
 )
 
@@ -37,7 +37,7 @@ CBAdminInterface.controller "AppCtrl", [
                 if fn then fn()
             else
                 this.$apply(fn)
-        
+
         # API objects
         curVB        = cloudbrowser.currentBrowser
         serverConfig = cloudbrowser.serverConfig
@@ -45,8 +45,70 @@ CBAdminInterface.controller "AppCtrl", [
         # Model
         $scope.search = ""
         $scope.apps   = appManager.items
-        $scope.switches = ['isPublic', 'isAuthEnabled', 'mounted']
-        $scope.selectedApp = null
+        class Switch
+            constructor: (@property, @toggleMethods, @label, @title) ->
+                if not title?
+                    @title = @label.on
+
+            value : (app)->
+                return app[@property]
+
+            toggle : (app)->
+                toggleMethod = @toggleMethods.on
+                successVal = true
+                if @value(app)
+                    toggleMethod = @toggleMethods.off
+                    successVal = false
+                property = @property
+                console.log("toggle #{app.name} #{property} to #{successVal}")
+                app.api[toggleMethod]((err)->
+                    if err?
+                        errorMsg = "set #{app.name} #{property} to #{successVal} failed"
+                        $scope.safeApply ->
+                            $scope.setError(errorMsg)
+                        console.log(err)
+                        return console.log(errorMsg)
+                    $scope.safeApply ->
+                        app[property] = successVal
+                    console.log("successfully set #{app.name} #{property} to #{successVal}")
+                )
+
+
+        $scope.switches = [
+            new Switch('isPublic',
+                {
+                    on  : 'makePublic'
+                    off : 'makePrivate'
+                },
+                {
+                    on : 'Public'
+                    off : 'Private'
+                }
+            ),
+            new Switch('isAuthEnabled',
+                {
+                    on  : 'enableAuthentication'
+                    off : 'disableAuthentication'
+                },
+                {
+                    on : 'On'
+                    off : 'Off'
+                },
+                'Authentication'
+            ),
+            new Switch('mounted',
+                {
+                    on  : 'mount'
+                    off : 'disable'
+                },
+                {
+                    on : 'Mounted'
+                    off : 'Disabled'
+                },
+                'Mounted'
+            )
+        ]
+
         $scope.user = curVB.getCreator()
 
         # TODO Must create directive instead
@@ -108,8 +170,8 @@ CBAdminInterface.controller "AppCtrl", [
             $scope.safeApply ->
             if callback?
                 callback null
-            
-            
+
+
 
         addBrowser = (app, browserConfig) ->
             browser = app.browserMgr.find(browserConfig.getID())
@@ -142,12 +204,12 @@ CBAdminInterface.controller "AppCtrl", [
                     browser.addUser(user, role)
                     addToUserList(app, user, 'browserIDMgr', browser.id, role)
             # Setup event listeners for new user, rename
-            
+
         removeBrowser = (app, browserID) ->
             browser = app.browserMgr.remove(browserID)
             if not browser
                 return
-            
+
             # Remove browser from its corresponding appInstance's list
             if browser.appInstanceID
                 appInstance = app.appInstanceMgr.find(browser.appInstanceID)
@@ -163,7 +225,7 @@ CBAdminInterface.controller "AppCtrl", [
                 addAppInstance(app, appInstanceConfig)
             $scope.safeApply ->
             callback null
-            
+
 
         addAppInstance = (app, appInstanceConfig) ->
             appInstance = app.appInstanceMgr.find(appInstanceConfig.getID())
@@ -196,14 +258,14 @@ CBAdminInterface.controller "AppCtrl", [
                     return console.log err.stack
                 addBrowsers(app, browserConfigs)
             )
-            
-            
+
+
         removeAppInstance = (app, appInstanceID) ->
             appInstance = app.appInstanceMgr.remove(appInstanceID)
             if not appInstance?
                 console.log "appInstance #{appInstanceId} not found"
                 return
-            
+
             for listName, role of listsToRoles
                 # Remove appInstance from user list
                 list = appInstance[listName]
@@ -225,7 +287,10 @@ CBAdminInterface.controller "AppCtrl", [
         addApp = (appConfig) ->
             app = appManager.find(appConfig.getMountPoint())
             # has already added
-            if app then return app
+            if app?
+                console.log("remove existing #{app.name}")
+                appManager.remove(app)
+
             app = appManager.add(appConfig)
             setupEventListeners(app)
             # the browsers need to be retrieved after appInstances
@@ -259,6 +324,7 @@ CBAdminInterface.controller "AppCtrl", [
                 addApp(appConfig)
 
         serverConfig.addEventListener "removeApp", (mountPoint) ->
+            console.log("remove #{mountPoint}")
             appManager.remove(mountPoint)
 
         # File uploader Component
@@ -268,18 +334,19 @@ CBAdminInterface.controller "AppCtrl", [
                 formClass   : "form-inline well"
                 buttonClass : "btn btn-primary"
         fileUploader.addEventListener "cloudbrowser.upload", (event) ->
-            {user, file} = event.info
-            # Anybody can post to the upload url.
-            # But only posts by the current user will be accepted.
-            if user isnt $scope.user then return
-            if file.type isnt "application/x-gzip"
-                $scope.safeApply -> $scope.setError("File must be a gzipped tarball")
+            {buffer, mimetype } = event.info
+            console.log("got file")
+            if mimetype isnt "application/x-gzip"
+                console.log("invalid mimetype #{mimetype}")
+                $scope.safeApply -> $scope.setError("File must be a gzipped tarball, the file uploaded is #{mimetype}.")
                 return
-            serverConfig.uploadAndCreateApp file.path, (err, appConfig) ->
+            serverConfig.uploadAndCreateApp buffer, (err) ->
                 $scope.safeApply ->
-                    if err then $scope.setError(err)
-                    else App.add(appConfig)
-            
+                    if err?
+                        $scope.setError(err)
+                    else 
+                        $scope.setError("Application Uploaded.")
+
         $scope.init = ()->
             # Loading all the apps at startup
             serverConfig.listApps ['perUser'], (err, appConfigs) ->
@@ -287,58 +354,35 @@ CBAdminInterface.controller "AppCtrl", [
                 else
                     for appConfig in appConfigs
                         addApp(appConfig) if appConfig.isStandalone()
-                    
+
                     # Select the first app initially
-                    $scope.safeApply -> $scope.selectedApp = $scope.apps?[0]
+                    $scope.safeApply(()->
+                        if $scope.apps.length > 0
+                            $scope.apps[0].selected = true
+                    )
 
         $scope.init()
 
 
 
         # Methods on the angular scope
-        $scope.leftClick = (url) -> curVB.redirect(url)
+        $scope.leftClick = (url) ->
+            curVB.redirect(url)
 
-        $scope.editDescription = () ->
-            app = $scope.selectedApp
-            if app.api.isOwner() then app.editing = true
+        $scope.editDescription = (app) ->
+            if app.api.isOwner() 
+                app.editing = true
+            else
+                $scope.setError("only owner can edit description")
 
-        $scope.getAppClass = (app) ->
-            if $scope.selectedApp is app then return 'selected'
-            else return ''
 
         $scope.select = (app) ->
-            $scope.selectedApp = app
+            for a in $scope.apps
+                if a isnt app
+                    a.selected = false
+                else
+                    a.selected = true
 
-        toggleMethods =
-            mounted :
-                on  : 'mount'
-                off : 'disable'
-            isPublic :
-                on  : 'makePublic'
-                off : 'makePrivate'
-            isAuthEnabled :
-                on  : 'enableAuthentication'
-                off : 'disableAuthentication'
-
-        $scope.toggle = (property) ->
-            onMethod  = toggleMethods[property].on
-            offMethod = toggleMethods[property].off
-
-            if $scope.selectedApp[property]
-                $scope.selectedApp.api[offMethod]((err)->
-                    if err
-                        return console.log("#{offMethod} - #{err}")
-                    $scope.safeApply -> 
-                        $scope.selectedApp[property] = false
-                )
-            else
-                err = $scope.selectedApp.api[onMethod]((err)->
-                    if err 
-                        return console.log("#{onMethod} - #{err}")
-                    $scope.safeApply -> 
-                        $scope.selectedApp[property] = true
-                )
-                
 
         $scope.sortBy = (predicate) ->
             $scope.predicate = predicate

@@ -5,7 +5,7 @@ app = angular.module('CBLandingPage.controllers.app',
     # Allow same origin resource loads.
     'self',
     # loading templates from file system
-    "file://"
+    "file://**"
   ])
 )
 

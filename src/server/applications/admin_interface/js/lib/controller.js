@@ -7,12 +7,12 @@
   NwGlobal = require('nwglobal');
 
   CBAdminInterface = angular.module("CBAdminInterface.controller", ['CBAdminInterface.models']).config(function($sceDelegateProvider) {
-    return $sceDelegateProvider.resourceUrlWhitelist(['self', "file://"]);
+    return $sceDelegateProvider.resourceUrlWhitelist(['self', "file://**"]);
   });
 
   CBAdminInterface.controller("AppCtrl", [
     '$scope', 'cb-appManager', '$timeout', function($scope, appManager, $timeout) {
-      var addApp, addAppInstance, addAppInstances, addBrowser, addBrowsers, addToUserList, addUser, curVB, fileUploader, listsToRoles, name, path, removeAppInstance, removeBrowser, removeFromUserList, serverConfig, setupEventListeners, toggleMethods, _ref;
+      var Switch, addApp, addAppInstance, addAppInstances, addBrowser, addBrowsers, addToUserList, addUser, curVB, fileUploader, listsToRoles, name, path, removeAppInstance, removeBrowser, removeFromUserList, serverConfig, setupEventListeners, _ref;
       $scope.templates = {
         "switch": "switch.html",
         appTable: "app_table.html",
@@ -43,8 +43,72 @@
       serverConfig = cloudbrowser.serverConfig;
       $scope.search = "";
       $scope.apps = appManager.items;
-      $scope.switches = ['isPublic', 'isAuthEnabled', 'mounted'];
-      $scope.selectedApp = null;
+      Switch = (function() {
+        function Switch(property, toggleMethods, label, title) {
+          this.property = property;
+          this.toggleMethods = toggleMethods;
+          this.label = label;
+          this.title = title;
+          if (title == null) {
+            this.title = this.label.on;
+          }
+        }
+
+        Switch.prototype.value = function(app) {
+          return app[this.property];
+        };
+
+        Switch.prototype.toggle = function(app) {
+          var property, successVal, toggleMethod;
+          toggleMethod = this.toggleMethods.on;
+          successVal = true;
+          if (this.value(app)) {
+            toggleMethod = this.toggleMethods.off;
+            successVal = false;
+          }
+          property = this.property;
+          console.log("toggle " + app.name + " " + property + " to " + successVal);
+          return app.api[toggleMethod](function(err) {
+            var errorMsg;
+            if (err != null) {
+              errorMsg = "set " + app.name + " " + property + " to " + successVal + " failed";
+              $scope.safeApply(function() {
+                return $scope.setError(errorMsg);
+              });
+              console.log(err);
+              return console.log(errorMsg);
+            }
+            $scope.safeApply(function() {
+              return app[property] = successVal;
+            });
+            return console.log("successfully set " + app.name + " " + property + " to " + successVal);
+          });
+        };
+
+        return Switch;
+
+      })();
+      $scope.switches = [
+        new Switch('isPublic', {
+          on: 'makePublic',
+          off: 'makePrivate'
+        }, {
+          on: 'Public',
+          off: 'Private'
+        }), new Switch('isAuthEnabled', {
+          on: 'enableAuthentication',
+          off: 'disableAuthentication'
+        }, {
+          on: 'On',
+          off: 'Off'
+        }, 'Authentication'), new Switch('mounted', {
+          on: 'mount',
+          off: 'disable'
+        }, {
+          on: 'Mounted',
+          off: 'Disabled'
+        }, 'Mounted')
+      ];
       $scope.user = curVB.getCreator();
       $scope.setError = function(err) {
         $scope.error = err;
@@ -303,8 +367,9 @@
       addApp = function(appConfig) {
         var app;
         app = appManager.find(appConfig.getMountPoint());
-        if (app) {
-          return app;
+        if (app != null) {
+          console.log("remove existing " + app.name);
+          appManager.remove(app);
         }
         app = appManager.add(appConfig);
         setupEventListeners(app);
@@ -344,6 +409,7 @@
         }
       });
       serverConfig.addEventListener("removeApp", function(mountPoint) {
+        console.log("remove " + mountPoint);
         return appManager.remove(mountPoint);
       });
       fileUploader = curVB.createComponent('fileUploader', document.getElementById('file-uploader'), {
@@ -352,18 +418,17 @@
         buttonClass: "btn btn-primary"
       });
       fileUploader.addEventListener("cloudbrowser.upload", function(event) {
-        var file, user, _ref1;
-        _ref1 = event.info, user = _ref1.user, file = _ref1.file;
-        if (user !== $scope.user) {
-          return;
-        }
-        if (file.type !== "application/x-gzip") {
+        var buffer, mimetype, _ref1;
+        _ref1 = event.info, buffer = _ref1.buffer, mimetype = _ref1.mimetype;
+        console.log("got file");
+        if (mimetype !== "application/x-gzip") {
+          console.log("invalid mimetype " + mimetype);
           $scope.safeApply(function() {
-            return $scope.setError("File must be a gzipped tarball");
+            return $scope.setError("File must be a gzipped tarball, the file uploaded is " + mimetype + ".");
           });
           return;
         }
-        return serverConfig.uploadAndCreateApp(file.path, function(err, appConfig) {
+        return serverConfig.uploadAndCreateApp(buffer, function(err, appConfig) {
           return $scope.safeApply(function() {
             if (err) {
               return $scope.setError(err);
@@ -386,8 +451,9 @@
               }
             }
             return $scope.safeApply(function() {
-              var _ref1;
-              return $scope.selectedApp = (_ref1 = $scope.apps) != null ? _ref1[0] : void 0;
+              if ($scope.apps.length > 0) {
+                return $scope.apps[0].selected = true;
+              }
             });
           }
         });
@@ -396,60 +462,26 @@
       $scope.leftClick = function(url) {
         return curVB.redirect(url);
       };
-      $scope.editDescription = function() {
-        var app;
-        app = $scope.selectedApp;
+      $scope.editDescription = function(app) {
         if (app.api.isOwner()) {
           return app.editing = true;
-        }
-      };
-      $scope.getAppClass = function(app) {
-        if ($scope.selectedApp === app) {
-          return 'selected';
         } else {
-          return '';
+          return $scope.setError("only owner can edit description");
         }
       };
       $scope.select = function(app) {
-        return $scope.selectedApp = app;
-      };
-      toggleMethods = {
-        mounted: {
-          on: 'mount',
-          off: 'disable'
-        },
-        isPublic: {
-          on: 'makePublic',
-          off: 'makePrivate'
-        },
-        isAuthEnabled: {
-          on: 'enableAuthentication',
-          off: 'disableAuthentication'
+        var a, _i, _len, _ref1, _results;
+        _ref1 = $scope.apps;
+        _results = [];
+        for (_i = 0, _len = _ref1.length; _i < _len; _i++) {
+          a = _ref1[_i];
+          if (a !== app) {
+            _results.push(a.selected = false);
+          } else {
+            _results.push(a.selected = true);
+          }
         }
-      };
-      $scope.toggle = function(property) {
-        var err, offMethod, onMethod;
-        onMethod = toggleMethods[property].on;
-        offMethod = toggleMethods[property].off;
-        if ($scope.selectedApp[property]) {
-          return $scope.selectedApp.api[offMethod](function(err) {
-            if (err) {
-              return console.log("" + offMethod + " - " + err);
-            }
-            return $scope.safeApply(function() {
-              return $scope.selectedApp[property] = false;
-            });
-          });
-        } else {
-          return err = $scope.selectedApp.api[onMethod](function(err) {
-            if (err) {
-              return console.log("" + onMethod + " - " + err);
-            }
-            return $scope.safeApply(function() {
-              return $scope.selectedApp[property] = true;
-            });
-          });
-        }
+        return _results;
       };
       $scope.sortBy = function(predicate) {
         var reverseProp;

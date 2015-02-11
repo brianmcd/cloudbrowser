@@ -1,8 +1,11 @@
+routes = require('../application_manager/routes')
+
 class Component
-    constructor : (@options, @rpcMethod, @container) ->
+    constructor : (@options, @container) ->
+        @browser = @container.__browser__
 
     getRemoteOptions : () ->
-        @options
+        return @options
 
     triggerEvent : (name, info) ->
         # Not using createEvent and initEvent methods
@@ -12,5 +15,16 @@ class Component
             target : @container
             info  : info
         @container.dispatchEvent(fakeEvent)
+
+    rpcMethod : (method, args) ->
+        @browser.emit('ComponentMethod',{
+            target : @container
+            method : method
+            args   : args
+        })
+
+    handleRequests : (req, res)->
+        routes.internalError(res, "This component does not accept requrests.")
+
 
 module.exports = Component

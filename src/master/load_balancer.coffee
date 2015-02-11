@@ -1,4 +1,5 @@
 debug = require('debug')
+lodash = require('lodash')
 
 logger = debug("cloudbrowser:master:lb")
 
@@ -48,6 +49,9 @@ class WeightedLB
         
     heartBeat : ()->
         #do nothing
+
+    getAllWorkers : ()->
+        return lodash.values(@workersMap)
 
 class MemoryWeightLB extends WeightedLB
     constructor: () ->

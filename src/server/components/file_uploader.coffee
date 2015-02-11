@@ -1,49 +1,32 @@
-Hat       = require('hat')
+routes = require("../application_manager/routes")
+
 Component = require('./component')
-lodash = require('lodash')
+
 
 class FileUpload extends Component
-    constructor : (@options, @rpcMethod, @container) ->
+    constructor : (@options, @container) ->
+        super(@options, @container)
+
+    handleRequests : (req, res)->
+        if not req.files? or not req.files.content
+            res.json({err:"Cannot parse this file, or the file is empty"})
+            return
         
-class FileUploaderManager
-    constructor : (options, rpcMethod, container) ->
-        #this is odd
-        return FileUploaderManager.create(options, rpcMethod, container)
+        file = req.files.content
+        # https://github.com/expressjs/multer
+        if file.size <=0
+            res.json({err: "File can not be empty."})
+            return
+        if file.truncated
+            res.json({err:"The file is truncated due to size limitation."})
+            return
+        res.json({msg:"ok huston, we have received a #{file.size} bytes package"})
+        
+        # pass the raw data to application
+        @triggerEvent 'cloudbrowser.upload',
+            buffer : file.buffer
+            mimetype : file.mimetype
+            encoding : file.encoding
+                
 
-    @fileUploaders : {}
-
-    @create : (options, rpcMethod, container, id = FileUploaderManager.generateUUID()) ->
-        {cbServer} = options
-        {domain, port} = cbServer.config
-        httpServer     = cbServer.httpServer
-        relativeURL    = "/fileUpload/#{id}"
-        {mountPoint}   = options.cloudbrowser
-
-        # These options will be used by the client engine to create the client
-        # side (actual) component.
-        options.cloudbrowser =
-            postURL : "http://#{domain}:#{port}#{relativeURL}"
-        # TODO: omit the cbServer when create FileUpload, because components will 
-        # be serialized when socket emit PageLoaded event (thorough Util.inspect), cbServer is a circular
-        # struct and FileUpload constructor do not use cbServer anyway.
-        uploader = FileUploaderManager.fileUploaders[id] =
-            new FileUpload(lodash.omit(options,'cbServer'), rpcMethod, container)
-
-        # TODO move this logic to application
-        #httpServer.setupFileUploadRoute(relativeURL, mountPoint, uploader)
-
-        return uploader
-
-    @find : (id) ->
-        return FileUploaderManager.fileUploaders[id]
-
-    @generateUUID : () ->
-        id = Hat()
-        while FileUploaderManager.find(id)
-            id = Hat()
-        return id
-
-    @remove : (id) ->
-        delete FileUploaderManager.fileUploaders[id]
-
-module.exports = FileUploaderManager
+module.exports = FileUpload
