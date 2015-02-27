@@ -78,6 +78,7 @@ class ApplicationManager extends EventEmitter
         for k, app of @applications
             if app.isStandalone() and app.mounted
                 app.mount()
+        @_setupGoogleAuthRoutes()
         callback()
 
 
