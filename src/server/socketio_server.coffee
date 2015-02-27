@@ -126,7 +126,7 @@ class SocketIOServer
             sessionID = cookieParser.signedCookie(sessionID, 'change me please')
 
         if not sessionID?
-            return callback(new Error("Cannot retrive session."))
+            return callback(new Error("Cannot retrieve session."))
 
         @mongoInterface.getSession sessionID, (err, session) =>
             if err or not session

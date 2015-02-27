@@ -70,7 +70,7 @@ class Runner
                 results.config.getServerConfig(results.rmiService, callback)
             ]
             'appConfigs' : ['masterStub', (callback, results) =>
-                # retrive proxy config and app configurations from master
+                # retrieve proxy config and app configurations from master
                 masterStub = results.masterStub
                 serverConfig = results.config.serverConfig
                 appManager = masterStub.appManager

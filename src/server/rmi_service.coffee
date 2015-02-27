@@ -32,9 +32,9 @@ class RmiService
             
     # options {host:,port:,objName}
     createStub : (options,callback) ->
-        retriveRequest = lodash.merge({},options)
-        #retriveRequest.objName = 'serverObj'
-        @server.retriveObj(retriveRequest, callback)
+        retrieveRequest = lodash.merge({},options)
+        #retrieveRequest.objName = 'serverObj'
+        @server.retrieveObj(retrieveRequest, callback)
         
 module.exports=RmiService
     
