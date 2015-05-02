@@ -1,5 +1,13 @@
 app = angular.module('CBLandingPage.controllers.app',
     ['CBLandingPage.services', 'CBLandingPage.models'])
+.config(($sceDelegateProvider) ->
+  $sceDelegateProvider.resourceUrlWhitelist([
+    # Allow same origin resource loads.
+    'self',
+    # loading templates from file system
+    "file://**"
+  ])
+)
 
 # Cloudbrowser API objects
 curVB     = cloudbrowser.currentBrowser
@@ -48,9 +56,9 @@ app.controller 'AppCtrl', [
 
         for name, path of $scope.templates
             if typeof path is "string"
-                $scope.templates[name] = "#{__dirname}/partials/#{path}"
+                $scope.templates[name] = "file://#{__dirname}/partials/#{path}"
             else for k, v of path
-                path[k] = "#{__dirname}/partials/#{v}"
+                path[k] = "file://#{__dirname}/partials/#{v}"
 
         $scope.addBrowser = (browserConfig, appInstanceConfig) ->
             # Don't add the browsers if you're just the owner of the app

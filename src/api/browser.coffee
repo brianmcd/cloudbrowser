@@ -120,33 +120,9 @@ class Browser
     ###
     createComponent : (name, target, options) ->
         return if typeof name isnt "string" or not target or not target.__nodeID
-        {cbServer, bserver} = _pvts[@_idx]
+        {bserver} = _pvts[@_idx]
         browser  = bserver.getBrowser()
-        targetID = target.__nodeID
-
-        if browser.components[targetID]
-            return(cloudbrowserError("COMPONENT_EXISTS"))
-        
-        # Get the component constructor
-        Ctor = Components[name]
-        if not Ctor then return(cloudbrowserError("NO_COMPONENT", "-#{name}"))
-
-        rpcMethod = (method, args) ->
-            browser.emit 'ComponentMethod',
-                target : target
-                method : method
-                args   : args
-                
-        # Mountpoint needed for authentication in case of
-        # the file uploader component
-        options.cloudbrowser = {mountPoint : bserver.getMountPoint()}
-        options.cbServer = cbServer
-        # Create the component
-        comp = browser.components[targetID] =
-            new Ctor(options, rpcMethod, target)
-        clientComponent = [name, targetID, comp.getRemoteOptions()]
-        browser.clientComponents.push(clientComponent)
-        browser.emit('CreateComponent', clientComponent)
+        browser.createComponent(name, target, options)
         return target
 
     ###*

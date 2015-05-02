@@ -5,7 +5,7 @@ class AppInstance
         @name = appInstanceConfig.getName()
         @owner = appInstanceConfig.getOwner()
         @readerwriters = appInstanceConfig.getReaderWriters()
-        @dateCreated = @format.date(appInstanceConfig.getDateCreated())
+        @dateCreated = @format(appInstanceConfig.getDateCreated())
         @browserMgr = new CRUDManager(@format, Browser)
     
 

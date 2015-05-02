@@ -66,7 +66,7 @@ class Application extends BaseApplication
             for subApp in @subApps
                 subApp.mount()
         if @authApp?
-            @authApp.mountAuthForParent()
+            @authApp.mountParent()
         else
             super();
         @mounted = true

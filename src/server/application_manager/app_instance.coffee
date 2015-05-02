@@ -3,6 +3,7 @@
 Async                = require('async')
 Weak                 = require('weak')
 debug                = require('debug')
+lodash               = require('lodash')
 
 VirtualBrowser       = require('../virtual_browser')
 SecureVirtualBrowser = require('../virtual_browser/secure_virtual_browser')
@@ -178,6 +179,7 @@ class AppInstance extends EventEmitter
                 result = 'readwrite'
 
         if callback?
+            logger("appinstance #{@id} getUserPrevilege: #{user.getEmail()} is #{result}")
             callback null, result
         else
             return result
@@ -204,7 +206,9 @@ class AppInstance extends EventEmitter
         delete @browsers[browserId]
         delete @weakrefsToBrowsers[browserId]
 
-
+    ###
+    FIXME : should put previlege checking in API level
+    ###
     close : (user, callback) ->
         # the user could be a remote object
         user = User.toUser(user)
@@ -218,7 +222,19 @@ class AppInstance extends EventEmitter
                 browser.close()
             )
 
-
+    close2 : (callback)->
+        throw new Error("should provide callback when close appinstance") if not callback?
+        logger("close appinstance #{@id}")
+        browsers = lodash.values(@browsers)
+        Async.each(browsers, 
+            (b, next)->
+                b.close()
+                next()
+            (err)=>
+                logger("close appinstance #{@id} failed: #{err}") if err?
+                @browsers = null
+                callback(err)
+        )
 
     store : (getStorableObj, callback) ->
         console.log "store not implemented"
@@ -242,5 +258,16 @@ class AppInstance extends EventEmitter
             if @browsers[id]?
                 result.push(@browsers[id])
         callback null, result
+
+    stop : (callback)->
+        logger("stop appInstance #{@id}")
+        browsers = lodash.values(@browsers)
+        Async.each(browsers, 
+            (b, bcallback)->
+                b.stop(bcallback)
+            ,(err)=>
+                logger("error stop appinstance #{@id}: #{err}") if err?
+                callback(err)
+            )
 
 module.exports = AppInstance

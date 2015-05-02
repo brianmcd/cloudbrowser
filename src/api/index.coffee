@@ -4,6 +4,8 @@
     It provides the CloudBrowser API to the instance.
     @namespace cloudbrowser
 ###
+lodash         = require('lodash')
+
 Util           = require('./util')
 ServerConfig   = require('./server_config')
 User           = require('../server/user')
@@ -41,6 +43,69 @@ class CloudBrowser
         # where the user identity can not be established due to
         # the absence of the authentication interface
         else creator = new User("public")
+
+        listeners = []
+        logger = bserver._logger
+        bookkeepListener = (entity, event, listener)->
+            for i in listeners
+                # if find an existing entry, return
+                if entity is i.entity
+                    if not i.listeners[event]? 
+                        i.listeners[event] = []
+                    i.listeners[event].push(listener)
+                    return
+            
+            item = {
+                entity : entity
+                listeners : {}
+            }
+            item.listeners[event] = [listener]
+            return
+
+        doListenerRemove = (listenerEntity)->
+            try
+                listenerEntity.entity.removeEventListeners?(i.listeners)
+            catch e
+                logger("error when remove listener")
+                logger(e)
+
+        ###
+        add EventListener,
+        the event listners add here will be removed after virtualbrowser get closed
+        ###
+        @addEventListener = (entity, event, listener)->
+            bookkeepListener(entity, event, listener)
+            if not entity.addEventListener?
+                throw new Error("addEventListener failed: entity do't have method addEventListener")
+            
+            entity.addEventListener(event, listener)
+            return
+        ###
+        this interface makes sense because we want to remove some entity from view
+        or terminate some entity, like terminate a browser.
+        because application won't hold reference to any internal object, it is safe
+        to expose this method to application
+        ###
+        @removeEventListeners = (entity)->
+            removed = lodash.remove(listeners, (item)->
+                return item.entity is entity
+            )
+            for i in removed
+                doListenerRemove(i)
+            
+
+        ###
+        close the api object, after that, the api object would be defunct
+        ###
+        @close = ()->
+            if not listeners?
+                return
+            
+            # release all event listeners
+            for i in listeners
+                doListenerRemove(i)
+            listeners = null
+            return
 
         @util = new Util(bserver.server.config.emailerConfig)
 
@@ -83,9 +148,13 @@ class CloudBrowser
         # we only use Authentication object in subsidiary apps like landing page and login page.
         # this object only cares the information from the 'real' app
         if app.isAuthConfigured() or app.isAuthApp()
+            realApp = app.parentApp
+            if app.isStandalone()
+                realApp = app
+
             @auth = new Authentication
                 bserver : bserver
-                app     : app.parentApp
+                app     : realApp
                 cbCtx   : this
 
         @serverConfig = new ServerConfig

@@ -5,7 +5,6 @@
         <link href="css/bootstrap-responsive.css" rel="stylesheet">
         <script src="js/angular.js"></script>
         <script src="js/controller.js"></script>
-        <script src="js/jquery-latest.js"></script>
         <link rel="stylesheet" href="css/font-awesome.css">
         <link rel="stylesheet" href="css/style.css">
     </head>
@@ -121,7 +120,7 @@
                         <div class="span12">
                             <div class="margin-bottom" id="chat-box">
                                 <div ng-repeat="message in user.currentRoom.messages">
-                                    {{message}}
+                                    [{{message.user}}] : {{message.content}}
                                 </div>
                             </div>
                             <textarea ng-model="currentMessage" id="chat-text"

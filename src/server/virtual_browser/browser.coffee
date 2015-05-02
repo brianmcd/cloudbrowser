@@ -10,6 +10,7 @@ debug            = require('debug')
 DOMWindowFactory = require('./DOMWindowFactory')
 Application      = require('../application_manager/application')
 utils            = require('../../shared/utils')
+Components = require('../components')
 
 TESTS_RUNNING = process.env.TESTS_RUNNING
 if TESTS_RUNNING
@@ -17,6 +18,9 @@ if TESTS_RUNNING
 
 logger = debug("cloudbrowser:worker:browser")
 
+###
+dom tree, components in the virtualbrowser
+###
 class Browser extends EventEmitter
     constructor : (@id, @bserver, @config) ->
         @window = null
@@ -36,6 +40,7 @@ class Browser extends EventEmitter
 
     close : () ->
         if @window?
+            @window.cloudbrowser.close()
             @window.cloudbrowser = null
             @window.browser = null
             if @window.document?
@@ -107,6 +112,36 @@ class Browser extends EventEmitter
         @window.require = require
         @window.process = process
         @window.__dirname = app.path
+
+    createComponent : (name, target, options)->
+        return if typeof name isnt "string" or not target or not target.__nodeID
+        
+        
+        targetID = target.__nodeID
+        if @components[targetID]
+            logger("#{@id} : Duplicate component #{targetID}")
+            throw new Error("COMPONENT_EXISTS")
+        
+        # Get the component constructor
+        Ctor = Components[name]
+        if not Ctor?
+            throw new Error("NO_COMPONENT found for name : #{name}")
+        
+        # Create the component
+        comp = new Ctor(options, target)
+        @components[targetID] = comp
+
+        clientComponent = [name, targetID, comp.getRemoteOptions()]
+        @clientComponents.push(clientComponent)
+        @emit('CreateComponent', clientComponent)
+        return
+
+    handleComponentRequest : (componentId, req, res)->
+        component = @components[componentId]
+        if not component?
+            routes.notFound(res, "Cannot find Component with Id #{componentId}")
+            return
+        component.handleRequests(req, res)
 
     @koPatch = () ->
         if not @_koPatch?

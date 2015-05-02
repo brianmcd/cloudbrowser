@@ -24,16 +24,18 @@ TaggedNodeCollection = require('../../shared/tagged_node_collection')
  clientEvents,
  defaultEvents} = require('../../shared/event_lists')
 
+logger = debug("cloudbrowser:worker:browser")
+
 # Defining callback at the highest level
 # see https://github.com/TooTallNate/node-weak#weak-callback-function-best-practices
 # Dummy callback, does nothing
 cleanupBserver = (id) ->
     return () ->
-        console.log "[Virtual Browser] - Garbage collected virtual browser #{id}"
+        logger "[Virtual Browser] - Garbage collected virtual browser #{id}"
 
-logger = debug("cloudbrowser:virtualbrowser")
 
-# Serves 1 Browser to n clients.
+
+# Serves 1 Browser to n clients. Managing sockets, rpc calls
 class VirtualBrowser extends EventEmitter
     __r_skip :['server','browser','sockets','compressor','registeredEventTypes',
                 'localState','consoleLog','rpcLog', 'nodes', 'resources']
@@ -112,9 +114,10 @@ class VirtualBrowser extends EventEmitter
     getConnectedClients : () ->
         clients = []
         for socket in @sockets
-            {address, user} = socket.request
+            {address} = socket
+            {user} = socket.request
             clients.push
-                address : "#{address.address}:#{address.port}"
+                address : address
                 email : user
         return clients
 
@@ -170,16 +173,22 @@ class VirtualBrowser extends EventEmitter
     close : () ->
         return if @closed
         @closed = true
-        socket.disconnect() for socket in @sockets
-        socket.removeAllListeners for socket in @sockets
+        @stop()
         @compressor.removeAllListeners()
-        @sockets = []
         @browser.close()
         @browser = null
         @emit('BrowserClose')
         @removeAllListeners()
         @consoleLog?.end()
         @rpcLog?.end()
+
+    stop : (callback)->
+        for socket in @sockets
+            socket.disconnect()
+            socket.removeAllListeners()
+        @sockets = []
+        callback(null) if callback?
+
 
     logRPCMethod : (name, params) ->
         @rpcLog.write("#{name}(")
@@ -206,27 +215,28 @@ class VirtualBrowser extends EventEmitter
         if @sockets.length is 1
             @sockets[0].emitCompressed(args, @clientContext)
             return
-        
+
 
         allArgs = [args]
         # the emitCompressed would modify args in deduplication/compression.
         # only clone things when needed
         for i in [1...@sockets.length] by 1
             allArgs.push(lodash.cloneDeep(args))
-        
+
         for i in [0...@sockets.length] by 1
             socket = @sockets[i]
             socket.emitCompressed(allArgs[i], @clientContext)
         return
 
-    addSocket : (socket) ->
+    addSocket : (s) ->
         socket = SocketAdvice.adviceSocket({
-            socket : socket
+            socket : s
             buffer : true
             compression : @server.config.compression
             compressor : @compressor
             })
         address = socket.request.connection.remoteAddress
+        socket.address = address
         {user} = socket.request
         # if it is not issued from web browser, address is empty
         if address
@@ -235,7 +245,7 @@ class VirtualBrowser extends EventEmitter
             address : address
             email : user
         @emit('connect', userInfo)
-        
+
         for own type, func of RPCMethods
             do (type, func) =>
                 socket.on type, () =>
@@ -276,6 +286,11 @@ class VirtualBrowser extends EventEmitter
         @sockets.push(socket)
         gc() if @server.config.traceMem
         @emit('ClientAdded')
+
+    handleComponentRequest : (componentId, req, res)->
+        @browser.handleComponentRequest(componentId, req, res)
+
+
 
 # The VirtualBrowser constructor iterates over the properties in this object and
 # adds an event handler to the Browser for each one.  The function name must
@@ -345,8 +360,8 @@ DOMEventHandlers =
     # TODO: consider doctypes.
     DOMNodeInsertedIntoDocument : (event) ->
         return if @browserLoading
-        {target} = event    
-        
+        {target} = event
+
         nodes = serialize(target,
                           @resources,
                           @browser.window.document,
@@ -380,7 +395,7 @@ DOMEventHandlers =
             newValue = @resources.addURL(newValue)
         if @browserLoading
             return
-        
+
         @broadcastEvent('DOMAttrModified',
                         target.__nodeID,
                         attrName,
@@ -407,7 +422,7 @@ DOMEventHandlers =
     ExitedTimer :  () ->
         return if @browserLoading
         @broadcastEvent 'resumeRendering'
-        
+
 
     ConsoleLog : (event) ->
         @consoleLog?.write(event.msg + '\n')
@@ -460,7 +475,7 @@ inputTags = ['INPUT', 'TEXTAREA']
 RPCMethods =
     setAttribute : (targetId, attribute, value, socket) ->
         return if @browserLoading
-            
+
         @clientContext={
             from : socket
             target : targetId
@@ -477,7 +492,7 @@ RPCMethods =
             RPCMethods._setInputElementValue(target, value)
         else
             target.setAttribute(attribute, value)
-        
+
         @clientContext=null
 
     _setInputElementValue : (target, value)->
@@ -495,7 +510,7 @@ RPCMethods =
             # can't handle clicks on the server anyway).
             # Need something more elegant.
             return if !event.target
-            
+
             # Swap nodeIDs with nodes
             clientEv = @nodes.unscrub(event)
 
@@ -505,7 +520,7 @@ RPCMethods =
             @broadcastEvent('pauseRendering', id)
 
             clientEv.target.dispatchEvent(serverEv)
-            
+
             @broadcastEvent('resumeRendering', id)
 
             if @server.config.traceMem
@@ -545,7 +560,7 @@ RPCMethods =
 
         @broadcastEvent('resumeRendering', id)
         @clientContext=null
-        
+
     _dispatchEvent : (vbrowser, clientEv)->
         browser = vbrowser.browser
         if vbrowser.registeredEventTypes.indexOf(clientEv.type) >=0 or defaultEvents[clientEv.type]?
@@ -617,7 +632,7 @@ RPCMethods =
         event.info = params.event
         node.dispatchEvent(event)
         @broadcastEvent('resumeRendering')
-        
+
 
 domEventHandlerNames = lodash.keys(DOMEventHandlers)
 # put frequent occurred events in front

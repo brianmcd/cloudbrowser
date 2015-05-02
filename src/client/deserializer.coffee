@@ -37,7 +37,7 @@ exports.deserialize = (nodes, sibling, client) ->
                     parent.appendChild(node)
                 # For [i]frames, we need to tag the contentDocument.
                 # The server sends a docID attached to the record.
-                if /i?frame/.test(record.name.toLowerCase())
+                if record.name? and /i?frame/.test(record.name.toLowerCase())
                     contentDoc = node.contentDocument
                     client.nodes.add(contentDoc, record.docID)
                     # If we don't clear out the doc, it'll have default

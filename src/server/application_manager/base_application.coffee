@@ -90,8 +90,10 @@ class BaseApplication extends EventEmitter
 
         @serveVirtualBrowserHandler = lodash.bind(@_serveVirtualBrowserHandler, this)
         @serveResourceHandler = lodash.bind(@_serveResourceHandler, this)
+        @serveComponentHandler = lodash.bind(@_serveComponentHandler, this)
         @mountPointHandler = lodash.bind(@_mountPointHandler, this)
         @serveAppInstanceHandler = lodash.bind(@_serveAppInstanceHandler,this)
+        @_mountedPath = {}
 
 
 
@@ -137,19 +139,35 @@ class BaseApplication extends EventEmitter
             host : @server.config.getHttpAddr()
         res.end()
 
-    _serveResourceHandler : (req, res, next) ->
+    _findBrowserForRequest : (req, res) ->
         appInstanceID = req.params.appInstanceID
         vBrowserID = req.params.browserID
 
         appInstance = @appInstanceManager.find(appInstanceID)
-        if not appInstance then return routes.notFound(res, "The application instance #{appInstanceID} was not found")
+        if not appInstance  
+            routes.notFound(res, "The application instance #{appInstanceID} was not found.")
+            return null
 
         bserver = appInstance.findBrowser(vBrowserID)
-        if not bserver then return routes.notFound(res, "The browser #{vBrowserID} was not found")
+        if not bserver 
+            routes.notFound(res, "The browser #{vBrowserID} was not found.")
+            return null
 
+        return bserver
+
+    _serveResourceHandler : (req, res, next) ->
+        bserver = @_findBrowserForRequest(req, res)
+        return if not bserver?
         resourceID = req.params.resourceID
         # Note: fetch calls res.end()
         bserver.resources.fetch(resourceID, res)
+
+    _serveComponentHandler : (req, res, next)->
+        bserver = @_findBrowserForRequest(req, res)
+        return if not bserver?
+        componentId = req.params.componentId
+        bserver.handleComponentRequest(componentId, req, res)
+
 
     isMultiInstance : () ->
         return @appConfig.instantiationStrategy is "multiInstance"
@@ -271,20 +289,29 @@ class BaseApplication extends EventEmitter
         else
             routes.redirectToBrowser(res, @mountPoint, id, appInstance.browserId)
 
+    _mount : ()->
+        path = arguments[0]
+        @_mountedPath[path] = true
+        @httpServer.mount.apply(@httpServer, arguments)
+
 
     mount : () ->
-        @httpServer.mount(@mountPoint, @mountPointHandler)
-        @httpServer.mount(routes.concatRoute(@mountPoint,routes.browserRoute),
+        @_mount(@mountPoint, @mountPointHandler)
+        @_mount(routes.concatRoute(@mountPoint,routes.browserRoute),
                 @serveVirtualBrowserHandler)
-        @httpServer.mount(routes.concatRoute(@mountPoint, routes.resourceRoute),
+        @_mount(routes.concatRoute(@mountPoint, routes.resourceRoute),
                 @serveResourceHandler)
-        @httpServer.mount(routes.concatRoute(@mountPoint, routes.appInstanceRoute), @serveAppInstanceHandler)
+        @_mount(routes.concatRoute(@mountPoint, routes.appInstanceRoute), 
+            @serveAppInstanceHandler)
+        @_mount(routes.concatRoute(@mountPoint, routes.componentRoute),
+            @serveComponentHandler)
         @mounted = true
 
+    # currently not supported by express
     unmount : () ->
-        @httpServer.unmount(@mountPoint)
-        @httpServer.unmount(routes.concatRoute(@mountPoint,routes.browserRoute))
-        @httpServer.unmount(routes.concatRoute(@mountPoint, routes.resourceRoute))
+        for k, v of @_mountedPath
+            @httpServer.unmount(k)
+        @_mountedPath = {}
         @mounted = false
 
     enable : (callback)->
@@ -295,11 +322,14 @@ class BaseApplication extends EventEmitter
         @mounted = false
         @_masterApp.disable(callback)
 
-    # this method query the master for all the browsers
+    # this method query the master to list all the browsers
     getAllBrowsers : (callback) ->
         @_masterApp.getAllAppInstances((err, instances)->
             return callback(err) if err?
             result = []
+            if not instances? or instances.length is 0
+                return callback(null, result)
+            
             async.each(
                 instances,
                 (instance, instanceCb)->
@@ -375,7 +405,11 @@ class BaseApplication extends EventEmitter
         @_masterApp.addEvent({
             name: event
             callback: eventcallback
-            })
+        })
+
+    removeEventListeners : (listeners)->
+        @_masterApp.removeEventListeners(listeners)
+        
 
     emitAppEvent :(eventObj)->
         @_masterApp.emitEvent(eventObj)
@@ -385,7 +419,18 @@ class BaseApplication extends EventEmitter
             return callback(err) if err?
             callback null
             @appInstanceManager._removeAppInstance(appInstanceId)
-            )
+        )
+
+    ###
+    evicting existing clients from appInstances
+    ###
+    stop : (callback)->
+        logger("stop #{@mountPoint}")
+        @appInstanceManager.stop(callback)
+
+    close : (callback)->
+        logger("close #{@mountPoint}")
+        @appInstanceManager.close(callback)
 
 
 

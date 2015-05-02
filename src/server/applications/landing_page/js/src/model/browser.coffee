@@ -10,7 +10,7 @@ class Browser
         @redirect = () ->
             curVB = cloudbrowser.currentBrowser
             curVB.redirect(browserConfig.getURL())
-        @dateCreated = format.date(browserConfig.getDateCreated())
+        @dateCreated = format(browserConfig.getDateCreated())
         @owners        = @api.getOwners()
         @readers       = @api.getReaders()
         @readerwriters = @api.getReaderWriters()

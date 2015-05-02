@@ -1,37 +1,34 @@
-<table ng-show="apps.length" id="data-table" class="table table-bordered">
+<table ng-show="apps.length" id="data-table" class="table table-bordered table-hover">
     <thead>
         <th class="align-left" ng-click="sortBy('mountPoint')">
             MountPoint
         </th>
         <th ng-click="sortBy('userMgr.items.length')">
-            <i class="icon-group" title="Number of Users"></i>
+            <span class="glyphicon glyphicon-user" title="Number of Users"></span>
         </th>
         <th ng-click="sortBy('browserMgr.items.length')">
-            <i class="icon-file" title="Number of Instances"></i>
+            <span class="glyphicon glyphicon-file" title="Number of Instances"></span>
         </th>
         <th ng-click="sortBy('isPublic')">
-            <i class="icon-eye-open" title="Privacy"></i>
+            <span class="glyphicon glyphicon-eye-open" title="Privacy"></span>
         </th>
         <th ng-click="sortBy('mounted')">
-            <i class="icon-off" title="State"></i>
+            <span class="glyphicon glyphicon-off" title="State"></span>
         </th>
         <th ng-click="sortBy('isAuthEnabled')">
-            <i class="icon-lock" title="Authentication"></i>
+            <span class="glyphicon glyphicon-lock" title="Authentication"></span>
         </th>
     </thead>
     <tbody>
         <tr ng-repeat="app in apps|filter:search|orderBy:predicate:reverse"
             ng-click="select(app)"
-            ng-class="getAppClass(app)">
+            ng-class="app.selected? 'active':''">
             <td class="align-left">{{app.name}}</td>
             <td>{{app.userMgr.items.length}}</td>
             <td>{{app.browserMgr.items.length}}</td>
-            <td ng-show='app.isPublic'>Public</td>
-            <td ng-hide='app.isPublic'>Private</td>
-            <td ng-show='app.mounted'>Mounted</td>
-            <td ng-hide='app.mounted'>Disabled</td>
-            <td ng-show='app.isAuthEnabled'>On</td>
-            <td ng-hide='app.isAuthEnabled'>Off</td>
+            <td>{{app.isPublic? 'Public':'Private'}}</td>
+            <td>{{app.mounted? 'Mounted':'Disabled'}}</td>
+            <td>{{app.isAuthEnabled? 'On':'Off'}}</td>
         </tr> 
     </tbody>
 </table>

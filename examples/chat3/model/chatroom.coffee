@@ -4,8 +4,11 @@ class ChatRoom extends EventEmitter
     constructor : (@name, @messages = [], @users = []) ->
 
     postMessage : (user, message) ->
-        formattedMessage = "[#{user.getName()}]: #{message}"
-        @messages.push(formattedMessage)
+        msgObj = {
+            user : user.getName()
+            content : message
+        }
+        @messages.push(msgObj)
 
     getName : () ->
         return @name

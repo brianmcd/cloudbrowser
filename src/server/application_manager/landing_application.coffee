@@ -10,13 +10,13 @@ class LandingApplication extends BaseApplication
         super(masterApp, @server)
 
     mount : () ->
-        @httpServer.mount(@mountPoint, 
+        @_mount(@mountPoint, 
             @authApp.checkAuth, 
             @mountPointHandler)
-        @httpServer.mount(routes.concatRoute(@mountPoint, routes.browserRoute), 
+        @_mount(routes.concatRoute(@mountPoint, routes.browserRoute), 
             @authApp.checkAuth,
             @serveVirtualBrowserHandler)
-        @httpServer.mount(routes.concatRoute(@mountPoint, routes.resourceRoute), 
+        @_mount(routes.concatRoute(@mountPoint, routes.resourceRoute), 
             @authApp.checkAuth,
             @serveResourceHandler)
         @mounted = true

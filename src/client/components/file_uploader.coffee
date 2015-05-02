@@ -1,5 +1,6 @@
 Component = require('./component')
 cloudbrowserError = require('../shared/cloudbrowser_error')
+routes = require("../shared/routes")
 
 class FileUploader
     defaults :
@@ -16,45 +17,45 @@ class FileUploader
          , @buttonText
          , @buttonClass
          , @formClass} = opts
-
-        {@postURL} = opts.cloudbrowser
-
-        @fileUploader = @createForm()
-        $(@node).append(@fileUploader)
+        @postURL = routes.buildComponentPath(__appID, __appInstanceID, __envSessionID, @node.__nodeID)
+        console.log("fileUploader postURL #{@postURL}")
+        form = @createForm()
+        $(@node).append(form)
 
     createForm : () ->
         form = $("<form/>").addClass(@formClass)
         fieldset = $("<fieldset/>").appendTo(form)
         $("<legend/>").text(@legend).appendTo(fieldset)
-        $("<input/>", {type : "file"}).appendTo(fieldset)
+        @fileInput = $("<input/>", {type : "file"})
+        @fileInput.appendTo(fieldset)
         $("<button/>").addClass(@buttonClass).click(@onSubmitHandler)
             .appendTo(fieldset).text(@buttonText)
-        $("<span/>", {id : "loading"}).text("Uploading...")
-            .appendTo(fieldset).hide()
-        $("<span/>", {id : "error", class : "text-error"})
-            .appendTo(fieldset).hide()
+        @loading = $("<span>Uploading...</span>")
+        @loading.appendTo(fieldset).hide()
+        @error = $("<span/>", {class : "alert alert-danger"})
+        @error.appendTo(fieldset).hide()
         return form
 
     onSubmitHandler : (event) =>
         event.preventDefault()
-        fileInput = $('input:file')[0]
+        fileInput = @fileInput[0]
         if not fileInput then return @setError("File can not be empty")
         fileUploadForm = new FormData()
         fileUploadForm.append("content", fileInput.files[0])
-        fileUploadForm.append("nodeID", event.target.__nodeID)
+        self = this
         $.ajax
             url         : @postURL
             data        : fileUploadForm
             type        : 'POST'
             processData : false
             contentType : false
-            beforeSend  : () -> $('#loading').show()
-            complete    : () -> $('#loading').hide()
+            beforeSend  : () -> self.loading.show()
+            complete    : () -> self.loading.hide()
             success     : (data) =>
                 if data?.err then @setError(data.err)
 
     setError : (message) ->
-        $('#error').text(message).show()
-        $('#error').delay(800).fadeOut("slow")
+        @error.text(message).show()
+        @error.delay(800).fadeOut("slow")
 
 module.exports = FileUploader

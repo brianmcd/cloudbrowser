@@ -279,7 +279,19 @@ exports.addAdvice = () ->
         
     # textarea is really messy, it has textContent and value properties and they are
     # not in sync. 
-    adviseProperty(html.HTMLTextAreaElement, 'value', {setter : inputTagsValueSetter})    
+    adviseProperty(html.HTMLTextAreaElement, 'value', {setter : inputTagsValueSetter})
+
+    checkboxCheckedSetter = (elem, val)->
+        browser = getBrowser(elem)
+        return if not browser?
+        browser.emit('DOMAttrModified',{
+            target : elem
+            attrName : 'checked'
+            newValue : val
+            attrChange : 'ADDITION'
+        })
+
+    adviseProperty(html.HTMLInputElement, 'checked', {setter : checkboxCheckedSetter})    
             
 
 

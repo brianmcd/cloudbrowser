@@ -1,7 +1,6 @@
 AppConfig = require('./application_config')
 Async     = require('async')
 cloudbrowserError   = require('../shared/cloudbrowser_error')
-ApplicationUploader = require('../shared/application_uploader')
 
 # Permission checks are included wherever possible and a note is made if
 # missing. Details like name, id, url etc. are available to everybody.
@@ -166,23 +165,15 @@ class ServerConfig
         Takes the gzipped tarball and loads it into the server
         as a cloudbrowser application
         @method addEventListener
-        @param {String} pathToFile
+        @param {String} buffer
         @param {appConfigCallback} callback
         @instance
         @memberOf ServerConfig
     ###
-    uploadAndCreateApp : (pathToFile, callback) ->
-        if typeof pathToFile isnt "string"
-            return callback?(cloudbrowserError("PARAM_INVALID", "- pathToFile"))
-
+    uploadAndCreateApp : (buffer, callback) ->
         {cbServer, userCtx, cbCtx} = _pvts[@_idx]
-        email = userCtx.getEmail()
-        ApplicationUploader.process email, pathToFile, (err, app) ->
-            return callback(err) if err
-            callback new AppConfig
-                cbServer : cbServer
-                app     : app
-                cbCtx   : cbCtx
-                userCtx : userCtx
+        appManager = cbServer.applicationManager
+        @_callback = callback
+        appManager.uploadAppConfig(buffer, callback)
 
 module.exports = ServerConfig

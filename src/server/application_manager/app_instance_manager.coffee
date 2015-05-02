@@ -4,6 +4,7 @@ Weak           = require('weak')
 Hat            = require('hat')
 Async          = require('async')
 debug          = require('debug')
+lodash         = require('lodash')
 
 User           = require('../user')
 AppInstance    = require('./app_instance')
@@ -29,8 +30,6 @@ class AppInstanceManager extends EventEmitter
             @_masterApp.getAppInstance(callback)
         else
             callback null, @appInstance
-
-
 
     # actual create a new instance in local
     createAppInstance : (user, callback) ->
@@ -193,11 +192,42 @@ class AppInstanceManager extends EventEmitter
             )
         
         
-    remove : (id, user, callback) ->
-        console.log "remove appInstance not implemented #{id}"
+    remove : (id, callback) ->
+        appIns = @appInstances[id]
+        if appIns?
+            appIns.close()
+            delete @appInstances[id]  
+            delete @weakRefsToAppInstances[id]
+        callback null
 
     get : () ->
         return @weakRefsToAppInstances
 
+    stop : (callback)->
+        appInstances = lodash.values(@appInstances)
+        Async.each(
+            appInstances, 
+            (appInstance, appInstanceCb)->
+                appInstance.stop(appInstanceCb)
+            ,
+            (err)=>
+                applogger("error stop appinstaces for #{@app.mountPoint} #{err}") if err?
+                callback(err)
+        )
+
+    close : (callback)->
+        appInstances = lodash.values(@appInstances)
+        Async.each(
+            appInstances, 
+            (appInstance, appInstanceCb)->
+                appInstance.close2(appInstanceCb)
+            ,
+            (err)=>
+                applogger("error close appinstaces for #{@app.mountPoint} #{err}") if err?
+                @appInstances = null
+                @weakRefsToAppInstances = null
+                callback(err)
+        )
+        
 
 module.exports = AppInstanceManager

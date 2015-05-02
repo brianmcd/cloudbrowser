@@ -28,7 +28,7 @@ namespace2URI =
 exports.serialize = (root, resources, topDoc, config) ->
     # A filter that skips script tags.
     filter = (node) ->
-        if !node? || node.tagName?.toLowerCase() == 'script'
+        if !node? || node.tagName == 'SCRIPT'
             return false
         return true
 
@@ -44,8 +44,9 @@ exports.serialize = (root, resources, topDoc, config) ->
                     type   : 'element'
                     id     : node.__nodeID
                     parent : node.parentNode.__nodeID
-                    # use raw tagName, not uppercased by core.Element.tagName getter
-                    name   : node._tagName
+                    # avoid using jsdom private properties, they are prone to change
+                    name   : node.tagName.toLowerCase()
+                
 
                 if node._namespaceURI
                     record.namespaceURI = node._namespaceURI
@@ -56,7 +57,7 @@ exports.serialize = (root, resources, topDoc, config) ->
                     record.attributes = attributes
                 if node.ownerDocument != topDoc
                     record.ownerDocument = node.ownerDocument.__nodeID
-                if /^i?frame$/.test(node.tagName.toLowerCase())
+                if /^i?frame$/.test(record.name)
                     record.docID = node.contentDocument.__nodeID
                 if config.compression
                     record = NodeCompressor.compress(record)
@@ -87,6 +88,7 @@ exports.serialize = (root, resources, topDoc, config) ->
 #   other element src attributes - rewrite them
 copyElementAttrs = (node, resources) ->
     tagName = node.tagName.toLowerCase()
+
     attrs = {}
     if node.attributes?.length > 0
         attributes = {}
@@ -106,6 +108,10 @@ copyElementAttrs = (node, resources) ->
                     else
                         value = URL.resolve(node.ownerDocument.location, value)
             attrs[name] = value
+    if tagName is 'input' and node.type is 'checkbox' and node.checked?
+        # as long as 'check' attribute is present, the checkbox is checked
+        if attrs.checked? and not node.checked
+            delete attrs.checked
     return attrs
 
 nodeTypeToString = [
