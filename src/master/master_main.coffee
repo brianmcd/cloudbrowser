@@ -66,9 +66,9 @@ class Runner
                         process.exit(1)
                 else
                     rmiService = results.rmiService
-                    rmiService.createSkeleton('workerManager', results.workerManager)
-                    rmiService.createSkeleton('config', results.config)
-                    rmiService.createSkeleton('appManager', results.appManager)
+                    rmiService.registerObject('workerManager', results.workerManager)
+                    rmiService.registerObject('config', results.config)
+                    rmiService.registerObject('appManager', results.appManager)
                     console.log 'Master started......'
                     if postConstruct?
                         postConstruct null

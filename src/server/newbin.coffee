@@ -142,7 +142,7 @@ class Runner
                     process.send?({type:'error'})
                 else
                     rmiService = results.rmiService
-                    rmiService.createSkeleton('appManager', results.applicationManager)
+                    rmiService.registerObject('appManager', results.applicationManager)
                     if postConstruct?
                         postConstruct null
                     process.send?({type:'ready'})

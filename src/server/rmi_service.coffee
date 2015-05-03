@@ -27,8 +27,8 @@ class RmiService
                 callback null, this
         )
 
-    createSkeleton : (endPoint, object) ->
-        @server.createSkeleton(endPoint, object)
+    registerObject : (endPoint, object) ->
+        @server.registerObject(endPoint, object)
             
     # options {host:,port:,objName}
     createStub : (options,callback) ->
