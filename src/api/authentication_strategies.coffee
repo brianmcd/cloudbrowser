@@ -179,18 +179,8 @@ class GoogleStrategy
     ###
     login : () ->
         {bserver, app} = _pvts[@_idx]
-
-        bserver.getFirstSession (err, session) ->
-            # The mountPoint attached to the user session is used by the google
-            # authentication route to identify the application from which the
-            # google redirect has originated
-            mountPoint = app.mountPoint
-            sessionManager = bserver.server.sessionManager
-            sessionManager.setPropOnSession(session, 'mountPoint', mountPoint)
-            bserver.redirect "/googleAuth"
-            # Kill the browser once client has been authenticated
-            bserver.once 'NoClients', () ->
-                app.closeBrowser(bserver)
+        bserver._redirectToGoogleAuth(app.mountPoint)
+            
 
 module.exports =
     LocalStrategy  : LocalStrategy

@@ -1,6 +1,7 @@
 {
     "proxyConfig": {
-        "httpPort": 3000
+        "host": "localhost",
+        "httpPort": 80
     },
     "databaseConfig": {
         "port": 27017

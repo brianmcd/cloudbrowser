@@ -87,7 +87,7 @@ class ServerConfig
         @rmiPort = 5700
         @masterConfig = new MasterConfig()
         @host= 'localhost'
-        @httpPort = 3000
+        @httpPort = 80
 
     getWorkerConfig: () ->
         return {
@@ -100,12 +100,12 @@ class ServerConfig
     getHttpAddr: () ->
         if not @httpAddr?
             if @proxyHost?
-                @httpAddr = @proxyHost
+                @httpAddr = "http://#{@proxyHost}"
                 if @proxyPort? and @proxyPort isnt 80
                     @httpAddr = "http://#{@proxyHost}:#{@proxyPort}" 
             else
                 # the server is not proxied
-                @httpAddr = @domain
+                @httpAddr = "http://#{@domain}"
                 if @port? and @port isnt 80
                     @httpAddr = "http://#{@domain}:#{@port}"      
         return @httpAddr

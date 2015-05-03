@@ -46,8 +46,6 @@
     "xml2js": "0.2.6",
     "nodemailer": "0.3.44",
     "ofe": "0.1.2",
-    "passport": "0.1.16",
-    "passport-google": "0.3.0",
     "jsdoc": "git://github.com/jsdoc3/jsdoc.git",
     "coffee-script-mapped": "0.1.7",
     "read": "1.0.5",

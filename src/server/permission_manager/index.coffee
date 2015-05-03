@@ -136,16 +136,26 @@ class UserPermissionManager
                     mountPoint : mountPoint
                     callback   : next
             (appPerms, next) =>
-                if not appPerms then @findSysPermRec
-                    user     : user
-                    callback : next
+                if not appPerms  
+                    console.log("find sys perm rec for #{user}")
+                    @findSysPermRec({
+                        user     : user
+                        callback : next
+                    })
                 # Bypassing the async waterfall
-                else setPerm(callback)
+                else
+                    console.log("already have appPerms") 
+                    setPerm(callback)
             (sysPermRec, next) =>
-                if sysPermRec then next(null, sysPermRec)
-                else @addSysPermRec
-                    user     : user
-                    callback : next
+                if sysPermRec  
+                    console.log("got sysyperm rec #{user}")
+                    next(null, sysPermRec)
+                else 
+                    console.log("add sysyperm rec #{user}")
+                    @addSysPermRec({
+                        user     : user
+                        callback : next
+                    })
             (sysPermRec, next) ->
                 appPerms = sysPermRec.addItem(mountPoint, permission)
                 setPerm(next)
