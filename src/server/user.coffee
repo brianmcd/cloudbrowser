@@ -7,6 +7,9 @@ class User
 
     toString : () ->
         return "User #{@_email}"
+    # export args for nodermi
+    toConstructorArguments : ()->
+        return @_email
 
 
 User.getEmail = (user) ->

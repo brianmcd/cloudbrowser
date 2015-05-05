@@ -1,6 +1,8 @@
 lodash  = require('lodash')
 nodermi = require('nodermi')   
 
+User = require('./user')
+
 class RmiService
     constructor: (config,callback) ->
         {@rmiPort}=config
@@ -24,6 +26,7 @@ class RmiService
                         console.log "Maybe the rmiport #{@rmiPort} is occupied by other apps, please change your configration"
                     return callback err
                 @server = rmiServer
+                rmiServer.registerClass('user', User)
                 callback null, this
         )
 
