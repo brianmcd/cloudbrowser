@@ -5,7 +5,7 @@ Path           = require('path')
 http           = require('http')
 
 Uglify         = require('uglify-js')
-Passport       = require('passport')
+
 lodash         = require('lodash')
 debug          = require('debug')
 async          = require('async')
@@ -48,7 +48,6 @@ class HTTPServer extends EventEmitter
         @server.set('view engine', 'jade') 
         @server.set('views', Path.join(__dirname, '..', '..', 'views'))
         @server.set('view options', {layout: false})
-        @server.use(Passport.initialize())
         
         @server.use((err, req, res, next)->
             console.error(err.stack)

@@ -428,12 +428,12 @@
           });
           return;
         }
-        return serverConfig.uploadAndCreateApp(buffer, function(err, appConfig) {
+        return serverConfig.uploadAndCreateApp(buffer, function(err) {
           return $scope.safeApply(function() {
-            if (err) {
+            if (err != null) {
               return $scope.setError(err);
             } else {
-              return App.add(appConfig);
+              return $scope.setError("Application Uploaded.");
             }
           });
         });

@@ -1,16 +1,16 @@
 Fs                  = require('fs')
 Path                = require('path')
 {EventEmitter}      = require('events')
+
 Weak                = require('weak')
 Async               = require('async')
 lodash              = require('lodash')
-Passport            = require('passport')
 debug               = require('debug')
+request             = require('request')
 
 Application         = require('./application')
 AppConfig           = require('./app_config')
 
-GoogleStrategy      = require('../authentication_strategies/google_strategy')
 User                = require('../user')
 {getConfigFromFile} = require('../../shared/utils')
 routes              = require('./routes')
@@ -34,7 +34,7 @@ class ApplicationManager extends EventEmitter
         @permissionManager, @httpServer,
         @sessionManager, @masterStub} = dependencies
         @_appConfigs = dependencies.appConfigs
-        # the services exported to api
+        # the services exported to api /applications/app instances/vbs
         @server = {
             config : @config.serverConfig
             #keep this naming for compatibility
@@ -168,32 +168,71 @@ class ApplicationManager extends EventEmitter
 
 
     _setupGoogleAuthRoutes : () ->
-        # TODO - config return url and realm
-        GoogleStrategy.configure(@config.serverConfig)
-        # When the client requests for /googleAuth, the google authentication
-        # procedure begins
-        @httpServer.mount('/googleAuth', Passport.authenticate('google'))
         # This is the URL google redirects the client to after authentication
-        @httpServer.mount('/checkauth', Passport.authenticate('google'),
+        @httpServer.mount('/checkauth',
             lodash.bind(@_googleCheckAuthHandler,this))
 
 
     _googleCheckAuthHandler : (req, res, next) ->
-        if not req.user then redirect(res, mountPoint)
+        authInfo = @sessionManager.findPropOnSession(req.session, 'googleAuthInfo')
+        if not authInfo then return res.send('cannot find corresponding authentication record', 403)
 
-        mountPoint = @sessionManager.findPropOnSession(req.session, 'mountPoint')
-        if not mountPoint then return res.send('cannot find application', 403)
+        code = req.query.code
+        state = req.query.state
+        if authInfo.state != state
+            logger("receivedState is #{state}, the state we stored is #{authInfo.state}")
+            return routes.internalError(res, "Invalid authentication information")
 
-        app = @find(mountPoint)
-        if not app then return res.send('cannot find application', 403)
+        app = @find(authInfo.mountPoint)
+        if not app then return res.send('cannot find application ' + authInfo.mountPoint, 403)
 
-        app.addNewUser new User(req.user.email), (err, user) =>
-            mountPoint = @sessionManager.findPropOnSession(req.session, 'mountPoint')
-            @sessionManager.addAppUserID(req.session, mountPoint, user)
-            redirectto = @sessionManager.findAndSetPropOnSession(req.session,
-                'redirectto', null)
-            if not redirectto then redirectto = mountPoint
-            routes.redirect(res, redirectto)
+        clientId = "247142348909-2s8tudf2n69iedmt4tvt2bun5bu2ro5t.apps.googleusercontent.com"
+        clientSecret = "rPk5XM_ggD2bHku2xewOmf-U"
+        redirectUri = "#{@server.config.getHttpAddr()}/checkauth"
+
+        Async.waterfall([
+            (next)->
+                request.post({
+                    url:'https://www.googleapis.com/oauth2/v3/token', 
+                    form: {
+                        code: code
+                        client_id : clientId
+                        client_secret : clientSecret
+                        redirect_uri : redirectUri
+                        grant_type : "authorization_code"
+                    }},
+                    next)
+            (httpResponse, body, next)->
+                logger("get response from token request : #{httpResponse}")
+                logger("response body is #{typeof body} : #{body}")
+                tokenResponse = JSON.parse(body)
+                accessToken = tokenResponse['access_token']
+                tokenType = tokenResponse['token_type']
+                request.get({
+                    url : 'https://www.googleapis.com/oauth2/v2/userinfo'
+                    headers: {
+                    'Authorization': "#{tokenType} #{accessToken}"
+                    }
+                }, next)
+            (httpResponse, body, next)->
+                logger("userinfo response #{body}")
+                userInfoResp = JSON.parse(body)
+                logger("user email #{userInfoResp.email}")
+                app.addNewUser new User(userInfoResp.email), next
+            (user, next)=>
+                mountPoint = authInfo.mountPoint
+                @sessionManager.addAppUserID(req.session, mountPoint, user)
+                redirectto = @sessionManager.findAndSetPropOnSession(req.session,
+                    'redirectto', null)
+                if not redirectto then redirectto = mountPoint
+                routes.redirect(res, redirectto)
+
+            ], (err)->
+                if err?
+                    logger(err)
+                    routes.internalError(res, "Authentication error #{err}")
+                    return
+        )
 
     # called by master
     createAppInstance : (mountPoint, callback) ->

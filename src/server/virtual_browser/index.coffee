@@ -3,6 +3,7 @@ Path                 = require('path')
 FS                   = require('fs')
 Weak                 = require('weak')
 {EventEmitter}       = require('events')
+url                  = require('url')
 
 debug                = require('debug')
 lodash               = require('lodash')
@@ -25,6 +26,7 @@ TaggedNodeCollection = require('../../shared/tagged_node_collection')
  defaultEvents} = require('../../shared/event_lists')
 
 logger = debug("cloudbrowser:worker:browser")
+errorLogger = debug("cloudbrowser:worker:error")
 
 # Defining callback at the highest level
 # see https://github.com/TooTallNate/node-weak#weak-callback-function-best-practices
@@ -188,6 +190,50 @@ class VirtualBrowser extends EventEmitter
             socket.removeAllListeners()
         @sockets = []
         callback(null) if callback?
+
+    # this mountPoint is the real application this authentication vb delegates,
+    # it is not the same as this vb's own mountPoint
+    _redirectToGoogleAuth : (mountPoint)->
+        logger("prepare redirect to google auth")
+
+        @getFirstSession (err, session) =>
+            if err?
+                errorLogger(err)
+                return
+            sessionManager = @server.sessionManager
+            # random string, google will pass it back, we use it to
+            # check if the callback is forged or not
+            state = Math.random().toString()
+            sessionManager.setPropOnSession(session, 'googleAuthInfo', {
+                mountPoint : mountPoint
+                state : state
+            })
+            # TODO make it configurable
+            clientId = "247142348909-2s8tudf2n69iedmt4tvt2bun5bu2ro5t.apps.googleusercontent.com"
+            clientSecret = "rPk5XM_ggD2bHku2xewOmf-U"
+            # cannot use customized port in redirect_uri, 
+            # see https://github.com/brianmcd/cloudbrowser/wiki/Authentication-with-Google
+            redirectUri = "#{@server.config.getHttpAddr()}/checkauth"
+
+            googleAuthUrl = url.format({
+                protocol : "https", 
+                host :"accounts.google.com", 
+                pathname : "/o/oauth2/auth",
+                query : {
+                    "scope":"https://www.googleapis.com/auth/plus.login https://www.googleapis.com/auth/userinfo.email",
+                    "state" : state,
+                    "redirect_uri" : redirectUri,
+                    "response_type" : "code",
+                    "client_id" : clientId,
+                    "access_type" : "offline"
+                }
+            })      
+            logger("redirect to "+ googleAuthUrl)
+
+            @redirect(googleAuthUrl)
+            # Kill the browser once client has been authenticated
+            @once 'NoClients', () =>
+                @close()
 
 
     logRPCMethod : (name, params) ->
