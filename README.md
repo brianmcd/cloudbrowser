@@ -5,7 +5,7 @@ Put simply, the key idea behind CloudBrowser is to keep the entire application, 
 and use the client-side browser as a (dumb) display device,
 or thin client, similar to how an X Server displays a remote X client's graphical user.
 CloudBrowser instances live on a server, and client browsers can connect and disconnect at will,
-and it is also possible for multiple users to connect to the same instance, which yields a natural co-browsing ability.    
+and it is also possible for multiple users to connect to the same instance, which yields a natural co-browsing ability.
 See [http://cloudbrowser.cs.vt.edu/](http://cloudbrowser.cs.vt.edu/) for a detailed explanation.
 
 External Dependencies
@@ -18,39 +18,41 @@ mongod --dbpath=~/var/data/db
 ```
 
 
-Installation 
+Installation
 --------------------
 1. Install [node.js](http://nodejs.org/).
 2. Clone the repository to your machine. `git clone https://github.com/brianmcd/cloudbrowser.git`
 3. `cd` into the cloned CloudBrowser directory.
 4. Switch to the current production branch **deployment2**. `git checkout deployment2`.
 5. Install all the necessary npm modules. `npm install -d`
-6. Install the [mongodb](http://www.mongodb.org/downloads) server on your machine. The default configuration, which binds the mongodb server to localhost, should work. 
-5. See the section on [server configuration](#server-configuration) for more details. 
+6. Install the [mongodb](http://www.mongodb.org/downloads) server on your machine. The default configuration, which binds the mongodb server to localhost, should work.
+5. See the section on [server configuration](#server-configuration) for more details.
 6. [Optional, see below on how to try out provided examples] Create a web application using HTML/CSS/JavaScript. In the directory containing the web application, create a configuration file app\_config.json and add in
-suitable configuation details. See the section on [application configuration](#web-application-configuration) for more details.
+suitable configuration details. See the section on [application configuration](#web-application-configuration) for more details.
 
 Start up
 ----------
-you can start cloudbrowser in cluster mode by starting a master and serveral workers. **Do remember to start mongodb first.**
-You can start master by the following script, if you omit the configPath option, it will load config file from ProjectRoot/config.
+CloudBrowser uses a single master multiple workers architecture.
+To start a CloudBrowser cluster, you need to **start mongodb first**.
+
+You can start the master by the following script, if you omit the configPath option, it will load config files from ProjectRoot/config.
 ```sh
 bin/run_master.sh --configPath [config directory] [application direcoties...]
 ```
 
-You can start serveral worker script by the following script, you need to specify different configPath for these workers.
+You can start a worker process by the following script, you need to specify different configPath for different workers.
 ```sh
 bin/run_worker.sh --configPath [config directory]
 ```
 
-You can also try out cloudbrowser in single process mode using :
+You can also try out CloudBrowser in a single process using the single process mode:
 
 ```sh
 bin/single_machine_runner.sh
 ```
 
-This will start a cluster with one master and two workers in a single process. 
-It is like typing the following commands. 
+This will start a cluster with one master and two workers in a single process.
+It is equivalent to a multi-process CloudBrowser cluster started by the following commands.
 
 ```sh
 bin/run_master.sh --configPath config examples src/server/applications&
@@ -67,7 +69,7 @@ Configuration
 -------------
 
 ###Server Configuration###
-In a cloudbrowser cluster there is one master server and several worker servers. The folder config2 contains sample configurations for a cluster of one master and two workers.
+The folder config2 contains sample configurations for a CloudBrowser cluster of one master and two workers.
 
 You can copy files from config2 to config folder and modify the config files based on your needs. If you are planning to deploy more than 2 worker nodes, you can run generate_worker_config.sh to generate worker configuration files.
 
@@ -77,7 +79,7 @@ bin/generate_worker_config.sh config 15
 ```
 
 #### Master Configuration
-Master configuration file should be named as master\_config.json. By default, the run\_master.sh script will try to look for configuration file in ProjectRoot/config directory. You could use change that by setting configPath flag in command line.
+Master configuration file should be named as master\_config.json. By default, the run\_master.sh script will try to look for configuration file in ProjectRoot/config directory. You could use another configuration file by setting configPath flag in command line.
 
 ```json
 {
@@ -104,19 +106,21 @@ Master configuration file should be named as master\_config.json. By default, th
 
 * proxyConfig : HTTP host and port for the users
     - httpPort : Port.
-    - host : If you omit this field, cloudbrowser will try to query your domain by query the DNS server.
-    
+    - host : If you omit this field, CloudBrowser will try to figure out your domain name by querying the DNS server.
+
 * databaseConfig : configuration for data base connection
-    - host : If you deploy cloudbrowser on multiple machines, do not put localhost here
+    - host : If you are trying to deploy CloudBrowser on multiple machines, do not put localhost here
     - port
 * rmiPort : the port for internal communication
 * workerConfig :  service settings for worker, you can overwrite the settings in this section by specify corresponding flags in command line. Please refer [Master command line options] for available fields.
-    - emailerConfig : the email account for the system to send emails, you need to configure this section to enable user registration.
+    - emailerConfig : the email account for the system to send emails, you need to configure this section to enable local user registration.
         + email : the email address to send emails. Right now only gmail account is supported.
         + password : the password of the email account
 
 #### Worker Configuration
-Worker configuration should be saved in the file name server\_config.json. You should setting configPath flag to the directory contains the worker configuration file when start the worker by run\_worker.sh script.
+Worker configuration files should be named as server\_config.json.
+When starting a worker by run\_worker.sh script,
+you should setting configPath flag to the directory that contains the worker's configuration file.
 
 ```json
 {
@@ -130,43 +134,31 @@ Worker configuration should be saved in the file name server\_config.json. You s
 }
 ```
 
-* httpPort : the port worker serves requests from the master
-* id : worker's id, should be different among workers
-* rmiPort : port for internal communication
-* masterConfig : information of the master 
-    - host : the host name or IP address where the master is deployed
+* httpPort : the port worker listens for HTTP requests, this is used internally by CloudBrowser, it is not exposed to the end user
+* id : worker's id, should be unique among workers
+* rmiPort : port for internal communications
+* masterConfig : information of the master
+    - host : the host name or IP address of the machine where the master is deployed
     - rmiPort : master's rmiPort, should be the same as the rmiPort in master\_config.json
 
 #### Deploy on a single machine
-Please allocate different httpPort and rmiPort for each server. 
+Please allocate different httpPort and rmiPort for the master and the workers.
 
 #### Master command line options
 
 These options can be set in the JSON configuration file master\_config.json under the workerConfig object or through the command line while starting the CloudBrowser master server.
 
-* **adminInterface**      - bool - Enable the admin interface. Defaults to false.
 * **compression**         - bool - Enable protocol compression. Defaults to true.
 * **compressJS**          - bool - Pass socket.io client and client engine through uglify and gzip. Defaults to false.
-* **debug**               - bool - Enable debug mode. Defaults to false.
-* **debugServer**         - bool - Enable the debug server. Defaults to false.
 * **domain**              - str  - Domain name of server. Defaults to `os.hostname()`
-* **homePage**            - bool - Enable mounting of the home page application at "/". Defaults to true.
-* **knockout**            - bool - Enable server-side knockout.js bindings. Defaults to false.
-* **monitorTraffic**      - bool - Monitor/log traffic to/from socket.io clients. Defaults to false.
-* **noLogs**              - bool - Disable all logging to files. Defaults to true.
-* **resourceProxy**       - bool - Enable the resource proxy. Defaults to true.
-* **simulateLatency**     - bool | num - Simulate latency for clients in ms. Defaults to false.
-* **strict**              - bool - Enable strict mode - uncaught exceptions exit the program. Defaults to false.
-* **traceMem**            - bool - Trace memory usage. Defaults to false.
-* **traceProtocol**       - bool - Log protocol messages to #{browserid}-rpc.log. Defaults to false.
-
+* **noLogs**              - bool - Disable logging client-server RPC calls. Defaults to true.
 
 
 ###Web Application Configuration###
 These configuration details are specific to a web application and need to be placed in the JSON file app\_config.json inside the directory
 that contains the source of the corresponding application.
 
-* **entryPoint**                - str  - The main html file of the single page web application. **Required**
+* **entryPoint**                - str  - The main HTML file of the single page web application. **Required**
 * **description**               - str  - Text describing the web application.
 This will be displayed on the landing page of the application (if the instantiation strategy is set to multiInstance)
 and on the home page of the server (if homePage is set to true in the server configuration).
@@ -178,9 +170,8 @@ All users must be authenticated before being granted access to any instance of i
     3. "multiInstance"  - Multiple application instances per user.
 authenticationInterface must be set to true and the browserLimit must be set to the number of instances available to a user.
 * **browserLimit**  - num - Needed only if instantiationStrategies 2 or 3 have been set to true. Corresponds to the number of applications instances
-available to the user. 
+available to the user.
 
-A simple configuration file need only contain the entryPoint.
 
 
 Internals
@@ -189,7 +180,8 @@ Internals
 TBC
 
 ###DB Tables Explained
-You can fire up a mongodb shell using the command **mongo**.
+To inspect the database tables we used,
+you can start a mongodb shell by execute **mongo** in the mongoDB's bin directory.
 
 ####data bases
 
