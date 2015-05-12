@@ -456,7 +456,7 @@ class AppManager
         for appDescriptor in appDescriptors
             appConfig = @_createAppConfigFromDescriptor(appDescriptor)
             appConfigs.push(appConfig)
-        async.each(appConfigs,(appConfig, eachCallback)=>
+        async.eachSeries(appConfigs,(appConfig, eachCallback)=>
             @_loadApp(appConfig, eachCallback)
         ,(err)->
             callback err
