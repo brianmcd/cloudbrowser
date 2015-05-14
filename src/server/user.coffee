@@ -7,6 +7,11 @@ class User
 
     toString : () ->
         return "User #{@_email}"
+
+    # get a unique identification string for the user
+    getId : ()->
+        return @_email
+
     # export args for nodermi
     toConstructorArguments : ()->
         return @_email
@@ -25,6 +30,7 @@ User.getEmail = (user) ->
 User.toUser = (user)->
     if not user?
         return null
+
     if user.user?
         user = user.user
 

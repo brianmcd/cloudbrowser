@@ -176,7 +176,11 @@ class BaseApplication extends EventEmitter
         return @appConfig.instantiationStrategy is "singleAppInstance"
 
     isSingleInstancePerUser : () ->
-        return @appConfig.instantiationStrategy is "singleUserInstance"
+        return @appConfig.instantiationStrategy is "singleInstancePerUser"
+
+    isSingleBrowserPerUser : () ->
+        return @appConfig.instantiationStrategy is "singleBrowserPerUser"
+
 
     getInstantiationStrategy : () ->
         return @appConfig.instantiationStrategy
@@ -218,7 +222,7 @@ class BaseApplication extends EventEmitter
     _mountPointHandler : (req, res, next) ->
         # "multiInstance"
         # authenticationInterface must be set to true
-        if @isMultiInstance() and @landingPageApp
+        if (@isMultiInstance() or @isSingleBrowserPerUser()) and @landingPageApp
             # redirect to landing page app
             return @landingPageApp._mountPointHandler(req, res, next)
 
@@ -270,24 +274,37 @@ class BaseApplication extends EventEmitter
             # redirect to landing page app
             return @landingPageApp._mountPointHandler(req, res, next)
 
+        user = null
         if @authApp
             user = @sessionManager.findAppUserID(req.session, @baseMountPoint)
             if not user?
                 return @authApp._mountPointHandler(req, res, next)
             previlege = appInstance.getUserPrevilege(user)
             if not previlege
-                return routes.forbidden(res, 'You do not have the previlege for this page.')
+                return routes.forbidden(res, 'You do not have the privilege to access this page.')
 
-        if @isMultiInstance()
-            # if it is multiple instance, create a new browser
-            appInstance.createBrowser(null, (err, browser)=>
+        # already checked the privilege
+        if @isSingleInstancePerUser() or @isSingleInstance()
+            routes.redirectToBrowser(res, @mountPoint, id, appInstance.browserId)
+            return
+        
+        # multiple instance with no landing page, this option is useful for 
+        # benchmark applications
+        if @isMultiInstance() or @isSingleBrowserPerUser()
+            # 1. multiInstance without landing page(auth disabled). This option is useful for
+            # writing benchmark apps
+            # 2. singleBrowserPerUser, return the user's browser if he got one, 
+            # or create a new one for him
+            appInstance.createBrowser(user, (err, browser)=>
                 if err
                     logger("Error creating a browser #{err}")
-                    return routes.internalError(res, "")
+                    return routes.internalError(res, "Error creating a browser #{err}")
                 routes.redirectToBrowser(res, @mountPoint, id, browser.id)
             )
-        else
-            routes.redirectToBrowser(res, @mountPoint, id, appInstance.browserId)
+            return
+        errMsg = "Illegal initiation strategy #{@appConfig.instantiationStrategy}"
+        logger(errMsg)
+        routes.internalError(res, errMsg)
 
     _mount : ()->
         path = arguments[0]

@@ -11,6 +11,7 @@ AppWriter = require('./app_writer')
 routes = require('../server/application_manager/routes')
 utils = require('../shared/utils')
 User = require('../server/user')
+Strategies = require('./instantiation_strategies')
 
 ###
 the master side counterpart of application manager
@@ -392,7 +393,7 @@ class Application extends EventEmitter
             pwdRestAppConfig = @_appManager._getPwdRestAppConfig(appConfig)
             subAppConfigs.push(pwdRestAppConfig)
             instantiationStrategy = {@config}
-            if instantiationStrategy is 'multiInstance'
+            if Strategies.needsLandingPage(instantiationStrategy)
                 landingPageAppConfig = @_appManager._getLandingAppConfig(appConfig)
                 subAppConfigs.push(landingPageAppConfig)
             subApps = []
@@ -596,7 +597,7 @@ class AppManager
                 result.push(authAppConfig)
                 pwdRestAppConfig = @_getPwdRestAppConfig(appConfig)
                 result.push(pwdRestAppConfig)
-                if instantiationStrategy is 'multiInstance'
+                if Strategies.needsLandingPage(instantiationStrategy)
                     landingPageAppConfig = @_getLandingAppConfig(appConfig)
                     result.push(landingPageAppConfig)
         return result
@@ -618,7 +619,7 @@ class AppManager
         newConfig = config.newAppConfig({type:'dir', path:configPath, appConfigFile: appConfigFile})
         newConfig.standalone = false
         newConfig.appType = 'auth'
-        newConfig.appConfig.instantiationStrategy = 'default'
+        newConfig.appConfig.instantiationStrategy = Strategies.singleInstancePerUser
         newConfig.deploymentConfig.authenticationInterface = false
         baseMountPoint = appConfig.deploymentConfig.mountPoint
         newConfig.deploymentConfig.mountPoint = routes.concatRoute(baseMountPoint, '/authenticate')
@@ -630,7 +631,7 @@ class AppManager
         newConfig = config.newAppConfig({type:'dir', path:configPath, appConfigFile: appConfigFile})
         newConfig.standalone = false
         newConfig.appType = 'pwdReset'
-        newConfig.appConfig.instantiationStrategy = 'singleUserInstance'
+        newConfig.appConfig.instantiationStrategy = Strategies.singleInstancePerUser
         newConfig.deploymentConfig.authenticationInterface = true
         baseMountPoint = appConfig.deploymentConfig.mountPoint
         newConfig.deploymentConfig.mountPoint = routes.concatRoute(baseMountPoint, '/password_reset')

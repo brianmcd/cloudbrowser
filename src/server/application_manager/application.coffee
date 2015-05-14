@@ -90,7 +90,7 @@ class Application extends BaseApplication
     addNewUser : (userRec, callback) ->
         {mongoInterface} = @server
         # Add a new user to the application's collection
-        searchKey = {_email : userRec._email}
+        searchKey = {_email : userRec.getEmail()}
         Async.waterfall [
             (next) =>
                 mongoInterface.findUser(searchKey, @getCollectionName(), next)

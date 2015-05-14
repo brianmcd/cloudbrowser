@@ -41,7 +41,8 @@ class AppInstance extends EventEmitter
             @addReaderWriter(new User(readerwriter._email))
         @browsers = {}
         @weakrefsToBrowsers = {}
-
+        # look up browser for singleBrowserPerUser
+        @userToBrowsers = {}
         # TODO we need to remove listners from a browser when the browser is
         # closed
         @_eventbus = new EventEmitter()
@@ -55,7 +56,7 @@ class AppInstance extends EventEmitter
         weakrefToBrowser = Weak(vbrowser, cleanupBserver(id))
         # the appinstance is just contianer of browsers, we are interested in getting
         # browser id as soon as we create an appInstance.
-        # for singleAppInstance and singleUserInstance, there would be only one browser
+        # for singleAppInstance and singleInstancePerUser, there would be only one browser
         # in appInstance, it is convenient to fileds for the first browser created
         if not @browserId?
             @browserId = id
@@ -63,11 +64,15 @@ class AppInstance extends EventEmitter
             @browser = vbrowser
         @weakrefsToBrowsers[id] = weakrefToBrowser
         @browsers[id] = vbrowser
+        if vbrowser.getCreator?
+            user = vbrowser.getCreator()
+            @userToBrowsers[user.getId()] = weakrefToBrowser
         logger "appInstance #{@id} emit addBrowser event #{vbrowser.id}"
         @emit('addBrowser', vbrowser)
         return weakrefToBrowser
 
-
+    # call _createVirtualBrowser, then insert db records for new vb in
+    # the background
     _create : (user, callback) ->
         user = User.toUser(user)
         id = @uuidService.getId()
@@ -112,7 +117,7 @@ class AppInstance extends EventEmitter
             appInstance : this
         vbrowser.load(@app, (err)=>
             return callback(err) if err?
-            logger("createBrowser #{@id}:#{id} for #{Date.now()-startTime}ms")
+            logger("createBrowser #{@id}:#{id} in #{Date.now()-startTime}ms")
             @addBrowser(vbrowser)
             callback null, vbrowser
         )
@@ -120,14 +125,24 @@ class AppInstance extends EventEmitter
     # user: the user try to create browser, callback(err, browser)
     createBrowser : (user, callback) ->
         logger "getBrowser for #{@app.mountPoint} - #{@id}"
-        if not @app.isMultiInstance()
-            # return the only instance
-            if not @weakrefToBrowser
-                @_create(user, callback)
+        if @app.isMultiInstance()
+            return @_create(user, callback)
+
+        # not concurrent safe
+        if @app.isSingleBrowserPerUser()
+            if @userToBrowsers[user.getId()]?
+                callback null, @userToBrowsers[user.getId()]
+                return
             else
-                callback null, @weakrefToBrowser
-        else
+                @_create(user, callback)
+                return
+
+        # not concurrent safe
+        if not @weakrefToBrowser
             @_create(user, callback)
+        else
+            callback null, @weakrefToBrowser
+    
 
 
     _findReaderWriter : (user) ->
@@ -200,11 +215,16 @@ class AppInstance extends EventEmitter
             callback(new Error("Cannot find browser #{browserId}"))
 
     __deleteBrowserReferences : (browserId)->
-        if @browser and @browser.id is browserId
-            @browser = null
-            @weakrefToBrowser = null
-        delete @browsers[browserId]
-        delete @weakrefsToBrowsers[browserId]
+        browser = @browsers[browserId]
+        if browser?
+            delete @browsers[browserId]
+            delete @weakrefsToBrowsers[browserId]
+            if @browser and @browser.id is browserId
+                @browser = null
+                @weakrefToBrowser = null
+            if browser.getCreator?
+                user = browser.getCreator()
+                delete @userToBrowsers[user.getId()]
 
     ###
     FIXME : should put previlege checking in API level

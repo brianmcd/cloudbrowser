@@ -117,6 +117,7 @@ class UserPermissionManager
                 else next(null, sysPermRec.getItems(permission))
         ], callback
 
+    # this is not safe for concurrent access
     addAppPermRec : (options) ->
         {user, mountPoint, permission, callback} = options
         if not user
@@ -137,21 +138,21 @@ class UserPermissionManager
                     callback   : next
             (appPerms, next) =>
                 if not appPerms  
-                    console.log("find sys perm rec for #{user}")
+                    # console.log("find sys perm rec for #{user}")
                     @findSysPermRec({
                         user     : user
                         callback : next
                     })
                 # Bypassing the async waterfall
                 else
-                    console.log("already have appPerms") 
+                    # console.log("already have appPerms") 
                     setPerm(callback)
             (sysPermRec, next) =>
                 if sysPermRec  
-                    console.log("got sysyperm rec #{user}")
+                    # console.log("got sysyperm rec #{user}")
                     next(null, sysPermRec)
                 else 
-                    console.log("add sysyperm rec #{user}")
+                    # console.log("add sysyperm rec #{user}")
                     @addSysPermRec({
                         user     : user
                         callback : next
