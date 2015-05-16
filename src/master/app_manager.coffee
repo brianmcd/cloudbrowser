@@ -300,7 +300,8 @@ class Application extends EventEmitter
                 @_appInstance._waitForCreate(callback)
 
     getUserAppInstance : (user, callback) ->
-        appInstance = @_userToAppInstance[user]
+        userId = user.getId()
+        appInstance = @_userToAppInstance[userId]
         if appInstance?
             if appInstance.id?
                 return callback null, appInstance._remote
@@ -312,20 +313,23 @@ class Application extends EventEmitter
     createUserAppInstance : (user, callback) ->
         worker = @_workerManager.getMostFreeWorker()
         appInstance = new AppInstance(null, worker.id)
+        userId = null
         if(user)
-            @_userToAppInstance[user] = appInstance
+            userId = user.getId()
+            @_userToAppInstance[userId] = appInstance
+
         applogger("create appInstance on #{worker.id}")
         @_workerManager._getWorkerStub(worker, (err, stub)=>
             if err?
                 appInstance._notifyWaiting(err)
                 if(user)
-                    delete @_userToAppInstance[user]
+                    delete @_userToAppInstance[userId]
                 return callback err
             stub.appManager.createAppInstanceForUser(@mountPoint, user, (err, result)=>
                 if err?
                     appInstance._notifyWaiting(err)
                     if(user)
-                        delete @_userToAppInstance[user]
+                        delete @_userToAppInstance[userId]
                     return callback err
                 appInstance._setRemoteInstance(result)
                 @_addAppInstance(appInstance)

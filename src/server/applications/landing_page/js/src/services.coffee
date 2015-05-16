@@ -1,18 +1,22 @@
 helpers = angular.module('CBLandingPage.services', [])
 
 helpers.service 'cb-mail', () ->
-    this.send = (options) ->
-        {from, to, sharedObj, url, mountPoint, callback} = options
-        sub = "CloudBrowser - #{from} shared #{sharedObj} with you."
-        msg = "Hi #{to}<br>To view it, visit <a href='#{url}'>"+
-              "#{mountPoint}</a> and login to your existing account" +
-              " or use your google ID to login if you do not have an"+
-              " account already."
-        cloudbrowser.util.sendEmail
-            to       : to
-            html     : msg
-            subject  : sub
-            callback : callback
+    s = {
+        send : (options) ->
+            {from, to, sharedObj, url, mountPoint, callback} = options
+            sub = "CloudBrowser - #{from} shared #{sharedObj} with you."
+            msg = "Hi #{to}<br>To view it, visit <a href='#{url}'>"+
+                  "#{mountPoint}</a> and login to your existing account" +
+                  " or use your google ID to login if you do not have an"+
+                  " account already."
+            cloudbrowser.util.sendEmail
+                to       : to
+                html     : msg
+                subject  : sub
+                callback : callback
+    }
+    return s
+
 
 helpers.service 'cb-format', () ->
     months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',

@@ -5,18 +5,22 @@
   helpers = angular.module('CBLandingPage.services', []);
 
   helpers.service('cb-mail', function() {
-    return this.send = function(options) {
-      var callback, from, mountPoint, msg, sharedObj, sub, to, url;
-      from = options.from, to = options.to, sharedObj = options.sharedObj, url = options.url, mountPoint = options.mountPoint, callback = options.callback;
-      sub = "CloudBrowser - " + from + " shared " + sharedObj + " with you.";
-      msg = ("Hi " + to + "<br>To view it, visit <a href='" + url + "'>") + ("" + mountPoint + "</a> and login to your existing account") + " or use your google ID to login if you do not have an" + " account already.";
-      return cloudbrowser.util.sendEmail({
-        to: to,
-        html: msg,
-        subject: sub,
-        callback: callback
-      });
+    var s;
+    s = {
+      send: function(options) {
+        var callback, from, mountPoint, msg, sharedObj, sub, to, url;
+        from = options.from, to = options.to, sharedObj = options.sharedObj, url = options.url, mountPoint = options.mountPoint, callback = options.callback;
+        sub = "CloudBrowser - " + from + " shared " + sharedObj + " with you.";
+        msg = ("Hi " + to + "<br>To view it, visit <a href='" + url + "'>") + ("" + mountPoint + "</a> and login to your existing account") + " or use your google ID to login if you do not have an" + " account already.";
+        return cloudbrowser.util.sendEmail({
+          to: to,
+          html: msg,
+          subject: sub,
+          callback: callback
+        });
+      }
     };
+    return s;
   });
 
   helpers.service('cb-format', function() {
