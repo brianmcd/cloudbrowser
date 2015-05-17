@@ -8,6 +8,7 @@ class PasswordRestApplication extends BaseApplication
     constructor: (masterApp, @parentApp) ->
         {@server} = @parentApp
         super(masterApp, @server)
+        @baseMountPoint = @parentApp.mountPoint
         
 
 module.exports = PasswordRestApplication

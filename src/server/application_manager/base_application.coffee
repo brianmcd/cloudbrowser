@@ -266,7 +266,6 @@ class BaseApplication extends EventEmitter
         # if isSingleInstance, check if this instance exist
         # if isMultiInstance, check authentication, and return or create a vbrowser
         id = req.params.appInstanceID
-
         appInstance = @appInstanceManager.find(id)
         if not appInstance then return routes.notFound(res, "The application instance #{id} was not found.")
 
@@ -278,6 +277,7 @@ class BaseApplication extends EventEmitter
         if @authApp
             user = @sessionManager.findAppUserID(req.session, @baseMountPoint)
             if not user?
+                logger("user not logged in, redirect #{id} to authentication page")
                 return @authApp._mountPointHandler(req, res, next)
             previlege = appInstance.getUserPrevilege(user)
             if not previlege
@@ -288,8 +288,6 @@ class BaseApplication extends EventEmitter
             routes.redirectToBrowser(res, @mountPoint, id, appInstance.browserId)
             return
         
-        # multiple instance with no landing page, this option is useful for 
-        # benchmark applications
         if @isMultiInstance() or @isSingleBrowserPerUser()
             # 1. multiInstance without landing page(auth disabled). This option is useful for
             # writing benchmark apps

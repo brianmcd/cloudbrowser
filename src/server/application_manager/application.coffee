@@ -38,6 +38,7 @@ class Application extends BaseApplication
     constructor : (masterApp, @server) ->
         super(masterApp, @server)
         @_loadSubApps(masterApp)
+        @baseMountPoint = @mountPoint
         masterApp.on('subAppsChange',(newMasterApp)=>
             applogger("subAppsChange for #{@mountPoint}")
             @_loadSubApps(newMasterApp)
