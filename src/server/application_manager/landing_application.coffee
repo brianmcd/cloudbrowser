@@ -8,6 +8,7 @@ class LandingApplication extends BaseApplication
     constructor: (masterApp, @parentApp) ->
         {@server, @authApp} = @parentApp
         super(masterApp, @server)
+        @baseMountPoint = @parentApp.mountPoint
 
     mount : () ->
         @_mount(@mountPoint, 

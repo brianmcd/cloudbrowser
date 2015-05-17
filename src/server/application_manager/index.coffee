@@ -203,7 +203,7 @@ class ApplicationManager extends EventEmitter
                     }},
                     next)
             (httpResponse, body, next)->
-                logger("get response from token request : #{httpResponse}")
+                logger("request token get response from token request : #{httpResponse}")
                 logger("response body is #{typeof body} : #{body}")
                 tokenResponse = JSON.parse(body)
                 accessToken = tokenResponse['access_token']

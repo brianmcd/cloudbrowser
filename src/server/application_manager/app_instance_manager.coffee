@@ -33,8 +33,6 @@ class AppInstanceManager extends EventEmitter
 
     # actual create a new instance in local
     createAppInstance : (user, callback) ->
-        user = User.getEmail(user)
-        
         if @app.isSingleInstance()
             # check if we had it
             if not @appInstance?
@@ -50,7 +48,8 @@ class AppInstanceManager extends EventEmitter
                 applogger "App #{@app.mountPoint} is SingleInstancePerUser but 
                         did not provide user when calling createAppInstance"
                 return @_createAppInstance(user, callback)
-            if not @userToAppInstances[user]?
+            userId = user.getId()
+            if not @userToAppInstances[userId]?
                 return @_createAppInstance(user, (err, instance)=>
                         @userToAppInstances[user] = instance
                         callback null, instance
@@ -61,15 +60,15 @@ class AppInstanceManager extends EventEmitter
 
 
     getUserAppInstance : (user, callback) ->
-        if not user? or not user._email?
+        if not user? or not user instanceof User
             throw new Error("should specify user for getUserAppInstance : #{user}")
-        email = user._email
+        userId = user.getId()
             
-        if not @userToAppInstances[email]?
+        if not @userToAppInstances[userId]?
             # query master
-            @_masterApp.getUserAppInstance(email, callback)
+            @_masterApp.getUserAppInstance(user, callback)
         else
-            callback null, @userToAppInstances[email]
+            callback null, @userToAppInstances[userId]
 
         
     

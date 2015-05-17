@@ -38,6 +38,7 @@ class Application extends BaseApplication
     constructor : (masterApp, @server) ->
         super(masterApp, @server)
         @_loadSubApps(masterApp)
+        @baseMountPoint = @mountPoint
         masterApp.on('subAppsChange',(newMasterApp)=>
             applogger("subAppsChange for #{@mountPoint}")
             @_loadSubApps(newMasterApp)
@@ -90,7 +91,7 @@ class Application extends BaseApplication
     addNewUser : (userRec, callback) ->
         {mongoInterface} = @server
         # Add a new user to the application's collection
-        searchKey = {_email : userRec._email}
+        searchKey = {_email : userRec.getEmail()}
         Async.waterfall [
             (next) =>
                 mongoInterface.findUser(searchKey, @getCollectionName(), next)

@@ -1,5 +1,5 @@
 {
     "applicationStateFile": "chatboot.js",
     "entryPoint": "index.html",
-    "instantiationStrategy": "multiInstance"
+    "instantiationStrategy": "singleBrowserPerUser"
 }

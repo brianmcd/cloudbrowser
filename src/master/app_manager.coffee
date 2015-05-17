@@ -11,6 +11,7 @@ AppWriter = require('./app_writer')
 routes = require('../server/application_manager/routes')
 utils = require('../shared/utils')
 User = require('../server/user')
+Strategies = require('./instantiation_strategies')
 
 ###
 the master side counterpart of application manager
@@ -299,7 +300,8 @@ class Application extends EventEmitter
                 @_appInstance._waitForCreate(callback)
 
     getUserAppInstance : (user, callback) ->
-        appInstance = @_userToAppInstance[user]
+        userId = user.getId()
+        appInstance = @_userToAppInstance[userId]
         if appInstance?
             if appInstance.id?
                 return callback null, appInstance._remote
@@ -311,20 +313,23 @@ class Application extends EventEmitter
     createUserAppInstance : (user, callback) ->
         worker = @_workerManager.getMostFreeWorker()
         appInstance = new AppInstance(null, worker.id)
+        userId = null
         if(user)
-            @_userToAppInstance[user] = appInstance
+            userId = user.getId()
+            @_userToAppInstance[userId] = appInstance
+
         applogger("create appInstance on #{worker.id}")
         @_workerManager._getWorkerStub(worker, (err, stub)=>
             if err?
                 appInstance._notifyWaiting(err)
                 if(user)
-                    delete @_userToAppInstance[user]
+                    delete @_userToAppInstance[userId]
                 return callback err
             stub.appManager.createAppInstanceForUser(@mountPoint, user, (err, result)=>
                 if err?
                     appInstance._notifyWaiting(err)
                     if(user)
-                        delete @_userToAppInstance[user]
+                        delete @_userToAppInstance[userId]
                     return callback err
                 appInstance._setRemoteInstance(result)
                 @_addAppInstance(appInstance)
@@ -392,7 +397,7 @@ class Application extends EventEmitter
             pwdRestAppConfig = @_appManager._getPwdRestAppConfig(appConfig)
             subAppConfigs.push(pwdRestAppConfig)
             instantiationStrategy = {@config}
-            if instantiationStrategy is 'multiInstance'
+            if Strategies.needsLandingPage(instantiationStrategy)
                 landingPageAppConfig = @_appManager._getLandingAppConfig(appConfig)
                 subAppConfigs.push(landingPageAppConfig)
             subApps = []
@@ -596,7 +601,7 @@ class AppManager
                 result.push(authAppConfig)
                 pwdRestAppConfig = @_getPwdRestAppConfig(appConfig)
                 result.push(pwdRestAppConfig)
-                if instantiationStrategy is 'multiInstance'
+                if Strategies.needsLandingPage(instantiationStrategy)
                     landingPageAppConfig = @_getLandingAppConfig(appConfig)
                     result.push(landingPageAppConfig)
         return result
@@ -618,7 +623,7 @@ class AppManager
         newConfig = config.newAppConfig({type:'dir', path:configPath, appConfigFile: appConfigFile})
         newConfig.standalone = false
         newConfig.appType = 'auth'
-        newConfig.appConfig.instantiationStrategy = 'default'
+        newConfig.appConfig.instantiationStrategy = Strategies.singleInstancePerUser
         newConfig.deploymentConfig.authenticationInterface = false
         baseMountPoint = appConfig.deploymentConfig.mountPoint
         newConfig.deploymentConfig.mountPoint = routes.concatRoute(baseMountPoint, '/authenticate')
@@ -630,7 +635,7 @@ class AppManager
         newConfig = config.newAppConfig({type:'dir', path:configPath, appConfigFile: appConfigFile})
         newConfig.standalone = false
         newConfig.appType = 'pwdReset'
-        newConfig.appConfig.instantiationStrategy = 'singleUserInstance'
+        newConfig.appConfig.instantiationStrategy = Strategies.singleInstancePerUser
         newConfig.deploymentConfig.authenticationInterface = true
         baseMountPoint = appConfig.deploymentConfig.mountPoint
         newConfig.deploymentConfig.mountPoint = routes.concatRoute(baseMountPoint, '/password_reset')

@@ -585,7 +585,9 @@ class AppConfig
 
             permissionManager = cbServer.permissionManager
             AppInstance = require('./app_instance')
-
+            if not userCtx instanceof User
+                console.log("#{typeof userCtx} not user")
+            
             app.appInstanceManager.create(userCtx, (err, appInstance)->
                 if err then callback(err)
                 else callback null, new AppInstance

@@ -18,7 +18,7 @@ if [[ "X$2" != "X" ]]; then
     i_prefix=$2
 fi
 
-i_apps="examples src/server/applications"
+i_apps="examples src/server/applications benchmarks/applications"
 
 if [[ "X$3" != "X" ]]; then
     i_apps=$3
