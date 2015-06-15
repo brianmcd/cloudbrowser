@@ -15,6 +15,45 @@ cloudbrowserError = require('../shared/cloudbrowser_error')
 AppConfig  = require("./application_config")
 AppInstance = require('./app_instance')
 
+class EventListenerRecord
+    constructor : (entity, logger)->
+        @entity = entity
+        @listeners = {}
+        @logger = logger
+
+    refersTo : (entity)->
+        return this.entity is entity
+
+    addListener : (eventName, listener)->
+        entity = @entity
+        if not entity.addEventListener? and not entity.on?
+            throw new Error("addEventListener failed: entity doesn't have method to add event listeners")
+        if entity.addEventListener?
+            entity.addEventListener(eventName, listener)
+        else
+            entity.on(eventName, listener)
+
+        if not @listeners[eventName]?
+            @listeners[eventName] = [listener]
+        else
+            @listeners[eventName].push(listener)
+
+    removeEventListeners : ()->
+        if @entity.removeEventListeners?
+            try
+                # remove eventListners should always accept event->listeners structure
+                @entity.removeEventListeners(@listeners)
+            catch e
+                @logger("error when remove listener")
+                @logger(e)
+            return
+        if @entity.removeListener?
+            for eventName, listeners of @listeners
+                for listener in listeners
+                    @entity.removeListener(eventName, listener)
+            return
+        throw new Error("Entity doesn't have method to remove event listeners")       
+
 class CloudBrowser
 
     constructor : (bserver) ->
@@ -44,41 +83,23 @@ class CloudBrowser
         # the absence of the authentication interface
         else creator = new User("public")
 
-        listeners = []
+        listenerRecords = []
         logger = bserver._logger
-        bookkeepListener = (entity, event, listener)->
-            for i in listeners
-                # if find an existing entry, return
-                if entity is i.entity
-                    if not i.listeners[event]? 
-                        i.listeners[event] = []
-                    i.listeners[event].push(listener)
-                    return
-            
-            item = {
-                entity : entity
-                listeners : {}
-            }
-            item.listeners[event] = [listener]
-            return
-
-        doListenerRemove = (listenerEntity)->
-            try
-                listenerEntity.entity.removeEventListeners?(i.listeners)
-            catch e
-                logger("error when remove listener")
-                logger(e)
 
         ###
         add EventListener,
         the event listners add here will be removed after virtualbrowser get closed
         ###
         @addEventListener = (entity, event, listener)->
-            bookkeepListener(entity, event, listener)
-            if not entity.addEventListener?
-                throw new Error("addEventListener failed: entity do't have method addEventListener")
-            
-            entity.addEventListener(event, listener)
+            listenerRecord = null
+            for i in listenerRecords
+                if i.refersTo(entity)
+                    listenerRecord = i
+                    break
+            if not listenerRecord?
+                listenerRecord = new EventListenerRecord(entity, logger)
+                listenerRecords.push(listenerRecord)
+            listenerRecord.addListener(event, listener)
             return
         ###
         this interface makes sense because we want to remove some entity from view
@@ -87,24 +108,24 @@ class CloudBrowser
         to expose this method to application
         ###
         @removeEventListeners = (entity)->
-            removed = lodash.remove(listeners, (item)->
-                return item.entity is entity
+            removed = lodash.remove(listenerRecords, (item)->
+                return item.refersTo(entity)
             )
             for i in removed
-                doListenerRemove(i)
+                i.removeEventListeners()
             
 
         ###
         close the api object, after that, the api object would be defunct
         ###
         @close = ()->
-            if not listeners?
+            if not listenerRecords?
                 return
             
             # release all event listeners
-            for i in listeners
-                doListenerRemove(i)
-            listeners = null
+            for i in listenerRecords
+                i.removeEventListeners()
+            listenerRecords = null
             return
 
         @util = new Util(bserver.server.config.emailerConfig)

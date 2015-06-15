@@ -32,15 +32,7 @@ uuid = 0
     @fires Browser#rename
 ###
 class Browser
-
-    # Private Properties inside class closure; how to reclaim if browser get destroyed?
-    _pvts = []
-
     constructor : (options) ->
-        # Defining @_idx as a read-only property
-        Object.defineProperty this, "_idx",
-            value : _pvts.length
-
         {cbServer, browser, cbCtx, userCtx, appConfig, appInstanceConfig} = options
 
         if not cbServer? or not appConfig? or not appInstanceConfig?
@@ -49,540 +41,511 @@ class Browser
             console.log err.stack
         
 
-        _pvts.push
-            bserver : browser
-            userCtx : userCtx
-            cbCtx   : cbCtx
-            cbServer : cbServer
-            appConfig : appConfig
-            appInstanceConfig : appInstanceConfig
+        ###*
+            Gets the ID of the instance.
+            @method getID
+            @return {String}
+            @instance
+            @memberOf Browser
+        ###
+        @getID = () ->
+            return browser.id
 
-        # Freezing the prototype to protect from unauthorized changes
-        # by people using the API
-        Object.freeze(this.__proto__)
-        Object.freeze(this)
+        @getWorkerID = () ->
+            return browser.workerId
 
-    ###*
-        Gets the ID of the instance.
-        @method getID
-        @return {String}
-        @instance
-        @memberOf Browser
-    ###
-    getID : () ->
-        return _pvts[@_idx].bserver.id
+        ###*
+            Gets the url of the instance.
+            @method getURL
+            @return {String}
+            @instance
+            @memberOf Browser
+        ###
+        @getURL = () ->
+            browserUrl = routes.buildBrowserPath(browser.mountPoint, browser.appInstanceId, browser.id)
+            return "#{cbServer.config.getHttpAddr()}#{browserUrl}"
+            
 
-    getWorkerID : () ->
-        return _pvts[@_idx].bserver.workerId
+        ###*
+            Gets the date of creation of the instance.
+            @method getDateCreated
+            @return {Date}
+            @instance
+            @memberOf Browser
+        ###
+        @getDateCreated = () ->
+            return browser.dateCreated
 
-    ###*
-        Gets the url of the instance.
-        @method getURL
-        @return {String}
-        @instance
-        @memberOf Browser
-    ###
-    getURL : () ->
-        {cbServer, bserver}  = _pvts[@_idx]
+        ###*
+            Gets the name of the instance.
+            @method getName
+            @return {String}
+            @instance
+            @memberOf Browser
+        ###
+        @getName = () ->
+            return browser.name
 
-        return "#{cbServer.config.getHttpAddr()}#{routes.buildBrowserPath(bserver.mountPoint, bserver.appInstanceId, bserver.id)}"
-        
+        ###*
+            Creates a new component. This is called only when the browser is a local object.
+            @method createComponent
+            @param {String}  name    The registered name of the component.          
+            @param {DOMNode} target  The DOM node in which the component will be embedded.         
+            @param {Object}  options Extra options to customize the component.          
+            @return {DOMNode}
+            @instance
+            @memberof Browser
+        ###
+        @createComponent = (name, target, options) ->
+            return if typeof name isnt "string" or not target or not target.__nodeID
+            domBrowser  = browser.getBrowser()
+            domBrowser.createComponent(name, target, options)
+            return target
 
-    ###*
-        Gets the date of creation of the instance.
-        @method getDateCreated
-        @return {Date}
-        @instance
-        @memberOf Browser
-    ###
-    getDateCreated : () ->
-        return _pvts[@_idx].bserver.dateCreated
+        ###*
+            Gets the Application API object.
+            @method getAppConfig
+            @return {AppConfig}
+            @memberof Browser
+            @instance
+        ###
+        @getAppConfig = () ->
+            mountPoint = browser.mountPoint
+            AppConfig  = require("./application_config")
+            app = cbServer.applicationManager.find(mountPoint)
 
-    ###*
-        Gets the name of the instance.
-        @method getName
-        @return {String}
-        @instance
-        @memberOf Browser
-    ###
-    getName : () ->
-        return _pvts[@_idx].bserver.name
+            return new AppConfig({
+                cbServer : cbServer
+                cbCtx   : cbCtx
+                userCtx : userCtx
+                app     : app
+            })
 
-    ###*
-        Creates a new component. This is called only when the browser is a local object.
-        @method createComponent
-        @param {String}  name    The registered name of the component.          
-        @param {DOMNode} target  The DOM node in which the component will be embedded.         
-        @param {Object}  options Extra options to customize the component.          
-        @return {DOMNode}
-        @instance
-        @memberof Browser
-    ###
-    createComponent : (name, target, options) ->
-        return if typeof name isnt "string" or not target or not target.__nodeID
-        {bserver} = _pvts[@_idx]
-        browser  = bserver.getBrowser()
-        browser.createComponent(name, target, options)
-        return target
+        ###*
+            Closes the  browser.
+            @method close
+            @memberof Browser
+            @instance
+            @param {errorCallback} callback
+        ###
+        @close = (callback) ->
+            # get appInstance by direct property reference. both bserver and appInstance could be remote object
+            appInstance = browser.appInstance
+            appInstance.removeBrowser(browser.id, userCtx, callback)
+            return
+            
 
-    ###*
-        Gets the Application API object.
-        @method getAppConfig
-        @return {AppConfig}
-        @memberof Browser
-        @instance
-    ###
-    getAppConfig : () ->
-        {cbServer, bserver, cbCtx, userCtx} = _pvts[@_idx]
-        mountPoint = bserver.mountPoint
-        AppConfig  = require("./application_config")
-        app = cbServer.applicationManager.find(mountPoint)
-
-        return new AppConfig({
-            cbServer : cbServer
-            cbCtx   : cbCtx
-            userCtx : userCtx
-            app     : app
-        })
-
-    ###*
-        Closes the  browser.
-        @method close
-        @memberof Browser
-        @instance
-        @param {errorCallback} callback
-    ###
-    close : (callback) ->
-        {cbServer, bserver, userCtx} = _pvts[@_idx]
-        # get appInstance by direct property reference. both bserver and appInstance could be remote object
-        appInstance = bserver.appInstance
-        appInstance.removeBrowser(bserver.id, userCtx, callback)
-        
-
-    ###*
-        Redirects all clients that are connected to the current
-        instance to the given URL.
-        @method redirect
-        @param {String} url
-        @memberof Browser
-        @instance
-    ###
-    redirect : (url) ->
-        _pvts[@_idx].bserver.redirect(url)
-
-    ###*
-        Gets the email ID that is stored in the session
-        @method getResetEmail
-        @param {emailCallback} callback
-        @memberof Browser
-        @instance
-    ###
-    getResetEmail : (callback) ->
-        {cbServer, bserver} = _pvts[@_idx]
-        
-        mongoInterface = cbServer.mongoInterface
-
-        bserver.getFirstSession (err, session) ->
-            return callback(err) if err
-            callback(null,
-                SessionManager.findPropOnSession(session, 'resetuser'))
-
-    ###*
-        Gets the user that created the instance.
-        @method getCreator
-        @return {String}
-        @instance
-        @memberof Browser
-    ###
-    getCreator : () ->
-        {bserver} = _pvts[@_idx]
-        return bserver.creator?._email
-
-    ###*
-        Registers a listener for an event on the  browser instance.
-        @method addEventListener
-        @param {String} event
-        @param {errorCallback} callback 
-        @instance
-        @memberof Browser
-    ###
-    addEventListener : (event, callback) ->
-        if typeof callback isnt "function" then return
-
-        validEvents = ["share", "rename", "connect", "disconnect"]
-        if typeof event isnt "string" or validEvents.indexOf(event) is -1
+        ###*
+            Redirects all clients that are connected to the current
+            instance to the given URL.
+            @method redirect
+            @param {String} url
+            @memberof Browser
+            @instance
+        ###
+        @redirect = (url) ->
+            browser.redirect(url)
             return
 
-        {bserver} = _pvts[@_idx]
+        ###*
+            Gets the email ID that is stored in the session
+            @method getResetEmail
+            @param {emailCallback} callback
+            @memberof Browser
+            @instance
+        ###
+        @getResetEmail = (callback) ->
+            sessionManager = cbServer.sessionManager
+            browser.getFirstSession((err, session) ->
+                return callback(err) if err
+                callback(null,
+                    sessionManager.findPropOnSession(session, 'resetuser'))
+            )
+            return
 
-        if @isAssocWithCurrentUser()
-            switch event
-                when "share"
-                    bserver.on event, (userInfo) ->
-                        newUserInfo = {}
-                        newUserInfo.role = userInfo.role
-                        newUserInfo.user = User.getEmail(userInfo.user)
-                        callback(newUserInfo)
-                        # this is really nasty, now the browser object is stale
-                else
-                    bserver.on(event, callback)
+        ###*
+            Gets the user that created the instance.
+            @method getCreator
+            @return {String}
+            @instance
+            @memberof Browser
+        ###
+        @getCreator = () ->
+            return browser.creator?.getEmail()
 
-    ###*
-        Checks if the current user has some permission
-        associated with this browser
-        @method isAssocWithCurrentUser
-        @return {Bool}
-        @instance
-        @memberof Browser
-    ###
-    isAssocWithCurrentUser : () ->
-        {bserver, userCtx} = _pvts[@_idx]
-        appConfig = @getAppConfig()
-        if not appConfig.isAuthConfigured() or
-            bserver.isOwner(userCtx) or
-            bserver.isReaderWriter(userCtx) or
-            bserver.isReader(userCtx) or
-            appConfig.isOwner()
-                return true
-        else return false
+        ###*
+            Registers a listener for an event on the  browser instance.
+            @method addEventListener
+            @param {String} event
+            @param {errorCallback} callback 
+            @instance
+            @memberof Browser
+        ###
+        @addEventListener = (eventName, callback) ->
+            if typeof callback isnt "function" then return
 
-    ###*
-        Gets all users that have the permission only to read and
-        write to the instance.
-        @method getReaderWriters
-        @return {Array<User>}
-        @instance
-        @memberof Browser
-    ###
-    getReaderWriters : () ->
-        {bserver} = _pvts[@_idx]
-        # There will not be any users in case authentication has
-        # not been enabled
-        return if typeof bserver.getReaderWriters isnt "function"
-        if @isAssocWithCurrentUser()
-            users = []
-            users.push(rw._email) for rw in bserver.readwrite
-            return users
+            validEvents = ["share", "rename", "connect", "disconnect"]
+            if typeof eventName isnt "string" or validEvents.indexOf(eventName) is -1
+                return
 
-    ###*
-        Gets all users that have the permission only to read
-        @method getReaders
-        @return {Array<User>}
-        @instance
-        @memberof Browser
-    ###
-    getReaders : () ->
-        {bserver} = _pvts[@_idx]
-        # There will not be any users in case authentication has
-        # not been enabled
-        return if typeof bserver.getReaders isnt "function"
-        if @isAssocWithCurrentUser()
-            users = []
-            users.push(rw._email) for rw in bserver.readonly
-            return users
-
-    ###*
-        Gets all users that are the owners of the instance
-        There is a separate method for this as it is faster to get only the
-        number of owners than to construct a list of them using
-        getOwners and then get that number.
-        @method getOwners
-        @return {Array<User>}
-        @instance
-        @memberof Browser
-    ###
-    getOwners : () ->
-        {bserver} = _pvts[@_idx]
-        # There will not be any users in case authentication has
-        # not been enabled
-        return if typeof bserver.getOwners isnt "function"
-        if @isAssocWithCurrentUser()
-            users = []
-            users.push(rw._email) for rw in bserver.own
-            return users
-
-    ###*
-        Checks if the user is a reader-writer of the instance.
-        @method isReaderWriter
-        @param {String} user
-        @return {Bool}
-        @instance
-        @memberof Browser
-    ###
-    isReaderWriter : (emailID) ->
-        {bserver, userCtx} = _pvts[@_idx]
-        # There will not be any users in case authentication has
-        # not been enabled
-        return if typeof bserver.isReaderWriter isnt "function"
-
-        switch arguments.length
-            # Check for current user
-            when 0 then
-            # Check for given user
-            when 1
-                emailID = arguments[0]
-                if not areArgsValid [
-                    {item : emailID, type : "string"}
-                ] then return
-                userCtx = new User(emailID)
-            else return
-
-        if @isAssocWithCurrentUser()
-            if bserver.isReaderWriter(userCtx) then return true
-            else return false
-
-    ###*
-        Checks if the user is a reader of the instance.
-        @method isReader
-        @param {String} emailID
-        @return {Bool}
-        @memberof Browser
-        @instance
-    ###
-    isReader : (emailID) ->
-        {bserver, userCtx} = _pvts[@_idx]
-        # There will not be any users in case authentication has
-        # not been enabled
-        return if typeof bserver.isReader isnt "function"
-
-        switch arguments.length
-            # Check for current user
-            when 0 then
-            # Check for given user
-            when 1
-                emailID = arguments[0]
-                if not areArgsValid [
-                    {item : emailID, type : "string"}
-                ] then return
-                userCtx = new User(emailID)
-            else return
-
-        if @isAssocWithCurrentUser()
-            if bserver.isReader(userCtx) then return true
-            else return false
-
-    ###*
-        Checks if the user is an owner of the instance
-        @method isOwner
-        @param {String} user
-        @return {Bool}
-        @instance
-        @memberof Browser
-    ###
-    isOwner : () ->
-        {bserver, userCtx} = _pvts[@_idx]
-        # There will not be any users in case authentication has
-        # not been enabled
-        return if typeof bserver.isOwner isnt "function"
-
-        switch arguments.length
-            # Check for current user
-            when 0 then
-            # Check for given user
-            when 1
-                emailID = arguments[0]
-                if not areArgsValid [
-                    {item : emailID, type : "string"}
-                ] then return
-                userCtx = new User(emailID)
-            else return
-
-        if @isAssocWithCurrentUser()
-            if bserver.isOwner(userCtx) then return true
-            else return false
             
-    # [user],[callback]
-    getUserPrevilege:()->
-        {bserver, userCtx} = _pvts[@_idx]
-        switch arguments.length
-            when 1
-                user = userCtx
-                callback = arguments[0]
-            when 2
-                user = arguments[0]
-                callback = arguments[1]
+            callbackRegistered = callback
+            if @isAssocWithCurrentUser() and eventName is 'share'    
+                callbackRegistered = (userInfo) ->
+                    newUserInfo = {}
+                    newUserInfo.role = userInfo.role
+                    newUserInfo.user = User.getEmail(userInfo.user)
+                    callback(newUserInfo)
+                    # this is really nasty, now the browser object is stale
+            cbCtx.addEventListener(browser, eventName, callbackRegistered)
+            return
 
-        return callback(null, null) if typeof bserver.getUserPrevilege isnt 'function'
-        bserver.getUserPrevilege(user, callback)
+        ###*
+            Checks if the current user has some permission
+            associated with this browser
+            @method isAssocWithCurrentUser
+            @return {Bool}
+            @instance
+            @memberof Browser
+        ###
+        @isAssocWithCurrentUser = () ->
+            appConfig = @getAppConfig()
+            if not appConfig.isAuthConfigured() or
+                browser.isOwner(userCtx) or
+                browser.isReaderWriter(userCtx) or
+                browser.isReader(userCtx) or
+                appConfig.isOwner()
+                    return true
+            else 
+                return false
+
+        ###*
+            Gets all users that have the permission only to read and
+            write to the instance.
+            @method getReaderWriters
+            @return {Array<User>}
+            @instance
+            @memberof Browser
+        ###
+        @getReaderWriters = () ->
+            # There will not be any users in case authentication has
+            # not been enabled
+            users = []
+            if typeof browser.getReaderWriters isnt "function"
+                return users
+            if @isAssocWithCurrentUser()
+                users.push(rw.getEmail()) for rw in browser.readwrite
+            return users
+
+        ###*
+            Gets all users that have the permission only to read
+            @method getReaders
+            @return {Array<User>}
+            @instance
+            @memberof Browser
+        ###
+        @getReaders = () ->
+            # There will not be any users in case authentication has
+            # not been enabled
+            users = []
+            if typeof browser.getReaders isnt "function"
+                return users 
+            if @isAssocWithCurrentUser()
+                users.push(rw.getEmail()) for rw in browser.readonly
+            return users
+
+        ###*
+            Gets all users that are the owners of the instance
+            There is a separate method for this as it is faster to get only the
+            number of owners than to construct a list of them using
+            getOwners and then get that number.
+            @method getOwners
+            @return {Array<User>}
+            @instance
+            @memberof Browser
+        ###
+        @getOwners = () ->
+            # There will not be any users in case authentication has
+            # not been enabled
+            users = []
+            if typeof browser.getOwners isnt "function"
+                return users
+            if @isAssocWithCurrentUser()
+                users.push(rw.getEmail()) for rw in browser.own
+            return users
+
+        ###*
+            Checks if the user is a reader-writer of the instance.
+            @method isReaderWriter
+            @param {String} user
+            @return {Bool}
+            @instance
+            @memberof Browser
+        ###
+        @isReaderWriter = (emailID) ->
+            # There will not be any users in case authentication has
+            # not been enabled
+            return if typeof browser.isReaderWriter isnt "function"
+
+            switch arguments.length
+                # Check for current user
+                when 0 then
+                # Check for given user
+                when 1
+                    emailID = arguments[0]
+                    if not areArgsValid [
+                        {item : emailID, type : "string"}
+                    ] then return
+                    userCtx = new User(emailID)
+                else return
+
+            if @isAssocWithCurrentUser()
+                if browser.isReaderWriter(userCtx) then return true
+                else return false
+
+        ###*
+            Checks if the user is a reader of the instance.
+            @method isReader
+            @param {String} emailID
+            @return {Bool}
+            @memberof Browser
+            @instance
+        ###
+        @isReader = (emailID) ->
+            # There will not be any users in case authentication has
+            # not been enabled
+            return if typeof browser.isReader isnt "function"
+
+            switch arguments.length
+                # Check for current user
+                when 0 then
+                # Check for given user
+                when 1
+                    emailID = arguments[0]
+                    if not areArgsValid [
+                        {item : emailID, type : "string"}
+                    ] then return
+                    userCtx = new User(emailID)
+                else return
+
+            if @isAssocWithCurrentUser()
+                if browser.isReader(userCtx) then return true
+                else return false
+
+        ###*
+            Checks if the user is an owner of the instance
+            @method isOwner
+            @param {String} user
+            @return {Bool}
+            @instance
+            @memberof Browser
+        ###
+        @isOwner = () ->
+            # There will not be any users in case authentication has
+            # not been enabled
+            return if typeof browser.isOwner isnt "function"
+
+            switch arguments.length
+                # Check for current user
+                when 0 then
+                # Check for given user
+                when 1
+                    emailID = arguments[0]
+                    if not areArgsValid [
+                        {item : emailID, type : "string"}
+                    ] then return
+                    userCtx = new User(emailID)
+                else return
+
+            if @isAssocWithCurrentUser()
+                if browser.isOwner(userCtx) then return true
+                else return false
+                
+        # [user],[callback]
+        @getUserPrevilege = ()->
+            switch arguments.length
+                when 1
+                    user = userCtx
+                    callback = arguments[0]
+                when 2
+                    user = arguments[0]
+                    callback = arguments[1]
+
+            return callback(null, null) if typeof browser.getUserPrevilege isnt 'function'
+            browser.getUserPrevilege(user, callback)
+            return
 
 
-    ###*
-        Adds a user as a readerwriter of the current browser
-        @method addReaderWriter
-        @param {String} emailID
-        @param {errorCallback} callback
-        @instance
-        @memberof Browser
-    ###
-    addReaderWriter : (emailID, callback) ->
-        {bserver, userCtx} = _pvts[@_idx]
-        return if not areArgsValid [
-            {item : emailID, type : "string", action : callback}
-        ]
-        # There will not be any users in case authentication has
-        # not been enabled
-        if typeof bserver.addReaderWriter isnt "function"
-            return callback?(cloudbrowserError('API_INVALID', "- addReaderWriter"))
-        @grantPermissions('readwrite', new User(emailID), callback)
+        ###*
+            Adds a user as a readerwriter of the current browser
+            @method addReaderWriter
+            @param {String} emailID
+            @param {errorCallback} callback
+            @instance
+            @memberof Browser
+        ###
+        @addReaderWriter = (emailID, callback) ->
+            return if not areArgsValid [
+                {item : emailID, type : "string", action : callback}
+            ]
+            # There will not be any users in case authentication has
+            # not been enabled
+            if typeof browser.addReaderWriter isnt "function"
+                return callback?(cloudbrowserError('API_INVALID', "- addReaderWriter"))
+            @grantPermissions('readwrite', new User(emailID), callback)
 
-    ###*
-        Adds a user as an owner of the current browser
-        @method addOwner
-        @param {String} emailID
-        @param {errorCallback} callback
-        @instance
-        @memberof Browser
-    ###
-    addOwner : (emailID, callback) ->
-        {bserver, userCtx} = _pvts[@_idx]
-        return if not areArgsValid [
-            {item : emailID, type : "string", action : callback}
-        ]
-        # There will not be any users in case authentication has
-        # not been enabled
-        if typeof bserver.addOwner isnt "function"
-            return callback?(cloudbrowserError('API_INVALID', "- addOwner"))
-        @grantPermissions('own', new User(emailID), callback)
+        ###*
+            Adds a user as an owner of the current browser
+            @method addOwner
+            @param {String} emailID
+            @param {errorCallback} callback
+            @instance
+            @memberof Browser
+        ###
+        @addOwner = (emailID, callback) ->
+            return if not areArgsValid [
+                {item : emailID, type : "string", action : callback}
+            ]
+            # There will not be any users in case authentication has
+            # not been enabled
+            if typeof browser.addOwner isnt "function"
+                return callback?(cloudbrowserError('API_INVALID', "- addOwner"))
+            @grantPermissions('own', new User(emailID), callback)
 
-    ###*
-        Adds a user as a reader of the current browser
-        @method addReader
-        @param {String} emailID
-        @param {errorCallback} callback
-        @instance
-        @memberof Browser
-    ###
-    addReader : (emailID, callback) ->
-        {bserver, userCtx} = _pvts[@_idx]
-        return if not areArgsValid [
-            {item : emailID, type : "string", action : callback}
-        ]
-        # There will not be any users in case authentication has
-        # not been enabled
-        if typeof bserver.addReader isnt "function"
-            return callback?(cloudbrowserError('API_INVALID', "- addReader"))
-        @grantPermissions('readonly', new User(emailID), callback)
+        ###*
+            Adds a user as a reader of the current browser
+            @method addReader
+            @param {String} emailID
+            @param {errorCallback} callback
+            @instance
+            @memberof Browser
+        ###
+        @addReader = (emailID, callback) ->
+            return if not areArgsValid [
+                {item : emailID, type : "string", action : callback}
+            ]
+            # There will not be any users in case authentication has
+            # not been enabled
+            if typeof browser.addReader isnt "function"
+                return callback?(cloudbrowserError('API_INVALID', "- addReader"))
+            @grantPermissions('readonly', new User(emailID), callback)
 
-    ###*
-        Grants the user a role/permission on the browser.
-        @method grantPermissions
-        @param {String} permission
-        @param {User} user 
-        @param {errorCallback} callback 
-        @instance
-        @memberof Browser
-    ###
-    grantPermissions : (permission, user, callback) ->
-        {cbServer, bserver, userCtx} = _pvts[@_idx]
-        {mountPoint, id}    = bserver
-        
-        permissionManager = cbServer.permissionManager
+        ###*
+            Grants the user a role/permission on the browser.
+            @method grantPermissions
+            @param {String} permission
+            @param {User} user 
+            @param {errorCallback} callback 
+            @instance
+            @memberof Browser
+        ###
+        @grantPermissions = (permission, user, callback) ->
+            {mountPoint, id}    = browser
+            
+            permissionManager = cbServer.permissionManager
 
-        Async.waterfall([
-            (next)->
-                bserver.getUserPrevilege(userCtx, next)
-            (result, next)->
-                if result isnt 'own'
-                    next(cloudbrowserError("PERM_DENIED"))
-                else
-                    permissionManager.addBrowserPermRec
-                        user        : user
-                        mountPoint  : mountPoint
-                        browserID   : id
-                        permission  : permission
-                        callback    : next
-            (browserRec, next)->
-                bserver.addUser({
-                    user : user
-                    permission : permission
-                    }, next)
-            ],(err)->
-                callback err
-        )
+            Async.waterfall([
+                (next)->
+                    browser.getUserPrevilege(userCtx, next)
+                (result, next)->
+                    if result isnt 'own'
+                        next(cloudbrowserError("PERM_DENIED"))
+                    else
+                        permissionManager.addBrowserPermRec
+                            user        : user
+                            mountPoint  : mountPoint
+                            browserID   : id
+                            permission  : permission
+                            callback    : next
+                (browserRec, next)->
+                    browser.addUser({
+                        user : user
+                        permission : permission
+                        }, next)
+                ],(err)->
+                    callback err
+            )
 
-    ###*
-        Renames the instance.
-        @method rename
-        @param {String} newName
-        @fires Browser#rename
-        @instance
-        @memberof Browser
-    ###
-    rename : (newName) ->
-        if typeof newName isnt "string" then return
-        {bserver, userCtx} = _pvts[@_idx]
-        if bserver.isOwner(userCtx)
-            bserver.setName(newName)
-            bserver.emit('rename', newName)
+        ###*
+            Renames the instance.
+            @method rename
+            @param {String} newName
+            @fires Browser#rename
+            @instance
+            @memberof Browser
+        ###
+        @rename = (newName) ->
+            if typeof newName isnt "string" then return
+            
+            if browser.isOwner(userCtx)
+                browser.setName(newName)
+                browser.emit('rename', newName)
+            return
 
-    ###*
-        Gets the application instance associated with the current browser
-        @method getAppInstanceConfig
-        @return {AppInstance}
-        @instance
-        @memberof Browser
-    ###
-    getAppInstanceConfig : () ->
-        {cbServer, bserver, cbCtx, userCtx} = _pvts[@_idx]
+        ###*
+            Gets the application instance associated with the current browser
+            @method getAppInstanceConfig
+            @return {AppInstance}
+            @instance
+            @memberof Browser
+        ###
+        @getAppInstanceConfig = () ->
+            appInstance = browser.getAppInstance()
+            if not appInstance then return
+            if @isAssocWithCurrentUser()
+                AppInstance = require('./app_instance')
+                return new AppInstance
+                    cbCtx       : cbCtx
+                    userCtx     : userCtx
+                    appInstance : appInstance
+                    cbServer    : cbServer
 
-        appInstance = bserver.getAppInstance()
-        if not appInstance then return
-        if @isAssocWithCurrentUser()
-            AppInstance = require('./app_instance')
-            return new AppInstance
-                cbCtx       : cbCtx
-                userCtx     : userCtx
-                appInstance : appInstance
-                cbServer    : cbServer
+        @getAppInstanceId = ()->
+            return browser.appInstanceId
 
-    getAppInstanceId : ()->
-        {bserver} = _pvts[@_idx]
-        return bserver.appInstanceId
+        ###*
+            Gets the local state with the current browser
+            @method getLocalState
+            @return {Object} Custom object provided by the application in the application state file
+            @instance
+            @memberof Browser
+        ###
+        @getLocalState = (property) ->
+            if @isAssocWithCurrentUser()
+                return browser.getLocalState(property)
 
-    ###*
-        Gets the local state with the current browser
-        @method getLocalState
-        @return {Object} Custom object provided by the application in the application state file
-        @instance
-        @memberof Browser
-    ###
-    getLocalState : (property) ->
-        {bserver} = _pvts[@_idx]
-        if @isAssocWithCurrentUser()
-            return bserver.getLocalState(property)
+        ###*
+            Gets information about the users connected to the current browser
+            @method getConnectedClients
+            @return {Array<{{address: String, email: String}}>}
+            @instance
+            @memberof Browser
+        ###
+        @getConnectedClients = () ->
+            if @isAssocWithCurrentUser()
+                return browser.getConnectedClients()
 
-    ###*
-        Gets information about the users connected to the current browser
-        @method getConnectedClients
-        @return {Array<{{address: String, email: String}}>}
-        @instance
-        @memberof Browser
-    ###
-    getConnectedClients : () ->
-        {bserver} = _pvts[@_idx]
-        if @isAssocWithCurrentUser()
-            return bserver.getConnectedClients()
+        @getUsers = (callback)->
+            browser.getUsers((err, users)->
+                return callback(err) if err
+                result ={}
+                for k, v of users
+                    if lodash.isArray(v)
+                        result[k]= lodash.map(v, (u)->
+                            return u.getEmail()
+                        )
+                    else
+                        result[k] = v.getEmail()
+                callback null, result        
+            )
 
-    getUsers : (callback)->
-        {bserver} = _pvts[@_idx]
-        bserver.getUsers((err, users)->
-            return callback(err) if err
-            result ={}
-            for k, v of users
-                if lodash.isArray(v)
-                    result[k]= lodash.pluck(v, '_email')
-                else
-                    result[k]=User.getEmail(v)
-            callback null, result        
-        )
+        # only make sence when it is the currentBrowser
+        @getLogger = ()->
+            return browser._logger
 
-    # only make sence when it is the currentBrowser
-    getLogger : ()->
-        {bserver} = _pvts[@_idx]
-        return bserver._logger
-
-    createSharedObject : (obj)->
-        obj.$$hashKey="cb_#{uuid++}"
-        return obj
+        # hack : share object among angularJS instances
+        @createSharedObject = (obj)->
+            obj.$$hashKey="cb_#{uuid++}"
+            return obj
 
 module.exports = Browser
