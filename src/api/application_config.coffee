@@ -451,7 +451,7 @@ class AppConfig
                         return callback(null, [])
 
                     appInstances = []
-                    # todo, make findinstance by batch
+                    # todo, make findInstance by batch
                     # appInstanceRecs is a id to rec map
                     instanceIds = lodash.keys(appInstanceRecs)
                     Async.each(instanceIds,

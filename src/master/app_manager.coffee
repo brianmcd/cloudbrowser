@@ -396,7 +396,7 @@ class Application extends EventEmitter
             subAppConfigs.push(authAppConfig)
             pwdRestAppConfig = @_appManager._getPwdRestAppConfig(appConfig)
             subAppConfigs.push(pwdRestAppConfig)
-            instantiationStrategy = {@config}
+            {instantiationStrategy} = @config.appConfig
             if Strategies.needsLandingPage(instantiationStrategy)
                 landingPageAppConfig = @_appManager._getLandingAppConfig(appConfig)
                 subAppConfigs.push(landingPageAppConfig)
