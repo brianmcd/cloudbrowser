@@ -31,6 +31,7 @@
     "cookie-parser":"1.3.3",
     "cookie" : "0.1.2",
     "jade": "0.27.2",
+    "consolidate" : "0.13.1",
     "tough-cookie" : "0.12.1",
     "coffee-script": "1.8.0",
     "request": "2.40.0",
