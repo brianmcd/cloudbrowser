@@ -18,7 +18,7 @@ lodash.assign(ChatRoom.prototype, {
         this.users.push(userId);
     },
     hasUser : function(userId){
-        return this.users.indexOf(userId) >=0 ;
+        return this.users.indexOf(userId) >= 0 ;
     },
     addSocket : function(options, socket){
         var participent = new Participent(options.userId, socket, this);
@@ -158,7 +158,4 @@ lodash.assign(ChatApp.prototype, {
         );
     }
 });
-
-
-
-module.exports = ChatApp
+module.exports = ChatApp;

@@ -1,8 +1,3 @@
-function ChatRoom(){
-    this.messages = [];
-    this.currentUser = null;
-}
-
 var app = angular.module("Chat4", []);
 
 app.directive('enterSubmit', function() {
