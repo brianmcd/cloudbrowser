@@ -184,6 +184,11 @@ class AppInstance extends EventEmitter
 
 
     getUserPrevilege : (user, callback) ->
+        if not @isOwner?
+            error = new Error()
+            console.log(error.stack)
+            console.log("Error type detected in app_instance")
+        
         result = null
         # deal with remote objs or strings
         user = User.toUser(user)

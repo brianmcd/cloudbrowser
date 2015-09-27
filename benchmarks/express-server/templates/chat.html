@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Open Chat Application</title>
+    <link href="/static/css/bootstrap.min.css" rel="stylesheet" />
+</head>
+<body ng-app="Chat4" ng-controller="ChatCtrl">
+<!--main div -->
+<div class="container-fluid">
+    <div>
+        <div class="alert alert-warning alert-dismissible" role="alert" ng-repeat="alert in alertMessages">
+        <button type="button" class="close" data-dismiss="alert" ng-click="removeAlert(alert)">
+            <span aria-hidden="true">&times;</span><span class="sr-only">Close</span>
+        </button>
+        {{alert.msg}}
+        </div>        
+    </div>
+    <h1>Chat Room</h1>
+
+    <div ng-show="editingUserName" class="panel panel-info">
+    <div class="panel-body">
+        <label for="userNameInput">Input a new name : </label>
+        <input type="text" placeholder="Plese input a user name" id="userNameInput" ng-model="draftUserName" enter-submit="changeName()"/>
+    </div>
+    </div>
+
+    <!-- chat window-->
+    <div class="panel panel-primary">
+        <div class="panel-heading">
+        <div ng-dblclick="editingUserName=true">
+            <span title="double click to change user name">Welcome {{userName}}</span>
+        </div>
+        </div>
+        <div class="panel-body" style="max-height: 350px;overflow: scroll;" id="chatMessageBox">
+            <div ng-repeat="message in messages" ng-class="getMsgClass(message)">
+                {{message.userName}} : {{message.msg}} <span class="small">{{message.time | date: 'medium'}}</span>
+            </div>
+        </div>
+        <div class="panel-footer">
+            <textarea ng-model="currentMessage" id="chat-text" enter-submit="postMessage()" cols="100" rows="2" cb-keyevents="basic"></textarea> 
+            <button ng-click="postMessage()" class="btn btn-primary">Send</button>
+        </div>
+    </div>
+</div>
+</body>
+<script type="text/javascript">
+    var __chatRoomId = "<%= chatRoomId %>";
+    var __userId = "<%= userId %>";
+</script>
+<script type="text/javascript" src="/socket.io/socket.io.js"></script>
+<script type="text/javascript" src="/static/angular/angular.js"></script>
+<script type="text/javascript" src="/client/chatApp.js"></script>
+</html>

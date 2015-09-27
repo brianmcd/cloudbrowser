@@ -37,7 +37,7 @@ To start a CloudBrowser cluster, you need to **start mongodb first**.
 
 You can start the master by the following script, if you omit the configPath option, it will load config files from ProjectRoot/config.
 ```sh
-bin/run_master.sh --configPath [config directory] [application direcoties...]
+bin/run_master.sh --configPath [config directory] [application directories...]
 ```
 
 You can start a worker process by the following script, you need to specify different configPath for different workers.

@@ -21,9 +21,13 @@ User.getEmail = (user) ->
         return null
     if user._email?
         return user._email
-    if user instanceof User
-        return user.getEmail()
-    return user
+    if typeof user is 'string'
+        return user
+    
+    throw new Error("Invalid user #{typeof user}")
+
+User.getId = (user) ->
+    return User.getEmail(user)
 
 # convert remote obj or string to real User obj
 User.toUser = (user)->
