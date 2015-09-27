@@ -358,8 +358,11 @@ class WokerManager
                 port : worker.rmiPort
                 }, (err, stub)=>
                     return callback(err) if err?
+
+                    if not stub.appManager?
+                        return callback("worker #{worker.id} is not ready")
                     # put worker's stub into cache when the worker is ready
-                    @_workerStubs[worker.id] = stub if stub.appManager?
+                    @_workerStubs[worker.id] = stub
                     callback null, stub
                 )
         else

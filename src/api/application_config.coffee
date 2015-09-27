@@ -453,7 +453,7 @@ class AppConfig
                     appInstances = []
                     # todo, make findInstance by batch
                     # appInstanceRecs is a id to rec map
-                    instanceIds = lodash.keys(appInstanceRecs)
+                    instanceIds = lodash.pluck(appInstanceRecs, 'id')
                     Async.each(instanceIds,
                         (instanceId, appInstanceRecCb)->
                             app.appInstanceManager.findInstance(instanceId, (err, instance)->

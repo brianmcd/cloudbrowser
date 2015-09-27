@@ -457,7 +457,7 @@ class Browser
                             browserID   : id
                             permission  : permission
                             callback    : next
-                (browserRec, next)->
+                (updateReturn, next)->
                     browser.addUser({
                         user : user
                         permission : permission
